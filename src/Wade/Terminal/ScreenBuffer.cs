@@ -1,13 +1,21 @@
+using System.Buffers;
 using System.Text;
 
 namespace Wade.Terminal;
 
 internal sealed class ScreenBuffer
 {
+    private static readonly Stream StdOut = Console.OpenStandardOutput();
+
     private Cell[] _front;
     private Cell[] _back;
     private int _width;
     private int _height;
+
+    // Dirty-row bitfield: 1 bit per row, packed into ulong[]
+    private ulong[] _dirtyRows;
+
+    private char[] _writeBuffer = new char[4096];
 
     public int Width => _width;
     public int Height => _height;
@@ -18,6 +26,7 @@ internal sealed class ScreenBuffer
         _height = height;
         _front = new Cell[width * height];
         _back = new Cell[width * height];
+        _dirtyRows = new ulong[(height + 63) / 64];
         Array.Fill(_front, Cell.Empty);
         Array.Fill(_back, Cell.Empty);
     }
@@ -28,6 +37,7 @@ internal sealed class ScreenBuffer
         _height = height;
         _front = new Cell[width * height];
         _back = new Cell[width * height];
+        _dirtyRows = new ulong[(height + 63) / 64];
         Array.Fill(_front, Cell.Empty);
         Array.Fill(_back, Cell.Empty);
     }
@@ -35,36 +45,63 @@ internal sealed class ScreenBuffer
     public void Clear()
     {
         Array.Fill(_back, Cell.Empty);
+        // Don't clear dirty bits — rows that changed from previous frame must still be flushed
     }
 
     public void Put(int row, int col, Rune rune, CellStyle style)
     {
         if (row < 0 || row >= _height || col < 0 || col >= _width) return;
         _back[row * _width + col] = new Cell(rune, style);
+        _dirtyRows[row >> 6] |= 1UL << (row & 63);
     }
 
     public void Put(int row, int col, char ch, CellStyle style) =>
         Put(row, col, new Rune(ch), style);
 
+    public void FillRow(int row, int startCol, int count, char ch, CellStyle style)
+    {
+        if (row < 0 || row >= _height) return;
+        int clampedStart = Math.Max(startCol, 0);
+        int clampedEnd = Math.Min(startCol + count, _width);
+        if (clampedStart >= clampedEnd) return;
+
+        var cell = new Cell(new Rune(ch), style);
+        _back.AsSpan(row * _width + clampedStart, clampedEnd - clampedStart).Fill(cell);
+        _dirtyRows[row >> 6] |= 1UL << (row & 63);
+    }
+
     public void WriteString(int row, int col, string text, CellStyle style, int maxWidth = int.MaxValue)
     {
+        if (row < 0 || row >= _height) return;
+        int clampedStart = Math.Max(col, 0);
+        int clampedEnd = Math.Min(col + maxWidth, _width);
+        if (clampedStart >= clampedEnd) return;
+
         int c = col;
         foreach (var rune in text.EnumerateRunes())
         {
             if (c >= col + maxWidth || c >= _width) break;
-            Put(row, c, rune, style);
+            if (c >= 0)
+                _back[row * _width + c] = new Cell(rune, style);
             c++;
         }
+        _dirtyRows[row >> 6] |= 1UL << (row & 63);
     }
 
     public void Flush(StringBuilder sb)
     {
         sb.Clear();
-        CellStyle? currentStyle = null;
+        CellStyle currentStyle = default;
+        bool hasStyle = false;
+        int lastRow = -1, lastCol = -1;
         Span<char> charBuf = stackalloc char[2];
 
         for (int row = 0; row < _height; row++)
         {
+            // Skip clean rows
+            if ((_dirtyRows[row >> 6] & (1UL << (row & 63))) == 0)
+                continue;
+
             for (int col = 0; col < _width; col++)
             {
                 int idx = row * _width + col;
@@ -74,45 +111,96 @@ internal sealed class ScreenBuffer
                 if (front == back) continue;
 
                 front = back;
-                AnsiCodes.AppendMoveCursor(sb, row, col);
 
-                if (currentStyle != back.Style)
+                // Only emit cursor move if not already positioned here
+                if (row != lastRow || col != lastCol)
+                    AnsiCodes.AppendMoveCursor(sb, row, col);
+
+                if (!hasStyle || currentStyle != back.Style)
                 {
+                    AppendStyleDiff(sb, hasStyle ? currentStyle : default, back.Style, hasStyle);
                     currentStyle = back.Style;
-                    AppendStyle(sb, currentStyle.Value);
+                    hasStyle = true;
                 }
 
                 int charLen = back.Char.EncodeToUtf16(charBuf);
                 sb.Append(charBuf[..charLen]);
+
+                lastRow = row;
+                lastCol = col + 1;
             }
         }
+
+        // Clear dirty bits
+        Array.Clear(_dirtyRows);
 
         if (sb.Length > 0)
         {
             sb.Append(AnsiCodes.ResetAttributes);
-            Console.Write(sb);
+
+            // Write via stdout stream to avoid ToString() allocation
+            int totalChars = sb.Length;
+            if (_writeBuffer.Length < totalChars)
+                _writeBuffer = new char[totalChars * 2];
+
+            sb.CopyTo(0, _writeBuffer, 0, totalChars);
+
+            byte[] encoded = ArrayPool<byte>.Shared.Rent(Encoding.UTF8.GetMaxByteCount(totalChars));
+            try
+            {
+                int byteCount = Encoding.UTF8.GetBytes(_writeBuffer, 0, totalChars, encoded, 0);
+                StdOut.Write(encoded, 0, byteCount);
+                StdOut.Flush();
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(encoded);
+            }
         }
     }
 
     public void ForceFullRedraw()
     {
         Array.Fill(_front, Cell.Dirty);
+        // Mark all rows dirty
+        Array.Fill(_dirtyRows, ulong.MaxValue);
     }
 
-    private static void AppendStyle(StringBuilder sb, CellStyle style)
+    private static void AppendStyleDiff(StringBuilder sb, CellStyle oldStyle, CellStyle newStyle, bool hadStyle)
     {
-        sb.Append(AnsiCodes.ResetAttributes);
+        // If Bold or Dim was on and is now off, we must reset then reapply
+        bool needsReset = !hadStyle
+            || (oldStyle.Bold && !newStyle.Bold)
+            || (oldStyle.Dim && !newStyle.Dim)
+            || oldStyle.Bg != newStyle.Bg;
 
-        if (style.Fg is { } fg)
-            AnsiCodes.AppendSetFg(sb, fg.R, fg.G, fg.B);
+        if (needsReset)
+        {
+            sb.Append(AnsiCodes.ResetAttributes);
+            if (newStyle.Fg is { } fg)
+                AnsiCodes.AppendSetFg(sb, fg.R, fg.G, fg.B);
+            if (newStyle.Bg is { } bg)
+                AnsiCodes.AppendSetBg(sb, bg.R, bg.G, bg.B);
+            if (newStyle.Bold)
+                sb.Append("\x1b[1m");
+            if (newStyle.Dim)
+                sb.Append("\x1b[2m");
+            return;
+        }
 
-        if (style.Bg is { } bg)
-            AnsiCodes.AppendSetBg(sb, bg.R, bg.G, bg.B);
+        // Only emit what changed
+        if (oldStyle.Fg != newStyle.Fg)
+        {
+            if (newStyle.Fg is { } fg)
+                AnsiCodes.AppendSetFg(sb, fg.R, fg.G, fg.B);
+            else
+                sb.Append("\x1b[39m"); // default fg
+        }
 
-        if (style.Bold)
+        if (!oldStyle.Bold && newStyle.Bold)
             sb.Append("\x1b[1m");
 
-        if (style.Dim)
+        if (!oldStyle.Dim && newStyle.Dim)
             sb.Append("\x1b[2m");
     }
 }

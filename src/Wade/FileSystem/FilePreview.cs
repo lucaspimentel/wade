@@ -104,9 +104,9 @@ internal static class FilePreview
     {
         try
         {
-            var buffer = new byte[BinaryCheckSize];
+            Span<byte> buffer = stackalloc byte[BinaryCheckSize];
             using var stream = File.OpenRead(filePath);
-            int bytesRead = stream.Read(buffer, 0, BinaryCheckSize);
+            int bytesRead = stream.Read(buffer);
 
             for (int i = 0; i < bytesRead; i++)
             {

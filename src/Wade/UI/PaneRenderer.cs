@@ -14,6 +14,11 @@ internal static class PaneRenderer
     private static readonly Color DimColor = new(100, 100, 100);
     private static readonly Color BorderColor = new(60, 60, 60);
 
+    private static readonly CellStyle ActiveSelectionStyle = new(SelectionFg, SelectionBg, Bold: true);
+    private static readonly CellStyle InactiveSelectionStyle = new(SelectionFg, new Color(60, 60, 80), Bold: true);
+    private static readonly CellStyle DirStyle = new(DirColor, null, Bold: true);
+    private static readonly CellStyle FileStyle = new(FileColor, null);
+
     public static void RenderFileList(
         ScreenBuffer buffer,
         Rect pane,
@@ -38,21 +43,17 @@ internal static class PaneRenderer
 
             CellStyle style;
             if (isSelected && isActive)
-                style = new CellStyle(SelectionFg, SelectionBg, Bold: true);
+                style = ActiveSelectionStyle;
             else if (isSelected)
-                style = new CellStyle(SelectionFg, new Color(60, 60, 80), Bold: true);
+                style = InactiveSelectionStyle;
             else if (entry.IsDirectory)
-                style = new CellStyle(DirColor, null, Bold: true);
+                style = DirStyle;
             else
-                style = new CellStyle(FileColor, null);
+                style = FileStyle;
 
             // If selected, fill the row background
             if (isSelected)
-            {
-                var bgStyle = style;
-                for (int col = 0; col < pane.Width; col++)
-                    buffer.Put(pane.Top + row, pane.Left + col, ' ', bgStyle);
-            }
+                buffer.FillRow(pane.Top + row, pane.Left, pane.Width, ' ', style);
 
             int entryCol = pane.Left;
             if (showIcons)

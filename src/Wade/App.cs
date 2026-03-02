@@ -17,6 +17,9 @@ internal sealed class App
     private int _scrollOffset;
     private bool _showHelp;
 
+    private string? _cachedPreviewPath;
+    private string[]? _cachedPreviewLines;
+
     // Track selected index per directory so we restore position when navigating back
     private readonly Dictionary<string, int> _selectedIndexPerDir = new(StringComparer.OrdinalIgnoreCase);
 
@@ -87,6 +90,8 @@ internal sealed class App
                         _currentPath = entries[_selectedIndex].FullPath;
                         _selectedIndex = _selectedIndexPerDir.GetValueOrDefault(_currentPath, 0);
                         _scrollOffset = 0;
+                        _cachedPreviewPath = null;
+                        _cachedPreviewLines = null;
                     }
                     break;
 
@@ -120,6 +125,8 @@ internal sealed class App
                         }
                     }
                     _scrollOffset = 0;
+                    _cachedPreviewPath = null;
+                    _cachedPreviewLines = null;
                     break;
                 }
 
@@ -223,8 +230,12 @@ internal sealed class App
             }
             else
             {
-                var lines = FilePreview.GetPreviewLines(selected.FullPath);
-                PaneRenderer.RenderPreview(buffer, _layout.RightPane, lines);
+                if (selected.FullPath != _cachedPreviewPath)
+                {
+                    _cachedPreviewPath = selected.FullPath;
+                    _cachedPreviewLines = FilePreview.GetPreviewLines(selected.FullPath);
+                }
+                PaneRenderer.RenderPreview(buffer, _layout.RightPane, _cachedPreviewLines!);
             }
         }
 
