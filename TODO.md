@@ -1,7 +1,11 @@
 # TODO
 
+## Performance: reduce heap allocations
 
+Profile hot paths in the render loop and reduce per-frame allocations.
 
+- `FileIcons.GetIcon(entry).ToString() + " " + entry.Name` — allocates on every render; use `Span<char>` / `stackalloc` or write directly into a `StringBuilder`/buffer
+- Audit other string concatenations and LINQ in render/input paths
 
 ---
 
