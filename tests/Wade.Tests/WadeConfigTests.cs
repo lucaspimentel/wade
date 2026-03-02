@@ -33,7 +33,7 @@ public class WadeConfigTests
     {
         var config = WadeConfig.Load([], configFilePath: "/nonexistent/path.toml", env: new MockEnv());
 
-        Assert.False(config.ShowIconsEnabled);
+        Assert.True(config.ShowIconsEnabled);
         Assert.False(config.ImagePreviewsEnabled);
         Assert.False(config.ShowConfig);
         Assert.Equal(Directory.GetCurrentDirectory(), config.StartPath);
@@ -44,8 +44,8 @@ public class WadeConfigTests
     [Theory]
     [InlineData("show_icons_enabled = true", true, false)]
     [InlineData("show_icons_enabled = false", false, false)]
-    [InlineData("image_previews_enabled = true", false, true)]
-    [InlineData("image_previews_enabled = false", false, false)]
+    [InlineData("image_previews_enabled = true", true, true)]
+    [InlineData("image_previews_enabled = false", true, false)]
     public void ConfigFile_ParsesBoolSettings(string line, bool expectedIcons, bool expectedPreviews)
     {
         var path = WriteTempConfig(line);
@@ -71,7 +71,7 @@ public class WadeConfigTests
         try
         {
             var config = WadeConfig.Load([], configFilePath: path, env: new MockEnv());
-            Assert.False(config.ShowIconsEnabled);
+            Assert.True(config.ShowIconsEnabled); // default is true; comments don't override it
         }
         finally
         {
@@ -112,7 +112,7 @@ public class WadeConfigTests
         try
         {
             var config = WadeConfig.Load([], configFilePath: path, env: new MockEnv());
-            Assert.False(config.ShowIconsEnabled);
+            Assert.True(config.ShowIconsEnabled); // default is true; malformed lines don't override it
         }
         finally
         {
@@ -139,7 +139,7 @@ public class WadeConfigTests
     public void ConfigFile_NonexistentFile_UsesDefaults()
     {
         var config = WadeConfig.Load([], configFilePath: "/does/not/exist.toml", env: new MockEnv());
-        Assert.False(config.ShowIconsEnabled);
+        Assert.True(config.ShowIconsEnabled);
         Assert.False(config.ImagePreviewsEnabled);
     }
 
@@ -175,8 +175,8 @@ public class WadeConfigTests
     [Theory]
     [InlineData("--show-icons-enabled=true", true, false)]
     [InlineData("--show-icons-enabled=false", false, false)]
-    [InlineData("--image-previews-enabled=true", false, true)]
-    [InlineData("--image-previews-enabled=false", false, false)]
+    [InlineData("--image-previews-enabled=true", true, true)]
+    [InlineData("--image-previews-enabled=false", true, false)]
     public void CliFlag_KeyEquals_ParsesBool(string cliFlag, bool expectedIcons, bool expectedPreviews)
     {
         var config = WadeConfig.Load([cliFlag], configFilePath: "/nonexistent/path.toml", env: new MockEnv());

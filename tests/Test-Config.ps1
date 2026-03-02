@@ -13,7 +13,7 @@ function Assert-Config {
         [string[]] $RunArgs,
         [string]   $ConfigFile = $null,
         [hashtable]$Env        = @{},
-        [bool]     $ShowIcons        = $false,
+        [bool]     $ShowIcons        = $true,
         [bool]     $ImagePreviews    = $false,
         [string]   $StartPath        = $null
     )
@@ -69,7 +69,7 @@ try {
     # 1. Defaults
     Assert-Config -Name 'Defaults' `
         -RunArgs @() `
-        -ShowIcons $false -ImagePreviews $false
+        -ShowIcons $true -ImagePreviews $false
 
     # 2. Config file sets bools to true
     $cfgBothTrue = Join-Path $tempDir 'both-true.toml'
@@ -101,7 +101,7 @@ try {
     Assert-Config -Name '--no-image-previews-enabled negates' `
         -RunArgs @('--no-image-previews-enabled') `
         -Env @{ WADE_IMAGE_PREVIEWS_ENABLED = 'true' } `
-        -ShowIcons $false -ImagePreviews $false
+        -ShowIcons $true -ImagePreviews $false
 
     # 6. --flag=true / --flag=false syntax
     Assert-Config -Name '--show-icons-enabled=true' `
@@ -115,12 +115,12 @@ try {
 
     Assert-Config -Name '--image-previews-enabled=true' `
         -RunArgs @('--image-previews-enabled=true') `
-        -ShowIcons $false -ImagePreviews $true
+        -ShowIcons $true -ImagePreviews $true
 
     Assert-Config -Name '--image-previews-enabled=false overrides env' `
         -RunArgs @('--image-previews-enabled=false') `
         -Env @{ WADE_IMAGE_PREVIEWS_ENABLED = 'true' } `
-        -ShowIcons $false -ImagePreviews $false
+        -ShowIcons $true -ImagePreviews $false
 
     # 7. Positional path argument
     Assert-Config -Name 'Positional path' `
