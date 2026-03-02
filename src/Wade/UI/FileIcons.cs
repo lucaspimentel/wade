@@ -16,11 +16,11 @@ internal static class FileIcons
             // .NET / C#
             [".cs"]          = new(0xF031B), // nf-md-language_csharp
             [".csx"]         = new(0xF031B),
-            [".sln"]         = new(0xF0A3),  // nf-fa-trophy (solution)
-            [".slnx"]        = new(0xF0A3),
-            [".csproj"]      = new(0xF0A3),
-            [".fsproj"]      = new(0xF0A3),
-            [".vbproj"]      = new(0xF0A3),
+            [".sln"]         = new(0xF0610), // nf-md-microsoft_visual_studio
+            [".slnx"]        = new(0xF0610),
+            [".csproj"]      = new(0xF0610),
+            [".fsproj"]      = new(0xF0610),
+            [".vbproj"]      = new(0xF0610),
 
             // Web
             [".html"]        = new(0xF13B),  // nf-fa-html5

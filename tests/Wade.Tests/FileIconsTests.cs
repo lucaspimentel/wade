@@ -49,8 +49,8 @@ public class FileIconsTests
     [InlineData("deploy.sh",       0xF489)]
     [InlineData("build.ps1",       0xF489)]
     [InlineData("setup.bat",       0xF17A)]
-    [InlineData("App.sln",         0xF0A3)]
-    [InlineData("Wade.csproj",     0xF0A3)]
+    [InlineData("App.sln",         0xF0610)] // nf-md-microsoft_visual_studio
+    [InlineData("Wade.csproj",     0xF0610)] // nf-md-microsoft_visual_studio
     [InlineData("photo.png",       0xF1C5)]
     [InlineData("image.jpg",       0xF1C5)]
     [InlineData("archive.zip",     0xF1C6)]
