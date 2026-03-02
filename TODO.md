@@ -1,22 +1,7 @@
 # TODO
 
-## File icons (Nerd Fonts)
 
-Render a small glyph before each filename based on file extension or type.
 
-**Approach**
-- Hand-rolled `Dictionary<string, char>` mapping extension → Unicode codepoint (no library needed)
-- Fallback icon for unknown files; separate icons for directories, drives, symlinks
-- Nerd Fonts occupy Unicode Private Use Area (U+E000–F8FF, U+F0000+)
-- Source mappings from [nerdfonts.com/cheat-sheet](https://www.nerdfonts.com/cheat-sheet) or `glyphnames.json` in the Nerd Fonts repo
-
-**Detection / opt-out**
-- No reliable runtime font detection; default to **off**, enable via config (`icons = true`)
-- Or: check `WT_SESSION` / `TERM_PROGRAM` as a heuristic for capable terminals
-
-**Display**
-- Icon + space prefix in `PaneRenderer`, replacing the current `/` / ` ` prefix
-- Keep single-char width assumption (all Nerd Font glyphs are 1 or 2 columns — handle both)
 
 ---
 

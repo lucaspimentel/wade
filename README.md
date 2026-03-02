@@ -7,6 +7,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 ## Features
 
 - **Miller columns** — three-pane layout: parent / current directory / preview
+- **File-type icons** — Nerd Fonts v3 glyphs per file extension (enabled by default; requires a Nerd Font)
 - **File preview** — displays first 100 lines of text files; shows file type description for binary files (via `file` command when available)
 - **Directory preview** — shows contents of the selected directory
 - **Drive navigation** — browse across drives on Windows (Backspace from a drive root)
@@ -57,7 +58,7 @@ Settings are resolved in increasing priority: config file → environment variab
 `~/.config/wade/config.toml`
 
 ```toml
-show_icons_enabled = false
+show_icons_enabled = true
 image_previews_enabled = false
 ```
 
@@ -71,11 +72,14 @@ image_previews_enabled = false
 ### CLI flags
 
 ```bash
-wade --show-icons-enabled           # enable icons
-wade --no-show-icons-enabled        # disable icons
-wade --show-icons-enabled=true      # same as above, key=value form
-wade --image-previews-enabled=false # disable image previews
-wade --show-config                  # print current config as JSON and exit
+wade --show-icons-enabled             # enable icons
+wade --no-show-icons-enabled          # disable icons
+wade --show-icons-enabled=true        # same as above, key=value form
+wade --image-previews-enabled         # enable image previews
+wade --no-image-previews-enabled      # disable image previews
+wade --image-previews-enabled=false   # same as above, key=value form
+wade --show-config                    # print current config as JSON and exit
+wade --config-file=/path/to/config    # use a custom config file
 ```
 
 ## Keybindings
