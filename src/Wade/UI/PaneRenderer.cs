@@ -18,7 +18,8 @@ internal static class PaneRenderer
         List<FileSystemEntry> entries,
         int selectedIndex,
         int scrollOffset,
-        bool isActive)
+        bool isActive,
+        bool showIcons = false)
     {
         for (int row = 0; row < pane.Height; row++)
         {
@@ -51,8 +52,11 @@ internal static class PaneRenderer
                     buffer.Put(pane.Top + row, pane.Left + col, ' ', bgStyle);
             }
 
-            string prefix = entry.IsDrive ? " " : entry.IsDirectory ? $"{Path.DirectorySeparatorChar}" : " ";
-            string display = prefix + entry.Name;
+            string display;
+            if (showIcons)
+                display = FileIcons.GetIcon(entry).ToString() + " " + entry.Name;
+            else
+                display = (entry.IsDrive ? " " : entry.IsDirectory ? $"{Path.DirectorySeparatorChar}" : " ") + entry.Name;
             buffer.WriteString(pane.Top + row, pane.Left, display, style, pane.Width);
         }
     }

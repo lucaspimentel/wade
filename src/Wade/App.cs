@@ -169,7 +169,7 @@ internal sealed class App
         var entries = _directoryContents.GetEntries(_currentPath);
 
         // Center pane: current directory
-        PaneRenderer.RenderFileList(buffer, _layout.CenterPane, entries, _selectedIndex, _scrollOffset, isActive: true);
+        PaneRenderer.RenderFileList(buffer, _layout.CenterPane, entries, _selectedIndex, _scrollOffset, isActive: true, showIcons: _config.ShowIconsEnabled);
 
         // Left pane: parent directory (or drives list)
         if (_currentPath == DirectoryContents.DrivesPath)
@@ -198,7 +198,7 @@ internal sealed class App
             if (parentSelected < 0) parentSelected = 0;
 
             int parentScroll = CalculateScroll(parentSelected, _layout.LeftPane.Height, parentEntries.Count);
-            PaneRenderer.RenderFileList(buffer, _layout.LeftPane, parentEntries, parentSelected, parentScroll, isActive: false);
+            PaneRenderer.RenderFileList(buffer, _layout.LeftPane, parentEntries, parentSelected, parentScroll, isActive: false, showIcons: _config.ShowIconsEnabled);
         }
 
         // Right pane: preview
@@ -209,7 +209,7 @@ internal sealed class App
             {
                 var previewEntries = _directoryContents.GetEntries(selected.FullPath);
                 if (previewEntries.Count > 0)
-                    PaneRenderer.RenderFileList(buffer, _layout.RightPane, previewEntries, -1, 0, isActive: false);
+                    PaneRenderer.RenderFileList(buffer, _layout.RightPane, previewEntries, -1, 0, isActive: false, showIcons: _config.ShowIconsEnabled);
                 else
                     PaneRenderer.RenderMessage(buffer, _layout.RightPane, "[empty directory]");
             }
