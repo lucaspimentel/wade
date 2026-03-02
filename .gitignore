@@ -1,8 +1,10 @@
-artifacts/
 .vs/
 .idea/
 .vscode/
 .claude/*.local.*
+
+artifacts/
+BenchmarkDotNet.Artifacts/
+
 *.user
 *.suo
-*.DotSettings.user
