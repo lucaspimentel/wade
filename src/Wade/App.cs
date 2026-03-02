@@ -7,6 +7,7 @@ namespace Wade;
 
 internal sealed class App
 {
+    private readonly WadeConfig _config;
     private readonly DirectoryContents _directoryContents = new();
     private readonly Layout _layout = new();
     private readonly StringBuilder _flushBuffer = new(4096);
@@ -19,9 +20,14 @@ internal sealed class App
     // Track selected index per directory so we restore position when navigating back
     private readonly Dictionary<string, int> _selectedIndexPerDir = new(StringComparer.OrdinalIgnoreCase);
 
-    public void Run(string startPath)
+    public App(WadeConfig config)
     {
-        _currentPath = Path.GetFullPath(startPath);
+        _config = config;
+    }
+
+    public void Run()
+    {
+        _currentPath = Path.GetFullPath(_config.StartPath);
 
         using var terminal = new TerminalSetup();
 
