@@ -12,6 +12,7 @@ internal enum AppAction
     PageDown,
     Home,
     End,
+    ShowHelp,
 }
 
 internal static class InputReader
@@ -20,12 +21,15 @@ internal static class InputReader
     {
         var key = Console.ReadKey(intercept: true);
 
+        if (key.KeyChar == '?')
+            return AppAction.ShowHelp;
+
         return key.Key switch
         {
             ConsoleKey.UpArrow or ConsoleKey.K => AppAction.NavigateUp,
             ConsoleKey.DownArrow or ConsoleKey.J => AppAction.NavigateDown,
-            ConsoleKey.RightArrow or ConsoleKey.Enter => AppAction.Open,
-            ConsoleKey.LeftArrow or ConsoleKey.Backspace => AppAction.Back,
+            ConsoleKey.RightArrow or ConsoleKey.Enter or ConsoleKey.L => AppAction.Open,
+            ConsoleKey.LeftArrow or ConsoleKey.Backspace or ConsoleKey.H => AppAction.Back,
             ConsoleKey.Escape => AppAction.Quit,
             ConsoleKey.Q => AppAction.Quit,
             ConsoleKey.PageUp => AppAction.PageUp,

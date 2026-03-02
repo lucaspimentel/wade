@@ -14,6 +14,7 @@ internal sealed class App
     private string _currentPath = "";
     private int _selectedIndex;
     private int _scrollOffset;
+    private bool _showHelp;
 
     // Track selected index per directory so we restore position when navigating back
     private readonly Dictionary<string, int> _selectedIndexPerDir = new(StringComparer.OrdinalIgnoreCase);
@@ -52,6 +53,12 @@ internal sealed class App
 
             // Input
             var action = InputReader.Read();
+
+            if (_showHelp)
+            {
+                _showHelp = false;
+                continue;
+            }
 
             var entries = _directoryContents.GetEntries(_currentPath);
 
@@ -128,6 +135,10 @@ internal sealed class App
 
                 case AppAction.Quit:
                     quit = true;
+                    break;
+
+                case AppAction.ShowHelp:
+                    _showHelp = true;
                     break;
             }
 
@@ -212,6 +223,10 @@ internal sealed class App
             : null;
         string displayPath = _currentPath == DirectoryContents.DrivesPath ? "Drives" : _currentPath;
         StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry);
+
+        // Help overlay
+        if (_showHelp)
+            HelpOverlay.Render(buffer, width, height);
     }
 
     private void AdjustScroll(int visibleHeight)
