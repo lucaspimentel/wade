@@ -61,6 +61,7 @@ internal sealed class ScreenBuffer
     {
         sb.Clear();
         CellStyle? currentStyle = null;
+        Span<char> charBuf = stackalloc char[2];
 
         for (int row = 0; row < _height; row++)
         {
@@ -73,7 +74,7 @@ internal sealed class ScreenBuffer
                 if (front == back) continue;
 
                 front = back;
-                sb.Append(AnsiCodes.MoveCursor(row, col));
+                AnsiCodes.AppendMoveCursor(sb, row, col);
 
                 if (currentStyle != back.Style)
                 {
@@ -81,7 +82,8 @@ internal sealed class ScreenBuffer
                     AppendStyle(sb, currentStyle.Value);
                 }
 
-                sb.Append(back.Char.ToString());
+                int charLen = back.Char.EncodeToUtf16(charBuf);
+                sb.Append(charBuf[..charLen]);
             }
         }
 
@@ -102,10 +104,10 @@ internal sealed class ScreenBuffer
         sb.Append(AnsiCodes.ResetAttributes);
 
         if (style.Fg is { } fg)
-            sb.Append(AnsiCodes.SetFg(fg.R, fg.G, fg.B));
+            AnsiCodes.AppendSetFg(sb, fg.R, fg.G, fg.B);
 
         if (style.Bg is { } bg)
-            sb.Append(AnsiCodes.SetBg(bg.R, bg.G, bg.B));
+            AnsiCodes.AppendSetBg(sb, bg.R, bg.G, bg.B);
 
         if (style.Bold)
             sb.Append("\x1b[1m");

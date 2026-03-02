@@ -194,7 +194,15 @@ internal sealed class App
             }
 
             var parentEntries = _directoryContents.GetEntries(parentKey);
-            int parentSelected = parentEntries.FindIndex(e => e.Name.Equals(currentName, StringComparison.OrdinalIgnoreCase));
+            int parentSelected = -1;
+            for (int i = 0; i < parentEntries.Count; i++)
+            {
+                if (parentEntries[i].Name.Equals(currentName, StringComparison.OrdinalIgnoreCase))
+                {
+                    parentSelected = i;
+                    break;
+                }
+            }
             if (parentSelected < 0) parentSelected = 0;
 
             int parentScroll = CalculateScroll(parentSelected, _layout.LeftPane.Height, parentEntries.Count);

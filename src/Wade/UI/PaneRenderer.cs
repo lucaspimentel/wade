@@ -5,6 +5,8 @@ namespace Wade.UI;
 
 internal static class PaneRenderer
 {
+    private static readonly char DirSeparatorChar = Path.DirectorySeparatorChar;
+
     private static readonly Color DirColor = new(80, 160, 255);
     private static readonly Color FileColor = new(200, 200, 200);
     private static readonly Color SelectionFg = new(0, 0, 0);
@@ -52,12 +54,19 @@ internal static class PaneRenderer
                     buffer.Put(pane.Top + row, pane.Left + col, ' ', bgStyle);
             }
 
-            string display;
+            int entryCol = pane.Left;
             if (showIcons)
-                display = FileIcons.GetIcon(entry).ToString() + " " + entry.Name;
+            {
+                buffer.Put(pane.Top + row, entryCol, FileIcons.GetIcon(entry), style);
+                buffer.Put(pane.Top + row, entryCol + 1, ' ', style);
+                buffer.WriteString(pane.Top + row, entryCol + 2, entry.Name, style, pane.Width - 2);
+            }
             else
-                display = (entry.IsDrive ? " " : entry.IsDirectory ? $"{Path.DirectorySeparatorChar}" : " ") + entry.Name;
-            buffer.WriteString(pane.Top + row, pane.Left, display, style, pane.Width);
+            {
+                char prefix = entry.IsDirectory && !entry.IsDrive ? DirSeparatorChar : ' ';
+                buffer.Put(pane.Top + row, entryCol, prefix, style);
+                buffer.WriteString(pane.Top + row, entryCol + 1, entry.Name, style, pane.Width - 1);
+            }
         }
     }
 
@@ -69,15 +78,24 @@ internal static class PaneRenderer
     {
         var style = new CellStyle(FileColor, null);
         var lineNumStyle = new CellStyle(DimColor, null);
+        Span<char> lineNumBuf = stackalloc char[4];
 
         for (int row = 0; row < pane.Height; row++)
         {
             int lineIndex = scrollOffset + row;
             if (lineIndex >= lines.Length) break;
 
-            // Line number (4 chars wide)
-            string lineNum = (lineIndex + 1).ToString().PadLeft(4);
-            buffer.WriteString(pane.Top + row, pane.Left, lineNum, lineNumStyle, 4);
+            // Line number (4 chars wide, right-aligned)
+            lineNumBuf.Fill(' ');
+            (lineIndex + 1).TryFormat(lineNumBuf, out int numLen);
+            // Right-align: shift digits to the right within the 4-char buffer
+            if (numLen < 4)
+            {
+                lineNumBuf[..numLen].CopyTo(lineNumBuf[(4 - numLen)..]);
+                lineNumBuf[..(4 - numLen)].Fill(' ');
+            }
+            for (int i = 0; i < 4; i++)
+                buffer.Put(pane.Top + row, pane.Left + i, lineNumBuf[i], lineNumStyle);
             buffer.Put(pane.Top + row, pane.Left + 4, ' ', lineNumStyle);
 
             // Content

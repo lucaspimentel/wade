@@ -29,4 +29,38 @@ internal static class AnsiCodes
     public static string SetFg256(byte index) => $"{Csi}38;5;{index}m";
 
     public static string SetBg256(byte index) => $"{Csi}48;5;{index}m";
+
+    public static void AppendMoveCursor(System.Text.StringBuilder sb, int row, int col)
+    {
+        sb.Append('\x1b');
+        sb.Append('[');
+        sb.Append(row + 1);
+        sb.Append(';');
+        sb.Append(col + 1);
+        sb.Append('H');
+    }
+
+    public static void AppendSetFg(System.Text.StringBuilder sb, byte r, byte g, byte b)
+    {
+        sb.Append('\x1b');
+        sb.Append("[38;2;");
+        sb.Append(r);
+        sb.Append(';');
+        sb.Append(g);
+        sb.Append(';');
+        sb.Append(b);
+        sb.Append('m');
+    }
+
+    public static void AppendSetBg(System.Text.StringBuilder sb, byte r, byte g, byte b)
+    {
+        sb.Append('\x1b');
+        sb.Append("[48;2;");
+        sb.Append(r);
+        sb.Append(';');
+        sb.Append(g);
+        sb.Append(';');
+        sb.Append(b);
+        sb.Append('m');
+    }
 }
