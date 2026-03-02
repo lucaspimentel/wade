@@ -7,7 +7,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 ## Features
 
 - **Miller columns** — three-pane layout: parent / current directory / preview
-- **File preview** — displays first 100 lines of text files; detects binary files
+- **File preview** — displays first 100 lines of text files; shows file type description for binary files (via `file` command when available)
 - **Directory preview** — shows contents of the selected directory
 - **Drive navigation** — browse across drives on Windows (Backspace from a drive root)
 - **Status bar** — current path, item count, file size
