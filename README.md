@@ -66,3 +66,11 @@ wade C:\Users     # open in a specific directory
 dotnet build Wade.slnx
 dotnet test Wade.slnx
 ```
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+## Development
+
+This project was developed with [Claude Code](https://claude.ai/code) 🤖
