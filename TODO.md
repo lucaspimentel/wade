@@ -1,5 +1,37 @@
 # TODO
 
+## Async preview loading
+
+Load file previews on a background thread so navigation stays responsive while the `file` command (slow process spawn) runs.
+
+**Problem**
+- `FilePreview.GetPreviewLines` blocks the UI thread: spawns `file --brief` (up to 2s timeout) and reads file content
+- The main loop blocks on `Console.ReadKey`, so a background result needs to trigger a re-render
+
+**Approach**
+- Move `GetPreviewLines` to a background `Task` using `Task.Run`
+- Show a `[loading…]` placeholder in the preview pane immediately on cache miss
+- Store the in-flight `Task<(string[], int)>` alongside the cached result
+- Break the `Console.ReadKey` block: poll `Console.KeyAvailable` in a loop with a short sleep, or use a dedicated input thread that posts to a shared queue — so the main loop can check task completion between keypresses
+- On task completion, store result in cache and trigger a re-render; discard result if the selected path has changed
+
+**Constraints**
+- NativeAOT-compatible — no reflection; `Task`/`CancellationToken` are fine
+- `DirectoryContents` cache uses a plain `Dictionary` — make it `ConcurrentDictionary` or guard with a lock if accessed from background threads
+
+## Syntax highlighting in text preview
+
+Colorize text file content in the right preview pane based on file type.
+
+**Approach candidates**
+- Call `file --mime-type` to get MIME type and map to language
+- Detect by file extension
+- Embed a lightweight highlighter or implement a minimal tokenizer for common languages
+
+**Constraints**
+- NativeAOT-compatible — no reflection-heavy libraries
+- Must not significantly slow down preview rendering
+
 ## Sixel image preview
 
 Show image thumbnails in the right preview pane; optionally open a larger view in a centered dialog.
