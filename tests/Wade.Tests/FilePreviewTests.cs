@@ -11,7 +11,7 @@ public class FilePreviewTests
         try
         {
             File.WriteAllText(tempFile, "line1\nline2\nline3\n");
-            var lines = FilePreview.GetPreviewLines(tempFile);
+            var (lines, _) = FilePreview.GetPreviewLines(tempFile);
 
             Assert.Equal(3, lines.Length);
             Assert.Equal("line1", lines[0]);
@@ -25,12 +25,45 @@ public class FilePreviewTests
     }
 
     [Fact]
+    public void GetPreviewLines_TextFile_WithoutFileCommand_ReturnsZeroHeaderLineCount()
+    {
+        // Initialize() is not called, so file command is unavailable — header count must be 0
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(tempFile, "line1\nline2\n");
+            var (_, headerLineCount) = FilePreview.GetPreviewLines(tempFile);
+            Assert.Equal(0, headerLineCount);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public void GetPreviewLines_BinaryFile_ReturnsZeroHeaderLineCount()
+    {
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllBytes(tempFile, [0x48, 0x65, 0x6C, 0x00, 0x6F]);
+            var (_, headerLineCount) = FilePreview.GetPreviewLines(tempFile);
+            Assert.Equal(0, headerLineCount);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
     public void GetPreviewLines_EmptyFile_ReturnsEmptyMessage()
     {
         string tempFile = Path.GetTempFileName();
         try
         {
-            var lines = FilePreview.GetPreviewLines(tempFile);
+            var (lines, _) = FilePreview.GetPreviewLines(tempFile);
             Assert.Single(lines);
             Assert.Equal("[empty file]", lines[0]);
         }
@@ -77,7 +110,7 @@ public class FilePreviewTests
         try
         {
             File.WriteAllBytes(tempFile, [0x48, 0x65, 0x6C, 0x00, 0x6F]);
-            var lines = FilePreview.GetPreviewLines(tempFile);
+            var (lines, _) = FilePreview.GetPreviewLines(tempFile);
             Assert.Single(lines);
             Assert.Equal("[binary file]", lines[0]);
         }

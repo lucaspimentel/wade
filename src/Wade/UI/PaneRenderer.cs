@@ -75,32 +75,47 @@ internal static class PaneRenderer
         ScreenBuffer buffer,
         Rect pane,
         string[] lines,
+        int headerLineCount = 0,
         int scrollOffset = 0)
     {
         var style = new CellStyle(FileColor, null);
         var lineNumStyle = new CellStyle(DimColor, null);
+        var headerStyle = new CellStyle(DimColor, null);
         Span<char> lineNumBuf = stackalloc char[4];
+
+        int contentLineNumber = 0;
 
         for (int row = 0; row < pane.Height; row++)
         {
             int lineIndex = scrollOffset + row;
             if (lineIndex >= lines.Length) break;
 
-            // Line number (4 chars wide, right-aligned)
-            lineNumBuf.Fill(' ');
-            (lineIndex + 1).TryFormat(lineNumBuf, out int numLen);
-            // Right-align: shift digits to the right within the 4-char buffer
-            if (numLen < 4)
+            if (lineIndex < headerLineCount)
             {
-                lineNumBuf[..numLen].CopyTo(lineNumBuf[(4 - numLen)..]);
-                lineNumBuf[..(4 - numLen)].Fill(' ');
+                // Header rows: no line number, render with dim style
+                for (int i = 0; i < 5; i++)
+                    buffer.Put(pane.Top + row, pane.Left + i, ' ', headerStyle);
+                buffer.WriteString(pane.Top + row, pane.Left + 5, lines[lineIndex], headerStyle, pane.Width - 5);
             }
-            for (int i = 0; i < 4; i++)
-                buffer.Put(pane.Top + row, pane.Left + i, lineNumBuf[i], lineNumStyle);
-            buffer.Put(pane.Top + row, pane.Left + 4, ' ', lineNumStyle);
+            else
+            {
+                contentLineNumber++;
 
-            // Content
-            buffer.WriteString(pane.Top + row, pane.Left + 5, lines[lineIndex], style, pane.Width - 5);
+                // Line number (4 chars wide, right-aligned)
+                lineNumBuf.Fill(' ');
+                contentLineNumber.TryFormat(lineNumBuf, out int numLen);
+                if (numLen < 4)
+                {
+                    lineNumBuf[..numLen].CopyTo(lineNumBuf[(4 - numLen)..]);
+                    lineNumBuf[..(4 - numLen)].Fill(' ');
+                }
+                for (int i = 0; i < 4; i++)
+                    buffer.Put(pane.Top + row, pane.Left + i, lineNumBuf[i], lineNumStyle);
+                buffer.Put(pane.Top + row, pane.Left + 4, ' ', lineNumStyle);
+
+                // Content
+                buffer.WriteString(pane.Top + row, pane.Left + 5, lines[lineIndex], style, pane.Width - 5);
+            }
         }
     }
 

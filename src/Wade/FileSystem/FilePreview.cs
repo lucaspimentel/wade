@@ -34,17 +34,28 @@ internal static class FilePreview
         }
     }
 
-    public static string[] GetPreviewLines(string filePath)
+    public static (string[] Lines, int HeaderLineCount) GetPreviewLines(string filePath)
     {
         try
         {
             if (IsBinary(filePath))
             {
                 var description = GetFileTypeDescription(filePath);
-                return description is not null ? [$"[binary: {description}]"] : ["[binary file]"];
+                string[] msg = description is not null ? [$"[binary: {description}]"] : ["[binary file]"];
+                return (msg, 0);
             }
 
-            var lines = new List<string>(MaxPreviewLines);
+            var lines = new List<string>(MaxPreviewLines + 2);
+            int headerLineCount = 0;
+
+            var fileType = GetFileTypeDescription(filePath);
+            if (fileType is not null)
+            {
+                lines.Add($"[{fileType}]");
+                lines.Add(string.Empty);
+                headerLineCount = 2;
+            }
+
             using var reader = new StreamReader(filePath);
 
             while (lines.Count < MaxPreviewLines && reader.ReadLine() is { } line)
@@ -53,15 +64,16 @@ internal static class FilePreview
                 lines.Add(line.Replace("\t", "    "));
             }
 
-            return lines.Count > 0 ? [.. lines] : ["[empty file]"];
+            string[] result = lines.Count > 0 ? [.. lines] : ["[empty file]"];
+            return (result, headerLineCount);
         }
         catch (UnauthorizedAccessException)
         {
-            return ["[access denied]"];
+            return (["[access denied]"], 0);
         }
         catch (IOException ex)
         {
-            return [$"[error: {ex.Message}]"];
+            return ([$"[error: {ex.Message}]"], 0);
         }
     }
 

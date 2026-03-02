@@ -19,6 +19,7 @@ internal sealed class App
 
     private string? _cachedPreviewPath;
     private string[]? _cachedPreviewLines;
+    private int _cachedPreviewHeaderLineCount;
 
     // Track selected index per directory so we restore position when navigating back
     private readonly Dictionary<string, int> _selectedIndexPerDir = new(StringComparer.OrdinalIgnoreCase);
@@ -233,9 +234,9 @@ internal sealed class App
                 if (selected.FullPath != _cachedPreviewPath)
                 {
                     _cachedPreviewPath = selected.FullPath;
-                    _cachedPreviewLines = FilePreview.GetPreviewLines(selected.FullPath);
+                    (_cachedPreviewLines, _cachedPreviewHeaderLineCount) = FilePreview.GetPreviewLines(selected.FullPath);
                 }
-                PaneRenderer.RenderPreview(buffer, _layout.RightPane, _cachedPreviewLines!);
+                PaneRenderer.RenderPreview(buffer, _layout.RightPane, _cachedPreviewLines!, _cachedPreviewHeaderLineCount);
             }
         }
 
