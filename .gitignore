@@ -1,0 +1,8 @@
+artifacts/
+.vs/
+.idea/
+.vscode/
+.claude/*.local.*
+*.user
+*.suo
+*.DotSettings.user
