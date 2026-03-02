@@ -48,6 +48,36 @@ wade              # open in current directory
 wade C:\Users     # open in a specific directory
 ```
 
+## Configuration
+
+Settings are resolved in increasing priority: config file → environment variables → CLI flags.
+
+### Config file
+
+`~/.config/wade/config.toml`
+
+```toml
+show_icons_enabled = false
+image_previews_enabled = false
+```
+
+### Environment variables
+
+| Variable | Values |
+|---|---|
+| `WADE_SHOW_ICONS_ENABLED` | `true` / `false` |
+| `WADE_IMAGE_PREVIEWS_ENABLED` | `true` / `false` |
+
+### CLI flags
+
+```bash
+wade --show-icons-enabled           # enable icons
+wade --no-show-icons-enabled        # disable icons
+wade --show-icons-enabled=true      # same as above, key=value form
+wade --image-previews-enabled=false # disable image previews
+wade --show-config                  # print current config as JSON and exit
+```
+
 ## Keybindings
 
 | Key | Action |

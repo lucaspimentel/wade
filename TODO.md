@@ -1,27 +1,5 @@
 # TODO
 
-## Config system
-
-Unified config that merges three sources (in increasing priority): config file → environment variables → command-line flags.
-
-**Config file**
-- Format: TOML — readable, no-dependency, increasingly standard for CLI tools
-- Location: `~/.config/wade/config.toml` (works on both Windows and Unix)
-- Library: [Tomlyn](https://github.com/xoofx/Tomlyn) — NativeAOT-compatible via `TomlModelAttribute` source generator
-- Alternatively roll our own minimal TOML/INI parser to keep zero dependencies
-
-**Environment variables**
-- Prefix: `WADE_` (e.g. `WADE_ICONS=false`)
-
-**Command-line flags**
-- Already handled by `Program.cs`; extend as settings grow
-
-**Initial settings to expose**
-- `icons` — enable/disable file icons (bool, default: true if Nerd Font detected or explicitly set)
-- `sixel` — enable/disable Sixel image preview (bool, default: auto-detect)
-
----
-
 ## File icons (Nerd Fonts)
 
 Render a small glyph before each filename based on file extension or type.
