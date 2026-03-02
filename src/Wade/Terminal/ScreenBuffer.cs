@@ -37,18 +37,23 @@ internal sealed class ScreenBuffer
         Array.Fill(_back, Cell.Empty);
     }
 
-    public void Put(int row, int col, char ch, CellStyle style)
+    public void Put(int row, int col, Rune rune, CellStyle style)
     {
         if (row < 0 || row >= _height || col < 0 || col >= _width) return;
-        _back[row * _width + col] = new Cell(ch, style);
+        _back[row * _width + col] = new Cell(rune, style);
     }
+
+    public void Put(int row, int col, char ch, CellStyle style) =>
+        Put(row, col, new Rune(ch), style);
 
     public void WriteString(int row, int col, string text, CellStyle style, int maxWidth = int.MaxValue)
     {
-        int count = Math.Min(text.Length, maxWidth);
-        for (int i = 0; i < count && col + i < _width; i++)
+        int c = col;
+        foreach (var rune in text.EnumerateRunes())
         {
-            Put(row, col + i, text[i], style);
+            if (c >= col + maxWidth || c >= _width) break;
+            Put(row, c, rune, style);
+            c++;
         }
     }
 
@@ -76,7 +81,7 @@ internal sealed class ScreenBuffer
                     AppendStyle(sb, currentStyle.Value);
                 }
 
-                sb.Append(back.Char);
+                sb.Append(back.Char.ToString());
             }
         }
 
@@ -117,9 +122,9 @@ internal readonly record struct CellStyle(Color? Fg, Color? Bg, bool Bold = fals
     public static readonly CellStyle Default = new(null, null);
 }
 
-internal readonly record struct Cell(char Char, CellStyle Style)
+internal readonly record struct Cell(Rune Char, CellStyle Style)
 {
-    public static readonly Cell Empty = new(' ', CellStyle.Default);
+    public static readonly Cell Empty = new(new Rune(' '), CellStyle.Default);
     // Sentinel value that never matches any real cell, used to force a full redraw
-    public static readonly Cell Dirty = new('\0', new CellStyle(new Color(255, 255, 255), new Color(255, 255, 255)));
+    public static readonly Cell Dirty = new(new Rune('\0'), new CellStyle(new Color(255, 255, 255), new Color(255, 255, 255)));
 }
