@@ -16,6 +16,9 @@
 .PARAMETER Force
     Skip confirmation prompts and overwrite existing installation.
 
+.PARAMETER Update
+    Pull the latest changes from the remote before building.
+
 .EXAMPLE
     ./install-local.ps1
 
@@ -25,14 +28,63 @@
     ./install-local.ps1 -Force
 
     Builds and installs, overwriting any existing installation.
+
+.EXAMPLE
+    ./install-local.ps1 -Update -Force
+
+    Pull latest changes, then build and install.
 #>
 
 [CmdletBinding()]
 param(
-    [switch]$Force
+    [switch]$Force,
+
+    [switch]$Update
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Check if the local clone is up-to-date with remote
+Write-Host "Checking if repository is up-to-date..." -ForegroundColor Cyan
+try {
+    Push-Location $PSScriptRoot
+    $branch = & git rev-parse --abbrev-ref HEAD 2>&1
+    & git fetch origin $branch --quiet 2>&1
+    $local = & git rev-parse HEAD 2>&1
+    $remote = & git rev-parse "origin/$branch" 2>&1
+
+    if ($local -ne $remote) {
+        $behind = & git rev-list --count "HEAD..origin/$branch" 2>&1
+        $ahead = & git rev-list --count "origin/$branch..HEAD" 2>&1
+        $status = @()
+        if ([int]$behind -gt 0) { $status += "$behind commit(s) behind" }
+        if ([int]$ahead -gt 0) { $status += "$ahead commit(s) ahead of" }
+        Write-Host "Warning: Local branch '$branch' is $($status -join ' and ') origin/$branch." -ForegroundColor Yellow
+
+        if ($Update) {
+            Write-Host "Pulling latest changes..." -ForegroundColor Cyan
+            & git pull --quiet 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "Error: git pull failed. Resolve conflicts and try again." -ForegroundColor Red
+                exit 1
+            }
+            Write-Host "Repository updated successfully." -ForegroundColor Cyan
+        } elseif (-not $Force) {
+            $response = Read-Host "Continue anyway? (y/N)"
+            if ($response -notmatch '^[Yy]') {
+                Write-Host "Installation cancelled. Run 'git pull' or use -Update to update." -ForegroundColor Cyan
+                exit 0
+            }
+        }
+    } else {
+        Write-Host "Repository is up-to-date with origin/$branch." -ForegroundColor Cyan
+    }
+} catch {
+    Write-Host "Warning: Could not check remote status: $_" -ForegroundColor Yellow
+    Write-Host "Continuing with installation..." -ForegroundColor Yellow
+} finally {
+    Pop-Location
+}
 
 # Determine runtime identifier based on platform
 $rid = if ($IsWindows) {
