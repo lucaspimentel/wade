@@ -57,6 +57,7 @@ internal sealed class App
                 lastHeight = height;
                 buffer.Resize(width, height);
                 _layout.Calculate(width, height);
+                Console.Write(AnsiCodes.ClearScreen);
             }
 
             // Render

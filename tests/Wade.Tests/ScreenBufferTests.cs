@@ -161,4 +161,18 @@ public class ScreenBufferTests
         buf.Flush(sb);
         Assert.Equal(0, sb.Length);
     }
+
+    [Fact]
+    public void Resize_ThenWrite_FlushesNewContent()
+    {
+        var buf = new ScreenBuffer(10, 5);
+        buf.WriteString(0, 0, "OLD", DefaultStyle);
+        Flush(buf); // sync front/back
+
+        buf.Resize(20, 10);
+        buf.WriteString(0, 0, "NEW", DefaultStyle);
+
+        // After resize, front is empty so "NEW" must appear in flush output
+        Assert.Contains("NEW", Flush(buf));
+    }
 }
