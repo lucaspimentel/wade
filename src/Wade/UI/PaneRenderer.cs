@@ -1,4 +1,5 @@
 using Wade.FileSystem;
+using Wade.Highlighting;
 using Wade.Terminal;
 
 namespace Wade.UI;
@@ -74,11 +75,11 @@ internal static class PaneRenderer
     public static void RenderPreview(
         ScreenBuffer buffer,
         Rect pane,
-        string[] lines,
+        StyledLine[] lines,
         int headerLineCount = 0,
         int scrollOffset = 0)
     {
-        var style = new CellStyle(FileColor, null);
+        var defaultStyle = new CellStyle(FileColor, null);
         var lineNumStyle = new CellStyle(DimColor, null);
         var headerStyle = new CellStyle(DimColor, null);
         Span<char> lineNumBuf = stackalloc char[4];
@@ -90,12 +91,14 @@ internal static class PaneRenderer
             int lineIndex = scrollOffset + row;
             if (lineIndex >= lines.Length) break;
 
+            var styledLine = lines[lineIndex];
+
             if (lineIndex < headerLineCount)
             {
                 // Header rows: no line number, render with dim style
                 for (int i = 0; i < 5; i++)
                     buffer.Put(pane.Top + row, pane.Left + i, ' ', headerStyle);
-                buffer.WriteString(pane.Top + row, pane.Left + 5, lines[lineIndex], headerStyle, pane.Width - 5);
+                buffer.WriteString(pane.Top + row, pane.Left + 5, styledLine.Text, headerStyle, pane.Width - 5);
             }
             else
             {
@@ -114,8 +117,65 @@ internal static class PaneRenderer
                 buffer.Put(pane.Top + row, pane.Left + 4, ' ', lineNumStyle);
 
                 // Content
-                buffer.WriteString(pane.Top + row, pane.Left + 5, lines[lineIndex], style, pane.Width - 5);
+                int contentCol = pane.Left + 5;
+                int contentWidth = pane.Width - 5;
+
+                if (styledLine.Spans is { Length: > 0 } spans)
+                    RenderStyledContent(buffer, pane.Top + row, contentCol, contentWidth, styledLine.Text, spans, defaultStyle);
+                else
+                    buffer.WriteString(pane.Top + row, contentCol, styledLine.Text, defaultStyle, contentWidth);
             }
+        }
+    }
+
+    private static void RenderStyledContent(
+        ScreenBuffer buffer,
+        int row,
+        int startCol,
+        int maxWidth,
+        string text,
+        StyledSpan[] spans,
+        CellStyle defaultStyle)
+    {
+        // Render text character by character, applying span styles.
+        // Spans may overlap; last one wins if they do.
+        // Build a quick lookup: which kind applies at each char position.
+        // For performance, iterate spans sorted by start.
+        // Simple approach: fill positions with span styles, gaps with default.
+
+        int textLen = text.Length;
+        int col = startCol;
+        int charsWritten = 0;
+
+        // Sort spans by start (they should already be roughly ordered but ensure it)
+        ReadOnlySpan<StyledSpan> orderedSpans = spans;
+
+        int pos = 0;
+        while (pos < textLen && charsWritten < maxWidth)
+        {
+            // Find which span covers pos (if any)
+            CellStyle style = defaultStyle;
+            foreach (var span in orderedSpans)
+            {
+                if (span.Start <= pos && pos < span.Start + span.Length)
+                {
+                    style = SyntaxTheme.GetStyle(span.Kind);
+                    break;
+                }
+            }
+
+            var rune = new System.Text.Rune(text[pos]);
+            // Handle surrogate pairs
+            if (char.IsHighSurrogate(text[pos]) && pos + 1 < textLen && char.IsLowSurrogate(text[pos + 1]))
+            {
+                rune = new System.Text.Rune(text[pos], text[pos + 1]);
+                pos++;
+            }
+
+            buffer.Put(row, col, rune, style);
+            col++;
+            charsWritten++;
+            pos++;
         }
     }
 

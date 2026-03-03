@@ -88,6 +88,24 @@ internal sealed class ScreenBuffer
         _dirtyRows[row >> 6] |= 1UL << (row & 63);
     }
 
+    public void WriteString(int row, int col, ReadOnlySpan<char> text, CellStyle style, int maxWidth = int.MaxValue)
+    {
+        if (row < 0 || row >= _height) return;
+        int clampedStart = Math.Max(col, 0);
+        int clampedEnd = Math.Min(col + maxWidth, _width);
+        if (clampedStart >= clampedEnd) return;
+
+        int c = col;
+        foreach (var rune in text.EnumerateRunes())
+        {
+            if (c >= col + maxWidth || c >= _width) break;
+            if (c >= 0)
+                _back[row * _width + c] = new Cell(rune, style);
+            c++;
+        }
+        _dirtyRows[row >> 6] |= 1UL << (row & 63);
+    }
+
     public void Flush(StringBuilder sb)
     {
         sb.Clear();

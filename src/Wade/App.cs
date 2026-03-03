@@ -1,5 +1,6 @@
 using System.Text;
 using Wade.FileSystem;
+using Wade.Highlighting;
 using Wade.Terminal;
 using Wade.UI;
 
@@ -18,7 +19,7 @@ internal sealed class App
     private bool _showHelp;
 
     private string? _cachedPreviewPath;
-    private string[]? _cachedPreviewLines;
+    private StyledLine[]? _cachedStyledLines;
     private int _cachedPreviewHeaderLineCount;
 
     // Track selected index per directory so we restore position when navigating back
@@ -92,7 +93,7 @@ internal sealed class App
                         _selectedIndex = _selectedIndexPerDir.GetValueOrDefault(_currentPath, 0);
                         _scrollOffset = 0;
                         _cachedPreviewPath = null;
-                        _cachedPreviewLines = null;
+                        _cachedStyledLines = null;
                     }
                     break;
 
@@ -127,7 +128,7 @@ internal sealed class App
                     }
                     _scrollOffset = 0;
                     _cachedPreviewPath = null;
-                    _cachedPreviewLines = null;
+                    _cachedStyledLines = null;
                     break;
                 }
 
@@ -234,9 +235,11 @@ internal sealed class App
                 if (selected.FullPath != _cachedPreviewPath)
                 {
                     _cachedPreviewPath = selected.FullPath;
-                    (_cachedPreviewLines, _cachedPreviewHeaderLineCount) = FilePreview.GetPreviewLines(selected.FullPath);
+                    var (rawLines, headerCount) = FilePreview.GetPreviewLines(selected.FullPath);
+                    _cachedPreviewHeaderLineCount = headerCount;
+                    _cachedStyledLines = SyntaxHighlighter.Highlight(rawLines, headerCount, selected.FullPath);
                 }
-                PaneRenderer.RenderPreview(buffer, _layout.RightPane, _cachedPreviewLines!, _cachedPreviewHeaderLineCount);
+                PaneRenderer.RenderPreview(buffer, _layout.RightPane, _cachedStyledLines!, _cachedPreviewHeaderLineCount);
             }
         }
 

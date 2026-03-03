@@ -19,46 +19,6 @@ Load file previews on a background thread so navigation stays responsive while t
 - NativeAOT-compatible — no reflection; `Task`/`CancellationToken` are fine
 - `DirectoryContents` cache uses a plain `Dictionary` — make it `ConcurrentDictionary` or guard with a lock if accessed from background threads
 
-## Syntax highlighting in text preview
-
-Colorize text file content in the right preview pane based on file type.
-
-**Current state**
-- `ScreenBuffer` already supports per-cell RGB via `Cell(Rune, CellStyle)` — no rendering layer changes needed
-- `PaneRenderer.RenderPreview` applies one flat `CellStyle(200,200,200)` to all content
-- `FileIcons.cs` has 35+ extension→icon mappings reusable for language detection
-
-**Data structure change**
-- Replace `string[]` preview data with a styled span model, e.g.:
-  ```
-  readonly record struct StyledSpan(int Start, int Length, CellStyle Style);
-  readonly record struct StyledLine(string Text, StyledSpan[]? Spans);
-  ```
-- `RenderPreview` iterates spans per line instead of calling `WriteString` with a single style
-- `ScreenBuffer` and `AnsiCodes` need zero changes — already handle per-cell RGB and style-diffing
-
-**Language detection**
-- Map file extension → language ID (reuse extension list from `FileIcons.cs`)
-- No need for `file --mime-type` — extension is sufficient for preview purposes
-
-**Highlighter approach: hand-rolled keyword/regex tokenizer**
-- Libraries evaluated and rejected:
-  - TextMateSharp — native Oniguruma dependency, incompatible with NativeAOT
-  - Tree-sitter — requires native `.dll`/`.so` per platform + grammar files, overkill for preview
-- A minimal internal tokenizer covering keywords, strings, single/multi-line comments, and numbers is sufficient
-- Cover top ~15 languages already in `FileIcons.cs`: C#, JS/TS, Python, Go, Rust, Java, JSON, TOML, YAML, XML, shell, CSS, HTML, Markdown
-- Perfect fidelity not required — this is a read-only 100-line preview
-
-**Constraints**
-- NativeAOT-compatible — no reflection, no native dependencies
-- Zero external packages (project currently has none)
-- Must not significantly slow down preview rendering
-
-**New files**
-- `src/Wade/Highlighting/SyntaxHighlighter.cs` — tokenizer entry point
-- `src/Wade/Highlighting/LanguageMap.cs` — extension → language ID mapping
-- `src/Wade/Highlighting/Languages/*.cs` — per-language keyword/pattern definitions
-
 ## Sixel image preview
 
 Show image thumbnails in the right preview pane; optionally open a larger view in a centered dialog.

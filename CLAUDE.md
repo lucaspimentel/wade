@@ -14,7 +14,7 @@ pwsh -NoProfile -File tests/Test-Config.ps1   # config integration tests
 ## Key Conventions
 
 - **No TUI frameworks** — rendering uses raw VT/ANSI escape sequences only (no Terminal.Gui, no Spectre.Console)
-- **NativeAOT-ready** — avoid reflection-heavy patterns
+- **NativeAOT-ready** — avoid reflection-heavy patterns; `[GeneratedRegex]` is AOT-safe and used in `MarkdownLanguage`
 - **Platform separator** — use `Path.DirectorySeparatorChar`, not hardcoded `/` or `\`
 - **Windows console input** — do NOT enable `ENABLE_VIRTUAL_TERMINAL_INPUT`; `Console.ReadKey` cannot parse VT input sequences. VT processing is output-side only.
 - Uses `UseArtifactsOutput` — build output goes to `artifacts/`, not `bin/`/`obj/`
