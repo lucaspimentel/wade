@@ -247,6 +247,18 @@ public class WadeConfigTests
         Assert.Equal(expected, config.StartPath);
     }
 
+    [Theory]
+    [InlineData("~")]
+    [InlineData("~/Downloads")]
+    [InlineData(@"~\Downloads")]
+    public void StartPath_TildeExpandsToHomeDirectory(string input)
+    {
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var config = WadeConfig.Load([input], configFilePath: "/nonexistent/path.toml", env: new MockEnv());
+
+        Assert.StartsWith(home, config.StartPath, StringComparison.OrdinalIgnoreCase);
+    }
+
     // ── ParseBool edge cases ──────────────────────────────────────────────────
 
     [Theory]

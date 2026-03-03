@@ -110,6 +110,13 @@ internal sealed class WadeConfig
             }
         }
 
+        // Expand ~ to home directory
+        if (config.StartPath.StartsWith('~'))
+        {
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            config.StartPath = Path.Join(home, config.StartPath.AsSpan(1));
+        }
+
         config.StartPath = config.StartPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
         return config;
