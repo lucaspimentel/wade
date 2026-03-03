@@ -12,7 +12,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **File preview** — displays first 100 lines of text files with a file type header (via `file` command when available); shows file type description for binary files
 - **Directory preview** — shows contents of the selected directory
 - **Drive navigation** — browse across drives on Windows (Backspace from a drive root)
-- **Status bar** — current path, item count, file size
+- **Status bar** — current path, item count, file size, and file type label (language name, or "Text" for plain text files with unknown extensions)
 - **Minimal rendering** — raw VT/ANSI escape sequences, double-buffered with dirty-row tracking, cell diff, and style diffing
 
 ## Requirements

@@ -20,7 +20,7 @@ internal sealed class App
 
     private string? _cachedPreviewPath;
     private StyledLine[]? _cachedStyledLines;
-    private int _cachedPreviewHeaderLineCount;
+    private string? _cachedPreviewFileTypeLabel;
 
     // Track selected index per directory so we restore position when navigating back
     private readonly Dictionary<string, int> _selectedIndexPerDir = new(StringComparer.OrdinalIgnoreCase);
@@ -94,6 +94,7 @@ internal sealed class App
                         _scrollOffset = 0;
                         _cachedPreviewPath = null;
                         _cachedStyledLines = null;
+                        _cachedPreviewFileTypeLabel = null;
                     }
                     break;
 
@@ -235,11 +236,12 @@ internal sealed class App
                 if (selected.FullPath != _cachedPreviewPath)
                 {
                     _cachedPreviewPath = selected.FullPath;
-                    var (rawLines, headerCount) = FilePreview.GetPreviewLines(selected.FullPath);
-                    _cachedPreviewHeaderLineCount = headerCount;
-                    _cachedStyledLines = SyntaxHighlighter.Highlight(rawLines, headerCount, selected.FullPath);
+                    var rawLines = FilePreview.GetPreviewLines(selected.FullPath);
+                    _cachedPreviewFileTypeLabel = FilePreview.GetFileTypeLabel(selected.FullPath)
+                        ?? (rawLines is ["[binary file]"] ? null : "Text");
+                    _cachedStyledLines = SyntaxHighlighter.Highlight(rawLines, selected.FullPath);
                 }
-                PaneRenderer.RenderPreview(buffer, _layout.RightPane, _cachedStyledLines!, _cachedPreviewHeaderLineCount);
+                PaneRenderer.RenderPreview(buffer, _layout.RightPane, _cachedStyledLines!);
             }
         }
 
@@ -251,7 +253,7 @@ internal sealed class App
             ? entries[_selectedIndex]
             : null;
         string displayPath = _currentPath == DirectoryContents.DrivesPath ? "Drives" : _currentPath;
-        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry);
+        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel);
 
         // Help overlay
         if (_showHelp)
