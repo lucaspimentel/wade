@@ -21,6 +21,8 @@ internal sealed class App
     private string? _cachedPreviewPath;
     private StyledLine[]? _cachedStyledLines;
     private string? _cachedPreviewFileTypeLabel;
+    private string? _cachedPreviewEncoding;
+    private string? _cachedPreviewLineEnding;
 
     // Track selected index per directory so we restore position when navigating back
     private readonly Dictionary<string, int> _selectedIndexPerDir = new(StringComparer.OrdinalIgnoreCase);
@@ -95,6 +97,8 @@ internal sealed class App
                         _cachedPreviewPath = null;
                         _cachedStyledLines = null;
                         _cachedPreviewFileTypeLabel = null;
+                        _cachedPreviewEncoding = null;
+                        _cachedPreviewLineEnding = null;
                     }
                     break;
 
@@ -130,6 +134,9 @@ internal sealed class App
                     _scrollOffset = 0;
                     _cachedPreviewPath = null;
                     _cachedStyledLines = null;
+                    _cachedPreviewFileTypeLabel = null;
+                    _cachedPreviewEncoding = null;
+                    _cachedPreviewLineEnding = null;
                     break;
                 }
 
@@ -236,9 +243,19 @@ internal sealed class App
                 if (selected.FullPath != _cachedPreviewPath)
                 {
                     _cachedPreviewPath = selected.FullPath;
-                    var rawLines = FilePreview.GetPreviewLines(selected.FullPath);
-                    _cachedPreviewFileTypeLabel = FilePreview.GetFileTypeLabel(selected.FullPath)
-                        ?? (rawLines is ["[binary file]"] ? null : "Text");
+                    var rawLines = FilePreview.GetPreviewLines(selected.FullPath, out var metadata);
+                    if (metadata.IsBinary)
+                    {
+                        _cachedPreviewFileTypeLabel = FilePreview.GetFileTypeLabel(selected.FullPath) ?? "Binary";
+                        _cachedPreviewEncoding = null;
+                        _cachedPreviewLineEnding = null;
+                    }
+                    else
+                    {
+                        _cachedPreviewFileTypeLabel = FilePreview.GetFileTypeLabel(selected.FullPath) ?? "Text";
+                        _cachedPreviewEncoding = metadata.Encoding;
+                        _cachedPreviewLineEnding = metadata.LineEnding;
+                    }
                     _cachedStyledLines = SyntaxHighlighter.Highlight(rawLines, selected.FullPath);
                 }
                 PaneRenderer.RenderPreview(buffer, _layout.RightPane, _cachedStyledLines!);
@@ -253,7 +270,7 @@ internal sealed class App
             ? entries[_selectedIndex]
             : null;
         string displayPath = _currentPath == DirectoryContents.DrivesPath ? "Drives" : _currentPath;
-        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel);
+        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding);
 
         // Help overlay
         if (_showHelp)

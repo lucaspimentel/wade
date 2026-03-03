@@ -161,4 +161,106 @@ public class FilePreviewTests
         Assert.Equal(expectedLabel, FilePreview.GetFileTypeLabel(filename));
     }
 
+    [Fact]
+    public void DetectFileMetadata_CrlfText_ReturnsCrlfAndUtf8()
+    {
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllBytes(tempFile, "line1\r\nline2\r\nline3"u8.ToArray());
+            var metadata = FilePreview.DetectFileMetadata(tempFile);
+            Assert.False(metadata.IsBinary);
+            Assert.Equal("UTF-8", metadata.Encoding);
+            Assert.Equal("CRLF", metadata.LineEnding);
+        }
+        finally { File.Delete(tempFile); }
+    }
+
+    [Fact]
+    public void DetectFileMetadata_LfText_ReturnsLfAndUtf8()
+    {
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllBytes(tempFile, "line1\nline2\nline3"u8.ToArray());
+            var metadata = FilePreview.DetectFileMetadata(tempFile);
+            Assert.False(metadata.IsBinary);
+            Assert.Equal("UTF-8", metadata.Encoding);
+            Assert.Equal("LF", metadata.LineEnding);
+        }
+        finally { File.Delete(tempFile); }
+    }
+
+    [Fact]
+    public void DetectFileMetadata_MixedLineEndings_ReturnsMixed()
+    {
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllBytes(tempFile, "line1\r\nline2\nline3"u8.ToArray());
+            var metadata = FilePreview.DetectFileMetadata(tempFile);
+            Assert.False(metadata.IsBinary);
+            Assert.Equal("Mixed", metadata.LineEnding);
+        }
+        finally { File.Delete(tempFile); }
+    }
+
+    [Fact]
+    public void DetectFileMetadata_CrOnly_ReturnsCr()
+    {
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllBytes(tempFile, "line1\rline2\rline3"u8.ToArray());
+            var metadata = FilePreview.DetectFileMetadata(tempFile);
+            Assert.False(metadata.IsBinary);
+            Assert.Equal("CR", metadata.LineEnding);
+        }
+        finally { File.Delete(tempFile); }
+    }
+
+    [Fact]
+    public void DetectFileMetadata_SingleLine_ReturnsNullLineEnding()
+    {
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllBytes(tempFile, "no line endings here"u8.ToArray());
+            var metadata = FilePreview.DetectFileMetadata(tempFile);
+            Assert.False(metadata.IsBinary);
+            Assert.Null(metadata.LineEnding);
+        }
+        finally { File.Delete(tempFile); }
+    }
+
+    [Fact]
+    public void DetectFileMetadata_Utf8Bom_ReturnsUtf8BomEncoding()
+    {
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            byte[] bom = [0xEF, 0xBB, 0xBF];
+            byte[] content = "hello world"u8.ToArray();
+            File.WriteAllBytes(tempFile, [.. bom, .. content]);
+            var metadata = FilePreview.DetectFileMetadata(tempFile);
+            Assert.False(metadata.IsBinary);
+            Assert.Equal("UTF-8 BOM", metadata.Encoding);
+        }
+        finally { File.Delete(tempFile); }
+    }
+
+    [Fact]
+    public void DetectFileMetadata_BinaryFile_ReturnsIsBinaryTrue()
+    {
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllBytes(tempFile, [0x48, 0x65, 0x6C, 0x00, 0x6F]);
+            var metadata = FilePreview.DetectFileMetadata(tempFile);
+            Assert.True(metadata.IsBinary);
+            Assert.Null(metadata.LineEnding);
+        }
+        finally { File.Delete(tempFile); }
+    }
+
 }

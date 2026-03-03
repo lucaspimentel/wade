@@ -130,11 +130,14 @@ internal static class FilePreview
         return null;
     }
 
-    public static string[] GetPreviewLines(string filePath)
+    public static string[] GetPreviewLines(string filePath) => GetPreviewLines(filePath, out _);
+
+    public static string[] GetPreviewLines(string filePath, out FileMetadata metadata)
     {
         try
         {
-            if (IsBinary(filePath))
+            metadata = DetectFileMetadata(filePath);
+            if (metadata.IsBinary)
                 return ["[binary file]"];
 
             var lines = new List<string>(MaxPreviewLines);
@@ -150,15 +153,17 @@ internal static class FilePreview
         }
         catch (UnauthorizedAccessException)
         {
+            metadata = new FileMetadata(IsBinary: false, Encoding: "UTF-8", LineEnding: null);
             return ["[access denied]"];
         }
         catch (IOException ex)
         {
+            metadata = new FileMetadata(IsBinary: false, Encoding: "UTF-8", LineEnding: null);
             return [$"[error: {ex.Message}]"];
         }
     }
 
-    internal static bool IsBinary(string filePath)
+    internal static FileMetadata DetectFileMetadata(string filePath)
     {
         try
         {
@@ -166,17 +171,76 @@ internal static class FilePreview
             using var stream = File.OpenRead(filePath);
             int bytesRead = stream.Read(buffer);
 
-            for (int i = 0; i < bytesRead; i++)
+            if (bytesRead == 0)
+                return new FileMetadata(IsBinary: false, Encoding: "UTF-8", LineEnding: null);
+
+            buffer = buffer[..bytesRead];
+
+            // Detect encoding via BOM
+            string encoding = "UTF-8";
+            int dataStart = 0;
+            if (bytesRead >= 3 && buffer[0] == 0xEF && buffer[1] == 0xBB && buffer[2] == 0xBF)
             {
-                if (buffer[i] == 0)
-                    return true;
+                encoding = "UTF-8 BOM";
+                dataStart = 3;
+            }
+            else if (bytesRead >= 2 && buffer[0] == 0xFF && buffer[1] == 0xFE)
+            {
+                encoding = "UTF-16 LE";
+                dataStart = 2;
+            }
+            else if (bytesRead >= 2 && buffer[0] == 0xFE && buffer[1] == 0xFF)
+            {
+                encoding = "UTF-16 BE";
+                dataStart = 2;
             }
 
-            return false;
+            // Scan for null bytes (binary) and line endings
+            bool hasCrLf = false;
+            bool hasLf = false;
+            bool hasCr = false;
+
+            for (int i = dataStart; i < bytesRead; i++)
+            {
+                if (buffer[i] == 0)
+                    return new FileMetadata(IsBinary: true, Encoding: "", LineEnding: null);
+
+                if (buffer[i] == '\r')
+                {
+                    if (i + 1 < bytesRead && buffer[i + 1] == '\n')
+                    {
+                        hasCrLf = true;
+                        i++; // skip the \n
+                    }
+                    else
+                    {
+                        hasCr = true;
+                    }
+                }
+                else if (buffer[i] == '\n')
+                {
+                    hasLf = true;
+                }
+            }
+
+            string? lineEnding = (hasCrLf, hasLf, hasCr) switch
+            {
+                (true, false, false) => "CRLF",
+                (false, true, false) => "LF",
+                (false, false, true) => "CR",
+                (false, false, false) => null,
+                _ => "Mixed"
+            };
+
+            return new FileMetadata(IsBinary: false, Encoding: encoding, LineEnding: lineEnding);
         }
         catch
         {
-            return true;
+            return new FileMetadata(IsBinary: true, Encoding: "", LineEnding: null);
         }
     }
+
+    internal static bool IsBinary(string filePath) => DetectFileMetadata(filePath).IsBinary;
 }
+
+internal readonly record struct FileMetadata(bool IsBinary, string Encoding, string? LineEnding);

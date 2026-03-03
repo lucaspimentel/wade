@@ -16,7 +16,9 @@ internal static class StatusBar
         int itemCount,
         int selectedIndex,
         FileSystemEntry? selectedEntry,
-        string? fileTypeLabel = null)
+        string? fileTypeLabel = null,
+        string? encoding = null,
+        string? lineEnding = null)
     {
         // Fill background
         var bgStyle = new CellStyle(StatusFg, StatusBg);
@@ -28,8 +30,8 @@ internal static class StatusBar
         buffer.WriteString(rect.Top, rect.Left + 1, currentPath, pathStyle, rect.Width / 2);
 
         // Right side: item count + selected info — build without heap allocations
-        Span<char> rightBuf = stackalloc char[80];
-        int rightLen = BuildRightText(rightBuf, itemCount, selectedIndex, selectedEntry, fileTypeLabel);
+        Span<char> rightBuf = stackalloc char[128];
+        int rightLen = BuildRightText(rightBuf, itemCount, selectedIndex, selectedEntry, fileTypeLabel, encoding, lineEnding);
         ReadOnlySpan<char> right = rightBuf[..rightLen];
 
         int rightCol = rect.Width - rightLen - 1;
@@ -40,7 +42,7 @@ internal static class StatusBar
         }
     }
 
-    private static int BuildRightText(Span<char> buf, int itemCount, int selectedIndex, FileSystemEntry? selectedEntry, string? fileTypeLabel)
+    private static int BuildRightText(Span<char> buf, int itemCount, int selectedIndex, FileSystemEntry? selectedEntry, string? fileTypeLabel, string? encoding = null, string? lineEnding = null)
     {
         int pos = 0;
 
@@ -48,6 +50,22 @@ internal static class StatusBar
         {
             fileTypeLabel.AsSpan().CopyTo(buf[pos..]);
             pos += fileTypeLabel.Length;
+            buf[pos++] = ' ';
+            buf[pos++] = ' ';
+        }
+
+        if (encoding is not null && selectedEntry is { IsDirectory: false })
+        {
+            encoding.AsSpan().CopyTo(buf[pos..]);
+            pos += encoding.Length;
+            buf[pos++] = ' ';
+            buf[pos++] = ' ';
+        }
+
+        if (lineEnding is not null && selectedEntry is { IsDirectory: false })
+        {
+            lineEnding.AsSpan().CopyTo(buf[pos..]);
+            pos += lineEnding.Length;
             buf[pos++] = ' ';
             buf[pos++] = ' ';
         }
