@@ -76,12 +76,10 @@ internal static class PaneRenderer
         ScreenBuffer buffer,
         Rect pane,
         StyledLine[] lines,
-        int headerLineCount = 0,
         int scrollOffset = 0)
     {
         var defaultStyle = new CellStyle(FileColor, null);
         var lineNumStyle = new CellStyle(DimColor, null);
-        var headerStyle = new CellStyle(DimColor, null);
         Span<char> lineNumBuf = stackalloc char[4];
 
         int contentLineNumber = 0;
@@ -93,38 +91,28 @@ internal static class PaneRenderer
 
             var styledLine = lines[lineIndex];
 
-            if (lineIndex < headerLineCount)
+            contentLineNumber++;
+
+            // Line number (4 chars wide, right-aligned)
+            lineNumBuf.Fill(' ');
+            contentLineNumber.TryFormat(lineNumBuf, out int numLen);
+            if (numLen < 4)
             {
-                // Header rows: no line number, render with dim style
-                for (int i = 0; i < 5; i++)
-                    buffer.Put(pane.Top + row, pane.Left + i, ' ', headerStyle);
-                buffer.WriteString(pane.Top + row, pane.Left + 5, styledLine.Text, headerStyle, pane.Width - 5);
+                lineNumBuf[..numLen].CopyTo(lineNumBuf[(4 - numLen)..]);
+                lineNumBuf[..(4 - numLen)].Fill(' ');
             }
+            for (int i = 0; i < 4; i++)
+                buffer.Put(pane.Top + row, pane.Left + i, lineNumBuf[i], lineNumStyle);
+            buffer.Put(pane.Top + row, pane.Left + 4, ' ', lineNumStyle);
+
+            // Content
+            int contentCol = pane.Left + 5;
+            int contentWidth = pane.Width - 5;
+
+            if (styledLine.Spans is { Length: > 0 } spans)
+                RenderStyledContent(buffer, pane.Top + row, contentCol, contentWidth, styledLine.Text, spans, defaultStyle);
             else
-            {
-                contentLineNumber++;
-
-                // Line number (4 chars wide, right-aligned)
-                lineNumBuf.Fill(' ');
-                contentLineNumber.TryFormat(lineNumBuf, out int numLen);
-                if (numLen < 4)
-                {
-                    lineNumBuf[..numLen].CopyTo(lineNumBuf[(4 - numLen)..]);
-                    lineNumBuf[..(4 - numLen)].Fill(' ');
-                }
-                for (int i = 0; i < 4; i++)
-                    buffer.Put(pane.Top + row, pane.Left + i, lineNumBuf[i], lineNumStyle);
-                buffer.Put(pane.Top + row, pane.Left + 4, ' ', lineNumStyle);
-
-                // Content
-                int contentCol = pane.Left + 5;
-                int contentWidth = pane.Width - 5;
-
-                if (styledLine.Spans is { Length: > 0 } spans)
-                    RenderStyledContent(buffer, pane.Top + row, contentCol, contentWidth, styledLine.Text, spans, defaultStyle);
-                else
-                    buffer.WriteString(pane.Top + row, contentCol, styledLine.Text, defaultStyle, contentWidth);
-            }
+                buffer.WriteString(pane.Top + row, contentCol, styledLine.Text, defaultStyle, contentWidth);
         }
     }
 
