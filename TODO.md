@@ -2,10 +2,10 @@
 
 ## Async preview loading
 
-Load file previews on a background thread so navigation stays responsive while the `file` command (slow process spawn) runs.
+Load file previews on a background thread so navigation stays responsive for large files.
 
 **Problem**
-- `FilePreview.GetPreviewLines` blocks the UI thread: spawns `file --brief` (up to 2s timeout) and reads file content
+- `FilePreview.GetPreviewLines` blocks the UI thread: reads file content and scans for metadata
 - The main loop blocks on `Console.ReadKey`, so a background result needs to trigger a re-render
 
 **Approach**

@@ -9,10 +9,10 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Miller columns** — three-pane layout: parent / current directory / preview
 - **File-type icons** — Nerd Fonts v3 glyphs per file extension (enabled by default; requires a Nerd Font)
 - **Syntax highlighting** — per-token coloring for 15 languages (C#, JS/TS, Python, Go, Rust, Java, Shell, PowerShell, CSS, JSON, TOML, YAML, XML/HTML, Markdown) using a hand-rolled tokenizer; VS Code Dark+ inspired palette
-- **File preview** — displays first 100 lines of text files with a file type header (via `file` command when available); shows file type description for binary files
+- **File preview** — displays first 100 lines of text files; shows `[binary file]` for binary files
 - **Directory preview** — shows contents of the selected directory
 - **Drive navigation** — browse across drives on Windows (Backspace from a drive root)
-- **Status bar** — current path, item count, file size, and file type label (language name, or "Text" for plain text files with unknown extensions)
+- **Status bar** — current path, item count, file type label (language name, "Text", or "Binary"), encoding (UTF-8, UTF-8 BOM, UTF-16 LE/BE), line endings (CRLF, LF, CR, Mixed), and file size
 - **Minimal rendering** — raw VT/ANSI escape sequences, double-buffered with dirty-row tracking, cell diff, and style diffing
 
 ## Requirements
