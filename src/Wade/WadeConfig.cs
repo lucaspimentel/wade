@@ -110,6 +110,8 @@ internal sealed class WadeConfig
             }
         }
 
+        config.StartPath = config.StartPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
         return config;
     }
 

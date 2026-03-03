@@ -236,6 +236,17 @@ public class WadeConfigTests
         Assert.Equal(Directory.GetCurrentDirectory(), config.StartPath);
     }
 
+    [Theory]
+    [InlineData(@"C:\foo\bar\",  @"C:\foo\bar")]
+    [InlineData(@"C:\foo\bar/",  @"C:\foo\bar")]
+    [InlineData(@"C:\foo\bar\\", @"C:\foo\bar")]
+    [InlineData(@"C:\foo\bar",   @"C:\foo\bar")]
+    public void StartPath_TrailingSeparatorsAreStripped(string input, string expected)
+    {
+        var config = WadeConfig.Load([input], configFilePath: "/nonexistent/path.toml", env: new MockEnv());
+        Assert.Equal(expected, config.StartPath);
+    }
+
     // ── ParseBool edge cases ──────────────────────────────────────────────────
 
     [Theory]
