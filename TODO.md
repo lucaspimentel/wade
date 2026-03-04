@@ -74,34 +74,16 @@ Implemented: Click to navigate folders and select files in all three panes. Scro
 
 Implemented: `ScreenBuffer` double-buffers a front/back cell grid, diffs per-cell on flush, skips clean rows via a bitfield, emits only changed cells with style diffing, and writes the full frame in a single `StdOut.Write`. `ForceFullRedraw()` available via Ctrl+R.
 
-## Sixel image preview
+## Sixel image preview (preview pane ✅ · full-size dialog pending)
 
-Show image thumbnails in the right preview pane; optionally open a larger view in a centered dialog.
+Implemented: Image thumbnails render in the right preview pane using Sixel graphics. Uses SixLabors.ImageSharp for decoding/scaling and a custom median-cut quantization Sixel encoder (`Wade.Imaging.SixelEncoder`). Sixel data bypasses `ScreenBuffer` (written directly to stdout after flush). Gated by `ImagePreviewsEnabled` config flag (default: off). Supported image formats: PNG, JPG, GIF, BMP, WebP, TGA, TIFF, PBM. Re-renders on terminal resize.
 
-**Protocol**
-- Sixel is a DCS escape sequence: `ESC P ... q <data> ESC \`
-- Supported by Windows Terminal v1.22+ (released August 2024)
+**Depends on:** Async preview loading
 
-**Library candidates**
-- [SixPix](https://www.nuget.org/packages/SixPix) — pure .NET Sixel encoder/decoder
-- [Webmaster442.WindowsTerminal.ImageSharp](https://libraries.io/nuget/Webmaster442.WindowsTerminal.ImageSharp) — ImageSharp-based wrapper
-- Evaluate NativeAOT compatibility before committing to either
-
-**Terminal capability detection**
-- Query DA2 (`ESC [ > c`) and parse response; Sixel support is indicated by parameter 4 in the DA1 response
-- Simpler: check `WT_SESSION` env var (Windows Terminal) combined with version check, or let user enable via config
-- Provide `sixel = false` config opt-out for terminals that lie or partially support it
-
-**Preview pane integration**
-- Detect image extensions (`.png`, `.jpg`, `.gif`, `.bmp`, `.webp`, …)
-- Scale image to fit right pane dimensions (cells × cell pixel size)
-- Cell pixel size: query via `ESC [ 16 t` (reports cell height/width in pixels)
-- Fall back to text preview (file type + dimensions) if Sixel unavailable
-
-**Full-size dialog**
-- Press Enter on an image to open a centered overlay (reuse `HelpOverlay` pattern)
-- Render at max terminal size minus border
-- Any key dismisses
+**Remaining**
+- Full-size dialog: press Enter on an image to open a centered overlay (depends on dialog/overlay framework)
+- Terminal capability detection: query DA1/DA2 or check `WT_SESSION` for auto-enable
+- Cell pixel size query via `ESC [ 16 t` (currently assumes 8×16 px/cell)
 
 ## File actions
 
