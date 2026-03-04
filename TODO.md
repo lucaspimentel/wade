@@ -54,14 +54,9 @@ Transient one-line feedback messages in the status bar.
 
 ---
 
-## Raw input pipeline
+## ~~Raw input pipeline~~ ✅
 
-Replace `Console.ReadKey` with a raw stdin reader to support both async background tasks and mouse input.
-
-- Read raw bytes from `Console.OpenStandardInput()` in a background thread
-- Parse VT sequences (keyboard and mouse) and post `InputEvent` to a shared queue
-- Main loop drains the queue instead of blocking on `Console.ReadKey`
-- NativeAOT-compatible — raw byte parsing only, no reflection
+Implemented: `InputPipeline` + `IInputSource` abstraction with `WindowsInputSource` (Win32 `ReadConsoleInput`) and `UnixInputSource` (raw VT parser). Main loop uses `pipeline.Take()` instead of `Console.ReadKey`.
 
 **Required by:** Async preview loading, Mouse support
 
