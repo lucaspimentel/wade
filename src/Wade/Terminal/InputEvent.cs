@@ -17,6 +17,11 @@ internal sealed record PreviewReadyEvent(
     string? Encoding,
     string? LineEnding) : InputEvent;
 
+internal sealed record ImagePreviewReadyEvent(
+    string Path,
+    string SixelData,
+    string FileTypeLabel) : InputEvent;
+
 internal enum MouseButton
 {
     Left,

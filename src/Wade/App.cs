@@ -27,6 +27,12 @@ internal sealed class App
     private string? _pendingPreviewPath;
     private PreviewLoader? _previewLoader;
 
+    // Image preview state
+    private string? _cachedSixelData;
+    private string? _cachedImagePath;
+    private bool _isImagePreview;
+    private bool _sixelPending;
+
     // Track selected index per directory so we restore position when navigating back
     private readonly Dictionary<string, int> _selectedIndexPerDir = new(StringComparer.OrdinalIgnoreCase);
 
@@ -55,6 +61,7 @@ internal sealed class App
 
         var buffer = new ScreenBuffer(lastWidth, lastHeight);
         _layout.Calculate(lastWidth, lastHeight);
+        previewLoader.Configure(_config.ImagePreviewsEnabled, _layout.RightPane.Width, _layout.RightPane.Height);
 
         bool quit = false;
 
@@ -65,6 +72,14 @@ internal sealed class App
             Render(buffer);
             buffer.Flush(_flushBuffer);
 
+            // Write Sixel data after flush (bypasses cell grid)
+            if (_sixelPending && _cachedSixelData is not null)
+            {
+                _sixelPending = false;
+                var moveCursor = AnsiCodes.MoveCursor(_layout.RightPane.Top, _layout.RightPane.Left);
+                buffer.WriteRaw(moveCursor + _cachedSixelData);
+            }
+
             // Wait for next input event
             var inputEvent = pipeline.Take();
 
@@ -73,7 +88,14 @@ internal sealed class App
             {
                 if (extra is PreviewReadyEvent previewReady)
                 {
+                    bool wasImage = _isImagePreview;
                     HandlePreviewReady(previewReady);
+                    if (wasImage)
+                        buffer.ForceFullRedraw();
+                }
+                else if (extra is ImagePreviewReadyEvent imagePreviewReady)
+                {
+                    HandleImagePreviewReady(imagePreviewReady);
                 }
                 else if (extra is ResizeEvent)
                     inputEvent = extra;
@@ -90,7 +112,18 @@ internal sealed class App
                     lastHeight = resize.Height;
                     buffer.Resize(lastWidth, lastHeight);
                     _layout.Calculate(lastWidth, lastHeight);
+                    previewLoader.Configure(_config.ImagePreviewsEnabled, _layout.RightPane.Width, _layout.RightPane.Height);
                     Console.Write(AnsiCodes.ClearScreen);
+
+                    // Re-render image at new size
+                    if (_isImagePreview && _cachedImagePath is not null)
+                    {
+                        _cachedSixelData = null;
+                        _sixelPending = false;
+                        _pendingPreviewPath = _cachedImagePath;
+                        _previewLoading = true;
+                        previewLoader.BeginLoad(_cachedImagePath);
+                    }
                 }
                 continue;
             }
@@ -98,7 +131,16 @@ internal sealed class App
             // Handle preview ready events
             if (inputEvent is PreviewReadyEvent previewEvt)
             {
+                bool wasImage = _isImagePreview;
                 HandlePreviewReady(previewEvt);
+                if (wasImage)
+                    buffer.ForceFullRedraw();
+                continue;
+            }
+
+            if (inputEvent is ImagePreviewReadyEvent imagePreviewEvt)
+            {
+                HandleImagePreviewReady(imagePreviewEvt);
                 continue;
             }
 
@@ -106,7 +148,7 @@ internal sealed class App
             if (inputEvent is MouseEvent mouseEvent)
             {
                 var mouseEntries = _directoryContents.GetEntries(_currentPath);
-                HandleMouseEvent(mouseEvent, mouseEntries, previewLoader);
+                HandleMouseEvent(mouseEvent, mouseEntries, previewLoader, buffer);
 
                 // Clamp and adjust scroll after mouse handling
                 var currentAfterMouse = _directoryContents.GetEntries(_currentPath);
@@ -151,7 +193,7 @@ internal sealed class App
                         _currentPath = entries[_selectedIndex].FullPath;
                         _selectedIndex = _selectedIndexPerDir.GetValueOrDefault(_currentPath, 0);
                         _scrollOffset = 0;
-                        ClearPreviewCache(previewLoader);
+                        ClearPreviewCache(previewLoader, buffer);
                     }
                     break;
 
@@ -185,7 +227,7 @@ internal sealed class App
                         }
                     }
                     _scrollOffset = 0;
-                    ClearPreviewCache(previewLoader);
+                    ClearPreviewCache(previewLoader, buffer);
                     break;
                 }
 
@@ -215,7 +257,7 @@ internal sealed class App
 
                 case AppAction.Refresh:
                     _directoryContents.InvalidateAll();
-                    ClearPreviewCache(previewLoader);
+                    ClearPreviewCache(previewLoader, buffer);
                     buffer.ForceFullRedraw();
                     break;
             }
@@ -312,6 +354,13 @@ internal sealed class App
                 {
                     PaneRenderer.RenderMessage(buffer, _layout.RightPane, "[loading\u2026]");
                 }
+                else if (_isImagePreview && _cachedSixelData is not null)
+                {
+                    // Fill right pane with spaces so ScreenBuffer claims the area
+                    for (int row = _layout.RightPane.Top; row < _layout.RightPane.Bottom; row++)
+                        buffer.FillRow(row, _layout.RightPane.Left, _layout.RightPane.Width, ' ', CellStyle.Default);
+                    _sixelPending = true;
+                }
                 else if (_cachedStyledLines is not null)
                 {
                     PaneRenderer.RenderPreview(buffer, _layout.RightPane, _cachedStyledLines);
@@ -353,10 +402,30 @@ internal sealed class App
         _cachedPreviewEncoding = evt.Encoding;
         _cachedPreviewLineEnding = evt.LineEnding;
         _previewLoading = false;
+        _isImagePreview = false;
+        _cachedSixelData = null;
+        _cachedImagePath = null;
     }
 
-    private void ClearPreviewCache(PreviewLoader loader)
+    private void HandleImagePreviewReady(ImagePreviewReadyEvent evt)
     {
+        if (evt.Path != _pendingPreviewPath)
+            return;
+
+        _cachedImagePath = evt.Path;
+        _cachedPreviewPath = evt.Path;
+        _cachedSixelData = evt.SixelData;
+        _cachedPreviewFileTypeLabel = evt.FileTypeLabel;
+        _cachedPreviewEncoding = null;
+        _cachedPreviewLineEnding = null;
+        _cachedStyledLines = null;
+        _isImagePreview = true;
+        _previewLoading = false;
+    }
+
+    private void ClearPreviewCache(PreviewLoader loader, ScreenBuffer? buffer = null)
+    {
+        bool wasImage = _isImagePreview;
         loader.Cancel();
         _cachedPreviewPath = null;
         _cachedStyledLines = null;
@@ -365,9 +434,16 @@ internal sealed class App
         _cachedPreviewLineEnding = null;
         _previewLoading = false;
         _pendingPreviewPath = null;
+        _cachedSixelData = null;
+        _cachedImagePath = null;
+        _isImagePreview = false;
+        _sixelPending = false;
+
+        if (wasImage)
+            buffer?.ForceFullRedraw();
     }
 
-    private void HandleMouseEvent(MouseEvent mouse, List<FileSystemEntry> entries, PreviewLoader previewLoader)
+    private void HandleMouseEvent(MouseEvent mouse, List<FileSystemEntry> entries, PreviewLoader previewLoader, ScreenBuffer buffer)
     {
         // Scroll wheel → move selection up/down in center pane
         if (mouse.Button == MouseButton.ScrollUp)
@@ -412,7 +488,7 @@ internal sealed class App
                     _currentPath = clicked.FullPath;
                     _selectedIndex = _selectedIndexPerDir.GetValueOrDefault(_currentPath, 0);
                     _scrollOffset = 0;
-                    ClearPreviewCache(previewLoader);
+                    ClearPreviewCache(previewLoader, buffer);
                 }
                 else
                 {
@@ -426,7 +502,7 @@ internal sealed class App
                         int idx = parentEntries.FindIndex(e => e.Name.Equals(clicked.Name, StringComparison.OrdinalIgnoreCase));
                         _selectedIndex = idx >= 0 ? idx : 0;
                         _scrollOffset = 0;
-                        ClearPreviewCache(previewLoader);
+                        ClearPreviewCache(previewLoader, buffer);
                     }
                 }
             }
@@ -450,7 +526,7 @@ internal sealed class App
                             _currentPath = clicked.FullPath;
                             _selectedIndex = _selectedIndexPerDir.GetValueOrDefault(_currentPath, 0);
                             _scrollOffset = 0;
-                            ClearPreviewCache(previewLoader);
+                            ClearPreviewCache(previewLoader, buffer);
                         }
                         else
                         {
@@ -461,7 +537,7 @@ internal sealed class App
                             int idx = dirEntries.FindIndex(e => e.Name.Equals(clicked.Name, StringComparison.OrdinalIgnoreCase));
                             _selectedIndex = idx >= 0 ? idx : 0;
                             _scrollOffset = 0;
-                            ClearPreviewCache(previewLoader);
+                            ClearPreviewCache(previewLoader, buffer);
                         }
                     }
                 }

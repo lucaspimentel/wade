@@ -177,6 +177,22 @@ internal sealed class ScreenBuffer
         }
     }
 
+    public void WriteRaw(string data)
+    {
+        int totalChars = data.Length;
+        byte[] encoded = ArrayPool<byte>.Shared.Rent(Encoding.UTF8.GetMaxByteCount(totalChars));
+        try
+        {
+            int byteCount = Encoding.UTF8.GetBytes(data, 0, totalChars, encoded, 0);
+            StdOut.Write(encoded, 0, byteCount);
+            StdOut.Flush();
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(encoded);
+        }
+    }
+
     public void ForceFullRedraw()
     {
         Array.Fill(_front, Cell.Dirty);

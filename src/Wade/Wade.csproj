@@ -24,6 +24,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.*" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="Wade.Tests" />
     <InternalsVisibleTo Include="Wade.Benchmarks" />
   </ItemGroup>
