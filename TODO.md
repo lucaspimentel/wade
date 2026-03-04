@@ -60,24 +60,11 @@ Implemented: `InputPipeline` + `IInputSource` abstraction with `WindowsInputSour
 
 **Required by:** Async preview loading, Mouse support
 
-## Async preview loading
+## ~~Async preview loading~~ ✅
 
-Load file previews on a background thread so navigation stays responsive for large files.
+Implemented: `PreviewLoader` runs file I/O + syntax highlighting on a background `Task.Run`, injects a `PreviewReadyEvent` into the `InputPipeline` on completion. Shows `[loading…]` placeholder while pending. Stale results are discarded by path comparison. Cancellation checked before I/O, after I/O, and after highlighting.
 
-**Problem**
-- `FilePreview.GetPreviewLines` blocks the UI thread: reads file content and scans for metadata
-- The main loop blocks on `Console.ReadKey`, so a background result needs to trigger a re-render
-
-**Approach**
-- Move `GetPreviewLines` to a background `Task` using `Task.Run`
-- Show a `[loading…]` placeholder in the preview pane immediately on cache miss
-- Store the in-flight `Task<(string[], int)>` alongside the cached result
-- On task completion, store result in cache and trigger a re-render; discard result if the selected path has changed
-
-**Constraints**
-- NativeAOT-compatible — no reflection; `Task`/`CancellationToken` are fine
-- `DirectoryContents` cache uses a plain `Dictionary` — make it `ConcurrentDictionary` or guard with a lock if accessed from background threads
-- **Depends on:** Raw input pipeline
+**Depends on:** Raw input pipeline
 
 ## Mouse support
 

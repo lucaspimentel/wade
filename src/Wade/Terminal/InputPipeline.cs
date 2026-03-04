@@ -33,6 +33,8 @@ internal sealed class InputPipeline : IDisposable
         return _queue.TryTake(out evt);
     }
 
+    public void Inject(InputEvent evt) => _queue.Add(evt);
+
     public static IInputSource CreatePlatformSource()
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))

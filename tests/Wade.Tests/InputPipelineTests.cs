@@ -91,6 +91,27 @@ public class InputPipelineTests
         Assert.False(result);
     }
 
+    // ── Inject ────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Inject_WakesBlockedTake()
+    {
+        var source = new FakeInputSource();
+        using var pipeline = new InputPipeline(source);
+
+        var injected = new ResizeEvent(120, 40);
+
+        // Inject from another thread while Take() is blocked
+        Task.Run(async () =>
+        {
+            await Task.Delay(50);
+            pipeline.Inject(injected);
+        });
+
+        var result = pipeline.Take();
+        Assert.Equal(injected, result);
+    }
+
     // ── Disposal ────────────────────────────────────────────────────────────────
 
     [Fact]

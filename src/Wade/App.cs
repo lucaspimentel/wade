@@ -23,6 +23,9 @@ internal sealed class App
     private string? _cachedPreviewFileTypeLabel;
     private string? _cachedPreviewEncoding;
     private string? _cachedPreviewLineEnding;
+    private bool _previewLoading;
+    private string? _pendingPreviewPath;
+    private PreviewLoader? _previewLoader;
 
     // Track selected index per directory so we restore position when navigating back
     private readonly Dictionary<string, int> _selectedIndexPerDir = new(StringComparer.OrdinalIgnoreCase);
@@ -39,6 +42,8 @@ internal sealed class App
         using var terminal = new TerminalSetup();
         using var inputSource = InputPipeline.CreatePlatformSource();
         using var pipeline = new InputPipeline(inputSource);
+        _previewLoader = new PreviewLoader(pipeline);
+        var previewLoader = _previewLoader;
 
         int lastWidth = Console.WindowWidth;
         int lastHeight = Console.WindowHeight;
@@ -61,8 +66,11 @@ internal sealed class App
             // Drain any additional queued events (e.g. rapid key repeats)
             while (pipeline.TryTake(out var extra))
             {
-                // Keep the last resize event, but prefer the latest key event
-                if (extra is ResizeEvent)
+                if (extra is PreviewReadyEvent previewReady)
+                {
+                    HandlePreviewReady(previewReady);
+                }
+                else if (extra is ResizeEvent)
                     inputEvent = extra;
                 else if (extra is KeyEvent)
                     inputEvent = extra;
@@ -79,6 +87,13 @@ internal sealed class App
                     _layout.Calculate(lastWidth, lastHeight);
                     Console.Write(AnsiCodes.ClearScreen);
                 }
+                continue;
+            }
+
+            // Handle preview ready events
+            if (inputEvent is PreviewReadyEvent previewEvt)
+            {
+                HandlePreviewReady(previewEvt);
                 continue;
             }
 
@@ -115,11 +130,7 @@ internal sealed class App
                         _currentPath = entries[_selectedIndex].FullPath;
                         _selectedIndex = _selectedIndexPerDir.GetValueOrDefault(_currentPath, 0);
                         _scrollOffset = 0;
-                        _cachedPreviewPath = null;
-                        _cachedStyledLines = null;
-                        _cachedPreviewFileTypeLabel = null;
-                        _cachedPreviewEncoding = null;
-                        _cachedPreviewLineEnding = null;
+                        ClearPreviewCache(previewLoader);
                     }
                     break;
 
@@ -153,11 +164,7 @@ internal sealed class App
                         }
                     }
                     _scrollOffset = 0;
-                    _cachedPreviewPath = null;
-                    _cachedStyledLines = null;
-                    _cachedPreviewFileTypeLabel = null;
-                    _cachedPreviewEncoding = null;
-                    _cachedPreviewLineEnding = null;
+                    ClearPreviewCache(previewLoader);
                     break;
                 }
 
@@ -261,25 +268,21 @@ internal sealed class App
             }
             else
             {
-                if (selected.FullPath != _cachedPreviewPath)
+                if (selected.FullPath != _cachedPreviewPath && selected.FullPath != _pendingPreviewPath)
                 {
-                    _cachedPreviewPath = selected.FullPath;
-                    var rawLines = FilePreview.GetPreviewLines(selected.FullPath, out var metadata);
-                    if (metadata.IsBinary)
-                    {
-                        _cachedPreviewFileTypeLabel = FilePreview.GetFileTypeLabel(selected.FullPath) ?? "Binary";
-                        _cachedPreviewEncoding = null;
-                        _cachedPreviewLineEnding = null;
-                    }
-                    else
-                    {
-                        _cachedPreviewFileTypeLabel = FilePreview.GetFileTypeLabel(selected.FullPath) ?? "Text";
-                        _cachedPreviewEncoding = metadata.Encoding;
-                        _cachedPreviewLineEnding = metadata.LineEnding;
-                    }
-                    _cachedStyledLines = SyntaxHighlighter.Highlight(rawLines, selected.FullPath);
+                    _pendingPreviewPath = selected.FullPath;
+                    _previewLoading = true;
+                    _previewLoader!.BeginLoad(selected.FullPath);
                 }
-                PaneRenderer.RenderPreview(buffer, _layout.RightPane, _cachedStyledLines!);
+
+                if (_previewLoading)
+                {
+                    PaneRenderer.RenderMessage(buffer, _layout.RightPane, "[loading\u2026]");
+                }
+                else if (_cachedStyledLines is not null)
+                {
+                    PaneRenderer.RenderPreview(buffer, _layout.RightPane, _cachedStyledLines);
+                }
             }
         }
 
@@ -304,6 +307,31 @@ internal sealed class App
             _scrollOffset = _selectedIndex;
         else if (_selectedIndex >= _scrollOffset + visibleHeight)
             _scrollOffset = _selectedIndex - visibleHeight + 1;
+    }
+
+    private void HandlePreviewReady(PreviewReadyEvent evt)
+    {
+        if (evt.Path != _pendingPreviewPath)
+            return;
+
+        _cachedPreviewPath = evt.Path;
+        _cachedStyledLines = evt.StyledLines;
+        _cachedPreviewFileTypeLabel = evt.FileTypeLabel;
+        _cachedPreviewEncoding = evt.Encoding;
+        _cachedPreviewLineEnding = evt.LineEnding;
+        _previewLoading = false;
+    }
+
+    private void ClearPreviewCache(PreviewLoader loader)
+    {
+        loader.Cancel();
+        _cachedPreviewPath = null;
+        _cachedStyledLines = null;
+        _cachedPreviewFileTypeLabel = null;
+        _cachedPreviewEncoding = null;
+        _cachedPreviewLineEnding = null;
+        _previewLoading = false;
+        _pendingPreviewPath = null;
     }
 
     private static int CalculateScroll(int selectedIndex, int visibleHeight, int totalCount)
