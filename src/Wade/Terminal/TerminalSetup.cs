@@ -33,19 +33,34 @@ internal sealed class TerminalSetup : IDisposable
                              & ~EnableLineInput
                              & ~EnableEchoInput
                              & ~EnableProcessedInput
-                             | EnableWindowInput;
+                             & ~EnableQuickEditMode
+                             | EnableWindowInput
+                             | EnableMouseInput
+                             | EnableExtendedFlags;
             SetConsoleMode(_stdinHandle, inputMode);
         }
 
         Console.Write(AnsiCodes.EnterAlternateScreen);
         Console.Write(AnsiCodes.HideCursor);
         Console.Write(AnsiCodes.ClearScreen);
+
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            Console.Write(AnsiCodes.EnableMouseReporting);
+            Console.Write(AnsiCodes.EnableSgrMouseMode);
+        }
     }
 
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
+
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            Console.Write(AnsiCodes.DisableSgrMouseMode);
+            Console.Write(AnsiCodes.DisableMouseReporting);
+        }
 
         Console.Write(AnsiCodes.ResetAttributes);
         Console.Write(AnsiCodes.ShowCursor);
@@ -68,6 +83,9 @@ internal sealed class TerminalSetup : IDisposable
     private const uint EnableEchoInput = 0x0004;
     private const uint EnableProcessedInput = 0x0001;
     private const uint EnableWindowInput = 0x0008;
+    private const uint EnableMouseInput = 0x0010;
+    private const uint EnableQuickEditMode = 0x0040;
+    private const uint EnableExtendedFlags = 0x0080;
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern nint GetStdHandle(int nStdHandle);

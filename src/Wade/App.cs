@@ -30,6 +30,11 @@ internal sealed class App
     // Track selected index per directory so we restore position when navigating back
     private readonly Dictionary<string, int> _selectedIndexPerDir = new(StringComparer.OrdinalIgnoreCase);
 
+    // Left pane state cached during Render for mouse hit-testing
+    private List<FileSystemEntry>? _leftPaneEntries;
+    private int _leftPaneScroll;
+    private int _leftPaneSelected;
+
     public App(WadeConfig config)
     {
         _config = config;
@@ -72,7 +77,7 @@ internal sealed class App
                 }
                 else if (extra is ResizeEvent)
                     inputEvent = extra;
-                else if (extra is KeyEvent)
+                else if (extra is KeyEvent or MouseEvent)
                     inputEvent = extra;
             }
 
@@ -94,6 +99,22 @@ internal sealed class App
             if (inputEvent is PreviewReadyEvent previewEvt)
             {
                 HandlePreviewReady(previewEvt);
+                continue;
+            }
+
+            // Handle mouse events
+            if (inputEvent is MouseEvent mouseEvent)
+            {
+                var mouseEntries = _directoryContents.GetEntries(_currentPath);
+                HandleMouseEvent(mouseEvent, mouseEntries, previewLoader);
+
+                // Clamp and adjust scroll after mouse handling
+                var currentAfterMouse = _directoryContents.GetEntries(_currentPath);
+                if (currentAfterMouse.Count > 0)
+                    _selectedIndex = Math.Clamp(_selectedIndex, 0, currentAfterMouse.Count - 1);
+                else
+                    _selectedIndex = 0;
+                AdjustScroll(_layout.CenterPane.Height);
                 continue;
             }
 
@@ -220,6 +241,7 @@ internal sealed class App
         if (_currentPath == DirectoryContents.DrivesPath)
         {
             // At the drives list — no parent to show
+            _leftPaneEntries = null;
         }
         else
         {
@@ -252,6 +274,11 @@ internal sealed class App
 
             int parentScroll = CalculateScroll(parentSelected, _layout.LeftPane.Height, parentEntries.Count);
             PaneRenderer.RenderFileList(buffer, _layout.LeftPane, parentEntries, parentSelected, parentScroll, isActive: false, showIcons: _config.ShowIconsEnabled);
+
+            // Cache for mouse hit-testing
+            _leftPaneEntries = parentEntries;
+            _leftPaneScroll = parentScroll;
+            _leftPaneSelected = parentSelected;
         }
 
         // Right pane: preview
@@ -332,6 +359,114 @@ internal sealed class App
         _cachedPreviewLineEnding = null;
         _previewLoading = false;
         _pendingPreviewPath = null;
+    }
+
+    private void HandleMouseEvent(MouseEvent mouse, List<FileSystemEntry> entries, PreviewLoader previewLoader)
+    {
+        // Scroll wheel → move selection up/down in center pane
+        if (mouse.Button == MouseButton.ScrollUp)
+        {
+            if (_selectedIndex > 0)
+                _selectedIndex--;
+            return;
+        }
+
+        if (mouse.Button == MouseButton.ScrollDown)
+        {
+            if (_selectedIndex < entries.Count - 1)
+                _selectedIndex++;
+            return;
+        }
+
+        // Ignore releases and non-left-click
+        if (mouse.IsRelease || mouse.Button != MouseButton.Left)
+            return;
+
+        // Hit-test: which pane was clicked?
+        int row = mouse.Row;
+        int col = mouse.Col;
+
+        if (HitTestPane(_layout.CenterPane, row, col))
+        {
+            // Center pane click — select the entry (same as arrow keys)
+            int entryIndex = _scrollOffset + (row - _layout.CenterPane.Top);
+            if (entryIndex >= 0 && entryIndex < entries.Count)
+                _selectedIndex = entryIndex;
+        }
+        else if (HitTestPane(_layout.LeftPane, row, col) && _leftPaneEntries is not null)
+        {
+            // Left pane click
+            int entryIndex = _leftPaneScroll + (row - _layout.LeftPane.Top);
+            if (entryIndex >= 0 && entryIndex < _leftPaneEntries.Count)
+            {
+                var clicked = _leftPaneEntries[entryIndex];
+                if (clicked.IsDirectory)
+                {
+                    _selectedIndexPerDir[_currentPath] = _selectedIndex;
+                    _currentPath = clicked.FullPath;
+                    _selectedIndex = _selectedIndexPerDir.GetValueOrDefault(_currentPath, 0);
+                    _scrollOffset = 0;
+                    ClearPreviewCache(previewLoader);
+                }
+                else
+                {
+                    // File in parent dir — navigate to parent, select file
+                    _selectedIndexPerDir[_currentPath] = _selectedIndex;
+                    var parentDir = Directory.GetParent(_currentPath);
+                    if (parentDir is not null)
+                    {
+                        _currentPath = parentDir.FullName;
+                        var parentEntries = _directoryContents.GetEntries(_currentPath);
+                        int idx = parentEntries.FindIndex(e => e.Name.Equals(clicked.Name, StringComparison.OrdinalIgnoreCase));
+                        _selectedIndex = idx >= 0 ? idx : 0;
+                        _scrollOffset = 0;
+                        ClearPreviewCache(previewLoader);
+                    }
+                }
+            }
+        }
+        else if (HitTestPane(_layout.RightPane, row, col))
+        {
+            // Right pane click — only meaningful if selected entry is a directory
+            if (entries.Count > 0 && _selectedIndex < entries.Count)
+            {
+                var selected = entries[_selectedIndex];
+                if (selected.IsDirectory)
+                {
+                    var previewEntries = _directoryContents.GetEntries(selected.FullPath);
+                    int entryIndex = row - _layout.RightPane.Top; // scroll is always 0 for preview
+                    if (entryIndex >= 0 && entryIndex < previewEntries.Count)
+                    {
+                        var clicked = previewEntries[entryIndex];
+                        if (clicked.IsDirectory)
+                        {
+                            _selectedIndexPerDir[_currentPath] = _selectedIndex;
+                            _currentPath = clicked.FullPath;
+                            _selectedIndex = _selectedIndexPerDir.GetValueOrDefault(_currentPath, 0);
+                            _scrollOffset = 0;
+                            ClearPreviewCache(previewLoader);
+                        }
+                        else
+                        {
+                            // File in previewed directory — navigate there, select the file
+                            _selectedIndexPerDir[_currentPath] = _selectedIndex;
+                            _currentPath = selected.FullPath;
+                            var dirEntries = _directoryContents.GetEntries(_currentPath);
+                            int idx = dirEntries.FindIndex(e => e.Name.Equals(clicked.Name, StringComparison.OrdinalIgnoreCase));
+                            _selectedIndex = idx >= 0 ? idx : 0;
+                            _scrollOffset = 0;
+                            ClearPreviewCache(previewLoader);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static bool HitTestPane(Rect pane, int row, int col)
+    {
+        return row >= pane.Top && row < pane.Bottom
+            && col >= pane.Left && col < pane.Right;
     }
 
     private static int CalculateScroll(int selectedIndex, int visibleHeight, int totalCount)

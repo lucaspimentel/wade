@@ -220,6 +220,14 @@ internal static class VtParser
         i++;
 
         var paramSpan = data[paramStart..(i - 1)];
+
+        // SGR mouse sequence: ESC [ < Cb ; Cx ; Cy M/m
+        if (paramSpan.Length > 0 && paramSpan[0] == '<')
+        {
+            ParseSgrMouse(paramSpan[1..], finalByte, events);
+            return i;
+        }
+
         ParseCsiParams(paramSpan, out int param1, out int param2);
 
         switch (finalByte)
@@ -297,6 +305,53 @@ internal static class VtParser
             param2 = current;
         else
             param1 = current;
+    }
+
+    private static void ParseSgrMouse(ReadOnlySpan<byte> paramData, byte finalByte, List<InputEvent> events)
+    {
+        // paramData contains "Cb;Cx;Cy" as ASCII digits/semicolons
+        int cb = 0, cx = 0, cy = 0;
+        int field = 0;
+        int current = 0;
+
+        foreach (byte b in paramData)
+        {
+            if (b == ';')
+            {
+                if (field == 0) cb = current;
+                else if (field == 1) cx = current;
+                current = 0;
+                field++;
+            }
+            else if (b >= '0' && b <= '9')
+            {
+                current = current * 10 + (b - '0');
+            }
+        }
+
+        if (field == 2) cy = current;
+
+        bool isRelease = finalByte == 'm';
+
+        // Decode button: bits 0-1 for button, bit 6 for scroll
+        MouseButton button;
+        if (cb >= 64)
+        {
+            button = cb == 64 ? MouseButton.ScrollUp : MouseButton.ScrollDown;
+        }
+        else
+        {
+            button = (cb & 0x03) switch
+            {
+                0 => MouseButton.Left,
+                1 => MouseButton.Middle,
+                2 => MouseButton.Right,
+                _ => MouseButton.None,
+            };
+        }
+
+        // Cx, Cy are 1-based → convert to 0-based
+        events.Add(new MouseEvent(button, cy - 1, cx - 1, isRelease));
     }
 
     private static ConsoleKey CharToConsoleKey(char c)

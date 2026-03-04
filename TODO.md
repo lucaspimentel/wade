@@ -66,27 +66,9 @@ Implemented: `PreviewLoader` runs file I/O + syntax highlighting on a background
 
 **Depends on:** Raw input pipeline
 
-## Mouse support
+## ~~Mouse support~~ ✅
 
-Enable mouse click and scroll interaction.
-
-**Protocol**
-- Enable mouse reporting: `ESC [ ? 1000 h` (X10 button events), `ESC [ ? 1006 h` (SGR extended for large terminals)
-- Disable on exit: `ESC [ ? 1000 l`, `ESC [ ? 1006 l`
-- SGR mouse report format: `ESC [ < Cb ; Cx ; Cy M` (press) / `m` (release)
-  - `Cb`: button/modifier bitmask — 0=left, 1=middle, 2=right, 64=scroll-up, 65=scroll-down
-  - `Cx`, `Cy`: 1-based column and row
-
-**Interactions**
-- Click left pane: focus left pane and move cursor to clicked row
-- Click right pane: focus right pane (if directory listing)
-- Scroll up/down: move cursor up/down in focused pane
-- Click path breadcrumb: navigate to that ancestor directory
-
-**Constraints**
-- NativeAOT-compatible — raw byte parsing only, no reflection
-- Disable mouse reporting when entering a subprocess (e.g. editor launch) and re-enable on return
-- **Depends on:** Raw input pipeline
+Implemented: Click to navigate folders and select files in all three panes. Scroll wheel moves selection up/down. Windows uses `ENABLE_MOUSE_INPUT` console mode; Unix uses SGR mouse reporting (`ESC[?1000h` + `ESC[?1006h`). Mouse reporting is disabled on exit to restore normal terminal behavior.
 
 ## Buffered rendering and dirty-region tracking
 

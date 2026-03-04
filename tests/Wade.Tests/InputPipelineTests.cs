@@ -112,6 +112,21 @@ public class InputPipelineTests
         Assert.Equal(injected, result);
     }
 
+    // ── Mouse events ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Take_MouseEvent_ReturnsMouseEvent()
+    {
+        var source = new FakeInputSource();
+        var expected = new MouseEvent(MouseButton.Left, 5, 10, false);
+        source.Enqueue(expected);
+
+        using var pipeline = new InputPipeline(source);
+        var result = pipeline.Take();
+
+        Assert.Equal(expected, result);
+    }
+
     // ── Disposal ────────────────────────────────────────────────────────────────
 
     [Fact]

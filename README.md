@@ -13,6 +13,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Directory preview** — shows contents of the selected directory
 - **Drive navigation** — browse across drives on Windows (Backspace from a drive root)
 - **Status bar** — current path, item count, file type label (language name, "Text", or "Binary"), encoding (UTF-8, UTF-8 BOM, UTF-16 LE/BE), line endings (CRLF, LF, CR, Mixed), and file size
+- **Mouse support** — click to select entries in any pane, scroll wheel to navigate; left/right pane clicks navigate directories
 - **Minimal rendering** — raw VT/ANSI escape sequences, double-buffered with dirty-row tracking, cell diff, and style diffing
 
 ## Requirements
@@ -93,6 +94,8 @@ wade --config-file=/path/to/config    # use a custom config file
 | Left / h / Backspace | Go to parent directory |
 | Page Up / Page Down | Scroll by page |
 | Home / End | Jump to first / last item |
+| Left Click | Select / Open |
+| Scroll | Navigate up/down |
 | ? | Show help |
 | q / Escape | Quit |
 

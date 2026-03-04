@@ -43,6 +43,29 @@ internal sealed class WindowsInputSource : IInputSource
 
                     return new KeyEvent((ConsoleKey)k.wVirtualKeyCode, k.UnicodeChar, shift, alt, control);
 
+                case MouseEventType:
+                    var m = record.Event.MouseEvent;
+                    if (m.dwEventFlags == MouseMoved)
+                        break; // ignore mouse move
+
+                    if (m.dwEventFlags == MouseWheeled)
+                    {
+                        // High word of dwButtonState determines direction
+                        short hiWord = (short)(m.dwButtonState >> 16);
+                        var scrollButton = hiWord > 0 ? MouseButton.ScrollUp : MouseButton.ScrollDown;
+                        return new MouseEvent(scrollButton, m.Y, m.X, false);
+                    }
+
+                    if (m.dwEventFlags == 0) // button press or release
+                    {
+                        if ((m.dwButtonState & FromLeft1stButtonPressed) != 0)
+                            return new MouseEvent(MouseButton.Left, m.Y, m.X, false);
+
+                        if (m.dwButtonState == 0)
+                            return new MouseEvent(MouseButton.Left, m.Y, m.X, true);
+                    }
+                    break;
+
                 case WindowBufferSizeEventType:
                     var size = record.Event.WindowBufferSizeEvent;
                     // Query actual window size instead of buffer size
@@ -66,6 +89,9 @@ internal sealed class WindowsInputSource : IInputSource
     private const ushort KeyEventType = 0x0001;
     private const ushort MouseEventType = 0x0002;
     private const ushort WindowBufferSizeEventType = 0x0004;
+    private const uint MouseMoved = 0x0001;
+    private const uint MouseWheeled = 0x0004;
+    private const uint FromLeft1stButtonPressed = 0x0001;
 
     [Flags]
     private enum ControlKeyState : uint
@@ -88,6 +114,7 @@ internal sealed class WindowsInputSource : IInputSource
     private struct INPUT_RECORD_UNION
     {
         [FieldOffset(0)] public KEY_EVENT_RECORD KeyEvent;
+        [FieldOffset(0)] public MOUSE_EVENT_RECORD MouseEvent;
         [FieldOffset(0)] public WINDOW_BUFFER_SIZE_RECORD WindowBufferSizeEvent;
     }
 
@@ -100,6 +127,16 @@ internal sealed class WindowsInputSource : IInputSource
         public ushort wVirtualScanCode;
         public char UnicodeChar;
         public uint dwControlKeyState;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MOUSE_EVENT_RECORD
+    {
+        public short X; // dwMousePosition.X (column)
+        public short Y; // dwMousePosition.Y (row)
+        public uint dwButtonState;
+        public uint dwControlKeyState;
+        public uint dwEventFlags;
     }
 
     [StructLayout(LayoutKind.Sequential)]

@@ -19,6 +19,8 @@ internal static class HelpOverlay
         ("Left / h / Backspace","Go to parent directory"),
         ("Page Up / Page Down", "Scroll by page"),
         ("Home / End",          "Jump to first / last item"),
+        ("Left Click",          "Select / Open"),
+        ("Scroll",              "Navigate up/down"),
         ("?",                   "Show help"),
         ("q / Escape",          "Quit"),
     ];

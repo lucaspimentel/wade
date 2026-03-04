@@ -120,6 +120,70 @@ public class VtParserTests
         Assert.Equal(ConsoleKey.Backspace, keyEvent.Key);
     }
 
+    // ── SGR mouse sequences ──────────────────────────────────────────────────────
+
+    [Fact]
+    public void Parse_SgrMousePress_ReturnsMouseEvent()
+    {
+        // ESC [ < 0 ; 10 ; 5 M → left press at row 4, col 9 (1-based → 0-based)
+        var events = Parse("\x1b[<0;10;5M");
+        var evt = Assert.Single(events);
+        var mouse = Assert.IsType<MouseEvent>(evt);
+        Assert.Equal(MouseButton.Left, mouse.Button);
+        Assert.Equal(4, mouse.Row);
+        Assert.Equal(9, mouse.Col);
+        Assert.False(mouse.IsRelease);
+    }
+
+    [Fact]
+    public void Parse_SgrMouseRelease_ReturnsMouseEvent()
+    {
+        // ESC [ < 0 ; 10 ; 5 m → left release at row 4, col 9
+        var events = Parse("\x1b[<0;10;5m");
+        var evt = Assert.Single(events);
+        var mouse = Assert.IsType<MouseEvent>(evt);
+        Assert.Equal(MouseButton.Left, mouse.Button);
+        Assert.Equal(4, mouse.Row);
+        Assert.Equal(9, mouse.Col);
+        Assert.True(mouse.IsRelease);
+    }
+
+    [Fact]
+    public void Parse_SgrScrollUp_ReturnsMouseEvent()
+    {
+        var events = Parse("\x1b[<64;10;5M");
+        var evt = Assert.Single(events);
+        var mouse = Assert.IsType<MouseEvent>(evt);
+        Assert.Equal(MouseButton.ScrollUp, mouse.Button);
+        Assert.Equal(4, mouse.Row);
+        Assert.Equal(9, mouse.Col);
+        Assert.False(mouse.IsRelease);
+    }
+
+    [Fact]
+    public void Parse_SgrScrollDown_ReturnsMouseEvent()
+    {
+        var events = Parse("\x1b[<65;10;5M");
+        var evt = Assert.Single(events);
+        var mouse = Assert.IsType<MouseEvent>(evt);
+        Assert.Equal(MouseButton.ScrollDown, mouse.Button);
+        Assert.Equal(4, mouse.Row);
+        Assert.Equal(9, mouse.Col);
+        Assert.False(mouse.IsRelease);
+    }
+
+    [Fact]
+    public void Parse_SgrRightClick_ReturnsMouseEvent()
+    {
+        var events = Parse("\x1b[<2;10;5M");
+        var evt = Assert.Single(events);
+        var mouse = Assert.IsType<MouseEvent>(evt);
+        Assert.Equal(MouseButton.Right, mouse.Button);
+        Assert.Equal(4, mouse.Row);
+        Assert.Equal(9, mouse.Col);
+        Assert.False(mouse.IsRelease);
+    }
+
     // ── UTF-8 multibyte ─────────────────────────────────────────────────────────
 
     [Fact]
