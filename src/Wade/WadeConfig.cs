@@ -3,7 +3,7 @@ namespace Wade;
 internal sealed class WadeConfig
 {
     public bool ShowIconsEnabled { get; set; } = true;
-    public bool ImagePreviewsEnabled { get; set; } = false;
+    public bool ImagePreviewsEnabled { get; set; } = true;
     public string StartPath { get; set; } = Directory.GetCurrentDirectory();
     public bool ShowConfig { get; set; } = false;
 

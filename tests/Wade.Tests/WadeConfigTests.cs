@@ -34,7 +34,7 @@ public class WadeConfigTests
         var config = WadeConfig.Load([], configFilePath: "/nonexistent/path.toml", env: new MockEnv());
 
         Assert.True(config.ShowIconsEnabled);
-        Assert.False(config.ImagePreviewsEnabled);
+        Assert.True(config.ImagePreviewsEnabled);
         Assert.False(config.ShowConfig);
         Assert.Equal(Directory.GetCurrentDirectory(), config.StartPath);
     }
@@ -42,8 +42,8 @@ public class WadeConfigTests
     // ── Config file parsing ───────────────────────────────────────────────────
 
     [Theory]
-    [InlineData("show_icons_enabled = true", true, false)]
-    [InlineData("show_icons_enabled = false", false, false)]
+    [InlineData("show_icons_enabled = true", true, true)]
+    [InlineData("show_icons_enabled = false", false, true)]
     [InlineData("image_previews_enabled = true", true, true)]
     [InlineData("image_previews_enabled = false", true, false)]
     public void ConfigFile_ParsesBoolSettings(string line, bool expectedIcons, bool expectedPreviews)
@@ -140,7 +140,7 @@ public class WadeConfigTests
     {
         var config = WadeConfig.Load([], configFilePath: "/does/not/exist.toml", env: new MockEnv());
         Assert.True(config.ShowIconsEnabled);
-        Assert.False(config.ImagePreviewsEnabled);
+        Assert.True(config.ImagePreviewsEnabled);
     }
 
     // ── Env var overrides ─────────────────────────────────────────────────────
@@ -173,8 +173,8 @@ public class WadeConfigTests
     // ── CLI flag overrides ────────────────────────────────────────────────────
 
     [Theory]
-    [InlineData("--show-icons-enabled=true", true, false)]
-    [InlineData("--show-icons-enabled=false", false, false)]
+    [InlineData("--show-icons-enabled=true", true, true)]
+    [InlineData("--show-icons-enabled=false", false, true)]
     [InlineData("--image-previews-enabled=true", true, true)]
     [InlineData("--image-previews-enabled=false", true, false)]
     public void CliFlag_KeyEquals_ParsesBool(string cliFlag, bool expectedIcons, bool expectedPreviews)
