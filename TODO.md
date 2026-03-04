@@ -70,24 +70,9 @@ Implemented: `PreviewLoader` runs file I/O + syntax highlighting on a background
 
 Implemented: Click to navigate folders and select files in all three panes. Scroll wheel moves selection up/down. Windows uses `ENABLE_MOUSE_INPUT` console mode; Unix uses SGR mouse reporting (`ESC[?1000h` + `ESC[?1006h`). Mouse reporting is disabled on exit to restore normal terminal behavior.
 
-## Buffered rendering and dirty-region tracking
+## ~~Buffered rendering and dirty-region tracking~~ ✅
 
-Reduce flicker and unnecessary redraws by buffering output and only updating changed regions.
-
-**Buffered rendering**
-- Compose the full frame in a `StringBuilder` (or similar buffer) before writing to stdout in one shot
-- Wrap in `Console.Out.Write(buffer)` instead of many small writes scattered across pane renderers
-- Hide cursor during frame write (`ESC [ ? 25 l`) and restore after (`ESC [ ? 25 h`) to eliminate cursor flicker
-
-**Dirty-region tracking**
-- Maintain a logical cell grid (previous frame vs. current frame)
-- On each render pass, diff the two buffers and only emit escape sequences + characters for changed cells/lines
-- Skip rewriting lines that haven't changed since last frame
-- Full repaint on terminal resize; incremental updates otherwise
-
-**Constraints**
-- NativeAOT-compatible — no reflection
-- Must not break existing VT sequence output (colors, box-drawing, etc.)
+Implemented: `ScreenBuffer` double-buffers a front/back cell grid, diffs per-cell on flush, skips clean rows via a bitfield, emits only changed cells with style diffing, and writes the full frame in a single `StdOut.Write`. `ForceFullRedraw()` available via Ctrl+R.
 
 ## Sixel image preview
 
