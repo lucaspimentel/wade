@@ -85,6 +85,29 @@ Implemented: Image thumbnails render in the right preview pane using Sixel graph
 - Terminal capability detection: query DA1/DA2 or check `WT_SESSION` for auto-enable
 - Cell pixel size query via `ESC [ 16 t` (currently assumes 8×16 px/cell)
 
+## `--help` CLI switch
+
+Print usage info (available flags, keybindings, config file location) and exit.
+
+## Search / filter
+
+Interactive filtering of the current directory listing.
+
+- Keybinding to enter filter mode (e.g. `/`)
+- Text input narrows visible entries by substring or glob match
+- Escape to clear filter and return to normal navigation
+- **Depends on:** Text input widget, Modal input mode
+
+## Sort order
+
+Allow sorting the file list by different criteria.
+
+- Sort by name (default), modification time, size, extension
+- Toggle ascending / descending
+- Keybinding to cycle sort mode (e.g. `s`) or open a sort picker
+- Directories always sorted before files (existing behavior) unless overridden
+- Persist sort preference per session or via config
+
 ## File actions
 
 Common file operations on the selected item(s).
