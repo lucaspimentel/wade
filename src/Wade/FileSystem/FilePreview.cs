@@ -7,6 +7,19 @@ internal static class FilePreview
     private const int MaxPreviewLines = 100;
     private const int BinaryCheckSize = 512;
 
+    private static readonly FrozenSet<string> s_binaryExtensions =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            // Images
+            ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico", ".bmp", ".tga", ".tiff", ".pbm",
+            // Documents
+            ".pdf",
+            // Archives
+            ".zip", ".tar", ".gz", ".7z", ".rar", ".nupkg",
+            // Binaries
+            ".exe", ".dll", ".so", ".dylib", ".pdb", ".wasm",
+        }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+
     private static readonly FrozenDictionary<string, string> s_extensionLabels =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -167,6 +180,11 @@ internal static class FilePreview
     {
         try
         {
+            // Known binary extensions — skip byte scan
+            string ext = Path.GetExtension(filePath);
+            if (ext.Length > 0 && s_binaryExtensions.Contains(ext))
+                return new FileMetadata(IsBinary: true, Encoding: "", LineEnding: null);
+
             Span<byte> buffer = stackalloc byte[BinaryCheckSize];
             using var stream = File.OpenRead(filePath);
             int bytesRead = stream.Read(buffer);
