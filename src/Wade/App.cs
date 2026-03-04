@@ -37,6 +37,8 @@ internal sealed class App
         _currentPath = Path.GetFullPath(_config.StartPath);
 
         using var terminal = new TerminalSetup();
+        using var inputSource = InputPipeline.CreatePlatformSource();
+        using var pipeline = new InputPipeline(inputSource);
 
         int lastWidth = Console.WindowWidth;
         int lastHeight = Console.WindowHeight;
@@ -48,25 +50,43 @@ internal sealed class App
 
         while (!quit)
         {
-            // Check for terminal resize
-            int width = Console.WindowWidth;
-            int height = Console.WindowHeight;
-            if (width != lastWidth || height != lastHeight)
-            {
-                lastWidth = width;
-                lastHeight = height;
-                buffer.Resize(width, height);
-                _layout.Calculate(width, height);
-                Console.Write(AnsiCodes.ClearScreen);
-            }
-
             // Render
             buffer.Clear();
             Render(buffer);
             buffer.Flush(_flushBuffer);
 
-            // Input
-            var action = InputReader.Read();
+            // Wait for next input event
+            var inputEvent = pipeline.Take();
+
+            // Drain any additional queued events (e.g. rapid key repeats)
+            while (pipeline.TryTake(out var extra))
+            {
+                // Keep the last resize event, but prefer the latest key event
+                if (extra is ResizeEvent)
+                    inputEvent = extra;
+                else if (extra is KeyEvent)
+                    inputEvent = extra;
+            }
+
+            // Handle resize events
+            if (inputEvent is ResizeEvent resize)
+            {
+                if (resize.Width != lastWidth || resize.Height != lastHeight)
+                {
+                    lastWidth = resize.Width;
+                    lastHeight = resize.Height;
+                    buffer.Resize(lastWidth, lastHeight);
+                    _layout.Calculate(lastWidth, lastHeight);
+                    Console.Write(AnsiCodes.ClearScreen);
+                }
+                continue;
+            }
+
+            // Handle key events
+            if (inputEvent is not KeyEvent keyEvent)
+                continue;
+
+            var action = InputReader.MapKey(keyEvent);
 
             if (_showHelp)
             {

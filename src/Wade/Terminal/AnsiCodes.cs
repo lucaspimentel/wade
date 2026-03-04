@@ -20,6 +20,12 @@ internal static class AnsiCodes
     // Reset
     public const string ResetAttributes = Csi + "0m";
 
+    // Mouse reporting (for future use)
+    public const string EnableMouseReporting = Csi + "?1000h";
+    public const string DisableMouseReporting = Csi + "?1000l";
+    public const string EnableSgrMouseMode = Csi + "?1006h";
+    public const string DisableSgrMouseMode = Csi + "?1006l";
+
     public static string MoveCursor(int row, int col) => $"{Csi}{row + 1};{col + 1}H";
 
     public static string SetFg(byte r, byte g, byte b) => $"{Csi}38;2;{r};{g};{b}m";

@@ -17,10 +17,8 @@ internal enum AppAction
 
 internal static class InputReader
 {
-    public static AppAction Read()
+    public static AppAction MapKey(KeyEvent key)
     {
-        var key = Console.ReadKey(intercept: true);
-
         if (key.KeyChar == '?')
             return AppAction.ShowHelp;
 

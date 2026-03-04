@@ -27,12 +27,13 @@ internal sealed class TerminalSetup : IDisposable
             SetConsoleMode(_stdoutHandle, _originalOutputMode | EnableVirtualTerminalProcessing | DisableNewlineAutoReturn);
 
             // Disable line input and echo for raw mode, but do NOT enable
-            // ENABLE_VIRTUAL_TERMINAL_INPUT — that makes the console send VT
-            // escape sequences which Console.ReadKey cannot parse.
+            // ENABLE_VIRTUAL_TERMINAL_INPUT — input uses Win32 ReadConsoleInput
+            // which gives us structured key records, not VT sequences.
             uint inputMode = _originalInputMode
                              & ~EnableLineInput
                              & ~EnableEchoInput
-                             & ~EnableProcessedInput;
+                             & ~EnableProcessedInput
+                             | EnableWindowInput;
             SetConsoleMode(_stdinHandle, inputMode);
         }
 
@@ -66,6 +67,7 @@ internal sealed class TerminalSetup : IDisposable
     private const uint EnableLineInput = 0x0002;
     private const uint EnableEchoInput = 0x0004;
     private const uint EnableProcessedInput = 0x0001;
+    private const uint EnableWindowInput = 0x0008;
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern nint GetStdHandle(int nStdHandle);
