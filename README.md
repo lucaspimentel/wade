@@ -96,6 +96,7 @@ wade --config-file=/path/to/config    # use a custom config file
 | Home / End | Jump to first / last item |
 | Left Click | Select / Open |
 | Scroll | Navigate up/down |
+| Ctrl+R | Refresh |
 | ? | Show help |
 | q / Escape | Quit |
 

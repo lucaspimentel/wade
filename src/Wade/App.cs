@@ -212,6 +212,12 @@ internal sealed class App
                 case AppAction.ShowHelp:
                     _showHelp = true;
                     break;
+
+                case AppAction.Refresh:
+                    _directoryContents.InvalidateAll();
+                    ClearPreviewCache(previewLoader);
+                    buffer.ForceFullRedraw();
+                    break;
             }
 
             // Clamp selection

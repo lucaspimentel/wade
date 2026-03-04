@@ -13,6 +13,7 @@ internal enum AppAction
     Home,
     End,
     ShowHelp,
+    Refresh,
 }
 
 internal static class InputReader
@@ -21,6 +22,9 @@ internal static class InputReader
     {
         if (key.KeyChar == '?')
             return AppAction.ShowHelp;
+
+        if (key.Key == ConsoleKey.R && key.Control)
+            return AppAction.Refresh;
 
         return key.Key switch
         {
