@@ -4,17 +4,13 @@
 
 These are prerequisites or enablers for multiple features below. Build them first.
 
-### Dialog / overlay framework
+### ~~Dialog / overlay framework~~ ✅ (message variant)
 
-Generalize `HelpOverlay` into a reusable dialog primitive.
+Implemented: `DialogBox` utility renders centered box chrome (border, background, title, footer) and returns a content `Rect` for callers. `HelpOverlay` refactored to use it.
 
-- Box drawing + centering utility (extract from `HelpOverlay`)
-- Title row, scrollable body content area, footer hint row
-- Variants:
-  - **Message dialog** — static content, dismiss on any key (replaces current `HelpOverlay`)
+- Remaining variants:
   - **Confirm dialog** — yes/no prompt (needed by delete, paste overwrite)
   - **Input dialog** — single-line text field with cursor (needed by rename, go-to-path)
-- NativeAOT-compatible — no reflection
 
 ### Text input widget
 

@@ -74,13 +74,13 @@ internal sealed class ScreenBuffer
     {
         if (row < 0 || row >= _height) return;
         int clampedStart = Math.Max(col, 0);
-        int clampedEnd = Math.Min(col + maxWidth, _width);
+        int clampedEnd = (int)Math.Min((long)col + maxWidth, _width);
         if (clampedStart >= clampedEnd) return;
 
         int c = col;
         foreach (var rune in text.EnumerateRunes())
         {
-            if (c >= col + maxWidth || c >= _width) break;
+            if (c >= clampedEnd) break;
             if (c >= 0)
                 _back[row * _width + c] = new Cell(rune, style);
             c++;
@@ -92,13 +92,13 @@ internal sealed class ScreenBuffer
     {
         if (row < 0 || row >= _height) return;
         int clampedStart = Math.Max(col, 0);
-        int clampedEnd = Math.Min(col + maxWidth, _width);
+        int clampedEnd = (int)Math.Min((long)col + maxWidth, _width);
         if (clampedStart >= clampedEnd) return;
 
         int c = col;
         foreach (var rune in text.EnumerateRunes())
         {
-            if (c >= col + maxWidth || c >= _width) break;
+            if (c >= clampedEnd) break;
             if (c >= 0)
                 _back[row * _width + c] = new Cell(rune, style);
             c++;
