@@ -85,9 +85,9 @@ Implemented: Image thumbnails render in the right preview pane using Sixel graph
 - Terminal capability detection: query DA1/DA2 or check `WT_SESSION` for auto-enable
 - Cell pixel size query via `ESC [ 16 t` (currently assumes 8×16 px/cell)
 
-## `--help` CLI switch
+## ~~`--help` CLI switch~~ ✅
 
-Print usage info (available flags, keybindings, config file location) and exit.
+Implemented: `--help` / `-h` prints usage info (available flags, keybindings, config file location, environment variables) and exits.
 
 ## Search / filter
 

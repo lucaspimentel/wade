@@ -6,6 +6,7 @@ internal sealed class WadeConfig
     public bool ImagePreviewsEnabled { get; set; } = true;
     public string StartPath { get; set; } = Directory.GetCurrentDirectory();
     public bool ShowConfig { get; set; } = false;
+    public bool ShowHelp { get; set; } = false;
 
     public static WadeConfig Load(
         string[] args,
@@ -90,6 +91,9 @@ internal sealed class WadeConfig
                     break;
                 case "--show-config":
                     config.ShowConfig = true;
+                    break;
+                case "--help" or "-h":
+                    config.ShowHelp = true;
                     break;
                 default:
                     if (arg.StartsWith("--show-icons-enabled="))

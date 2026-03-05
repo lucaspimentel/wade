@@ -2,6 +2,12 @@ using Wade;
 
 var config = WadeConfig.Load(args);
 
+if (config.ShowHelp)
+{
+    PrintHelp();
+    return;
+}
+
 if (config.ShowConfig)
 {
     Console.WriteLine(config.ToJson());
@@ -9,3 +15,46 @@ if (config.ShowConfig)
 }
 
 new App(config).Run();
+
+static void PrintHelp()
+{
+    Console.WriteLine(
+        """
+        wade — TUI file browser
+
+        Usage: wade [options] [path]
+
+        Options:
+          -h, --help                      Show this help and exit
+          --show-config                   Print resolved config as JSON and exit
+          --config-file=<path>            Use a custom config file
+          --show-icons-enabled[=BOOL]     Enable file icons (default: true)
+          --no-show-icons-enabled         Disable file icons
+          --image-previews-enabled[=BOOL] Enable Sixel image previews (default: true)
+          --no-image-previews-enabled     Disable Sixel image previews
+
+        Keybindings:
+          Up / k                          Move selection up
+          Down / j                        Move selection down
+          Right / l / Enter               Open directory
+          Left / h / Backspace            Go to parent directory
+          Page Up / Page Down             Scroll by page
+          Home / End                      Jump to first / last item
+          Left Click                      Select / Open
+          Scroll                          Navigate up/down
+          Ctrl+R                          Refresh
+          ?                               Show help overlay
+          q / Escape                      Quit
+
+        Config file: ~/.config/wade/config.toml
+
+          show_icons_enabled = true
+          image_previews_enabled = true
+
+        Environment variables:
+          WADE_SHOW_ICONS_ENABLED         Override show_icons_enabled
+          WADE_IMAGE_PREVIEWS_ENABLED     Override image_previews_enabled
+
+        Priority: config file < environment variables < CLI flags
+        """);
+}

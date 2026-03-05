@@ -36,6 +36,7 @@ public class WadeConfigTests
         Assert.True(config.ShowIconsEnabled);
         Assert.True(config.ImagePreviewsEnabled);
         Assert.False(config.ShowConfig);
+        Assert.False(config.ShowHelp);
         Assert.Equal(Directory.GetCurrentDirectory(), config.StartPath);
     }
 
@@ -207,6 +208,15 @@ public class WadeConfigTests
     {
         var config = WadeConfig.Load(["--show-config"], configFilePath: "/nonexistent/path.toml", env: new MockEnv());
         Assert.True(config.ShowConfig);
+    }
+
+    [Theory]
+    [InlineData("--help")]
+    [InlineData("-h")]
+    public void CliFlag_Help_SetsShowHelp(string flag)
+    {
+        var config = WadeConfig.Load([flag], configFilePath: "/nonexistent/path.toml", env: new MockEnv());
+        Assert.True(config.ShowHelp);
     }
 
     [Fact]
