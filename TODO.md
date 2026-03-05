@@ -8,24 +8,21 @@ These are prerequisites or enablers for multiple features below. Build them firs
 
 Implemented: `DialogBox` utility renders centered box chrome (border, background, title, footer) and returns a content `Rect` for callers. `HelpOverlay` refactored to use it.
 
-- Remaining variants:
-  - **Confirm dialog** — yes/no prompt (needed by delete, paste overwrite)
-  - **Input dialog** — single-line text field with cursor (needed by rename, go-to-path)
+- Remaining variants (modal input mode now supports these; wire up to file actions when ready):
+  - **Confirm dialog** — yes/no prompt (needed by delete, paste overwrite). Rendering and input handling implemented via `ShowConfirmDialog`.
+  - **Input dialog** — single-line text field with cursor (needed by rename, go-to-path). Rendering and input handling implemented via `ShowTextInputDialog`.
 
 ### ~~Text input widget~~ ✅
 
 Implemented: `TextInput` class manages a character buffer + cursor position with insert, delete, Home/End, left/right editing operations. Renders into a `ScreenBuffer` at a given position with visible cursor (inverse style). Supports horizontal scrolling when text exceeds the visible width.
 
-- Remaining: Emit the final string on Enter, cancel on Escape (depends on modal input mode)
+- ~~Remaining: Emit the final string on Enter, cancel on Escape~~ ✅ — handled by modal input mode's `HandleTextInputKey` (Enter completes, Escape cancels)
 - **Required by:** Input dialog (rename, go-to-path)
 
-### Modal input mode
+### ~~Modal input mode~~ ✅
 
-Allow dialogs to intercept keyboard input without leaking events to the main navigation loop.
+Implemented: `InputMode` enum (`Normal`, `Confirm`, `TextInput`) in `Terminal` namespace. Main loop dispatches key events by mode before normal `AppAction` processing. Modal handlers consume all keys — nothing leaks to navigation. `ShowConfirmDialog` and `ShowTextInputDialog` helper methods enter modal modes; Escape/N dismiss, Y confirms, Enter completes text input. Modal dialogs render as overlays via `DialogBox`.
 
-- `InputMode` enum: `Normal`, `Confirm`, `TextInput` (extensible)
-- Main loop switches dispatch based on current mode
-- Each mode handles only its relevant keys; unhandled keys are ignored or close the dialog
 - **Required by:** Confirm dialog, Input dialog
 
 ### Multi-select model
@@ -122,4 +119,4 @@ Common file operations on the selected item(s).
 **Constraints**
 - NativeAOT-compatible — use `System.IO` and `Process.Start` only, no reflection
 - Confirm destructive operations (delete, overwrite on paste) via a dialog
-- Disable conflicting keybindings when a rename prompt or confirm dialog is active
+- ~~Disable conflicting keybindings when a rename prompt or confirm dialog is active~~ ✅ — modal input mode consumes all keys

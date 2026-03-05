@@ -18,6 +18,19 @@ internal sealed class App
     private int _scrollOffset;
     private bool _showHelp;
 
+    // Modal input state
+    private InputMode _inputMode = InputMode.Normal;
+
+    // Confirm dialog state
+    private string? _confirmTitle;
+    private string? _confirmMessage;
+    private Action? _confirmYesAction;
+
+    // Text input dialog state
+    private TextInput? _activeTextInput;
+    private string? _textInputTitle;
+    private Action<string>? _textInputCompleteAction;
+
     private string? _cachedPreviewPath;
     private StyledLine[]? _cachedStyledLines;
     private string? _cachedPreviewFileTypeLabel;
@@ -164,14 +177,29 @@ internal sealed class App
             if (inputEvent is not KeyEvent keyEvent)
                 continue;
 
-            var action = InputReader.MapKey(keyEvent);
-
             if (_showHelp)
             {
                 _showHelp = false;
                 continue;
             }
 
+            // Modal input dispatch — consume all keys when in a modal mode
+            switch (_inputMode)
+            {
+                case InputMode.TextInput:
+                    HandleTextInputKey(keyEvent);
+                    continue;
+
+                case InputMode.Confirm:
+                    HandleConfirmKey(keyEvent);
+                    continue;
+
+                case InputMode.Normal:
+                default:
+                    break; // fall through to normal AppAction dispatch
+            }
+
+            var action = InputReader.MapKey(keyEvent);
             var entries = _directoryContents.GetEntries(_currentPath);
 
             switch (action)
@@ -381,6 +409,17 @@ internal sealed class App
         // Help overlay
         if (_showHelp)
             HelpOverlay.Render(buffer, width, height);
+
+        // Modal overlays (render last, on top)
+        switch (_inputMode)
+        {
+            case InputMode.Confirm:
+                RenderConfirmDialog(buffer, width, height);
+                break;
+            case InputMode.TextInput:
+                RenderTextInputDialog(buffer, width, height);
+                break;
+        }
     }
 
     private void AdjustScroll(int visibleHeight)
@@ -556,5 +595,129 @@ internal sealed class App
         if (totalCount <= visibleHeight) return 0;
         int scroll = selectedIndex - visibleHeight / 2;
         return Math.Clamp(scroll, 0, totalCount - visibleHeight);
+    }
+
+    // ── Modal input handlers ────────────────────────────────────────────────
+
+    private void HandleTextInputKey(KeyEvent key)
+    {
+        switch (key.Key)
+        {
+            case ConsoleKey.Escape:
+                _inputMode = InputMode.Normal;
+                _activeTextInput = null;
+                _textInputTitle = null;
+                _textInputCompleteAction = null;
+                break;
+
+            case ConsoleKey.Enter:
+                string value = _activeTextInput!.Value;
+                Action<string>? completeAction = _textInputCompleteAction;
+                _inputMode = InputMode.Normal;
+                _activeTextInput = null;
+                _textInputTitle = null;
+                _textInputCompleteAction = null;
+                completeAction?.Invoke(value);
+                break;
+
+            case ConsoleKey.Backspace:
+                _activeTextInput!.DeleteBackward();
+                break;
+
+            case ConsoleKey.Delete:
+                _activeTextInput!.DeleteForward();
+                break;
+
+            case ConsoleKey.LeftArrow:
+                _activeTextInput!.MoveCursorLeft();
+                break;
+
+            case ConsoleKey.RightArrow:
+                _activeTextInput!.MoveCursorRight();
+                break;
+
+            case ConsoleKey.Home:
+                _activeTextInput!.MoveCursorHome();
+                break;
+
+            case ConsoleKey.End:
+                _activeTextInput!.MoveCursorEnd();
+                break;
+
+            default:
+                if (key.KeyChar >= ' ')
+                    _activeTextInput!.InsertChar(key.KeyChar);
+                break;
+        }
+    }
+
+    private void HandleConfirmKey(KeyEvent key)
+    {
+        switch (key.Key)
+        {
+            case ConsoleKey.Y:
+                Action? yesAction = _confirmYesAction;
+                _inputMode = InputMode.Normal;
+                _confirmTitle = null;
+                _confirmMessage = null;
+                _confirmYesAction = null;
+                yesAction?.Invoke();
+                break;
+
+            case ConsoleKey.N:
+            case ConsoleKey.Escape:
+                _inputMode = InputMode.Normal;
+                _confirmTitle = null;
+                _confirmMessage = null;
+                _confirmYesAction = null;
+                break;
+        }
+        // All other keys are consumed but ignored
+    }
+
+    // ── Modal entry points ──────────────────────────────────────────────────
+
+    private void ShowConfirmDialog(string title, string message, Action onYes)
+    {
+        _inputMode = InputMode.Confirm;
+        _confirmTitle = title;
+        _confirmMessage = message;
+        _confirmYesAction = onYes;
+    }
+
+    private void ShowTextInputDialog(string title, string initialValue, Action<string> onComplete)
+    {
+        _inputMode = InputMode.TextInput;
+        _textInputTitle = title;
+        _activeTextInput = new TextInput(initialValue);
+        _textInputCompleteAction = onComplete;
+    }
+
+    // ── Modal rendering ─────────────────────────────────────────────────────
+
+    private void RenderConfirmDialog(ScreenBuffer buffer, int width, int height)
+    {
+        string message = _confirmMessage ?? "";
+        string footer = "[Y] Yes  [N] No";
+        int contentWidth = Math.Max(message.Length, footer.Length) + 2;
+        int contentHeight = 1; // single line for the message
+
+        Rect content = DialogBox.Render(buffer, width, height, contentWidth, contentHeight, title: _confirmTitle, footer: footer);
+
+        var textStyle = new CellStyle(new Color(200, 200, 200), DialogBox.BgColor);
+        int msgCol = content.Left + (content.Width - message.Length) / 2;
+        buffer.WriteString(content.Top, msgCol, message, textStyle);
+    }
+
+    private void RenderTextInputDialog(ScreenBuffer buffer, int width, int height)
+    {
+        int contentWidth = Math.Min(40, width - 8);
+        int contentHeight = 1; // single row for text input
+        string footer = "[Enter] Confirm  [Esc] Cancel";
+
+        Rect content = DialogBox.Render(buffer, width, height, contentWidth, contentHeight, title: _textInputTitle, footer: footer);
+
+        var inputStyle = new CellStyle(new Color(200, 200, 200), DialogBox.BgColor);
+        _activeTextInput?.Render(buffer, content.Top, content.Left, content.Width, inputStyle);
     }
 }
