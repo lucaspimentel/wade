@@ -12,13 +12,11 @@ Implemented: `DialogBox` utility renders centered box chrome (border, background
   - **Confirm dialog** — yes/no prompt (needed by delete, paste overwrite)
   - **Input dialog** — single-line text field with cursor (needed by rename, go-to-path)
 
-### Text input widget
+### ~~Text input widget~~ ✅
 
-Single-line editable text field for use inside dialogs.
+Implemented: `TextInput` class manages a character buffer + cursor position with insert, delete, Home/End, left/right editing operations. Renders into a `ScreenBuffer` at a given position with visible cursor (inverse style). Supports horizontal scrolling when text exceeds the visible width.
 
-- Character buffer + cursor position (insert, delete, Home, End, left/right)
-- Render into a dialog row with a visible cursor
-- Emit the final string on Enter, cancel on Escape
+- Remaining: Emit the final string on Enter, cancel on Escape (depends on modal input mode)
 - **Required by:** Input dialog (rename, go-to-path)
 
 ### Modal input mode

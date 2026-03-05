@@ -202,10 +202,11 @@ internal sealed class ScreenBuffer
 
     private static void AppendStyleDiff(StringBuilder sb, CellStyle oldStyle, CellStyle newStyle, bool hadStyle)
     {
-        // If Bold or Dim was on and is now off, we must reset then reapply
+        // If Bold, Dim, or Inverse was on and is now off, we must reset then reapply
         bool needsReset = !hadStyle
             || (oldStyle.Bold && !newStyle.Bold)
             || (oldStyle.Dim && !newStyle.Dim)
+            || (oldStyle.Inverse && !newStyle.Inverse)
             || oldStyle.Bg != newStyle.Bg;
 
         if (needsReset)
@@ -219,6 +220,8 @@ internal sealed class ScreenBuffer
                 sb.Append("\x1b[1m");
             if (newStyle.Dim)
                 sb.Append("\x1b[2m");
+            if (newStyle.Inverse)
+                sb.Append("\x1b[7m");
             return;
         }
 
@@ -236,12 +239,15 @@ internal sealed class ScreenBuffer
 
         if (!oldStyle.Dim && newStyle.Dim)
             sb.Append("\x1b[2m");
+
+        if (!oldStyle.Inverse && newStyle.Inverse)
+            sb.Append("\x1b[7m");
     }
 }
 
 internal readonly record struct Color(byte R, byte G, byte B);
 
-internal readonly record struct CellStyle(Color? Fg, Color? Bg, bool Bold = false, bool Dim = false)
+internal readonly record struct CellStyle(Color? Fg, Color? Bg, bool Bold = false, bool Dim = false, bool Inverse = false)
 {
     public static readonly CellStyle Default = new(null, null);
 }
