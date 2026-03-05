@@ -1,4 +1,4 @@
-#!/usr/bin/env pwsh
+#!/usr/bin/env -S pwsh -NoProfile -File
 #Requires -Version 7.0
 
 <#
@@ -44,6 +44,9 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+$ProjectName = 'wade'
+$ProjectFile = 'src/Wade/Wade.csproj'
+
 # Check if the local clone is up-to-date with remote
 Write-Host "Checking if repository is up-to-date..." -ForegroundColor Cyan
 try {
@@ -86,24 +89,20 @@ try {
     Pop-Location
 }
 
-# Determine runtime identifier based on platform
-$rid = if ($IsWindows) {
-    'win-x64'
-} elseif ($IsMacOS) {
-    if ([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture -eq 'Arm64') {
-        'osx-arm64'
-    } else {
-        'osx-x64'
+$exeName = if ($IsWindows) { "$ProjectName.exe" } else { $ProjectName }
+$installDir = Join-Path $HOME '.local/bin'
+$installPath = Join-Path $installDir $exeName
+
+# Check for existing installation before building
+$AlreadyInstalled = Test-Path $installPath
+if ($AlreadyInstalled -and -not $Force) {
+    Write-Host "$ProjectName is already installed at: $installPath" -ForegroundColor Yellow
+    $response = Read-Host "Overwrite existing installation? (y/N)"
+    if ($response -notmatch '^[Yy]') {
+        Write-Host "Installation cancelled." -ForegroundColor Cyan
+        exit 0
     }
-} elseif ($IsLinux) {
-    'linux-x64'
-} else {
-    throw "Unsupported platform"
 }
-
-$exeName = if ($IsWindows) { 'wade.exe' } else { 'wade' }
-
-Write-Host "Building wade for $rid..." -ForegroundColor Cyan
 
 # Check for .NET SDK
 try {
@@ -116,13 +115,13 @@ try {
 }
 
 # Build and publish the project
-$projectPath = Join-Path $PSScriptRoot 'src/Wade/Wade.csproj'
+Write-Host "Building $ProjectName..." -ForegroundColor Cyan
+$projectPath = Join-Path $PSScriptRoot $ProjectFile
 $publishPath = Join-Path $PSScriptRoot 'artifacts/publish'
 
 try {
     dotnet publish $projectPath `
         -c Release `
-        -r $rid `
         --output $publishPath
 
     if ($LASTEXITCODE -ne 0) {
@@ -143,28 +142,16 @@ if (-not (Test-Path $exePath)) {
 
 Write-Host "Build successful!" -ForegroundColor Green
 
-# Install to ~/.local/bin
-$installDir = Join-Path $HOME '.local/bin'
-$installPath = Join-Path $installDir $exeName
+# Remove old installation if present
+if ($AlreadyInstalled) {
+    Write-Host "Removing existing installation..." -ForegroundColor Yellow
+    Remove-Item $installPath -Force
+}
 
 # Create installation directory if it doesn't exist
 if (-not (Test-Path $installDir)) {
     Write-Host "Creating installation directory: $installDir" -ForegroundColor Cyan
     New-Item -ItemType Directory -Path $installDir -Force | Out-Null
-}
-
-# Check for existing installation
-if (Test-Path $installPath) {
-    if (-not $Force) {
-        Write-Host "wade is already installed at: $installPath" -ForegroundColor Yellow
-        $response = Read-Host "Overwrite existing installation? (y/N)"
-        if ($response -notmatch '^[Yy]') {
-            Write-Host "Installation cancelled." -ForegroundColor Cyan
-            exit 0
-        }
-    }
-    Write-Host "Removing existing installation..." -ForegroundColor Yellow
-    Remove-Item $installPath -Force
 }
 
 # Copy executable to installation directory
@@ -177,7 +164,7 @@ if (-not $IsWindows) {
 }
 
 Write-Host "`nInstallation complete!" -ForegroundColor Green
-Write-Host "`nTo use wade, ensure ~/.local/bin is in your PATH:" -ForegroundColor Cyan
+Write-Host "`nTo use $ProjectName, ensure ~/.local/bin is in your PATH:" -ForegroundColor Cyan
 
 if ($IsWindows) {
     Write-Host @"
