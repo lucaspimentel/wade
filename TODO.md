@@ -118,3 +118,20 @@ Common file operations on the selected item(s).
 - NativeAOT-compatible — use `System.IO` and `Process.Start` only, no reflection
 - Confirm destructive operations (delete, overwrite on paste) via a dialog
 - ~~Disable conflicting keybindings when a rename prompt or confirm dialog is active~~ ✅ — modal input mode consumes all keys
+
+## Show/hide hidden files
+
+Toggle visibility of hidden files (dotfiles on Unix, Hidden attribute on Windows).
+
+- Keybinding to toggle (e.g. `.` or `Ctrl+H`)
+- Hidden by default; persist preference via config
+- Config flag: `show_hidden_files` (config file, env var `WADE_SHOW_HIDDEN_FILES`, CLI `--show-hidden-files` / `--no-show-hidden-files`)
+- Update `HelpOverlay.Bindings` (`src/Wade/UI/HelpOverlay.cs`) and README keybindings table to include the new toggle
+
+## Config audit
+
+Review existing config options and evaluate whether any should be added, removed, or changed.
+
+- Are all current options (`show_icons_enabled`, `image_previews_enabled`) still needed?
+- New options to consider: `show_hidden_files`, sort order, default sort direction
+- Ensure config file, env vars, and CLI flags stay in sync across all options
