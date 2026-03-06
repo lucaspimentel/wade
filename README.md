@@ -22,7 +22,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 
 ## Requirements
 
-- A terminal with VT/ANSI support (Windows Terminal, ConPTY-based terminals, or any Unix terminal)
+- A terminal with VT/ANSI support (Windows Terminal, ConPTY-based terminals, or Unix/WSL terminals)
 
 ## Installation
 
