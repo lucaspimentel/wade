@@ -83,6 +83,8 @@ wade --no-image-previews-enabled      # disable image previews
 wade --image-previews-enabled=false   # same as above, key=value form
 wade --show-config                    # print current config as JSON and exit
 wade --config-file=/path/to/config    # use a custom config file
+wade --help                           # print usage info and exit
+wade -h                               # same as --help
 ```
 
 ## Keybindings
