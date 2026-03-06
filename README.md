@@ -11,6 +11,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Syntax highlighting** — per-token coloring for 15 languages (C#, JS/TS, Python, Go, Rust, Java, Shell, PowerShell, CSS, JSON, TOML, YAML, XML/HTML, Markdown) using a hand-rolled tokenizer; VS Code Dark+ inspired palette
 - **File preview** — displays first 100 lines of text files; shows `[binary file]` for binary files
 - **Image preview** — renders image thumbnails in the preview pane using Sixel graphics (requires a Sixel-capable terminal such as Windows Terminal v1.22+; enabled by default; disable with `--no-image-previews-enabled`)
+- **Expanded preview** — press Right/Enter on a file to expand the preview to full terminal width; scroll with Up/Down/J/K/PageUp/PageDown/Home/End/mouse wheel; press Left/Escape to collapse back to 3-pane view
 - **Directory preview** — shows contents of the selected directory
 - **Drive navigation** — browse across drives on Windows (Backspace from a drive root)
 - **Detail columns** — file size and modification date in the center pane; columns adapt responsively as the terminal narrows (full date → date only → short date → size only → name only)
@@ -95,8 +96,8 @@ wade -h                               # same as --help
 |---|---|
 | Up / k | Move selection up |
 | Down / j | Move selection down |
-| Right / l / Enter | Open directory |
-| Left / h / Backspace | Go to parent directory |
+| Right / l / Enter | Open directory / expand preview |
+| Left / h / Backspace | Go back / collapse preview |
 | Page Up / Page Down | Scroll by page |
 | Home / End | Jump to first / last item |
 | Left Click | Select / Open |

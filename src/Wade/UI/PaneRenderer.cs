@@ -168,7 +168,7 @@ internal static class PaneRenderer
         var lineNumStyle = new CellStyle(DimColor, null);
         Span<char> lineNumBuf = stackalloc char[4];
 
-        int contentLineNumber = 0;
+        int contentLineNumber = scrollOffset;
 
         for (int row = 0; row < pane.Height; row++)
         {

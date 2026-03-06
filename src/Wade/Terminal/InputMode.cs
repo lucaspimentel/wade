@@ -6,4 +6,5 @@ internal enum InputMode
     Confirm,
     TextInput,
     Search,
+    ExpandedPreview,
 }

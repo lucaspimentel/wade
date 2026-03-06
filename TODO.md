@@ -21,7 +21,7 @@ Implemented: `TextInput` class manages a character buffer + cursor position with
 
 ### ~~Modal input mode~~ ✅
 
-Implemented: `InputMode` enum (`Normal`, `Confirm`, `TextInput`, `Search`) in `Terminal` namespace. Main loop dispatches key events by mode before normal `AppAction` processing. Modal handlers consume all keys — nothing leaks to navigation. `ShowConfirmDialog` and `ShowTextInputDialog` helper methods enter modal modes; Escape/N dismiss, Y confirms, Enter completes text input. Modal dialogs render as overlays via `DialogBox`.
+Implemented: `InputMode` enum (`Normal`, `Confirm`, `TextInput`, `Search`, `ExpandedPreview`) in `Terminal` namespace. Main loop dispatches key events by mode before normal `AppAction` processing. Modal handlers consume all keys — nothing leaks to navigation. `ShowConfirmDialog` and `ShowTextInputDialog` helper methods enter modal modes; Escape/N dismiss, Y confirms, Enter completes text input. Modal dialogs render as overlays via `DialogBox`.
 
 - **Required by:** Confirm dialog, Input dialog
 
@@ -73,7 +73,7 @@ Implemented: Image thumbnails render in the right preview pane using Sixel graph
 
 **Remaining**
 - Full-size dialog: press Enter on an image to open a centered overlay (depends on dialog/overlay framework)
-- Expand preview: when user presses right arrow on a file with a preview, expand the preview to fill the display
+- ~~Expand preview: when user presses right arrow on a file with a preview, expand the preview to fill the display~~ ✅ — Right/Enter on a file expands the preview to full terminal width; scrollable text with line numbers; images re-render at expanded/collapsed size; Left/Escape/Q collapses back to 3-pane view
 - Terminal capability detection: query DA1/DA2 or check `WT_SESSION` for auto-enable
 - Cell pixel size query via `ESC [ 16 t` (currently assumes 8×16 px/cell)
 

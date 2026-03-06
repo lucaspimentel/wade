@@ -31,6 +31,9 @@ internal sealed class App
     private string? _textInputTitle;
     private Action<string>? _textInputCompleteAction;
 
+    // Expanded preview state
+    private int _expandedPreviewScrollOffset;
+
     // Search/filter state
     private TextInput? _searchInput;
     private string _searchFilter = "";
@@ -94,7 +97,8 @@ internal sealed class App
             if (_sixelPending && _cachedSixelData is not null)
             {
                 _sixelPending = false;
-                var moveCursor = AnsiCodes.MoveCursor(_layout.RightPane.Top, _layout.RightPane.Left);
+                var sixelPane = _inputMode == InputMode.ExpandedPreview ? _layout.ExpandedPane : _layout.RightPane;
+                var moveCursor = AnsiCodes.MoveCursor(sixelPane.Top, sixelPane.Left);
                 buffer.WriteRaw(moveCursor + _cachedSixelData);
             }
 
@@ -133,7 +137,8 @@ internal sealed class App
                     lastHeight = resize.Height;
                     buffer.Resize(lastWidth, lastHeight);
                     _layout.Calculate(lastWidth, lastHeight);
-                    previewLoader.Configure(_config.ImagePreviewsEnabled, _layout.RightPane.Width, _layout.RightPane.Height);
+                    var resizePane = _inputMode == InputMode.ExpandedPreview ? _layout.ExpandedPane : _layout.RightPane;
+                    previewLoader.Configure(_config.ImagePreviewsEnabled, resizePane.Width, resizePane.Height);
                     Console.Write(AnsiCodes.ClearScreen);
 
                     // Re-render image at new size
@@ -171,6 +176,12 @@ internal sealed class App
             // Handle mouse events
             if (inputEvent is MouseEvent mouseEvent)
             {
+                if (_inputMode == InputMode.ExpandedPreview)
+                {
+                    HandleExpandedPreviewMouse(mouseEvent);
+                    continue;
+                }
+
                 var mouseEntries = GetVisibleEntries();
                 HandleMouseEvent(mouseEvent, mouseEntries, previewLoader, buffer);
 
@@ -211,6 +222,10 @@ internal sealed class App
                     HandleTextInputKey(keyEvent);
                     continue;
 
+                case InputMode.ExpandedPreview:
+                    HandleExpandedPreviewKey(keyEvent, previewLoader, buffer);
+                    continue;
+
                 case InputMode.Confirm:
                     HandleConfirmKey(keyEvent);
                     continue;
@@ -244,6 +259,10 @@ internal sealed class App
                         _scrollOffset = 0;
                         ClearSearchFilter();
                         ClearPreviewCache(previewLoader, buffer);
+                    }
+                    else if (entries.Count > 0 && !entries[_selectedIndex].IsDirectory)
+                    {
+                        EnterExpandedPreview(previewLoader, buffer);
                     }
                     break;
 
@@ -344,6 +363,12 @@ internal sealed class App
     {
         int width = buffer.Width;
         int height = buffer.Height;
+
+        if (_inputMode == InputMode.ExpandedPreview)
+        {
+            RenderExpandedPreview(buffer, width, height);
+            return;
+        }
 
         // Current directory entries (filtered if search is active)
         var entries = GetVisibleEntries();
@@ -511,6 +536,11 @@ internal sealed class App
     private void ClearPreviewCache(PreviewLoader loader, ScreenBuffer? buffer = null)
     {
         bool wasImage = _isImagePreview;
+        if (_inputMode == InputMode.ExpandedPreview)
+        {
+            _inputMode = InputMode.Normal;
+            _expandedPreviewScrollOffset = 0;
+        }
         loader.Cancel();
         _cachedPreviewPath = null;
         _cachedStyledLines = null;
@@ -645,6 +675,143 @@ internal sealed class App
         if (totalCount <= visibleHeight) return 0;
         int scroll = selectedIndex - visibleHeight / 2;
         return Math.Clamp(scroll, 0, totalCount - visibleHeight);
+    }
+
+    // ── Expanded preview ──────────────────────────────────────────────────
+
+    private void EnterExpandedPreview(PreviewLoader previewLoader, ScreenBuffer buffer)
+    {
+        _inputMode = InputMode.ExpandedPreview;
+        _expandedPreviewScrollOffset = 0;
+
+        if (_isImagePreview && _cachedImagePath is not null)
+        {
+            previewLoader.Configure(_config.ImagePreviewsEnabled, _layout.ExpandedPane.Width, _layout.ExpandedPane.Height);
+            _cachedSixelData = null;
+            _sixelPending = false;
+            _pendingPreviewPath = _cachedImagePath;
+            _previewLoading = true;
+            previewLoader.BeginLoad(_cachedImagePath);
+        }
+
+        buffer.ForceFullRedraw();
+    }
+
+    private void LeaveExpandedPreview(PreviewLoader previewLoader, ScreenBuffer buffer)
+    {
+        _inputMode = InputMode.Normal;
+        _expandedPreviewScrollOffset = 0;
+
+        previewLoader.Configure(_config.ImagePreviewsEnabled, _layout.RightPane.Width, _layout.RightPane.Height);
+
+        if (_isImagePreview && _cachedImagePath is not null)
+        {
+            _cachedSixelData = null;
+            _sixelPending = false;
+            _pendingPreviewPath = _cachedImagePath;
+            _previewLoading = true;
+            previewLoader.BeginLoad(_cachedImagePath);
+        }
+
+        Console.Write(AnsiCodes.ClearScreen);
+        buffer.ForceFullRedraw();
+    }
+
+    private void HandleExpandedPreviewKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer)
+    {
+        switch (key.Key)
+        {
+            case ConsoleKey.LeftArrow:
+            case ConsoleKey.H:
+            case ConsoleKey.Backspace:
+            case ConsoleKey.Escape:
+            case ConsoleKey.Q:
+                LeaveExpandedPreview(previewLoader, buffer);
+                break;
+
+            case ConsoleKey.UpArrow:
+            case ConsoleKey.K:
+                if (_expandedPreviewScrollOffset > 0)
+                    _expandedPreviewScrollOffset--;
+                break;
+
+            case ConsoleKey.DownArrow:
+            case ConsoleKey.J:
+                if (_cachedStyledLines is not null)
+                {
+                    int maxScroll = Math.Max(0, _cachedStyledLines.Length - _layout.ExpandedPane.Height);
+                    if (_expandedPreviewScrollOffset < maxScroll)
+                        _expandedPreviewScrollOffset++;
+                }
+                break;
+
+            case ConsoleKey.PageUp:
+                _expandedPreviewScrollOffset = Math.Max(0, _expandedPreviewScrollOffset - _layout.ExpandedPane.Height);
+                break;
+
+            case ConsoleKey.PageDown:
+                if (_cachedStyledLines is not null)
+                {
+                    int maxScroll = Math.Max(0, _cachedStyledLines.Length - _layout.ExpandedPane.Height);
+                    _expandedPreviewScrollOffset = Math.Min(maxScroll, _expandedPreviewScrollOffset + _layout.ExpandedPane.Height);
+                }
+                break;
+
+            case ConsoleKey.Home:
+                _expandedPreviewScrollOffset = 0;
+                break;
+
+            case ConsoleKey.End:
+                if (_cachedStyledLines is not null)
+                    _expandedPreviewScrollOffset = Math.Max(0, _cachedStyledLines.Length - _layout.ExpandedPane.Height);
+                break;
+        }
+    }
+
+    private void HandleExpandedPreviewMouse(MouseEvent mouse)
+    {
+        if (mouse.Button == MouseButton.ScrollUp)
+        {
+            if (_expandedPreviewScrollOffset > 0)
+                _expandedPreviewScrollOffset--;
+        }
+        else if (mouse.Button == MouseButton.ScrollDown)
+        {
+            if (_cachedStyledLines is not null)
+            {
+                int maxScroll = Math.Max(0, _cachedStyledLines.Length - _layout.ExpandedPane.Height);
+                if (_expandedPreviewScrollOffset < maxScroll)
+                    _expandedPreviewScrollOffset++;
+            }
+        }
+    }
+
+    private void RenderExpandedPreview(ScreenBuffer buffer, int width, int height)
+    {
+        var pane = _layout.ExpandedPane;
+
+        if (_previewLoading)
+        {
+            PaneRenderer.RenderMessage(buffer, pane, "[loading\u2026]");
+        }
+        else if (_isImagePreview && _cachedSixelData is not null)
+        {
+            for (int row = pane.Top; row < pane.Bottom; row++)
+                buffer.FillRow(row, pane.Left, pane.Width, ' ', CellStyle.Default);
+            _sixelPending = true;
+        }
+        else if (_cachedStyledLines is not null)
+        {
+            PaneRenderer.RenderPreview(buffer, pane, _cachedStyledLines, _expandedPreviewScrollOffset);
+        }
+
+        // Status bar
+        var entries = GetVisibleEntries();
+        FileSystemEntry? selectedEntry = entries.Count > 0 && _selectedIndex < entries.Count
+            ? entries[_selectedIndex]
+            : null;
+        string displayPath = _currentPath == DirectoryContents.DrivesPath ? "Drives" : _currentPath;
+        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding);
     }
 
     // ── Modal input handlers ────────────────────────────────────────────────

@@ -11,8 +11,8 @@ internal static class HelpOverlay
     [
         ("Up / k",              "Move selection up"),
         ("Down / j",            "Move selection down"),
-        ("Right / l / Enter",   "Open directory"),
-        ("Left / h / Backspace","Go to parent directory"),
+        ("Right / l / Enter",   "Open directory / expand preview"),
+        ("Left / h / Backspace","Go back / collapse preview"),
         ("Page Up / Page Down", "Scroll by page"),
         ("Home / End",          "Jump to first / last item"),
         ("Left Click",          "Select / Open"),

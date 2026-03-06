@@ -11,6 +11,7 @@ internal sealed class Layout
     public Rect LeftPane { get; private set; }
     public Rect CenterPane { get; private set; }
     public Rect RightPane { get; private set; }
+    public Rect ExpandedPane { get; private set; }
     public Rect StatusBar { get; private set; }
 
     public void Calculate(int terminalWidth, int terminalHeight)
@@ -28,6 +29,7 @@ internal sealed class Layout
         LeftPane = new Rect(0, 0, leftWidth, contentHeight);
         CenterPane = new Rect(leftWidth + 1, 0, centerWidth, contentHeight);
         RightPane = new Rect(leftWidth + 1 + centerWidth + 1, 0, rightWidth, contentHeight);
+        ExpandedPane = new Rect(0, 0, terminalWidth, contentHeight);
         StatusBar = new Rect(0, terminalHeight - 1, terminalWidth, 1);
     }
 }

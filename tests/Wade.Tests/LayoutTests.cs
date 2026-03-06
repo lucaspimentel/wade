@@ -40,4 +40,19 @@ public class LayoutTests
         Assert.Equal(29, layout.CenterPane.Height);
         Assert.Equal(29, layout.RightPane.Height);
     }
+
+    [Theory]
+    [InlineData(120, 40)]
+    [InlineData(80, 24)]
+    [InlineData(200, 60)]
+    public void Calculate_ExpandedPaneCoversFullWidthAndContentHeight(int width, int height)
+    {
+        var layout = new Layout();
+        layout.Calculate(width, height);
+
+        Assert.Equal(0, layout.ExpandedPane.Left);
+        Assert.Equal(0, layout.ExpandedPane.Top);
+        Assert.Equal(width, layout.ExpandedPane.Width);
+        Assert.Equal(height - 1, layout.ExpandedPane.Height);
+    }
 }
