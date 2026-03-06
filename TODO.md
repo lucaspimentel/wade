@@ -73,6 +73,7 @@ Implemented: Image thumbnails render in the right preview pane using Sixel graph
 
 **Remaining**
 - Full-size dialog: press Enter on an image to open a centered overlay (depends on dialog/overlay framework)
+- Expand preview: when user presses right arrow on a file with a preview, expand the preview to fill the display
 - Terminal capability detection: query DA1/DA2 or check `WT_SESSION` for auto-enable
 - Cell pixel size query via `ESC [ 16 t` (currently assumes 8×16 px/cell)
 
