@@ -20,6 +20,8 @@ internal sealed record PreviewReadyEvent(
 internal sealed record ImagePreviewReadyEvent(
     string Path,
     string SixelData,
+    int PixelWidth,
+    int PixelHeight,
     string FileTypeLabel) : InputEvent;
 
 internal enum MouseButton

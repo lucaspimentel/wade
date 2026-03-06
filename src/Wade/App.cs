@@ -51,6 +51,8 @@ internal sealed class App
     // Image preview state
     private string? _cachedSixelData;
     private string? _cachedImagePath;
+    private int _cachedImagePixelWidth;
+    private int _cachedImagePixelHeight;
     private bool _isImagePreview;
     private bool _sixelPending;
 
@@ -98,7 +100,15 @@ internal sealed class App
             {
                 _sixelPending = false;
                 var sixelPane = _inputMode == InputMode.ExpandedPreview ? _layout.ExpandedPane : _layout.RightPane;
-                var moveCursor = AnsiCodes.MoveCursor(sixelPane.Top, sixelPane.Left);
+                int cursorRow = sixelPane.Top;
+                int cursorCol = sixelPane.Left;
+
+                if (_inputMode == InputMode.ExpandedPreview && _cachedImagePixelWidth > 0 && _cachedImagePixelHeight > 0)
+                {
+                    (cursorRow, cursorCol) = sixelPane.CenterContent(_cachedImagePixelWidth / 8, _cachedImagePixelHeight / 16);
+                }
+
+                var moveCursor = AnsiCodes.MoveCursor(cursorRow, cursorCol);
                 buffer.WriteRaw(moveCursor + _cachedSixelData);
             }
 
@@ -525,6 +535,8 @@ internal sealed class App
         _cachedImagePath = evt.Path;
         _cachedPreviewPath = evt.Path;
         _cachedSixelData = evt.SixelData;
+        _cachedImagePixelWidth = evt.PixelWidth;
+        _cachedImagePixelHeight = evt.PixelHeight;
         _cachedPreviewFileTypeLabel = evt.FileTypeLabel;
         _cachedPreviewEncoding = null;
         _cachedPreviewLineEnding = null;
@@ -551,6 +563,8 @@ internal sealed class App
         _pendingPreviewPath = null;
         _cachedSixelData = null;
         _cachedImagePath = null;
+        _cachedImagePixelWidth = 0;
+        _cachedImagePixelHeight = 0;
         _isImagePreview = false;
         _sixelPending = false;
 

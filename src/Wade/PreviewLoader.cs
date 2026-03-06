@@ -62,7 +62,7 @@ internal sealed class PreviewLoader
                     if (ct.IsCancellationRequested)
                         return;
 
-                    _pipeline.Inject(new ImagePreviewReadyEvent(path, result.SixelData, result.Label));
+                    _pipeline.Inject(new ImagePreviewReadyEvent(path, result.SixelData, result.PixelWidth, result.PixelHeight, result.Label));
                     return;
                 }
                 // Fall through to text/binary preview on failure

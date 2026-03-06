@@ -4,6 +4,13 @@ internal readonly record struct Rect(int Left, int Top, int Width, int Height)
 {
     public int Right => Left + Width;
     public int Bottom => Top + Height;
+
+    public (int Row, int Col) CenterContent(int contentWidthCells, int contentHeightCells)
+    {
+        int col = Left + Math.Max(0, (Width - contentWidthCells) / 2);
+        int row = Top + Math.Max(0, (Height - contentHeightCells) / 2);
+        return (row, col);
+    }
 }
 
 internal sealed class Layout
