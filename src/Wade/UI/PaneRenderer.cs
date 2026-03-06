@@ -30,11 +30,16 @@ internal static class PaneRenderer
     private const int DateOnlyWidth = 10;
     private const int ShortDateWidth = 6;
 
-    // Tier thresholds (minimum pane width)
-    private const int Tier1MinWidth = 46; // Name + Size(8) + gap(2) + FullDate(19) + gap(2) = 31 detail
-    private const int Tier2MinWidth = 37; // Name + Size(8) + gap(2) + DateOnly(10) + gap(2) = 22 detail
-    private const int Tier3MinWidth = 33; // Name + Size(8) + gap(2) + ShortDate(6) + gap(2) = 18 detail
-    private const int Tier4MinWidth = 25; // Name + Size(8) + gap(2) = 10 detail
+    // Tier thresholds: nameWidth must be >= the widest detail column in that tier
+    private const int Tier1Detail = SizeWidth + GapWidth + FullDateWidth + GapWidth;   // 31
+    private const int Tier2Detail = SizeWidth + GapWidth + DateOnlyWidth + GapWidth;   // 22
+    private const int Tier3Detail = SizeWidth + GapWidth + ShortDateWidth + GapWidth;  // 18
+    private const int Tier4Detail = SizeWidth + GapWidth;                              // 10
+
+    private const int Tier1MinWidth = FullDateWidth + Tier1Detail;  // 50 — name >= FullDate(19)
+    private const int Tier2MinWidth = DateOnlyWidth + Tier2Detail;  // 32 — name >= DateOnly(10)
+    private const int Tier3MinWidth = SizeWidth + Tier3Detail;      // 26 — name >= Size(8)
+    private const int Tier4MinWidth = SizeWidth + Tier4Detail;      // 18 — name >= Size(8)
 
     public static void RenderFileList(
         ScreenBuffer buffer,
