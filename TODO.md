@@ -128,6 +128,98 @@ Toggle visibility of hidden files (dotfiles on Unix, Hidden attribute on Windows
 - Config flag: `show_hidden_files` (config file, env var `WADE_SHOW_HIDDEN_FILES`, CLI `--show-hidden-files` / `--no-show-hidden-files`)
 - Update `HelpOverlay.Bindings` (`src/Wade/UI/HelpOverlay.cs`) and README keybindings table to include the new toggle
 
+## Config dialog
+
+An in-app dialog that lets the user view and edit configuration settings, updating the config file on save.
+
+- Open via keybinding (e.g. `,` or `Ctrl+,`)
+- Display current config options with their values
+- Allow toggling boolean options, cycling enum options, editing string/numeric values
+- Write changes back to the config file on confirm
+- **Depends on:** Dialog / overlay framework, Text input widget, Modal input mode
+
+## Bookmarks / favorites
+
+Save frequently used directories for quick access.
+
+- Keybinding to open bookmarks list (e.g. `b`)
+- Add/remove current directory from bookmarks
+- Quick-jump via numbered slots (`1-9`) or selection list
+- Persist bookmarks to a file (e.g. alongside config)
+
+## Go-to-path bar
+
+Type an arbitrary path to jump to directly.
+
+- Keybinding to open (e.g. `g` or `Ctrl+G`)
+- Uses existing input dialog infrastructure (`ShowTextInputDialog`)
+- Navigate to the entered path on confirm; show error if path doesn't exist
+- **Depends on:** Text input widget, Modal input mode
+
+## File details / properties panel
+
+Show detailed file metadata as a toggle or overlay.
+
+- Size, permissions, modified/created date, owner
+- Toggle via keybinding (e.g. `i`) or as an overlay dialog
+- **Depends on:** Dialog / overlay framework
+
+## Directory size calculation
+
+Compute and display total size of a folder.
+
+- Async calculation (can be slow for large trees)
+- Show progress/spinner while calculating
+- Display result in properties panel or inline
+- **Depends on:** File details / properties panel
+
+## Column toggles
+
+Show/hide additional columns in the file list.
+
+- Available columns: size, modified date, permissions
+- Keybinding to cycle or toggle columns
+- Persist column preferences via config
+
+## Create new file / directory
+
+Create files and directories from within the file manager.
+
+- Keybinding for new directory (e.g. `F7` or `Shift+D`)
+- Keybinding for new file (e.g. `Shift+N`)
+- Uses input dialog to enter the name
+- **Depends on:** Text input widget, Modal input mode
+
+## Symlink creation
+
+Create symbolic links from within the file manager.
+
+- Keybinding (e.g. `Ctrl+L`) to create a symlink to the selected item
+- Uses input dialog for the link name/destination
+- **Depends on:** Text input widget, Modal input mode
+
+## Open terminal here / cd here
+
+Shell integration for opening a terminal or changing directory.
+
+- **Open terminal here:** spawn a new shell in the current directory (e.g. `Ctrl+T`)
+- **cd here:** exit wade and change the calling shell's working directory to the current path
+  - Requires a shell wrapper function (like broot's `br` and yazi's `yy`)
+  - Wade writes the target path to a temp file; the wrapper `cd`s to it after exit
+  - Support bash, zsh, fish, PowerShell wrappers
+  - Reference implementations: [broot shell integration](https://dystroy.org/broot/install-br/), [yazi shell wrapper](https://yazi-rs.github.io/docs/quick-start#shell-wrapper)
+
+## Right-click context menu
+
+Popup menu at click position with contextual actions.
+
+- Trigger on right-click (mouse button 2)
+- Show actions relevant to the clicked item: open, rename, delete, copy, cut, paste, properties
+- Render as a floating menu overlay at the click coordinates
+- Keyboard dismissal (Escape) and selection (Enter / click)
+- **Depends on:** Dialog / overlay framework, Mouse support, File actions
+
+
 ## Config audit
 
 Review existing config options and evaluate whether any should be added, removed, or changed.
