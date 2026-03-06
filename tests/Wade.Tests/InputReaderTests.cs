@@ -56,6 +56,13 @@ public class InputReaderTests
         Assert.Equal(AppAction.ShowHelp, InputReader.MapKey(evt));
     }
 
+    [Fact]
+    public void MapKey_Slash_ReturnsSearch()
+    {
+        var evt = new KeyEvent((ConsoleKey)0, '/', false, false, false);
+        Assert.Equal(AppAction.Search, InputReader.MapKey(evt));
+    }
+
     // ── Unrecognized keys ───────────────────────────────────────────────────────
 
     [Theory]

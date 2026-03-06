@@ -14,6 +14,7 @@ internal enum AppAction
     End,
     ShowHelp,
     Refresh,
+    Search,
 }
 
 internal static class InputReader
@@ -22,6 +23,9 @@ internal static class InputReader
     {
         if (key.KeyChar == '?')
             return AppAction.ShowHelp;
+
+        if (key.KeyChar == '/')
+            return AppAction.Search;
 
         if (key.Key == ConsoleKey.R && key.Control)
             return AppAction.Refresh;

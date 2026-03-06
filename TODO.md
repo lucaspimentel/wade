@@ -21,7 +21,7 @@ Implemented: `TextInput` class manages a character buffer + cursor position with
 
 ### ~~Modal input mode~~ ✅
 
-Implemented: `InputMode` enum (`Normal`, `Confirm`, `TextInput`) in `Terminal` namespace. Main loop dispatches key events by mode before normal `AppAction` processing. Modal handlers consume all keys — nothing leaks to navigation. `ShowConfirmDialog` and `ShowTextInputDialog` helper methods enter modal modes; Escape/N dismiss, Y confirms, Enter completes text input. Modal dialogs render as overlays via `DialogBox`.
+Implemented: `InputMode` enum (`Normal`, `Confirm`, `TextInput`, `Search`) in `Terminal` namespace. Main loop dispatches key events by mode before normal `AppAction` processing. Modal handlers consume all keys — nothing leaks to navigation. `ShowConfirmDialog` and `ShowTextInputDialog` helper methods enter modal modes; Escape/N dismiss, Y confirms, Enter completes text input. Modal dialogs render as overlays via `DialogBox`.
 
 - **Required by:** Confirm dialog, Input dialog
 
@@ -81,13 +81,10 @@ Implemented: Image thumbnails render in the right preview pane using Sixel graph
 
 Implemented: `--help` / `-h` prints usage info (available flags, keybindings, config file location, environment variables) and exits.
 
-## Search / filter
+## ~~Search / filter~~ ✅
 
-Interactive filtering of the current directory listing.
+Implemented: Press `/` to enter search mode. Typing narrows visible entries by case-insensitive substring match in real-time. Enter persists the filter (returns to normal navigation within filtered results). Escape clears the filter and restores the full list. Filter auto-clears on directory change (Open, Back, Refresh, mouse navigation). Search bar renders inline at the bottom of the center pane with a yellow `/` prefix. In normal mode with an active filter, Escape/q clears the filter instead of quitting.
 
-- Keybinding to enter filter mode (e.g. `/`)
-- Text input narrows visible entries by substring or glob match
-- Escape to clear filter and return to normal navigation
 - **Depends on:** Text input widget, Modal input mode
 
 ## Sort order

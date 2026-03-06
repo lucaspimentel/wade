@@ -14,6 +14,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Directory preview** — shows contents of the selected directory
 - **Drive navigation** — browse across drives on Windows (Backspace from a drive root)
 - **Status bar** — current path, item count, file type label (language name, "Text", or "Binary"), encoding (UTF-8, UTF-8 BOM, UTF-16 LE/BE), line endings (CRLF, LF, CR, Mixed), and file size
+- **Search / filter** — press `/` to type a query that narrows visible entries in real-time; Enter persists the filter, Escape clears it; filter auto-clears on directory change
 - **Mouse support** — click to select entries in any pane, scroll wheel to navigate; left/right pane clicks navigate directories
 - **Minimal rendering** — raw VT/ANSI escape sequences, double-buffered with dirty-row tracking, cell diff, and style diffing
 
@@ -99,6 +100,8 @@ wade -h                               # same as --help
 | Home / End | Jump to first / last item |
 | Left Click | Select / Open |
 | Scroll | Navigate up/down |
+| / | Search / filter |
+| Esc (in search) | Clear filter |
 | Ctrl+R | Refresh |
 | ? | Show help |
 | q / Escape | Quit |

@@ -31,6 +31,11 @@ internal sealed class App
     private string? _textInputTitle;
     private Action<string>? _textInputCompleteAction;
 
+    // Search/filter state
+    private TextInput? _searchInput;
+    private string _searchFilter = "";
+    private List<FileSystemEntry>? _filteredEntries;
+
     private string? _cachedPreviewPath;
     private StyledLine[]? _cachedStyledLines;
     private string? _cachedPreviewFileTypeLabel;
@@ -160,16 +165,16 @@ internal sealed class App
             // Handle mouse events
             if (inputEvent is MouseEvent mouseEvent)
             {
-                var mouseEntries = _directoryContents.GetEntries(_currentPath);
+                var mouseEntries = GetVisibleEntries();
                 HandleMouseEvent(mouseEvent, mouseEntries, previewLoader, buffer);
 
                 // Clamp and adjust scroll after mouse handling
-                var currentAfterMouse = _directoryContents.GetEntries(_currentPath);
+                var currentAfterMouse = GetVisibleEntries();
                 if (currentAfterMouse.Count > 0)
                     _selectedIndex = Math.Clamp(_selectedIndex, 0, currentAfterMouse.Count - 1);
                 else
                     _selectedIndex = 0;
-                AdjustScroll(_layout.CenterPane.Height);
+                AdjustScroll(VisibleFileListHeight);
                 continue;
             }
 
@@ -186,6 +191,16 @@ internal sealed class App
             // Modal input dispatch — consume all keys when in a modal mode
             switch (_inputMode)
             {
+                case InputMode.Search:
+                    HandleSearchKey(keyEvent);
+                    var searchEntries = GetVisibleEntries();
+                    if (searchEntries.Count > 0)
+                        _selectedIndex = Math.Clamp(_selectedIndex, 0, searchEntries.Count - 1);
+                    else
+                        _selectedIndex = 0;
+                    AdjustScroll(VisibleFileListHeight);
+                    continue;
+
                 case InputMode.TextInput:
                     HandleTextInputKey(keyEvent);
                     continue;
@@ -200,7 +215,7 @@ internal sealed class App
             }
 
             var action = InputReader.MapKey(keyEvent);
-            var entries = _directoryContents.GetEntries(_currentPath);
+            var entries = GetVisibleEntries();
 
             switch (action)
             {
@@ -221,6 +236,7 @@ internal sealed class App
                         _currentPath = entries[_selectedIndex].FullPath;
                         _selectedIndex = _selectedIndexPerDir.GetValueOrDefault(_currentPath, 0);
                         _scrollOffset = 0;
+                        ClearSearchFilter();
                         ClearPreviewCache(previewLoader, buffer);
                     }
                     break;
@@ -230,6 +246,7 @@ internal sealed class App
                     if (_currentPath == DirectoryContents.DrivesPath)
                         break; // Already at the top level
 
+                    ClearSearchFilter();
                     _selectedIndexPerDir[_currentPath] = _selectedIndex;
                     string oldPath = _currentPath;
 
@@ -276,7 +293,21 @@ internal sealed class App
                     break;
 
                 case AppAction.Quit:
-                    quit = true;
+                    if (!string.IsNullOrEmpty(_searchFilter))
+                    {
+                        ClearSearchFilter();
+                        _selectedIndex = 0;
+                        _scrollOffset = 0;
+                    }
+                    else
+                    {
+                        quit = true;
+                    }
+                    break;
+
+                case AppAction.Search:
+                    _inputMode = InputMode.Search;
+                    _searchInput = new TextInput(_searchFilter);
                     break;
 
                 case AppAction.ShowHelp:
@@ -284,6 +315,7 @@ internal sealed class App
                     break;
 
                 case AppAction.Refresh:
+                    ClearSearchFilter();
                     _directoryContents.InvalidateAll();
                     ClearPreviewCache(previewLoader, buffer);
                     buffer.ForceFullRedraw();
@@ -291,14 +323,14 @@ internal sealed class App
             }
 
             // Clamp selection
-            var currentEntries = _directoryContents.GetEntries(_currentPath);
+            var currentEntries = GetVisibleEntries();
             if (currentEntries.Count > 0)
                 _selectedIndex = Math.Clamp(_selectedIndex, 0, currentEntries.Count - 1);
             else
                 _selectedIndex = 0;
 
             // Adjust scroll offset to keep selection visible
-            AdjustScroll(_layout.CenterPane.Height);
+            AdjustScroll(VisibleFileListHeight);
         }
     }
 
@@ -307,11 +339,19 @@ internal sealed class App
         int width = buffer.Width;
         int height = buffer.Height;
 
-        // Current directory entries
-        var entries = _directoryContents.GetEntries(_currentPath);
+        // Current directory entries (filtered if search is active)
+        var entries = GetVisibleEntries();
+        bool showSearchBar = _inputMode == InputMode.Search || !string.IsNullOrEmpty(_searchFilter);
+        var fileListPane = showSearchBar
+            ? _layout.CenterPane with { Height = _layout.CenterPane.Height - 1 }
+            : _layout.CenterPane;
 
         // Center pane: current directory
-        PaneRenderer.RenderFileList(buffer, _layout.CenterPane, entries, _selectedIndex, _scrollOffset, isActive: true, showIcons: _config.ShowIconsEnabled);
+        PaneRenderer.RenderFileList(buffer, fileListPane, entries, _selectedIndex, _scrollOffset, isActive: true, showIcons: _config.ShowIconsEnabled);
+
+        // Search bar at bottom of center pane
+        if (showSearchBar)
+            RenderSearchBar(buffer);
 
         // Left pane: parent directory (or drives list)
         if (_currentPath == DirectoryContents.DrivesPath)
@@ -527,6 +567,7 @@ internal sealed class App
                     _currentPath = clicked.FullPath;
                     _selectedIndex = _selectedIndexPerDir.GetValueOrDefault(_currentPath, 0);
                     _scrollOffset = 0;
+                    ClearSearchFilter();
                     ClearPreviewCache(previewLoader, buffer);
                 }
                 else
@@ -541,6 +582,7 @@ internal sealed class App
                         int idx = parentEntries.FindIndex(e => e.Name.Equals(clicked.Name, StringComparison.OrdinalIgnoreCase));
                         _selectedIndex = idx >= 0 ? idx : 0;
                         _scrollOffset = 0;
+                        ClearSearchFilter();
                         ClearPreviewCache(previewLoader, buffer);
                     }
                 }
@@ -565,6 +607,7 @@ internal sealed class App
                             _currentPath = clicked.FullPath;
                             _selectedIndex = _selectedIndexPerDir.GetValueOrDefault(_currentPath, 0);
                             _scrollOffset = 0;
+                            ClearSearchFilter();
                             ClearPreviewCache(previewLoader, buffer);
                         }
                         else
@@ -576,6 +619,7 @@ internal sealed class App
                             int idx = dirEntries.FindIndex(e => e.Name.Equals(clicked.Name, StringComparison.OrdinalIgnoreCase));
                             _selectedIndex = idx >= 0 ? idx : 0;
                             _scrollOffset = 0;
+                            ClearSearchFilter();
                             ClearPreviewCache(previewLoader, buffer);
                         }
                     }
@@ -693,6 +737,116 @@ internal sealed class App
         _textInputCompleteAction = onComplete;
     }
 
+    // ── Search/filter helpers ────────────────────────────────────────────────
+
+    private List<FileSystemEntry> GetVisibleEntries()
+    {
+        var all = _directoryContents.GetEntries(_currentPath);
+        if (string.IsNullOrEmpty(_searchFilter))
+        {
+            _filteredEntries = null;
+            return all;
+        }
+
+        _filteredEntries ??= all
+            .Where(e => e.Name.Contains(_searchFilter, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        return _filteredEntries;
+    }
+
+    private void ClearSearchFilter()
+    {
+        _searchFilter = "";
+        _filteredEntries = null;
+        _searchInput = null;
+        if (_inputMode == InputMode.Search)
+            _inputMode = InputMode.Normal;
+    }
+
+    private void InvalidateFilteredEntries()
+    {
+        _filteredEntries = null;
+    }
+
+    private int VisibleFileListHeight =>
+        (_inputMode == InputMode.Search || !string.IsNullOrEmpty(_searchFilter))
+            ? _layout.CenterPane.Height - 1
+            : _layout.CenterPane.Height;
+
+    private void HandleSearchKey(KeyEvent key)
+    {
+        switch (key.Key)
+        {
+            case ConsoleKey.Escape:
+                ClearSearchFilter();
+                _selectedIndex = 0;
+                _scrollOffset = 0;
+                break;
+
+            case ConsoleKey.Enter:
+                _inputMode = InputMode.Normal;
+                _searchInput = null;
+                break;
+
+            case ConsoleKey.UpArrow:
+                if (_selectedIndex > 0)
+                    _selectedIndex--;
+                break;
+
+            case ConsoleKey.DownArrow:
+            {
+                var entries = GetVisibleEntries();
+                if (_selectedIndex < entries.Count - 1)
+                    _selectedIndex++;
+                break;
+            }
+
+            case ConsoleKey.LeftArrow:
+                _searchInput!.MoveCursorLeft();
+                break;
+
+            case ConsoleKey.RightArrow:
+                _searchInput!.MoveCursorRight();
+                break;
+
+            case ConsoleKey.Home:
+                _searchInput!.MoveCursorHome();
+                break;
+
+            case ConsoleKey.End:
+                _searchInput!.MoveCursorEnd();
+                break;
+
+            case ConsoleKey.Backspace:
+                _searchInput!.DeleteBackward();
+                _searchFilter = _searchInput.Value;
+                InvalidateFilteredEntries();
+                _selectedIndex = 0;
+                _scrollOffset = 0;
+                break;
+
+            case ConsoleKey.Delete:
+                _searchInput!.DeleteForward();
+                _searchFilter = _searchInput.Value;
+                InvalidateFilteredEntries();
+                _selectedIndex = 0;
+                _scrollOffset = 0;
+                break;
+
+            default:
+                if (key.KeyChar >= ' ')
+                {
+                    _searchInput!.InsertChar(key.KeyChar);
+                    _searchFilter = _searchInput.Value;
+                    InvalidateFilteredEntries();
+                    _selectedIndex = 0;
+                    _scrollOffset = 0;
+                }
+                break;
+        }
+    }
+
     // ── Modal rendering ─────────────────────────────────────────────────────
 
     private void RenderConfirmDialog(ScreenBuffer buffer, int width, int height)
@@ -719,5 +873,29 @@ internal sealed class App
 
         var inputStyle = new CellStyle(new Color(200, 200, 200), DialogBox.BgColor);
         _activeTextInput?.Render(buffer, content.Top, content.Left, content.Width, inputStyle);
+    }
+
+    private void RenderSearchBar(ScreenBuffer buffer)
+    {
+        int row = _layout.CenterPane.Bottom - 1;
+        int col = _layout.CenterPane.Left;
+        int width = _layout.CenterPane.Width;
+
+        var labelStyle = new CellStyle(new Color(220, 220, 100), null);
+        buffer.Put(row, col, '/', labelStyle);
+
+        int inputCol = col + 1;
+        int inputWidth = width - 1;
+
+        if (_inputMode == InputMode.Search && _searchInput is not null)
+        {
+            var inputStyle = new CellStyle(new Color(200, 200, 200), null);
+            _searchInput.Render(buffer, row, inputCol, inputWidth, inputStyle);
+        }
+        else
+        {
+            var textStyle = new CellStyle(new Color(200, 200, 200), null);
+            buffer.WriteString(row, inputCol, _searchFilter, textStyle, inputWidth);
+        }
     }
 }
