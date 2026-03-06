@@ -121,7 +121,9 @@ internal sealed class WadeConfig
             config.StartPath = Path.Join(home, config.StartPath.AsSpan(1));
         }
 
-        config.StartPath = config.StartPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        // Use explicit chars (not Path.DirectorySeparatorChar/AltDirectorySeparatorChar) so that
+        // Windows-style backslashes are also stripped when running on Linux/macOS.
+        config.StartPath = config.StartPath.TrimEnd('/', '\\');
 
         return config;
     }
