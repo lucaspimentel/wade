@@ -113,7 +113,10 @@ internal sealed class App
                 }
                 else if (extra is ImagePreviewReadyEvent imagePreviewReady)
                 {
+                    bool wasImage = _isImagePreview;
                     HandleImagePreviewReady(imagePreviewReady);
+                    if (wasImage)
+                        buffer.ForceFullRedraw();
                 }
                 else if (extra is ResizeEvent)
                     inputEvent = extra;
@@ -158,7 +161,10 @@ internal sealed class App
 
             if (inputEvent is ImagePreviewReadyEvent imagePreviewEvt)
             {
+                bool wasImage = _isImagePreview;
                 HandleImagePreviewReady(imagePreviewEvt);
+                if (wasImage)
+                    buffer.ForceFullRedraw();
                 continue;
             }
 
