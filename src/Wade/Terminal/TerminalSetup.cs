@@ -8,6 +8,8 @@ internal sealed class TerminalSetup : IDisposable
     private readonly nint _stdinHandle;
     private readonly uint _originalOutputMode;
     private readonly uint _originalInputMode;
+    private readonly int _ttyFd = -1;
+    private readonly byte[]? _savedTermios;
     private bool _disposed;
 
     public TerminalSetup()
@@ -40,6 +42,25 @@ internal sealed class TerminalSetup : IDisposable
             SetConsoleMode(_stdinHandle, inputMode);
         }
 
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            _ttyFd = LibC.open("/dev/tty", LibC.O_RDWR);
+            if (_ttyFd >= 0)
+            {
+                _savedTermios = new byte[LibC.TermiosSize];
+                if (LibC.tcgetattr(_ttyFd, _savedTermios) == 0)
+                {
+                    byte[] raw = (byte[])_savedTermios.Clone();
+                    LibC.cfmakeraw(raw);
+                    LibC.tcsetattr(_ttyFd, LibC.TCSAFLUSH, raw);
+                }
+                else
+                {
+                    _savedTermios = null;
+                }
+            }
+        }
+
         Console.Write(AnsiCodes.EnterAlternateScreen);
         Console.Write(AnsiCodes.HideCursor);
         Console.Write(AnsiCodes.ClearScreen);
@@ -60,6 +81,9 @@ internal sealed class TerminalSetup : IDisposable
         {
             Console.Write(AnsiCodes.DisableSgrMouseMode);
             Console.Write(AnsiCodes.DisableMouseReporting);
+
+            if (_savedTermios != null && _ttyFd >= 0)
+                LibC.tcsetattr(_ttyFd, LibC.TCSAFLUSH, _savedTermios);
         }
 
         Console.Write(AnsiCodes.ResetAttributes);
@@ -71,6 +95,9 @@ internal sealed class TerminalSetup : IDisposable
             SetConsoleMode(_stdoutHandle, _originalOutputMode);
             SetConsoleMode(_stdinHandle, _originalInputMode);
         }
+
+        if (_ttyFd >= 0)
+            LibC.close(_ttyFd);
     }
 
     // Windows console API constants

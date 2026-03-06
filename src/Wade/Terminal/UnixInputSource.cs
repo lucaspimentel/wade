@@ -7,14 +7,17 @@ namespace Wade.Terminal;
 [UnsupportedOSPlatform("windows")]
 internal sealed class UnixInputSource : IInputSource
 {
-    private readonly Stream _stdin;
+    private readonly int _fd;
     private readonly byte[] _buf = new byte[64];
     private readonly Queue<InputEvent> _pending = new();
     private PosixSignalRegistration? _sigwinchReg;
 
     public UnixInputSource()
     {
-        _stdin = Console.OpenStandardInput();
+        _fd = LibC.open("/dev/tty", LibC.O_RDONLY);
+        if (_fd < 0)
+            throw new InvalidOperationException("Failed to open /dev/tty for reading");
+
         _sigwinchReg = PosixSignalRegistration.Create(PosixSignal.SIGWINCH, ctx =>
         {
             ctx.Cancel = true;
@@ -29,44 +32,27 @@ internal sealed class UnixInputSource : IInputSource
             if (_pending.TryDequeue(out var queued))
                 return queued;
 
-            int bytesRead;
-            try
-            {
-                // ReadByte blocks; we read one byte at a time for the leader,
-                // then drain available bytes for sequences.
-                bytesRead = _stdin.Read(_buf, 0, 1);
-            }
-            catch (OperationCanceledException)
-            {
-                return null;
-            }
+            // Blocks until at least 1 byte available (VMIN=1, VTIME=0),
+            // then returns all available bytes up to buffer size.
+            int bytesRead = (int)LibC.read(_fd, _buf, _buf.Length);
 
-            if (bytesRead == 0)
+            if (bytesRead <= 0)
             {
-                // EOF on stdin
                 Thread.Sleep(10);
                 continue;
             }
 
-            byte b = _buf[0];
-
-            if (b == 0x1B) // ESC
+            // If we got a lone ESC, poll briefly to see if more bytes are coming
+            // (distinguishes standalone Escape from start of an escape sequence).
+            if (bytesRead == 1 && _buf[0] == 0x1B)
             {
-                // Wait briefly for more bytes (sequence vs standalone Escape)
-                Thread.Sleep(50);
-                int available = DrainAvailable(_buf, 1);
-                int total = 1 + available;
+                int extra = PollAndRead(_buf, 1, 50);
+                bytesRead += extra;
+            }
 
-                var events = VtParser.Parse(_buf.AsSpan(0, total));
-                foreach (var evt in events)
-                    _pending.Enqueue(evt);
-            }
-            else
-            {
-                var events = VtParser.Parse(_buf.AsSpan(0, 1));
-                foreach (var evt in events)
-                    _pending.Enqueue(evt);
-            }
+            var events = VtParser.Parse(_buf.AsSpan(0, bytesRead));
+            foreach (var evt in events)
+                _pending.Enqueue(evt);
         }
 
         return null;
@@ -76,23 +62,25 @@ internal sealed class UnixInputSource : IInputSource
     {
         _sigwinchReg?.Dispose();
         _sigwinchReg = null;
+
+        if (_fd >= 0)
+            LibC.close(_fd);
     }
 
-    private int DrainAvailable(byte[] buf, int offset)
+    /// <summary>
+    /// Poll for available data and read it into the buffer.
+    /// Returns the number of additional bytes read.
+    /// </summary>
+    private int PollAndRead(byte[] buf, int offset, int timeoutMs)
     {
-        int total = 0;
-        // Non-blocking read: stdin.Read may block, so we use a polling approach
-        while (offset + total < buf.Length)
-        {
-            // Use a short timeout to check if data is available
-            var readTask = _stdin.ReadAsync(buf, offset + total, 1);
-            if (!readTask.Wait(10))
-                break;
-            if (readTask.Result == 0)
-                break;
-            total++;
-        }
-        return total;
+        var pfd = new LibC.PollFd { fd = _fd, events = LibC.POLLIN };
+        int ret = LibC.poll(ref pfd, 1, timeoutMs);
+
+        if (ret <= 0 || (pfd.revents & LibC.POLLIN) == 0)
+            return 0;
+
+        nint n = LibC.read(_fd, buf, offset, buf.Length - offset);
+        return n > 0 ? (int)n : 0;
     }
 }
 
@@ -123,6 +111,10 @@ internal static class VtParser
                     {
                         var key = data[i] switch
                         {
+                            (byte)'A' => ConsoleKey.UpArrow,
+                            (byte)'B' => ConsoleKey.DownArrow,
+                            (byte)'C' => ConsoleKey.RightArrow,
+                            (byte)'D' => ConsoleKey.LeftArrow,
                             (byte)'P' => ConsoleKey.F1,
                             (byte)'Q' => ConsoleKey.F2,
                             (byte)'R' => ConsoleKey.F3,
