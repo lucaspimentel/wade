@@ -15,10 +15,26 @@ internal static class PaneRenderer
     private static readonly Color DimColor = new(100, 100, 100);
     private static readonly Color BorderColor = new(60, 60, 60);
 
+    private static readonly Color DetailColor = new(110, 110, 110);
+
     private static readonly CellStyle ActiveSelectionStyle = new(SelectionFg, SelectionBg, Bold: true);
     private static readonly CellStyle InactiveSelectionStyle = new(SelectionFg, new Color(60, 60, 80), Bold: true);
     private static readonly CellStyle DirStyle = new(DirColor, null, Bold: true);
     private static readonly CellStyle FileStyle = new(FileColor, null);
+    private static readonly CellStyle DetailStyle = new(DetailColor, null);
+
+    // Column widths
+    private const int SizeWidth = 8;
+    private const int GapWidth = 2;
+    private const int FullDateWidth = 19;
+    private const int DateOnlyWidth = 10;
+    private const int ShortDateWidth = 6;
+
+    // Tier thresholds (minimum pane width)
+    private const int Tier1MinWidth = 46; // Name + Size(8) + gap(2) + FullDate(19) + gap(2) = 31 detail
+    private const int Tier2MinWidth = 37; // Name + Size(8) + gap(2) + DateOnly(10) + gap(2) = 22 detail
+    private const int Tier3MinWidth = 33; // Name + Size(8) + gap(2) + ShortDate(6) + gap(2) = 18 detail
+    private const int Tier4MinWidth = 25; // Name + Size(8) + gap(2) = 10 detail
 
     public static void RenderFileList(
         ScreenBuffer buffer,
@@ -27,8 +43,42 @@ internal static class PaneRenderer
         int selectedIndex,
         int scrollOffset,
         bool isActive,
-        bool showIcons = false)
+        bool showIcons = false,
+        bool showDetails = false)
     {
+        // Determine detail tier based on pane width
+        int dateWidth = 0;
+        int detailWidth = 0;
+
+        if (showDetails)
+        {
+            if (pane.Width >= Tier1MinWidth)
+            {
+                dateWidth = FullDateWidth;
+                detailWidth = SizeWidth + GapWidth + FullDateWidth + GapWidth;
+            }
+            else if (pane.Width >= Tier2MinWidth)
+            {
+                dateWidth = DateOnlyWidth;
+                detailWidth = SizeWidth + GapWidth + DateOnlyWidth + GapWidth;
+            }
+            else if (pane.Width >= Tier3MinWidth)
+            {
+                dateWidth = ShortDateWidth;
+                detailWidth = SizeWidth + GapWidth + ShortDateWidth + GapWidth;
+            }
+            else if (pane.Width >= Tier4MinWidth)
+            {
+                detailWidth = SizeWidth + GapWidth;
+            }
+        }
+
+        int nameWidth = pane.Width - detailWidth;
+
+        Span<char> sizeBuf = stackalloc char[SizeWidth];
+        Span<char> tempBuf = stackalloc char[SizeWidth];
+        Span<char> dateBuf = stackalloc char[FullDateWidth];
+
         for (int row = 0; row < pane.Height; row++)
         {
             int entryIndex = scrollOffset + row;
@@ -52,22 +102,53 @@ internal static class PaneRenderer
             else
                 style = FileStyle;
 
+            CellStyle detailStyle = isSelected ? style : DetailStyle;
+
             // If selected, fill the row background
             if (isSelected)
                 buffer.FillRow(pane.Top + row, pane.Left, pane.Width, ' ', style);
 
+            int screenRow = pane.Top + row;
             int entryCol = pane.Left;
+
+            // Render name
             if (showIcons)
             {
-                buffer.Put(pane.Top + row, entryCol, FileIcons.GetIcon(entry), style);
-                buffer.Put(pane.Top + row, entryCol + 1, ' ', style);
-                buffer.WriteString(pane.Top + row, entryCol + 2, entry.Name, style, pane.Width - 2);
+                buffer.Put(screenRow, entryCol, FileIcons.GetIcon(entry), style);
+                buffer.Put(screenRow, entryCol + 1, ' ', style);
+                buffer.WriteString(screenRow, entryCol + 2, entry.Name, style, nameWidth - 2);
             }
             else
             {
                 char prefix = entry.IsDirectory && !entry.IsDrive ? DirSeparatorChar : ' ';
-                buffer.Put(pane.Top + row, entryCol, prefix, style);
-                buffer.WriteString(pane.Top + row, entryCol + 1, entry.Name, style, pane.Width - 1);
+                buffer.Put(screenRow, entryCol, prefix, style);
+                buffer.WriteString(screenRow, entryCol + 1, entry.Name, style, nameWidth - 1);
+            }
+
+            // Render detail columns (right-aligned from pane edge)
+            if (detailWidth > 0)
+            {
+                int detailCol = pane.Left + pane.Width;
+
+                // Date column (rightmost)
+                if (dateWidth > 0)
+                {
+                    detailCol -= GapWidth + dateWidth;
+                    int dateLen = FormatHelpers.FormatDate(dateBuf, entry.LastModified, dateWidth);
+                    buffer.WriteString(screenRow, detailCol + GapWidth, dateBuf[..dateLen], detailStyle, dateWidth);
+                }
+
+                // Size column
+                detailCol -= GapWidth + SizeWidth;
+                if (!entry.IsDirectory)
+                {
+                    sizeBuf.Fill(' ');
+                    int sizeLen = FormatHelpers.FormatSize(tempBuf, entry.Size);
+                    // Right-align size in the field
+                    if (sizeLen <= SizeWidth)
+                        tempBuf[..sizeLen].CopyTo(sizeBuf[(SizeWidth - sizeLen)..]);
+                    buffer.WriteString(screenRow, detailCol + GapWidth, sizeBuf, detailStyle, SizeWidth);
+                }
             }
         }
     }

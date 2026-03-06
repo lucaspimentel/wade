@@ -353,7 +353,7 @@ internal sealed class App
             : _layout.CenterPane;
 
         // Center pane: current directory
-        PaneRenderer.RenderFileList(buffer, fileListPane, entries, _selectedIndex, _scrollOffset, isActive: true, showIcons: _config.ShowIconsEnabled);
+        PaneRenderer.RenderFileList(buffer, fileListPane, entries, _selectedIndex, _scrollOffset, isActive: true, showIcons: _config.ShowIconsEnabled, showDetails: true);
 
         // Search bar at bottom of center pane
         if (showSearchBar)
