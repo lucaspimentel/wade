@@ -1,5 +1,47 @@
 # TODO
 
+## Bugs
+
+### Help dialog doesn't block mouse input
+
+Mouse clicks on filesystem entries still register while the help dialog is open.
+The rename (`TextInput`), go-to-path (`GoToPath`), and confirm (`Confirm`) dialogs
+correctly block mouse events via the `InputMode` guard in `App.cs:224`, but the help
+dialog uses a separate `_showHelp` boolean (`App.cs:20`) that isn't checked there.
+
+**Key locations:**
+- `src/Wade/App.cs:224` — mouse-blocking guard (missing `_showHelp` check)
+- `src/Wade/App.cs:390-391` — help toggle sets `_showHelp = true`
+- `src/Wade/Terminal/InputMode.cs` — enum (help not included)
+
+### Image preview renders on top of help dialog
+
+When the help dialog is opened while a Sixel image preview is visible, the image
+appears on top of the dialog. Sixel data is written directly to stdout *after* the
+ScreenBuffer flush (`App.cs:127-140`), so it always overlays buffer-rendered content
+like the help dialog. Fix likely needs to suppress the Sixel write when `_showHelp`
+is true (or when any overlay is active).
+
+**Key locations:**
+- `src/Wade/App.cs:127-140` — Sixel data written after buffer flush
+- `src/Wade/App.cs:785-786` — help overlay rendered to ScreenBuffer
+- `src/Wade/Imaging/ImagePreview.cs` — image preview logic
+
+### Status bar notifications hide file metadata unnecessarily
+
+Notifications replace file metadata on the right side of the status bar via a
+mutually exclusive if-else branch (`StatusBar.cs:78-110`), even when there's enough
+width to show both. The notification and metadata could coexist — e.g., show the
+notification after the path on the left and keep metadata right-aligned, truncating
+only when space is actually tight.
+
+**Key locations:**
+- `src/Wade/UI/StatusBar.cs:78-110` — if-else that enforces mutual exclusivity
+- `src/Wade/UI/StatusBar.cs:113-173` — `BuildRightText()` metadata builder
+- `tests/Wade.Tests/StatusBarTests.cs:36-46` — test that enforces current behavior
+
+---
+
 ## Shared UI foundations
 
 These are prerequisites or enablers for multiple features below. Build them first.
