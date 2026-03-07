@@ -215,6 +215,12 @@ internal sealed class App
                     continue;
                 }
 
+                // Discard mouse events while a modal dialog is open
+                if (_inputMode is InputMode.GoToPath or InputMode.TextInput or InputMode.Confirm)
+                {
+                    continue;
+                }
+
                 var mouseEntries = GetVisibleEntries();
                 HandleMouseEvent(mouseEvent, mouseEntries, previewLoader, buffer);
 

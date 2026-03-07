@@ -184,6 +184,36 @@ public class ModalInputTests
         Assert.Equal(InputMode.Normal, harness.Mode);
     }
 
+    // ── Mouse blocking in modal modes ─────────────────────────────────
+
+    [Theory]
+    [InlineData(nameof(InputMode.Normal), true)]
+    [InlineData(nameof(InputMode.Search), true)]
+    [InlineData(nameof(InputMode.ExpandedPreview), true)]
+    [InlineData(nameof(InputMode.GoToPath), false)]
+    [InlineData(nameof(InputMode.TextInput), false)]
+    [InlineData(nameof(InputMode.Confirm), false)]
+    public void ShouldHandleMouse_ReturnsExpectedResult(string modeName, bool expected)
+    {
+        var mode = Enum.Parse<InputMode>(modeName);
+        var harness = new ModalHarness();
+
+        switch (mode)
+        {
+            case InputMode.Confirm:
+                harness.ShowConfirm("Test", "Test?", () => { });
+                break;
+            case InputMode.TextInput:
+                harness.ShowTextInput("Test", "", _ => { });
+                break;
+            default:
+                harness.SetMode(mode);
+                break;
+        }
+
+        Assert.Equal(expected, harness.ShouldHandleMouse());
+    }
+
     // ── Rendering ───────────────────────────────────────────────────────────
 
     [Fact]
@@ -258,6 +288,8 @@ public class ModalInputTests
         public string? TextInputValue => _activeTextInput?.Value;
         public int TextInputCursorPosition => _activeTextInput?.CursorPosition ?? -1;
 
+        public void SetMode(InputMode mode) => _inputMode = mode;
+
         public void ShowConfirm(string title, string message, Action onYes)
         {
             _inputMode = InputMode.Confirm;
@@ -273,6 +305,12 @@ public class ModalInputTests
             _activeTextInput = new TextInput(initialValue);
             _textInputCompleteAction = onComplete;
         }
+
+        /// <summary>
+        /// Returns whether mouse events should be handled in the given mode.
+        /// Mirrors the guard logic in App's main loop.
+        /// </summary>
+        public bool ShouldHandleMouse() => _inputMode is not (InputMode.GoToPath or InputMode.TextInput or InputMode.Confirm);
 
         public void HandleKey(KeyEvent key)
         {
