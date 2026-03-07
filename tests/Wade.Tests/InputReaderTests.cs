@@ -68,11 +68,19 @@ public class InputReaderTests
     [Theory]
     [InlineData(ConsoleKey.A, '\0')]
     [InlineData(ConsoleKey.F1, '\0')]
-    [InlineData(ConsoleKey.Spacebar, ' ')]
     public void MapKey_UnrecognizedKey_ReturnsNone(ConsoleKey key, char keyChar)
     {
         var evt = new KeyEvent(key, keyChar, false, false, false);
         Assert.Equal(AppAction.None, InputReader.MapKey(evt));
+    }
+
+    // ── Toggle mark ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void MapKey_Space_ReturnsToggleMark()
+    {
+        var evt = new KeyEvent(ConsoleKey.Spacebar, ' ', false, false, false);
+        Assert.Equal(AppAction.ToggleMark, InputReader.MapKey(evt));
     }
 
     // ── Modifier combinations ───────────────────────────────────────────────────

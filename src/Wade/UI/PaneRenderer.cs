@@ -23,6 +23,11 @@ internal static class PaneRenderer
     private static readonly CellStyle FileStyle = new(FileColor, null);
     private static readonly CellStyle DetailStyle = new(DetailColor, null);
 
+    private static readonly Color MarkedBg = new(60, 60, 0);
+    private static readonly CellStyle MarkedStyle = new(FileColor, MarkedBg);
+    private static readonly CellStyle MarkedDirStyle = new(DirColor, MarkedBg, Bold: true);
+    private static readonly CellStyle MarkedSelectedStyle = new(SelectionFg, new Color(180, 180, 60), Bold: true);
+
     // Column widths
     private const int SizeWidth = 8;
     private const int GapWidth = 2;
@@ -49,7 +54,8 @@ internal static class PaneRenderer
         int scrollOffset,
         bool isActive,
         bool showIcons = false,
-        bool showDetails = false)
+        bool showDetails = false,
+        HashSet<string>? markedPaths = null)
     {
         // Determine detail tier based on pane width
         int dateWidth = 0;
@@ -96,21 +102,28 @@ internal static class PaneRenderer
 
             var entry = entries[entryIndex];
             bool isSelected = entryIndex == selectedIndex;
+            bool isMarked = markedPaths?.Contains(entry.FullPath) == true;
 
             CellStyle style;
-            if (isSelected && isActive)
+            if (isSelected && isMarked && isActive)
+                style = MarkedSelectedStyle;
+            else if (isSelected && isActive)
                 style = ActiveSelectionStyle;
             else if (isSelected)
                 style = InactiveSelectionStyle;
+            else if (isMarked && entry.IsDirectory)
+                style = MarkedDirStyle;
+            else if (isMarked)
+                style = MarkedStyle;
             else if (entry.IsDirectory)
                 style = DirStyle;
             else
                 style = FileStyle;
 
-            CellStyle detailStyle = isSelected ? style : DetailStyle;
+            CellStyle detailStyle = isSelected || isMarked ? style : DetailStyle;
 
-            // If selected, fill the row background
-            if (isSelected)
+            // If selected or marked, fill the row background
+            if (isSelected || isMarked)
                 buffer.FillRow(pane.Top + row, pane.Left, pane.Width, ' ', style);
 
             int screenRow = pane.Top + row;

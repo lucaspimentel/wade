@@ -168,4 +168,59 @@ public class PaneRendererTests
         Assert.DoesNotContain("512", output);
         Assert.DoesNotContain("2025", output);
     }
+
+    // ── Multi-select (marked paths) ─────────────────────────────────────────────
+
+    [Fact]
+    public void RenderFileList_MarkedEntry_GetsMarkedStyle()
+    {
+        var entries = new List<FileSystemEntry> { MakeFile("a.txt"), MakeFile("b.txt") };
+        var markedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { entries[1].FullPath };
+
+        var bufMarked = new ScreenBuffer(40, 10);
+        PaneRenderer.RenderFileList(bufMarked, FullPane(), entries, selectedIndex: 0, scrollOffset: 0, isActive: true, markedPaths: markedPaths);
+        var markedOutput = new StringBuilder();
+        bufMarked.Flush(markedOutput);
+
+        var bufUnmarked = new ScreenBuffer(40, 10);
+        PaneRenderer.RenderFileList(bufUnmarked, FullPane(), entries, selectedIndex: 0, scrollOffset: 0, isActive: true);
+        var unmarkedOutput = new StringBuilder();
+        bufUnmarked.Flush(unmarkedOutput);
+
+        // The ANSI output should differ because the marked entry gets a different background
+        Assert.NotEqual(unmarkedOutput.ToString(), markedOutput.ToString());
+    }
+
+    [Fact]
+    public void RenderFileList_MarkedAndSelected_GetsMarkedSelectedStyle()
+    {
+        var entries = new List<FileSystemEntry> { MakeFile("a.txt") };
+        var markedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { entries[0].FullPath };
+
+        var bufMarkedSelected = new ScreenBuffer(40, 10);
+        PaneRenderer.RenderFileList(bufMarkedSelected, FullPane(), entries, selectedIndex: 0, scrollOffset: 0, isActive: true, markedPaths: markedPaths);
+        var markedSelectedOutput = new StringBuilder();
+        bufMarkedSelected.Flush(markedSelectedOutput);
+
+        var bufSelectedOnly = new ScreenBuffer(40, 10);
+        PaneRenderer.RenderFileList(bufSelectedOnly, FullPane(), entries, selectedIndex: 0, scrollOffset: 0, isActive: true);
+        var selectedOnlyOutput = new StringBuilder();
+        bufSelectedOnly.Flush(selectedOnlyOutput);
+
+        // Marked+selected should differ from just selected (different background color)
+        Assert.NotEqual(selectedOnlyOutput.ToString(), markedSelectedOutput.ToString());
+    }
+
+    [Fact]
+    public void RenderFileList_NullMarkedPaths_NoError()
+    {
+        var entries = new List<FileSystemEntry> { MakeFile("a.txt"), MakeDir("src") };
+
+        var buf = new ScreenBuffer(40, 10);
+        PaneRenderer.RenderFileList(buf, FullPane(), entries, selectedIndex: 0, scrollOffset: 0, isActive: true, markedPaths: null);
+        var output = Flush(buf);
+
+        Assert.Contains("a.txt", output);
+        Assert.Contains("src", output);
+    }
 }

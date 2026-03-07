@@ -16,6 +16,7 @@ internal enum AppAction
     Refresh,
     Search,
     ToggleHiddenFiles,
+    ToggleMark,
 }
 
 internal static class InputReader
@@ -30,6 +31,9 @@ internal static class InputReader
 
         if (key.KeyChar == '.')
             return AppAction.ToggleHiddenFiles;
+
+        if (key.Key == ConsoleKey.Spacebar)
+            return AppAction.ToggleMark;
 
         if (key.Key == ConsoleKey.R && key.Control)
             return AppAction.Refresh;

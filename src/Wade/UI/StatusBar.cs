@@ -21,7 +21,8 @@ internal static class StatusBar
         string? fileTypeLabel = null,
         string? encoding = null,
         string? lineEnding = null,
-        Notification? notification = null)
+        Notification? notification = null,
+        int markedCount = 0)
     {
         // Fill background
         var bgStyle = new CellStyle(StatusFg, StatusBg);
@@ -32,6 +33,24 @@ internal static class StatusBar
         var pathStyle = new CellStyle(PathFg, StatusBg, Bold: true);
         int pathMaxWidth = rect.Width / 2;
         buffer.WriteString(rect.Top, rect.Left + 1, currentPath, pathStyle, pathMaxWidth);
+
+        // Mark count (after path)
+        if (markedCount > 0)
+        {
+            var markStyle = new CellStyle(new Color(220, 220, 100), StatusBg);
+            Span<char> markBuf = stackalloc char[16];
+            int markLen = 0;
+            markBuf[markLen++] = ' ';
+            markBuf[markLen++] = ' ';
+            markedCount.TryFormat(markBuf[markLen..], out int n);
+            markLen += n;
+            " marked".AsSpan().CopyTo(markBuf[markLen..]);
+            markLen += 7;
+            int markCol = rect.Left + 1 + Math.Min(currentPath.Length, pathMaxWidth);
+            int markMaxWidth = pathMaxWidth - Math.Min(currentPath.Length, pathMaxWidth);
+            if (markMaxWidth > 0)
+                buffer.WriteString(rect.Top, markCol, markBuf[..markLen], markStyle, markMaxWidth);
+        }
 
         if (notification is { } notif)
         {

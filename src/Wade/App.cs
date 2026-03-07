@@ -37,6 +37,9 @@ internal sealed class App
     // Expanded preview state
     private int _expandedPreviewScrollOffset;
 
+    // Multi-select state
+    private readonly HashSet<string> _markedPaths = new(StringComparer.OrdinalIgnoreCase);
+
     // Search/filter state
     private TextInput? _searchInput;
     private string _searchFilter = "";
@@ -276,6 +279,7 @@ internal sealed class App
                         _selectedIndex = _selectedIndexPerDir.GetValueOrDefault(_currentPath, 0);
                         _scrollOffset = 0;
                         _notification = null;
+                        _markedPaths.Clear();
                         ClearSearchFilter();
                         ClearPreviewCache(previewLoader, buffer);
                     }
@@ -291,6 +295,7 @@ internal sealed class App
                         break; // Already at the top level
 
                     _notification = null;
+                    _markedPaths.Clear();
                     ClearSearchFilter();
                     _selectedIndexPerDir[_currentPath] = _selectedIndex;
                     string oldPath = _currentPath;
@@ -361,10 +366,22 @@ internal sealed class App
 
                 case AppAction.Refresh:
                     _notification = null;
+                    _markedPaths.Clear();
                     ClearSearchFilter();
                     _directoryContents.InvalidateAll();
                     ClearPreviewCache(previewLoader, buffer);
                     buffer.ForceFullRedraw();
+                    break;
+
+                case AppAction.ToggleMark:
+                    if (entries.Count > 0 && _selectedIndex < entries.Count)
+                    {
+                        string path = entries[_selectedIndex].FullPath;
+                        if (!_markedPaths.Remove(path))
+                            _markedPaths.Add(path);
+                        if (_selectedIndex < entries.Count - 1)
+                            _selectedIndex++;
+                    }
                     break;
 
                 case AppAction.ToggleHiddenFiles:
@@ -405,7 +422,7 @@ internal sealed class App
             : _layout.CenterPane;
 
         // Center pane: current directory
-        PaneRenderer.RenderFileList(buffer, fileListPane, entries, _selectedIndex, _scrollOffset, isActive: true, showIcons: _config.ShowIconsEnabled, showDetails: true);
+        PaneRenderer.RenderFileList(buffer, fileListPane, entries, _selectedIndex, _scrollOffset, isActive: true, showIcons: _config.ShowIconsEnabled, showDetails: true, markedPaths: _markedPaths);
 
         // Search bar at bottom of center pane
         if (showSearchBar)
@@ -502,7 +519,7 @@ internal sealed class App
             ? entries[_selectedIndex]
             : null;
         string displayPath = _currentPath == DirectoryContents.DrivesPath ? "Drives" : _currentPath;
-        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification);
+        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count);
 
         // Help overlay
         if (_showHelp)
@@ -634,6 +651,7 @@ internal sealed class App
                     _currentPath = clicked.FullPath;
                     _selectedIndex = _selectedIndexPerDir.GetValueOrDefault(_currentPath, 0);
                     _scrollOffset = 0;
+                    _markedPaths.Clear();
                     ClearSearchFilter();
                     ClearPreviewCache(previewLoader, buffer);
                 }
@@ -649,6 +667,7 @@ internal sealed class App
                         int idx = parentEntries.FindIndex(e => e.Name.Equals(clicked.Name, StringComparison.OrdinalIgnoreCase));
                         _selectedIndex = idx >= 0 ? idx : 0;
                         _scrollOffset = 0;
+                        _markedPaths.Clear();
                         ClearSearchFilter();
                         ClearPreviewCache(previewLoader, buffer);
                     }
@@ -674,6 +693,7 @@ internal sealed class App
                             _currentPath = clicked.FullPath;
                             _selectedIndex = _selectedIndexPerDir.GetValueOrDefault(_currentPath, 0);
                             _scrollOffset = 0;
+                            _markedPaths.Clear();
                             ClearSearchFilter();
                             ClearPreviewCache(previewLoader, buffer);
                         }
@@ -686,6 +706,7 @@ internal sealed class App
                             int idx = dirEntries.FindIndex(e => e.Name.Equals(clicked.Name, StringComparison.OrdinalIgnoreCase));
                             _selectedIndex = idx >= 0 ? idx : 0;
                             _scrollOffset = 0;
+                            _markedPaths.Clear();
                             ClearSearchFilter();
                             ClearPreviewCache(previewLoader, buffer);
                         }
@@ -842,7 +863,7 @@ internal sealed class App
             ? entries[_selectedIndex]
             : null;
         string displayPath = _currentPath == DirectoryContents.DrivesPath ? "Drives" : _currentPath;
-        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification);
+        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count);
     }
 
     // ── Modal input handlers ────────────────────────────────────────────────

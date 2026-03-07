@@ -25,14 +25,10 @@ Implemented: `InputMode` enum (`Normal`, `Confirm`, `TextInput`, `Search`, `Expa
 
 - **Required by:** Confirm dialog, Input dialog
 
-### Multi-select model
+### ~~Multi-select model~~ ✅
 
-Track a set of marked entries independent of the cursor position.
+Implemented: `HashSet<string>` of marked absolute paths (`_markedPaths`) in `App` state. Space toggles mark on the current entry and advances cursor (ranger/mc convention). Marked entries render with a dark yellow background; marked+selected entries get a combined highlight. Mark count shown in status bar when non-zero. Marks clear on directory change (Open, Back, Refresh, mouse navigation) and filter clear.
 
-- `HashSet<string>` of marked absolute paths in app state
-- Toggle mark on current entry (e.g. `Space`)
-- Visual indicator on marked entries (e.g. different highlight color or `*` prefix)
-- Clear marks after a paste, cut completion, or explicit cancel
 - **Required by:** File actions (copy, cut, delete-multiple)
 
 ### ~~Status bar notifications~~ ✅
