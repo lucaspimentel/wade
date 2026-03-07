@@ -31,8 +31,11 @@ internal static class PathCompletion
     /// <summary>
     /// Given a partial path input, returns the first matching filesystem entry's full path,
     /// or null if no match is found.
+    /// When <paramref name="showHidden"/> is false, hidden entries (dot-prefixed or
+    /// <see cref="FileAttributes.Hidden"/>) are excluded unless the user is already
+    /// typing a dot-prefixed name.
     /// </summary>
-    public static string? GetSuggestion(string input)
+    public static string? GetSuggestion(string input, bool showHidden = true)
     {
         if (string.IsNullOrEmpty(input))
             return null;
@@ -44,7 +47,7 @@ internal static class PathCompletion
             if (input[^1] == Path.DirectorySeparatorChar || input[^1] == Path.AltDirectorySeparatorChar)
             {
                 if (Directory.Exists(input))
-                    return FirstEntry(input);
+                    return FirstEntry(input, showHidden);
 
                 return null;
             }
@@ -58,9 +61,15 @@ internal static class PathCompletion
             if (string.IsNullOrEmpty(partial))
                 return null;
 
+            // If the user is typing a dot-prefixed name, don't filter hidden entries
+            bool skipHidden = !showHidden && !partial.StartsWith('.');
+
             // Find first matching entry
             foreach (var entry in new DirectoryInfo(parentDir).EnumerateFileSystemInfos())
             {
+                if (skipHidden && IsHidden(entry))
+                    continue;
+
                 if (entry.Name.StartsWith(partial, StringComparison.OrdinalIgnoreCase))
                     return entry.FullName;
             }
@@ -73,12 +82,17 @@ internal static class PathCompletion
         return null;
     }
 
-    private static string? FirstEntry(string dirPath)
+    private static string? FirstEntry(string dirPath, bool showHidden)
     {
         try
         {
             foreach (var entry in new DirectoryInfo(dirPath).EnumerateFileSystemInfos())
+            {
+                if (!showHidden && IsHidden(entry))
+                    continue;
+
                 return entry.FullName;
+            }
         }
         catch
         {
@@ -87,4 +101,7 @@ internal static class PathCompletion
 
         return null;
     }
+
+    private static bool IsHidden(FileSystemInfo entry) =>
+        entry.Name.StartsWith('.') || (entry.Attributes & FileAttributes.Hidden) != 0;
 }

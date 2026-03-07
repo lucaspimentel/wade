@@ -428,11 +428,8 @@ internal sealed class App
 
                 case AppAction.GoToPath:
                     _inputMode = InputMode.GoToPath;
-                    string initialPath = _currentPath == DirectoryContents.DrivesPath
-                        ? ""
-                        : _currentPath + Path.DirectorySeparatorChar;
-                    _goToPathInput = new TextInput(initialPath);
-                    _goToPathSuggestion = PathCompletion.GetSuggestion(initialPath);
+                    _goToPathInput = new TextInput();
+                    _goToPathSuggestion = null;
                     break;
             }
 
@@ -999,9 +996,17 @@ internal sealed class App
         switch (key.Key)
         {
             case ConsoleKey.Escape:
-                _inputMode = InputMode.Normal;
-                _goToPathInput = null;
-                _goToPathSuggestion = null;
+                if (_goToPathInput!.Value.Length > 0)
+                {
+                    _goToPathInput.Clear();
+                    _goToPathSuggestion = null;
+                }
+                else
+                {
+                    _inputMode = InputMode.Normal;
+                    _goToPathInput = null;
+                    _goToPathSuggestion = null;
+                }
                 break;
 
             case ConsoleKey.Enter:
@@ -1019,18 +1024,18 @@ internal sealed class App
                     if (Directory.Exists(accepted))
                         accepted += Path.DirectorySeparatorChar;
                     _goToPathInput = new TextInput(accepted);
-                    _goToPathSuggestion = PathCompletion.GetSuggestion(accepted);
+                    _goToPathSuggestion = GetPathSuggestion(accepted);
                 }
                 break;
 
             case ConsoleKey.Backspace:
                 _goToPathInput!.DeleteBackward();
-                _goToPathSuggestion = PathCompletion.GetSuggestion(_goToPathInput.Value);
+                _goToPathSuggestion = GetPathSuggestion(_goToPathInput.Value);
                 break;
 
             case ConsoleKey.Delete:
                 _goToPathInput!.DeleteForward();
-                _goToPathSuggestion = PathCompletion.GetSuggestion(_goToPathInput.Value);
+                _goToPathSuggestion = GetPathSuggestion(_goToPathInput.Value);
                 break;
 
             case ConsoleKey.LeftArrow:
@@ -1038,7 +1043,18 @@ internal sealed class App
                 break;
 
             case ConsoleKey.RightArrow:
-                _goToPathInput!.MoveCursorRight();
+                if (_goToPathSuggestion is not null && _goToPathInput!.CursorPosition == _goToPathInput.Value.Length)
+                {
+                    string accepted = _goToPathSuggestion;
+                    if (Directory.Exists(accepted))
+                        accepted += Path.DirectorySeparatorChar;
+                    _goToPathInput = new TextInput(accepted);
+                    _goToPathSuggestion = GetPathSuggestion(accepted);
+                }
+                else
+                {
+                    _goToPathInput!.MoveCursorRight();
+                }
                 break;
 
             case ConsoleKey.Home:
@@ -1049,11 +1065,28 @@ internal sealed class App
                 _goToPathInput!.MoveCursorEnd();
                 break;
 
+            case ConsoleKey.UpArrow:
+            {
+                string val = _goToPathInput!.Value;
+                if (val.Length > 0)
+                {
+                    string trimmed = val.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                    int lastSep = trimmed.LastIndexOfAny([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar]);
+                    if (lastSep >= 0)
+                    {
+                        string parent = trimmed[..(lastSep + 1)];
+                        _goToPathInput = new TextInput(parent);
+                        _goToPathSuggestion = GetPathSuggestion(parent);
+                    }
+                }
+                break;
+            }
+
             default:
                 if (key.KeyChar >= ' ')
                 {
                     _goToPathInput!.InsertChar(key.KeyChar);
-                    _goToPathSuggestion = PathCompletion.GetSuggestion(_goToPathInput.Value);
+                    _goToPathSuggestion = GetPathSuggestion(_goToPathInput.Value);
                 }
                 break;
         }
@@ -1107,11 +1140,14 @@ internal sealed class App
         }
     }
 
+    private string? GetPathSuggestion(string input) =>
+        PathCompletion.GetSuggestion(input, _directoryContents.ShowHiddenFiles);
+
     private void RenderGoToPathDialog(ScreenBuffer buffer, int width, int height)
     {
         int contentWidth = Math.Min(60, width - 8);
         int contentHeight = 1;
-        string footer = "[Tab] Complete  [Enter] Go  [Esc] Cancel";
+        string footer = "[Tab] Complete  [\u2191] Up dir  [Esc] Clear/Close  [Enter] Go";
 
         Rect content = DialogBox.Render(buffer, width, height, contentWidth, contentHeight,
             title: "Go to path", footer: footer);

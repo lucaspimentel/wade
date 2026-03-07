@@ -98,7 +98,7 @@ wade -h                               # same as --help
 | . | Toggle hidden files |
 | s | Cycle sort (name / time / size / ext) |
 | S | Reverse sort direction |
-| g | Go to path |
+| g | Go to path (Esc clears input, Up goes up a directory) |
 | / | Search / filter |
 | Esc (in search) | Clear filter |
 | Ctrl+R | Refresh |

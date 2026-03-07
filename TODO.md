@@ -130,7 +130,7 @@ Save frequently used directories for quick access.
 
 ## ~~Go-to-path bar~~ ✅
 
-Implemented: Press `g` to open a path input dialog pre-filled with the current directory. Tab auto-completes from the filesystem (first matching entry). Suggestion shown on a second row in dimmed text. Enter navigates to the path (directories open directly; files navigate to parent and select the file). Escape cancels. Error notification shown for invalid/nonexistent paths.
+Implemented: Press `g` to open a path input dialog. Tab auto-completes from the filesystem (first matching entry). Suggestion shown on a second row in dimmed text. Enter navigates to the path (directories open directly; files navigate to parent and select the file). Escape cancels. Error notification shown for invalid/nonexistent paths.
 
 ## File details / properties panel
 
