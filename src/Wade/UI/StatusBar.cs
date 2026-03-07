@@ -8,6 +8,8 @@ internal static class StatusBar
     private static readonly Color StatusFg = new(180, 180, 180);
     private static readonly Color StatusBg = new(30, 30, 50);
     private static readonly Color PathFg = new(80, 160, 255);
+    private static readonly Color SuccessFg = new(80, 200, 80);
+    private static readonly Color ErrorFg = new(220, 80, 80);
 
     public static void Render(
         ScreenBuffer buffer,
@@ -18,7 +20,8 @@ internal static class StatusBar
         FileSystemEntry? selectedEntry,
         string? fileTypeLabel = null,
         string? encoding = null,
-        string? lineEnding = null)
+        string? lineEnding = null,
+        Notification? notification = null)
     {
         // Fill background
         var bgStyle = new CellStyle(StatusFg, StatusBg);
@@ -27,18 +30,41 @@ internal static class StatusBar
 
         // Left side: current path
         var pathStyle = new CellStyle(PathFg, StatusBg, Bold: true);
-        buffer.WriteString(rect.Top, rect.Left + 1, currentPath, pathStyle, rect.Width / 2);
+        int pathMaxWidth = rect.Width / 2;
+        buffer.WriteString(rect.Top, rect.Left + 1, currentPath, pathStyle, pathMaxWidth);
 
-        // Right side: item count + selected info — build without heap allocations
-        Span<char> rightBuf = stackalloc char[128];
-        int rightLen = BuildRightText(rightBuf, itemCount, selectedIndex, selectedEntry, fileTypeLabel, encoding, lineEnding);
-        ReadOnlySpan<char> right = rightBuf[..rightLen];
-
-        int rightCol = rect.Width - rightLen - 1;
-        if (rightCol > 0)
+        if (notification is { } notif)
         {
-            for (int i = 0; i < rightLen; i++)
-                buffer.Put(rect.Top, rect.Left + rightCol + i, right[i], bgStyle);
+            // Right side: notification message (replaces metadata)
+            Color notifFg = notif.Kind switch
+            {
+                NotificationKind.Success => SuccessFg,
+                NotificationKind.Error => ErrorFg,
+                _ => StatusFg,
+            };
+            var notifStyle = new CellStyle(notifFg, StatusBg);
+            int maxLen = rect.Width - pathMaxWidth - 2; // leave gap after path
+            string message = notif.Message;
+            if (message.Length > maxLen && maxLen > 0)
+                message = message[..maxLen];
+
+            int notifCol = rect.Width - message.Length - 1;
+            if (notifCol >= pathMaxWidth + 1)
+                buffer.WriteString(rect.Top, rect.Left + notifCol, message, notifStyle);
+        }
+        else
+        {
+            // Right side: item count + selected info — build without heap allocations
+            Span<char> rightBuf = stackalloc char[128];
+            int rightLen = BuildRightText(rightBuf, itemCount, selectedIndex, selectedEntry, fileTypeLabel, encoding, lineEnding);
+            ReadOnlySpan<char> right = rightBuf[..rightLen];
+
+            int rightCol = rect.Width - rightLen - 1;
+            if (rightCol > 0)
+            {
+                for (int i = 0; i < rightLen; i++)
+                    buffer.Put(rect.Top, rect.Left + rightCol + i, right[i], bgStyle);
+            }
         }
     }
 

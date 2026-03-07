@@ -31,6 +31,9 @@ internal sealed class App
     private string? _textInputTitle;
     private Action<string>? _textInputCompleteAction;
 
+    // Notification state
+    private Notification? _notification;
+
     // Expanded preview state
     private int _expandedPreviewScrollOffset;
 
@@ -91,6 +94,10 @@ internal sealed class App
 
         while (!quit)
         {
+            // Auto-clear expired notifications
+            if (_notification is { } notif && notif.IsExpired(Environment.TickCount64))
+                _notification = null;
+
             // Render
             buffer.Clear();
             Render(buffer);
@@ -268,6 +275,7 @@ internal sealed class App
                         _currentPath = entries[_selectedIndex].FullPath;
                         _selectedIndex = _selectedIndexPerDir.GetValueOrDefault(_currentPath, 0);
                         _scrollOffset = 0;
+                        _notification = null;
                         ClearSearchFilter();
                         ClearPreviewCache(previewLoader, buffer);
                     }
@@ -282,6 +290,7 @@ internal sealed class App
                     if (_currentPath == DirectoryContents.DrivesPath)
                         break; // Already at the top level
 
+                    _notification = null;
                     ClearSearchFilter();
                     _selectedIndexPerDir[_currentPath] = _selectedIndex;
                     string oldPath = _currentPath;
@@ -351,6 +360,7 @@ internal sealed class App
                     break;
 
                 case AppAction.Refresh:
+                    _notification = null;
                     ClearSearchFilter();
                     _directoryContents.InvalidateAll();
                     ClearPreviewCache(previewLoader, buffer);
@@ -492,7 +502,7 @@ internal sealed class App
             ? entries[_selectedIndex]
             : null;
         string displayPath = _currentPath == DirectoryContents.DrivesPath ? "Drives" : _currentPath;
-        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding);
+        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification);
 
         // Help overlay
         if (_showHelp)
@@ -832,7 +842,7 @@ internal sealed class App
             ? entries[_selectedIndex]
             : null;
         string displayPath = _currentPath == DirectoryContents.DrivesPath ? "Drives" : _currentPath;
-        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding);
+        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification);
     }
 
     // ── Modal input handlers ────────────────────────────────────────────────
@@ -929,6 +939,13 @@ internal sealed class App
         _textInputTitle = title;
         _activeTextInput = new TextInput(initialValue);
         _textInputCompleteAction = onComplete;
+    }
+
+    // ── Notification helpers ──────────────────────────────────────────────────
+
+    private void ShowNotification(string message, NotificationKind kind = NotificationKind.Info)
+    {
+        _notification = new Notification(message, kind, Environment.TickCount64);
     }
 
     // ── Search/filter helpers ────────────────────────────────────────────────

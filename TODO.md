@@ -35,12 +35,10 @@ Track a set of marked entries independent of the cursor position.
 - Clear marks after a paste, cut completion, or explicit cancel
 - **Required by:** File actions (copy, cut, delete-multiple)
 
-### Status bar notifications
+### ~~Status bar notifications~~ ✅
 
-Transient one-line feedback messages in the status bar.
+Implemented: `Notification` record (`Message`, `Kind`, `Timestamp`) with `IsExpired()` tick-based check. `NotificationKind` enum (`Info`, `Success`, `Error`) controls color (gray, green, red). `ShowNotification()` helper on `App` sets the notification; expiry check runs at the top of the main loop (clears on next input after 4 s). Notification renders right-aligned in the status bar, replacing metadata when active. Auto-clears on directory change (Open, Back, Refresh).
 
-- A message slot with an optional auto-clear timer (e.g. clear after 3 s or on next navigation)
-- Used for success (`"3 items copied"`), errors (`"Permission denied"`), and progress (`"Deleting…"`)
 - **Required by:** File actions
 
 ---
