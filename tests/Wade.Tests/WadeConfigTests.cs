@@ -6,19 +6,6 @@ public class WadeConfigTests
 {
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    private sealed class MockEnv : IEnvironmentVariablesProvider
-    {
-        private readonly Dictionary<string, string> _vars;
-
-        public MockEnv(Dictionary<string, string>? vars = null)
-        {
-            _vars = vars ?? [];
-        }
-
-        public string? GetEnvironmentVariable(string name) =>
-            _vars.TryGetValue(name, out var v) ? v : null;
-    }
-
     private static string WriteTempConfig(string content)
     {
         var path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".toml");
@@ -31,7 +18,7 @@ public class WadeConfigTests
     [Fact]
     public void Defaults_WhenNothingProvided()
     {
-        var config = WadeConfig.Load([], configFilePath: "/nonexistent/path.toml", env: new MockEnv());
+        var config = WadeConfig.Load([], configFilePath: "/nonexistent/path.toml");
 
         Assert.True(config.ShowIconsEnabled);
         Assert.True(config.ImagePreviewsEnabled);
@@ -52,7 +39,7 @@ public class WadeConfigTests
         var path = WriteTempConfig(line);
         try
         {
-            var config = WadeConfig.Load([], configFilePath: path, env: new MockEnv());
+            var config = WadeConfig.Load([], configFilePath: path);
             Assert.Equal(expectedIcons, config.ShowIconsEnabled);
             Assert.Equal(expectedPreviews, config.ImagePreviewsEnabled);
         }
@@ -71,7 +58,7 @@ public class WadeConfigTests
             """);
         try
         {
-            var config = WadeConfig.Load([], configFilePath: path, env: new MockEnv());
+            var config = WadeConfig.Load([], configFilePath: path);
             Assert.True(config.ShowIconsEnabled); // default is true; comments don't override it
         }
         finally
@@ -92,7 +79,7 @@ public class WadeConfigTests
             """);
         try
         {
-            var config = WadeConfig.Load([], configFilePath: path, env: new MockEnv());
+            var config = WadeConfig.Load([], configFilePath: path);
             Assert.True(config.ShowIconsEnabled);
             Assert.True(config.ImagePreviewsEnabled);
         }
@@ -112,7 +99,7 @@ public class WadeConfigTests
             """);
         try
         {
-            var config = WadeConfig.Load([], configFilePath: path, env: new MockEnv());
+            var config = WadeConfig.Load([], configFilePath: path);
             Assert.True(config.ShowIconsEnabled); // default is true; malformed lines don't override it
         }
         finally
@@ -127,7 +114,7 @@ public class WadeConfigTests
         var path = WriteTempConfig("show_icons_enabled = true # enable icons");
         try
         {
-            var config = WadeConfig.Load([], configFilePath: path, env: new MockEnv());
+            var config = WadeConfig.Load([], configFilePath: path);
             Assert.True(config.ShowIconsEnabled);
         }
         finally
@@ -139,74 +126,17 @@ public class WadeConfigTests
     [Fact]
     public void ConfigFile_NonexistentFile_UsesDefaults()
     {
-        var config = WadeConfig.Load([], configFilePath: "/does/not/exist.toml", env: new MockEnv());
+        var config = WadeConfig.Load([], configFilePath: "/does/not/exist.toml");
         Assert.True(config.ShowIconsEnabled);
         Assert.True(config.ImagePreviewsEnabled);
     }
 
-    // ── Env var overrides ─────────────────────────────────────────────────────
-
-    [Theory]
-    [InlineData("WADE_SHOW_ICONS_ENABLED", "true", true, false)]
-    [InlineData("WADE_SHOW_ICONS_ENABLED", "false", false, false)]
-    [InlineData("WADE_IMAGE_PREVIEWS_ENABLED", "true", false, true)]
-    [InlineData("WADE_IMAGE_PREVIEWS_ENABLED", "false", false, false)]
-    public void EnvVar_OverridesConfigFile(string envKey, string envValue, bool expectedIcons, bool expectedPreviews)
-    {
-        // Config file sets both to false; env var overrides one
-        var path = WriteTempConfig("""
-            show_icons_enabled = false
-            image_previews_enabled = false
-            """);
-        try
-        {
-            var env = new MockEnv(new Dictionary<string, string> { [envKey] = envValue });
-            var config = WadeConfig.Load([], configFilePath: path, env: env);
-            Assert.Equal(expectedIcons, config.ShowIconsEnabled);
-            Assert.Equal(expectedPreviews, config.ImagePreviewsEnabled);
-        }
-        finally
-        {
-            File.Delete(path);
-        }
-    }
-
-    // ── CLI flag overrides ────────────────────────────────────────────────────
-
-    [Theory]
-    [InlineData("--show-icons-enabled=true", true, true)]
-    [InlineData("--show-icons-enabled=false", false, true)]
-    [InlineData("--image-previews-enabled=true", true, true)]
-    [InlineData("--image-previews-enabled=false", true, false)]
-    public void CliFlag_KeyEquals_ParsesBool(string cliFlag, bool expectedIcons, bool expectedPreviews)
-    {
-        var config = WadeConfig.Load([cliFlag], configFilePath: "/nonexistent/path.toml", env: new MockEnv());
-        Assert.Equal(expectedIcons, config.ShowIconsEnabled);
-        Assert.Equal(expectedPreviews, config.ImagePreviewsEnabled);
-    }
-
-    [Theory]
-    [InlineData("--show-icons-enabled", "WADE_SHOW_ICONS_ENABLED", true)]
-    [InlineData("--no-show-icons-enabled", "WADE_SHOW_ICONS_ENABLED", false)]
-    [InlineData("--image-previews-enabled", "WADE_IMAGE_PREVIEWS_ENABLED", true)]
-    [InlineData("--no-image-previews-enabled", "WADE_IMAGE_PREVIEWS_ENABLED", false)]
-    public void CliFlag_OverridesEnvVar(string cliFlag, string envKey, bool expectedValue)
-    {
-        // Env var set to opposite — CLI flag should win
-        var envValue = expectedValue ? "false" : "true";
-        var env = new MockEnv(new Dictionary<string, string> { [envKey] = envValue });
-        var config = WadeConfig.Load([cliFlag], configFilePath: "/nonexistent/path.toml", env: env);
-
-        if (envKey == "WADE_SHOW_ICONS_ENABLED")
-            Assert.Equal(expectedValue, config.ShowIconsEnabled);
-        else
-            Assert.Equal(expectedValue, config.ImagePreviewsEnabled);
-    }
+    // ── CLI meta-flags ────────────────────────────────────────────────────────
 
     [Fact]
     public void CliFlag_ShowConfig_SetsShowConfig()
     {
-        var config = WadeConfig.Load(["--show-config"], configFilePath: "/nonexistent/path.toml", env: new MockEnv());
+        var config = WadeConfig.Load(["--show-config"], configFilePath: "/nonexistent/path.toml");
         Assert.True(config.ShowConfig);
     }
 
@@ -215,14 +145,14 @@ public class WadeConfigTests
     [InlineData("-h")]
     public void CliFlag_Help_SetsShowHelp(string flag)
     {
-        var config = WadeConfig.Load([flag], configFilePath: "/nonexistent/path.toml", env: new MockEnv());
+        var config = WadeConfig.Load([flag], configFilePath: "/nonexistent/path.toml");
         Assert.True(config.ShowHelp);
     }
 
     [Fact]
     public void CliFlag_ShowConfig_NotSet_ByDefault()
     {
-        var config = WadeConfig.Load([], configFilePath: "/nonexistent/path.toml", env: new MockEnv());
+        var config = WadeConfig.Load([], configFilePath: "/nonexistent/path.toml");
         Assert.False(config.ShowConfig);
     }
 
@@ -230,19 +160,17 @@ public class WadeConfigTests
 
     [Theory]
     [InlineData(new[] { "/some/path" }, "/some/path")]
-    [InlineData(new[] { "--show-icons-enabled", "/some/path" }, "/some/path")]
-    [InlineData(new[] { "/some/path", "--show-icons-enabled" }, "/some/path")]
-    [InlineData(new[] { "--show-config", "/some/path", "--image-previews-enabled" }, "/some/path")]
+    [InlineData(new[] { "--show-config", "/some/path" }, "/some/path")]
     public void PositionalArg_ExtractsStartPath(string[] cliArgs, string expectedPath)
     {
-        var config = WadeConfig.Load(cliArgs, configFilePath: "/nonexistent/path.toml", env: new MockEnv());
+        var config = WadeConfig.Load(cliArgs, configFilePath: "/nonexistent/path.toml");
         Assert.Equal(expectedPath, config.StartPath);
     }
 
     [Fact]
     public void NoPositionalArg_DefaultsToCurrentDirectory()
     {
-        var config = WadeConfig.Load(["--show-config"], configFilePath: "/nonexistent/path.toml", env: new MockEnv());
+        var config = WadeConfig.Load(["--show-config"], configFilePath: "/nonexistent/path.toml");
         Assert.Equal(Directory.GetCurrentDirectory(), config.StartPath);
     }
 
@@ -253,7 +181,7 @@ public class WadeConfigTests
     [InlineData(@"C:\foo\bar",   @"C:\foo\bar")]
     public void StartPath_TrailingSeparatorsAreStripped(string input, string expected)
     {
-        var config = WadeConfig.Load([input], configFilePath: "/nonexistent/path.toml", env: new MockEnv());
+        var config = WadeConfig.Load([input], configFilePath: "/nonexistent/path.toml");
         Assert.Equal(expected, config.StartPath);
     }
 
@@ -264,7 +192,7 @@ public class WadeConfigTests
     public void StartPath_TildeExpandsToHomeDirectory(string input)
     {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var config = WadeConfig.Load([input], configFilePath: "/nonexistent/path.toml", env: new MockEnv());
+        var config = WadeConfig.Load([input], configFilePath: "/nonexistent/path.toml");
 
         Assert.StartsWith(home, config.StartPath, StringComparison.OrdinalIgnoreCase);
     }
@@ -299,39 +227,5 @@ public class WadeConfigTests
     public void ParseBool_UnknownValue_ReturnsFallback(string input, bool fallback)
     {
         Assert.Equal(fallback, WadeConfig.ParseBool(input, fallback));
-    }
-
-    // ── Three-tier priority ───────────────────────────────────────────────────
-
-    [Fact]
-    public void ThreeTierPriority_CliFlagWinsOverEnvAndConfig()
-    {
-        var path = WriteTempConfig("show_icons_enabled = false");
-        try
-        {
-            var env = new MockEnv(new Dictionary<string, string> { ["WADE_SHOW_ICONS_ENABLED"] = "false" });
-            var config = WadeConfig.Load(["--show-icons-enabled"], configFilePath: path, env: env);
-            Assert.True(config.ShowIconsEnabled);
-        }
-        finally
-        {
-            File.Delete(path);
-        }
-    }
-
-    [Fact]
-    public void ThreeTierPriority_EnvVarWinsOverConfigFile()
-    {
-        var path = WriteTempConfig("show_icons_enabled = false");
-        try
-        {
-            var env = new MockEnv(new Dictionary<string, string> { ["WADE_SHOW_ICONS_ENABLED"] = "true" });
-            var config = WadeConfig.Load([], configFilePath: path, env: env);
-            Assert.True(config.ShowIconsEnabled);
-        }
-        finally
-        {
-            File.Delete(path);
-        }
     }
 }

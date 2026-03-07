@@ -8,7 +8,6 @@ TUI file browser in .NET 10. Runs on Windows Terminal and Unix/WSL terminals.
 dotnet build Wade.slnx
 dotnet test Wade.slnx
 dotnet run --project src/Wade [path]
-pwsh -NoProfile -File tests/Test-Config.ps1   # config integration tests
 ```
 
 ## Key Conventions

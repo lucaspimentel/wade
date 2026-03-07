@@ -10,8 +10,7 @@ internal sealed class WadeConfig
 
     public static WadeConfig Load(
         string[] args,
-        string? configFilePath = null,
-        IEnvironmentVariablesProvider? env = null)
+        string? configFilePath = null)
     {
         // Allow --config-file=<path> to override the config file location
         foreach (var arg in args)
@@ -26,11 +25,10 @@ internal sealed class WadeConfig
         configFilePath ??= Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             ".config", "wade", "config.toml");
-        env ??= new SystemEnvironmentVariablesProvider();
 
         var config = new WadeConfig();
 
-        // Tier 1: config file
+        // Config file
         if (File.Exists(configFilePath))
         {
             foreach (var line in File.ReadAllLines(configFilePath))
@@ -63,43 +61,16 @@ internal sealed class WadeConfig
             }
         }
 
-        // Tier 2: environment variables
-        var showIcons = env.GetEnvironmentVariable("WADE_SHOW_ICONS_ENABLED");
-        if (showIcons is not null)
-            config.ShowIconsEnabled = ParseBool(showIcons, config.ShowIconsEnabled);
-
-        var imagePreviews = env.GetEnvironmentVariable("WADE_IMAGE_PREVIEWS_ENABLED");
-        if (imagePreviews is not null)
-            config.ImagePreviewsEnabled = ParseBool(imagePreviews, config.ImagePreviewsEnabled);
-
-        // Tier 3: CLI flags
+        // CLI flags
         foreach (var arg in args)
         {
             switch (arg)
             {
-                case "--show-icons-enabled":
-                    config.ShowIconsEnabled = true;
-                    break;
-                case "--no-show-icons-enabled":
-                    config.ShowIconsEnabled = false;
-                    break;
-                case "--image-previews-enabled":
-                    config.ImagePreviewsEnabled = true;
-                    break;
-                case "--no-image-previews-enabled":
-                    config.ImagePreviewsEnabled = false;
-                    break;
                 case "--show-config":
                     config.ShowConfig = true;
                     break;
                 case "--help" or "-h":
                     config.ShowHelp = true;
-                    break;
-                default:
-                    if (arg.StartsWith("--show-icons-enabled="))
-                        config.ShowIconsEnabled = ParseBool(arg["--show-icons-enabled=".Length..], config.ShowIconsEnabled);
-                    else if (arg.StartsWith("--image-previews-enabled="))
-                        config.ImagePreviewsEnabled = ParseBool(arg["--image-previews-enabled=".Length..], config.ImagePreviewsEnabled);
                     break;
             }
         }

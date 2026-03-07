@@ -72,8 +72,6 @@ Implemented: Image thumbnails render in the right preview pane using Sixel graph
 **Depends on:** Async preview loading
 
 **Remaining**
-- Full-size dialog: press Enter on an image to open a centered overlay (depends on dialog/overlay framework)
-- ~~Expand preview: when user presses right arrow on a file with a preview, expand the preview to fill the display~~ ✅ — Right/Enter on a file expands the preview to full terminal width; scrollable text with line numbers; images re-render at expanded/collapsed size; Left/Escape/Q collapses back to 3-pane view
 - Terminal capability detection: query DA1/DA2 or check `WT_SESSION` for auto-enable
 - Cell pixel size query via `ESC [ 16 t` (currently assumes 8×16 px/cell)
 
@@ -125,7 +123,7 @@ Toggle visibility of hidden files (dotfiles on Unix, Hidden attribute on Windows
 
 - Keybinding to toggle (e.g. `.` or `Ctrl+H`)
 - Hidden by default; persist preference via config
-- Config flag: `show_hidden_files` (config file, env var `WADE_SHOW_HIDDEN_FILES`, CLI `--show-hidden-files` / `--no-show-hidden-files`)
+- Config flag: `show_hidden_files` in config file
 - Update `HelpOverlay.Bindings` (`src/Wade/UI/HelpOverlay.cs`) and README keybindings table to include the new toggle
 
 ## Config dialog
@@ -226,4 +224,3 @@ Review existing config options and evaluate whether any should be added, removed
 
 - Are all current options (`show_icons_enabled`, `image_previews_enabled`) still needed?
 - New options to consider: `show_hidden_files`, sort order, default sort direction
-- Ensure config file, env vars, and CLI flags stay in sync across all options

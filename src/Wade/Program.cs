@@ -28,10 +28,6 @@ static void PrintHelp()
           -h, --help                      Show this help and exit
           --show-config                   Print resolved config as JSON and exit
           --config-file=<path>            Use a custom config file
-          --show-icons-enabled[=BOOL]     Enable file icons (default: true)
-          --no-show-icons-enabled         Disable file icons
-          --image-previews-enabled[=BOOL] Enable Sixel image previews (default: true)
-          --no-image-previews-enabled     Disable Sixel image previews
 
         Keybindings:
           Up / k                          Move selection up
@@ -50,11 +46,5 @@ static void PrintHelp()
 
           show_icons_enabled = true
           image_previews_enabled = true
-
-        Environment variables:
-          WADE_SHOW_ICONS_ENABLED         Override show_icons_enabled
-          WADE_IMAGE_PREVIEWS_ENABLED     Override image_previews_enabled
-
-        Priority: config file < environment variables < CLI flags
         """);
 }
