@@ -416,14 +416,12 @@ internal sealed class App
                     };
                     _directoryContents.InvalidateAll();
                     ClearPreviewCache(previewLoader, buffer);
-                    ShowNotification($"Sort: {FormatSortMode(_directoryContents.SortMode)}");
                     break;
 
                 case AppAction.ToggleSortDirection:
                     _directoryContents.SortAscending = !_directoryContents.SortAscending;
                     _directoryContents.InvalidateAll();
                     ClearPreviewCache(previewLoader, buffer);
-                    ShowNotification($"Sort: {(_directoryContents.SortAscending ? "ascending" : "descending")}");
                     break;
 
                 case AppAction.GoToPath:
@@ -1205,14 +1203,6 @@ internal sealed class App
     {
         _notification = new Notification(message, kind, Environment.TickCount64);
     }
-
-    private static string FormatSortMode(SortMode mode) => mode switch
-    {
-        SortMode.Modified => "time",
-        SortMode.Size => "size",
-        SortMode.Extension => "ext",
-        _ => "name",
-    };
 
     // ── Search/filter helpers ────────────────────────────────────────────────
 

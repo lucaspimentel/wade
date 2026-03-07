@@ -81,7 +81,7 @@ Implemented: Press `/` to enter search mode. Typing narrows visible entries by c
 
 ## ~~Sort order~~ ✅
 
-Implemented: Configurable sort modes (name, modified time, size, extension) with ascending/descending toggle. `s` cycles sort mode, `S` toggles direction. Directories always sorted before files regardless of direction. Sort preference configurable via `sort_mode` and `sort_ascending` in config file. Current sort mode shown in status bar with direction arrow (e.g. `name↑`, `size↓`). Notifications shown on sort change.
+Implemented: Configurable sort modes (name, modified time, size, extension) with ascending/descending toggle. `s` cycles sort mode, `S` toggles direction. Directories always sorted before files regardless of direction. Sort preference configurable via `sort_mode` and `sort_ascending` in config file. Current sort mode shown in status bar with direction arrow (e.g. `name↑`, `size↓`).
 
 ## File actions
 
@@ -131,6 +131,8 @@ Save frequently used directories for quick access.
 ## ~~Go-to-path bar~~ ✅
 
 Implemented: Press `g` to open a path input dialog. Tab auto-completes from the filesystem (first matching entry). Suggestion shown on a second row in dimmed text. Enter navigates to the path (directories open directly; files navigate to parent and select the file). Escape cancels. Error notification shown for invalid/nonexistent paths.
+
+- Bug: mouse clicks on background items still register while dialog is open — dialog should be fully modal
 
 ## File details / properties panel
 
@@ -200,5 +202,4 @@ Popup menu at click position with contextual actions.
 
 Review existing config options and evaluate whether any should be added, removed, or changed.
 
-- Are all current options (`show_icons_enabled`, `image_previews_enabled`) still needed?
-- New options to consider: `show_hidden_files`, sort order, default sort direction
+- Are all current options (`show_icons_enabled`, `image_previews_enabled`, `show_hidden_files`, `sort_mode`, `sort_ascending`) still needed?
