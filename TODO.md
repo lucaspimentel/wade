@@ -128,14 +128,9 @@ Save frequently used directories for quick access.
 - Quick-jump via numbered slots (`1-9`) or selection list
 - Persist bookmarks to a file (e.g. alongside config)
 
-## Go-to-path bar
+## ~~Go-to-path bar~~ ✅
 
-Type an arbitrary path to jump to directly.
-
-- Keybinding to open (e.g. `g` or `Ctrl+G`)
-- Uses existing input dialog infrastructure (`ShowTextInputDialog`)
-- Navigate to the entered path on confirm; show error if path doesn't exist
-- **Depends on:** Text input widget, Modal input mode
+Implemented: Press `g` to open a path input dialog pre-filled with the current directory. Tab auto-completes from the filesystem (first matching entry). Suggestion shown on a second row in dimmed text. Enter navigates to the path (directories open directly; files navigate to parent and select the file). Escape cancels. Error notification shown for invalid/nonexistent paths.
 
 ## File details / properties panel
 

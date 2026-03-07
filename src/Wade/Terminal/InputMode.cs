@@ -7,4 +7,5 @@ internal enum InputMode
     TextInput,
     Search,
     ExpandedPreview,
+    GoToPath,
 }

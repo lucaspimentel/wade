@@ -18,6 +18,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Status bar** — current path, item count, file type label (language name, "Text", or "Binary"), encoding (UTF-8, UTF-8 BOM, UTF-16 LE/BE), line endings (CRLF, LF, CR, Mixed), file size, and sort indicator
 - **Hidden files toggle** — dotfiles and system-hidden files are hidden by default; press `.` to toggle visibility at runtime, or set `show_hidden_files = true` in config
 - **Sort order** — sort by name (default), modification time, size, or extension; press `s` to cycle modes, `S` to reverse direction; directories always listed first; configurable via `sort_mode` and `sort_ascending` in config; current sort mode shown in status bar
+- **Go-to-path bar** — press `g` to type an arbitrary path and jump to it; Tab auto-completes from the filesystem; navigates to directories or selects files
 - **Search / filter** — press `/` to type a query that narrows visible entries in real-time; Enter persists the filter, Escape clears it; filter auto-clears on directory change
 - **Multi-select** — press Space to mark/unmark entries for future bulk operations; marks are path-based and survive scrolling and filtering; marked entries highlighted with a distinct background; mark count shown in status bar
 - **Mouse support** — click to select entries in any pane, scroll wheel to navigate; left/right pane clicks navigate directories
@@ -97,6 +98,7 @@ wade -h                               # same as --help
 | . | Toggle hidden files |
 | s | Cycle sort (name / time / size / ext) |
 | S | Reverse sort direction |
+| g | Go to path |
 | / | Search / filter |
 | Esc (in search) | Clear filter |
 | Ctrl+R | Refresh |

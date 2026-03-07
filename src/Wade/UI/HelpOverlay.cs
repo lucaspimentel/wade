@@ -22,6 +22,7 @@ internal static class HelpOverlay
         (".",                   "Toggle hidden files"),
         ("s",                   "Cycle sort mode"),
         ("S",                   "Reverse sort direction"),
+        ("g",                   "Go to path"),
         ("/",                   "Search / filter"),
         ("Esc (in search)",     "Clear filter"),
         ("?",                   "Show help"),

@@ -99,6 +99,15 @@ public class InputReaderTests
         Assert.Equal(AppAction.ToggleSortDirection, InputReader.MapKey(evt));
     }
 
+    // ── Go-to-path ────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void MapKey_G_ReturnsGoToPath()
+    {
+        var evt = new KeyEvent(ConsoleKey.G, 'g', false, false, false);
+        Assert.Equal(AppAction.GoToPath, InputReader.MapKey(evt));
+    }
+
     // ── Modifier combinations ───────────────────────────────────────────────────
 
     [Fact]

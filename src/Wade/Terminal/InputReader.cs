@@ -19,6 +19,7 @@ internal enum AppAction
     ToggleMark,
     CycleSortMode,
     ToggleSortDirection,
+    GoToPath,
 }
 
 internal static class InputReader
@@ -39,6 +40,9 @@ internal static class InputReader
 
         if (key.KeyChar == 'S')
             return AppAction.ToggleSortDirection;
+
+        if (key.KeyChar == 'g')
+            return AppAction.GoToPath;
 
         if (key.Key == ConsoleKey.Spacebar)
             return AppAction.ToggleMark;

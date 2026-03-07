@@ -45,6 +45,10 @@ internal sealed class App
     private string _searchFilter = "";
     private List<FileSystemEntry>? _filteredEntries;
 
+    // Go-to-path state
+    private TextInput? _goToPathInput;
+    private string? _goToPathSuggestion;
+
     private string? _cachedPreviewPath;
     private StyledLine[]? _cachedStyledLines;
     private string? _cachedPreviewFileTypeLabel;
@@ -259,6 +263,10 @@ internal sealed class App
                     HandleConfirmKey(keyEvent);
                     continue;
 
+                case InputMode.GoToPath:
+                    HandleGoToPathKey(keyEvent, previewLoader, buffer);
+                    continue;
+
                 case InputMode.Normal:
                 default:
                     break; // fall through to normal AppAction dispatch
@@ -417,6 +425,15 @@ internal sealed class App
                     ClearPreviewCache(previewLoader, buffer);
                     ShowNotification($"Sort: {(_directoryContents.SortAscending ? "ascending" : "descending")}");
                     break;
+
+                case AppAction.GoToPath:
+                    _inputMode = InputMode.GoToPath;
+                    string initialPath = _currentPath == DirectoryContents.DrivesPath
+                        ? ""
+                        : _currentPath + Path.DirectorySeparatorChar;
+                    _goToPathInput = new TextInput(initialPath);
+                    _goToPathSuggestion = PathCompletion.GetSuggestion(initialPath);
+                    break;
             }
 
             // Clamp selection
@@ -561,6 +578,9 @@ internal sealed class App
                 break;
             case InputMode.TextInput:
                 RenderTextInputDialog(buffer, width, height);
+                break;
+            case InputMode.GoToPath:
+                RenderGoToPathDialog(buffer, width, height);
                 break;
         }
     }
@@ -970,6 +990,159 @@ internal sealed class App
                 break;
         }
         // All other keys are consumed but ignored
+    }
+
+    // ── Go-to-path handlers ────────────────────────────────────────────────
+
+    private void HandleGoToPathKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer)
+    {
+        switch (key.Key)
+        {
+            case ConsoleKey.Escape:
+                _inputMode = InputMode.Normal;
+                _goToPathInput = null;
+                _goToPathSuggestion = null;
+                break;
+
+            case ConsoleKey.Enter:
+                string path = _goToPathInput!.Value.TrimEnd('/', '\\');
+                _inputMode = InputMode.Normal;
+                _goToPathInput = null;
+                _goToPathSuggestion = null;
+                NavigateToPath(path, previewLoader, buffer);
+                break;
+
+            case ConsoleKey.Tab:
+                if (_goToPathSuggestion is not null)
+                {
+                    string accepted = _goToPathSuggestion;
+                    if (Directory.Exists(accepted))
+                        accepted += Path.DirectorySeparatorChar;
+                    _goToPathInput = new TextInput(accepted);
+                    _goToPathSuggestion = PathCompletion.GetSuggestion(accepted);
+                }
+                break;
+
+            case ConsoleKey.Backspace:
+                _goToPathInput!.DeleteBackward();
+                _goToPathSuggestion = PathCompletion.GetSuggestion(_goToPathInput.Value);
+                break;
+
+            case ConsoleKey.Delete:
+                _goToPathInput!.DeleteForward();
+                _goToPathSuggestion = PathCompletion.GetSuggestion(_goToPathInput.Value);
+                break;
+
+            case ConsoleKey.LeftArrow:
+                _goToPathInput!.MoveCursorLeft();
+                break;
+
+            case ConsoleKey.RightArrow:
+                _goToPathInput!.MoveCursorRight();
+                break;
+
+            case ConsoleKey.Home:
+                _goToPathInput!.MoveCursorHome();
+                break;
+
+            case ConsoleKey.End:
+                _goToPathInput!.MoveCursorEnd();
+                break;
+
+            default:
+                if (key.KeyChar >= ' ')
+                {
+                    _goToPathInput!.InsertChar(key.KeyChar);
+                    _goToPathSuggestion = PathCompletion.GetSuggestion(_goToPathInput.Value);
+                }
+                break;
+        }
+    }
+
+    private void NavigateToPath(string path, PreviewLoader previewLoader, ScreenBuffer buffer)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return;
+
+        try
+        {
+            path = Path.GetFullPath(PathCompletion.NormalizeSeparators(PathCompletion.ExpandTilde(path)));
+        }
+        catch
+        {
+            ShowNotification("Invalid path", NotificationKind.Error);
+            return;
+        }
+
+        if (Directory.Exists(path))
+        {
+            _selectedIndexPerDir[_currentPath] = _selectedIndex;
+            _currentPath = path;
+            _selectedIndex = 0;
+            _scrollOffset = 0;
+            _markedPaths.Clear();
+            ClearSearchFilter();
+            ClearPreviewCache(previewLoader, buffer);
+        }
+        else if (File.Exists(path))
+        {
+            string? parent = Path.GetDirectoryName(path);
+            if (parent is not null)
+            {
+                _selectedIndexPerDir[_currentPath] = _selectedIndex;
+                _currentPath = parent;
+                var entries = _directoryContents.GetEntries(_currentPath);
+                string fileName = Path.GetFileName(path);
+                int idx = entries.FindIndex(e => e.Name.Equals(fileName, StringComparison.OrdinalIgnoreCase));
+                _selectedIndex = idx >= 0 ? idx : 0;
+                _scrollOffset = 0;
+                _markedPaths.Clear();
+                ClearSearchFilter();
+                ClearPreviewCache(previewLoader, buffer);
+            }
+        }
+        else
+        {
+            ShowNotification("Path not found", NotificationKind.Error);
+        }
+    }
+
+    private void RenderGoToPathDialog(ScreenBuffer buffer, int width, int height)
+    {
+        int contentWidth = Math.Min(60, width - 8);
+        int contentHeight = 1;
+        string footer = "[Tab] Complete  [Enter] Go  [Esc] Cancel";
+
+        Rect content = DialogBox.Render(buffer, width, height, contentWidth, contentHeight,
+            title: "Go to path", footer: footer);
+
+        var inputStyle = new CellStyle(new Color(200, 200, 200), DialogBox.BgColor);
+        _goToPathInput?.Render(buffer, content.Top, content.Left, content.Width, inputStyle);
+
+        // Inline ghost suffix — show the untyped remainder of the suggestion after the cursor
+        if (_goToPathSuggestion is not null && _goToPathInput is not null)
+        {
+            string inputValue = _goToPathInput.Value;
+            string expandedInput = PathCompletion.NormalizeSeparators(PathCompletion.ExpandTilde(inputValue));
+
+            // Only show ghost when cursor is at end and suggestion extends beyond expanded input
+            if (_goToPathInput.CursorPosition == inputValue.Length
+                && _goToPathSuggestion.Length > expandedInput.Length
+                && _goToPathSuggestion.StartsWith(expandedInput, StringComparison.OrdinalIgnoreCase))
+            {
+                int scrollOffset = _goToPathInput.ScrollOffset;
+                int visualTextEnd = inputValue.Length - scrollOffset + 1; // +1 for cursor space
+                int ghostCol = content.Left + visualTextEnd;
+                int ghostMaxWidth = content.Width - visualTextEnd;
+
+                if (ghostMaxWidth > 0)
+                {
+                    string ghost = _goToPathSuggestion[expandedInput.Length..];
+                    var ghostStyle = new CellStyle(new Color(90, 90, 110), DialogBox.BgColor);
+                    buffer.WriteString(content.Top, ghostCol, ghost, ghostStyle, ghostMaxWidth);
+                }
+            }
+        }
     }
 
     // ── Modal entry points ──────────────────────────────────────────────────

@@ -42,6 +42,7 @@ static void PrintHelp()
           .                               Toggle hidden files
           s                               Cycle sort (name / time / size / ext)
           S                               Reverse sort direction
+          g                               Go to path
           ?                               Show help overlay
           q / Escape                      Quit
 

@@ -19,6 +19,8 @@ internal sealed class TextInput
 
     public int CursorPosition => _cursorPos;
 
+    public int ScrollOffset => _scrollOffset;
+
     public void InsertChar(char ch)
     {
         _buffer.Insert(_cursorPos, ch);
