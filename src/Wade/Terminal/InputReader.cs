@@ -20,6 +20,12 @@ internal enum AppAction
     CycleSortMode,
     ToggleSortDirection,
     GoToPath,
+    OpenExternal,
+    Rename,
+    Delete,
+    Copy,
+    Cut,
+    Paste,
 }
 
 internal static class InputReader
@@ -44,11 +50,29 @@ internal static class InputReader
         if (key.KeyChar == 'g')
             return AppAction.GoToPath;
 
+        if (key.KeyChar == 'o')
+            return AppAction.OpenExternal;
+
         if (key.Key == ConsoleKey.Spacebar)
             return AppAction.ToggleMark;
 
         if (key.Key == ConsoleKey.R && key.Control)
             return AppAction.Refresh;
+
+        if (key.KeyChar == 'c' || (key.Key == ConsoleKey.C && key.Control))
+            return AppAction.Copy;
+
+        if (key.KeyChar == 'x' || (key.Key == ConsoleKey.X && key.Control))
+            return AppAction.Cut;
+
+        if (key.KeyChar is 'p' or 'v')
+            return AppAction.Paste;
+
+        if (key.Key == ConsoleKey.F2)
+            return AppAction.Rename;
+
+        if (key.Key is ConsoleKey.Delete)
+            return AppAction.Delete;
 
         return key.Key switch
         {

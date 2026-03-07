@@ -83,27 +83,15 @@ Implemented: Press `/` to enter search mode. Typing narrows visible entries by c
 
 Implemented: Configurable sort modes (name, modified time, size, extension) with ascending/descending toggle. `s` cycles sort mode, `S` toggles direction. Directories always sorted before files regardless of direction. Sort preference configurable via `sort_mode` and `sort_ascending` in config file. Current sort mode shown in status bar with direction arrow (e.g. `name↑`, `size↓`).
 
-## File actions
+## ~~File actions~~ ✅
 
-Common file operations on the selected item(s).
+Implemented: Open with default app (`o`), rename (`F2`), delete (`Del`), copy (`c`/`Ctrl+C`), cut (`x`/`Ctrl+X`), paste (`p`/`v`). Multi-select supported for delete/copy/cut. Internal clipboard with status bar indicator. Confirm dialog for delete. Error notifications for name collisions and failed operations.
 
-**Actions**
-- Open: launch file with its default shell handler (`explorer.exe` / `xdg-open`)
-- Rename: inline prompt to enter a new name
-- Delete: confirm dialog, then delete (to Recycle Bin on Windows if possible)
-- Copy: mark selected item(s) for copy
-- Cut: mark selected item(s) for move
-- Paste: copy/move marked items into the current directory
-
-**Interactions**
-- Keybindings (e.g. `F2` rename, `F8`/`Del` delete, `Ctrl+C` copy, `Ctrl+X` cut, `Ctrl+V` paste)
-- Multi-select: allow marking multiple items before acting
-- Show operation progress or errors inline
-
-**Constraints**
-- NativeAOT-compatible — use `System.IO` and `Process.Start` only, no reflection
-- Confirm destructive operations (delete, overwrite on paste) via a dialog
-- ~~Disable conflicting keybindings when a rename prompt or confirm dialog is active~~ ✅ — modal input mode consumes all keys
+**Remaining**
+- Recycle Bin support on Windows (use `SHFileOperation` or shell API instead of permanent delete)
+- Overwrite confirmation on paste when destination already exists
+- OS clipboard integration for copy/cut/paste (interop with system clipboard so files copied in wade can be pasted in Explorer/Finder and vice versa)
+- Progress indicator for large copy/move operations
 
 ## ~~Show/hide hidden files~~ ✅
 

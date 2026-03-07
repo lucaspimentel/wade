@@ -24,7 +24,9 @@ internal static class StatusBar
         Notification? notification = null,
         int markedCount = 0,
         SortMode sortMode = SortMode.Name,
-        bool sortAscending = true)
+        bool sortAscending = true,
+        int clipboardCount = 0,
+        bool clipboardIsCut = false)
     {
         // Fill background
         var bgStyle = new CellStyle(StatusFg, StatusBg);
@@ -36,7 +38,10 @@ internal static class StatusBar
         int pathMaxWidth = rect.Width / 2;
         buffer.WriteString(rect.Top, rect.Left + 1, currentPath, pathStyle, pathMaxWidth);
 
-        // Mark count (after path)
+        // Mark count and clipboard indicator (after path)
+        int infoCol = rect.Left + 1 + Math.Min(currentPath.Length, pathMaxWidth);
+        int infoMaxWidth = pathMaxWidth - Math.Min(currentPath.Length, pathMaxWidth);
+
         if (markedCount > 0)
         {
             var markStyle = new CellStyle(new Color(220, 220, 100), StatusBg);
@@ -48,10 +53,26 @@ internal static class StatusBar
             markLen += n;
             " marked".AsSpan().CopyTo(markBuf[markLen..]);
             markLen += 7;
-            int markCol = rect.Left + 1 + Math.Min(currentPath.Length, pathMaxWidth);
-            int markMaxWidth = pathMaxWidth - Math.Min(currentPath.Length, pathMaxWidth);
-            if (markMaxWidth > 0)
-                buffer.WriteString(rect.Top, markCol, markBuf[..markLen], markStyle, markMaxWidth);
+            if (infoMaxWidth > 0)
+                buffer.WriteString(rect.Top, infoCol, markBuf[..markLen], markStyle, infoMaxWidth);
+            infoCol += markLen;
+            infoMaxWidth -= markLen;
+        }
+
+        if (clipboardCount > 0 && infoMaxWidth > 0)
+        {
+            var clipStyle = new CellStyle(new Color(140, 180, 220), StatusBg);
+            Span<char> clipBuf = stackalloc char[24];
+            int clipLen = 0;
+            clipBuf[clipLen++] = ' ';
+            clipBuf[clipLen++] = ' ';
+            clipBuf[clipLen++] = '[';
+            clipboardCount.TryFormat(clipBuf[clipLen..], out int cn);
+            clipLen += cn;
+            ReadOnlySpan<char> clipLabel = clipboardIsCut ? " cut]" : " copied]";
+            clipLabel.CopyTo(clipBuf[clipLen..]);
+            clipLen += clipLabel.Length;
+            buffer.WriteString(rect.Top, infoCol, clipBuf[..clipLen], clipStyle, infoMaxWidth);
         }
 
         if (notification is { } notif)

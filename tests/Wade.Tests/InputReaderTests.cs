@@ -108,12 +108,68 @@ public class InputReaderTests
         Assert.Equal(AppAction.GoToPath, InputReader.MapKey(evt));
     }
 
-    // ── Modifier combinations ───────────────────────────────────────────────────
+    // ── File actions ─────────────────────────────────────────────────────────
 
     [Fact]
-    public void MapKey_CtrlC_ReturnsNone()
+    public void MapKey_O_ReturnsOpenExternal()
+    {
+        var evt = new KeyEvent(ConsoleKey.O, 'o', false, false, false);
+        Assert.Equal(AppAction.OpenExternal, InputReader.MapKey(evt));
+    }
+
+    [Fact]
+    public void MapKey_F2_ReturnsRename()
+    {
+        var evt = new KeyEvent(ConsoleKey.F2, '\0', false, false, false);
+        Assert.Equal(AppAction.Rename, InputReader.MapKey(evt));
+    }
+
+    [Fact]
+    public void MapKey_Delete_ReturnsDelete()
+    {
+        var evt = new KeyEvent(ConsoleKey.Delete, '\0', false, false, false);
+        Assert.Equal(AppAction.Delete, InputReader.MapKey(evt));
+    }
+
+    [Fact]
+    public void MapKey_CtrlC_ReturnsCopy()
     {
         var evt = new KeyEvent(ConsoleKey.C, '\x03', false, false, true);
-        Assert.Equal(AppAction.None, InputReader.MapKey(evt));
+        Assert.Equal(AppAction.Copy, InputReader.MapKey(evt));
+    }
+
+    [Fact]
+    public void MapKey_CtrlX_ReturnsCut()
+    {
+        var evt = new KeyEvent(ConsoleKey.X, '\x18', false, false, true);
+        Assert.Equal(AppAction.Cut, InputReader.MapKey(evt));
+    }
+
+    [Fact]
+    public void MapKey_C_ReturnsCopy()
+    {
+        var evt = new KeyEvent(ConsoleKey.C, 'c', false, false, false);
+        Assert.Equal(AppAction.Copy, InputReader.MapKey(evt));
+    }
+
+    [Fact]
+    public void MapKey_X_ReturnsCut()
+    {
+        var evt = new KeyEvent(ConsoleKey.X, 'x', false, false, false);
+        Assert.Equal(AppAction.Cut, InputReader.MapKey(evt));
+    }
+
+    [Fact]
+    public void MapKey_P_ReturnsPaste()
+    {
+        var evt = new KeyEvent(ConsoleKey.P, 'p', false, false, false);
+        Assert.Equal(AppAction.Paste, InputReader.MapKey(evt));
+    }
+
+    [Fact]
+    public void MapKey_V_ReturnsPaste()
+    {
+        var evt = new KeyEvent(ConsoleKey.V, 'v', false, false, false);
+        Assert.Equal(AppAction.Paste, InputReader.MapKey(evt));
     }
 }

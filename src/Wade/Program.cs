@@ -43,6 +43,12 @@ static void PrintHelp()
           s                               Cycle sort (name / time / size / ext)
           S                               Reverse sort direction
           g                               Go to path
+          o                               Open with default app
+          F2                              Rename
+          Del                             Delete
+          c / Ctrl+C                      Copy
+          x / Ctrl+X                      Cut
+          p / v                           Paste
           ?                               Show help overlay
           q / Escape                      Quit
 

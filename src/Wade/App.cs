@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using Wade.FileSystem;
 using Wade.Highlighting;
@@ -39,6 +40,10 @@ internal sealed class App
 
     // Multi-select state
     private readonly HashSet<string> _markedPaths = new(StringComparer.OrdinalIgnoreCase);
+
+    // Clipboard state
+    private readonly List<string> _clipboardPaths = [];
+    private bool _clipboardIsCut;
 
     // Search/filter state
     private TextInput? _searchInput;
@@ -435,6 +440,215 @@ internal sealed class App
                     _goToPathInput = new TextInput();
                     _goToPathSuggestion = null;
                     break;
+
+                case AppAction.OpenExternal:
+                    if (entries.Count > 0 && _selectedIndex < entries.Count)
+                    {
+                        var entry = entries[_selectedIndex];
+                        try
+                        {
+                            Process.Start(new ProcessStartInfo(entry.FullPath) { UseShellExecute = true });
+                            ShowNotification($"Opened '{entry.Name}'", NotificationKind.Info);
+                        }
+                        catch (Exception ex)
+                        {
+                            ShowNotification($"Error: {ex.Message}", NotificationKind.Error);
+                        }
+                    }
+                    break;
+
+                case AppAction.Rename:
+                    if (entries.Count > 0 && _selectedIndex < entries.Count)
+                    {
+                        var entry = entries[_selectedIndex];
+                        ShowTextInputDialog("Rename", entry.Name, newName =>
+                        {
+                            if (string.IsNullOrWhiteSpace(newName) || newName == entry.Name)
+                                return;
+
+                            string parentDir = Path.GetDirectoryName(entry.FullPath)!;
+                            string newPath = Path.Combine(parentDir, newName);
+
+                            if (Path.Exists(newPath))
+                            {
+                                ShowNotification($"'{newName}' already exists", NotificationKind.Error);
+                                return;
+                            }
+
+                            try
+                            {
+                                if (entry.IsDirectory)
+                                    Directory.Move(entry.FullPath, newPath);
+                                else
+                                    File.Move(entry.FullPath, newPath);
+
+                                _directoryContents.Invalidate(_currentPath);
+                                ShowNotification($"Renamed to '{newName}'", NotificationKind.Success);
+
+                                // Re-select the renamed entry
+                                var updatedEntries = GetVisibleEntries();
+                                for (int i = 0; i < updatedEntries.Count; i++)
+                                {
+                                    if (updatedEntries[i].Name.Equals(newName, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        _selectedIndex = i;
+                                        break;
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                ShowNotification($"Rename failed: {ex.Message}", NotificationKind.Error);
+                            }
+                        });
+                    }
+                    break;
+
+                case AppAction.Delete:
+                    if (entries.Count > 0)
+                    {
+                        List<string> targets;
+                        string prompt;
+
+                        if (_markedPaths.Count > 0)
+                        {
+                            targets = [.. _markedPaths];
+                            prompt = $"Delete {targets.Count} item(s)?";
+                        }
+                        else if (_selectedIndex < entries.Count)
+                        {
+                            targets = [entries[_selectedIndex].FullPath];
+                            prompt = $"Delete '{entries[_selectedIndex].Name}'?";
+                        }
+                        else
+                        {
+                            break;
+                        }
+
+                        ShowConfirmDialog("Delete", prompt, () =>
+                        {
+                            int errors = 0;
+                            foreach (string target in targets)
+                            {
+                                try
+                                {
+                                    if (Directory.Exists(target))
+                                        Directory.Delete(target, true);
+                                    else if (File.Exists(target))
+                                        File.Delete(target);
+                                }
+                                catch
+                                {
+                                    errors++;
+                                }
+                            }
+
+                            _directoryContents.Invalidate(_currentPath);
+                            _markedPaths.Clear();
+
+                            if (errors > 0)
+                                ShowNotification($"Deleted with {errors} error(s)", NotificationKind.Error);
+                            else
+                                ShowNotification($"Deleted {targets.Count} item(s)", NotificationKind.Success);
+                        });
+                    }
+                    break;
+
+                case AppAction.Copy:
+                    if (_markedPaths.Count > 0)
+                    {
+                        _clipboardPaths.Clear();
+                        _clipboardPaths.AddRange(_markedPaths);
+                        _clipboardIsCut = false;
+                        ShowNotification($"Copied {_markedPaths.Count} item(s)", NotificationKind.Info);
+                    }
+                    else if (entries.Count > 0 && _selectedIndex < entries.Count)
+                    {
+                        _clipboardPaths.Clear();
+                        _clipboardPaths.Add(entries[_selectedIndex].FullPath);
+                        _clipboardIsCut = false;
+                        ShowNotification($"Copied '{entries[_selectedIndex].Name}'", NotificationKind.Info);
+                    }
+                    break;
+
+                case AppAction.Cut:
+                    if (_markedPaths.Count > 0)
+                    {
+                        _clipboardPaths.Clear();
+                        _clipboardPaths.AddRange(_markedPaths);
+                        _clipboardIsCut = true;
+                        ShowNotification($"Cut {_markedPaths.Count} item(s)", NotificationKind.Info);
+                    }
+                    else if (entries.Count > 0 && _selectedIndex < entries.Count)
+                    {
+                        _clipboardPaths.Clear();
+                        _clipboardPaths.Add(entries[_selectedIndex].FullPath);
+                        _clipboardIsCut = true;
+                        ShowNotification($"Cut '{entries[_selectedIndex].Name}'", NotificationKind.Info);
+                    }
+                    break;
+
+                case AppAction.Paste:
+                    if (_clipboardPaths.Count == 0)
+                    {
+                        ShowNotification("Clipboard is empty", NotificationKind.Error);
+                    }
+                    else
+                    {
+                        int errors = 0;
+                        int success = 0;
+                        var sourceParents = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                        foreach (string sourcePath in _clipboardPaths)
+                        {
+                            string destName = Path.GetFileName(sourcePath);
+                            string destPath = Path.Combine(_currentPath, destName);
+
+                            if (Path.Exists(destPath))
+                            {
+                                errors++;
+                                continue;
+                            }
+
+                            try
+                            {
+                                if (_clipboardIsCut)
+                                {
+                                    if (Directory.Exists(sourcePath))
+                                        Directory.Move(sourcePath, destPath);
+                                    else
+                                        File.Move(sourcePath, destPath);
+
+                                    sourceParents.Add(Path.GetDirectoryName(sourcePath)!);
+                                }
+                                else
+                                {
+                                    if (Directory.Exists(sourcePath))
+                                        FileOperations.CopyDirectory(sourcePath, destPath);
+                                    else
+                                        File.Copy(sourcePath, destPath);
+                                }
+                                success++;
+                            }
+                            catch
+                            {
+                                errors++;
+                            }
+                        }
+
+                        _directoryContents.Invalidate(_currentPath);
+                        foreach (string parent in sourceParents)
+                            _directoryContents.Invalidate(parent);
+
+                        if (_clipboardIsCut && errors == 0)
+                            _clipboardPaths.Clear();
+
+                        if (errors > 0)
+                            ShowNotification($"Pasted {success}, {errors} failed", NotificationKind.Error);
+                        else
+                            ShowNotification($"Pasted {success} item(s)", NotificationKind.Success);
+                    }
+                    break;
             }
 
             // Clamp selection
@@ -565,7 +779,7 @@ internal sealed class App
             ? entries[_selectedIndex]
             : null;
         string displayPath = _currentPath == DirectoryContents.DrivesPath ? "Drives" : _currentPath;
-        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count, _directoryContents.SortMode, _directoryContents.SortAscending);
+        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count, _directoryContents.SortMode, _directoryContents.SortAscending, _clipboardPaths.Count, _clipboardIsCut);
 
         // Help overlay
         if (_showHelp)
@@ -912,7 +1126,7 @@ internal sealed class App
             ? entries[_selectedIndex]
             : null;
         string displayPath = _currentPath == DirectoryContents.DrivesPath ? "Drives" : _currentPath;
-        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count, _directoryContents.SortMode, _directoryContents.SortAscending);
+        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count, _directoryContents.SortMode, _directoryContents.SortAscending, _clipboardPaths.Count, _clipboardIsCut);
     }
 
     // ── Modal input handlers ────────────────────────────────────────────────

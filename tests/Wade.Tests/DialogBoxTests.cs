@@ -116,9 +116,9 @@ public class DialogBoxTests
     [Fact]
     public void HelpOverlay_Render_ContainsKeybindings()
     {
-        var buf = new ScreenBuffer(80, 24);
+        var buf = new ScreenBuffer(80, 40);
 
-        HelpOverlay.Render(buf, 80, 24);
+        HelpOverlay.Render(buf, 80, 40);
 
         var output = Flush(buf);
         Assert.Contains("Help", output);

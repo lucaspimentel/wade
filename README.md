@@ -21,6 +21,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Go-to-path bar** — press `g` to type an arbitrary path and jump to it; Tab auto-completes from the filesystem; navigates to directories or selects files
 - **Search / filter** — press `/` to type a query that narrows visible entries in real-time; Enter persists the filter, Escape clears it; filter auto-clears on directory change
 - **Multi-select** — press Space to mark/unmark entries for future bulk operations; marks are path-based and survive scrolling and filtering; marked entries highlighted with a distinct background; mark count shown in status bar
+- **File actions** — open files with default app, rename, delete, copy/cut/paste with internal clipboard; multi-select supported for delete/copy/cut
 - **Mouse support** — click to select entries in any pane, scroll wheel to navigate; left/right pane clicks navigate directories
 - **Minimal rendering** — raw VT/ANSI escape sequences, double-buffered with dirty-row tracking, cell diff, and style diffing
 
@@ -102,6 +103,12 @@ wade -h                               # same as --help
 | / | Search / filter |
 | Esc (in search) | Clear filter |
 | Ctrl+R | Refresh |
+| o | Open with default app |
+| F2 | Rename |
+| Del | Delete |
+| c / Ctrl+C | Copy |
+| x / Ctrl+X | Cut |
+| p / v | Paste |
 | ? | Show help |
 | q / Escape | Quit |
 

@@ -25,6 +25,12 @@ internal static class HelpOverlay
         ("g",                   "Go to path"),
         ("/",                   "Search / filter"),
         ("Esc (in search)",     "Clear filter"),
+        ("o",                   "Open with default app"),
+        ("F2",                  "Rename"),
+        ("Del",                 "Delete"),
+        ("c / Ctrl+C",          "Copy"),
+        ("x / Ctrl+X",          "Cut"),
+        ("p / v",               "Paste"),
         ("?",                   "Show help"),
         ("q / Escape",          "Quit"),
     ];
