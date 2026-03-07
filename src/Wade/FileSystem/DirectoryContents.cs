@@ -9,6 +9,8 @@ internal sealed class DirectoryContents
 
     private readonly Dictionary<string, List<FileSystemEntry>> _cache = new(StringComparer.OrdinalIgnoreCase);
 
+    public bool ShowHiddenFiles { get; set; }
+
     public List<FileSystemEntry> GetEntries(string path)
     {
         if (path == DrivesPath)
@@ -56,7 +58,7 @@ internal sealed class DirectoryContents
         _cache.Clear();
     }
 
-    internal static List<FileSystemEntry> LoadEntries(string path)
+    internal List<FileSystemEntry> LoadEntries(string path)
     {
         var list = new List<FileSystemEntry>();
 
@@ -66,7 +68,9 @@ internal sealed class DirectoryContents
 
             foreach (var dir in dirInfo.EnumerateDirectories())
             {
-                if ((dir.Attributes & FileAttributes.Hidden) != 0) continue;
+                if (!ShowHiddenFiles &&
+                    ((dir.Attributes & FileAttributes.Hidden) != 0 || dir.Name.StartsWith('.')))
+                    continue;
 
                 list.Add(new FileSystemEntry(
                     dir.Name,
@@ -78,7 +82,9 @@ internal sealed class DirectoryContents
 
             foreach (var file in dirInfo.EnumerateFiles())
             {
-                if ((file.Attributes & FileAttributes.Hidden) != 0) continue;
+                if (!ShowHiddenFiles &&
+                    ((file.Attributes & FileAttributes.Hidden) != 0 || file.Name.StartsWith('.')))
+                    continue;
 
                 list.Add(new FileSystemEntry(
                     file.Name,

@@ -117,14 +117,9 @@ Common file operations on the selected item(s).
 - Confirm destructive operations (delete, overwrite on paste) via a dialog
 - ~~Disable conflicting keybindings when a rename prompt or confirm dialog is active~~ ✅ — modal input mode consumes all keys
 
-## Show/hide hidden files
+## ~~Show/hide hidden files~~ ✅
 
-Toggle visibility of hidden files (dotfiles on Unix, Hidden attribute on Windows).
-
-- Keybinding to toggle (e.g. `.` or `Ctrl+H`)
-- Hidden by default; persist preference via config
-- Config flag: `show_hidden_files` in config file
-- Update `HelpOverlay.Bindings` (`src/Wade/UI/HelpOverlay.cs`) and README keybindings table to include the new toggle
+Implemented: Hidden files (dotfiles on all platforms, `Hidden` attribute on Windows) are excluded by default. Toggle visibility at runtime with `.` keybinding. Config flag `show_hidden_files` (default: `false`) in config file. `DirectoryContents.ShowHiddenFiles` controls filtering; cache is invalidated on toggle.
 
 ## Config dialog
 

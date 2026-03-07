@@ -18,6 +18,7 @@ internal static class HelpOverlay
         ("Left Click",          "Select / Open"),
         ("Scroll",              "Navigate up/down"),
         ("Ctrl+R",              "Refresh"),
+        (".",                   "Toggle hidden files"),
         ("/",                   "Search / filter"),
         ("Esc (in search)",     "Clear filter"),
         ("?",                   "Show help"),

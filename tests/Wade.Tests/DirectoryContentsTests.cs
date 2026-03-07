@@ -9,7 +9,7 @@ public class DirectoryContentsTests
     {
         // Use the test project's own directory as a known path
         string testDir = Path.GetTempPath();
-        var entries = DirectoryContents.LoadEntries(testDir);
+        var entries = new DirectoryContents().LoadEntries(testDir);
 
         bool seenFile = false;
         foreach (var entry in entries)
@@ -24,7 +24,7 @@ public class DirectoryContentsTests
     [Fact]
     public void LoadEntries_InvalidPath_ReturnsEmptyList()
     {
-        var entries = DirectoryContents.LoadEntries(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()));
+        var entries = new DirectoryContents().LoadEntries(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()));
         Assert.Empty(entries);
     }
 

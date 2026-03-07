@@ -24,17 +24,20 @@ public class WadeConfigTests
         Assert.True(config.ImagePreviewsEnabled);
         Assert.False(config.ShowConfig);
         Assert.False(config.ShowHelp);
+        Assert.False(config.ShowHiddenFiles);
         Assert.Equal(Directory.GetCurrentDirectory(), config.StartPath);
     }
 
     // ── Config file parsing ───────────────────────────────────────────────────
 
     [Theory]
-    [InlineData("show_icons_enabled = true", true, true)]
-    [InlineData("show_icons_enabled = false", false, true)]
-    [InlineData("image_previews_enabled = true", true, true)]
-    [InlineData("image_previews_enabled = false", true, false)]
-    public void ConfigFile_ParsesBoolSettings(string line, bool expectedIcons, bool expectedPreviews)
+    [InlineData("show_icons_enabled = true", true, true, false)]
+    [InlineData("show_icons_enabled = false", false, true, false)]
+    [InlineData("image_previews_enabled = true", true, true, false)]
+    [InlineData("image_previews_enabled = false", true, false, false)]
+    [InlineData("show_hidden_files = true", true, true, true)]
+    [InlineData("show_hidden_files = false", true, true, false)]
+    public void ConfigFile_ParsesBoolSettings(string line, bool expectedIcons, bool expectedPreviews, bool expectedHidden)
     {
         var path = WriteTempConfig(line);
         try
@@ -42,6 +45,7 @@ public class WadeConfigTests
             var config = WadeConfig.Load([], configFilePath: path);
             Assert.Equal(expectedIcons, config.ShowIconsEnabled);
             Assert.Equal(expectedPreviews, config.ImagePreviewsEnabled);
+            Assert.Equal(expectedHidden, config.ShowHiddenFiles);
         }
         finally
         {

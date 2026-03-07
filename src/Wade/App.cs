@@ -72,6 +72,7 @@ internal sealed class App
     public void Run()
     {
         _currentPath = Path.GetFullPath(_config.StartPath);
+        _directoryContents.ShowHiddenFiles = _config.ShowHiddenFiles;
 
         using var terminal = new TerminalSetup();
         using var inputSource = InputPipeline.CreatePlatformSource();
@@ -354,6 +355,12 @@ internal sealed class App
                     _directoryContents.InvalidateAll();
                     ClearPreviewCache(previewLoader, buffer);
                     buffer.ForceFullRedraw();
+                    break;
+
+                case AppAction.ToggleHiddenFiles:
+                    _directoryContents.ShowHiddenFiles = !_directoryContents.ShowHiddenFiles;
+                    _directoryContents.InvalidateAll();
+                    ClearPreviewCache(previewLoader, buffer);
                     break;
             }
 

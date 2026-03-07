@@ -4,6 +4,7 @@ internal sealed class WadeConfig
 {
     public bool ShowIconsEnabled { get; set; } = true;
     public bool ImagePreviewsEnabled { get; set; } = true;
+    public bool ShowHiddenFiles { get; set; } = false;
     public string StartPath { get; set; } = Directory.GetCurrentDirectory();
     public bool ShowConfig { get; set; } = false;
     public bool ShowHelp { get; set; } = false;
@@ -57,6 +58,9 @@ internal sealed class WadeConfig
                     case "image_previews_enabled":
                         config.ImagePreviewsEnabled = ParseBool(value, config.ImagePreviewsEnabled);
                         break;
+                    case "show_hidden_files":
+                        config.ShowHiddenFiles = ParseBool(value, config.ShowHiddenFiles);
+                        break;
                 }
             }
         }
@@ -102,7 +106,7 @@ internal sealed class WadeConfig
     internal string ToJson()
     {
         var escapedPath = StartPath.Replace("\\", "\\\\");
-        return $"{{\"show_icons_enabled\":{(ShowIconsEnabled ? "true" : "false")},\"image_previews_enabled\":{(ImagePreviewsEnabled ? "true" : "false")},\"start_path\":\"{escapedPath}\"}}";
+        return $"{{\"show_icons_enabled\":{(ShowIconsEnabled ? "true" : "false")},\"image_previews_enabled\":{(ImagePreviewsEnabled ? "true" : "false")},\"show_hidden_files\":{(ShowHiddenFiles ? "true" : "false")},\"start_path\":\"{escapedPath}\"}}";
     }
 
     internal static bool ParseBool(string value, bool fallback)
