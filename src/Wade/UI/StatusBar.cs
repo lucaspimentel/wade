@@ -22,7 +22,9 @@ internal static class StatusBar
         string? encoding = null,
         string? lineEnding = null,
         Notification? notification = null,
-        int markedCount = 0)
+        int markedCount = 0,
+        SortMode sortMode = SortMode.Name,
+        bool sortAscending = true)
     {
         // Fill background
         var bgStyle = new CellStyle(StatusFg, StatusBg);
@@ -75,7 +77,7 @@ internal static class StatusBar
         {
             // Right side: item count + selected info — build without heap allocations
             Span<char> rightBuf = stackalloc char[128];
-            int rightLen = BuildRightText(rightBuf, itemCount, selectedIndex, selectedEntry, fileTypeLabel, encoding, lineEnding);
+            int rightLen = BuildRightText(rightBuf, itemCount, selectedIndex, selectedEntry, fileTypeLabel, encoding, lineEnding, sortMode, sortAscending);
             ReadOnlySpan<char> right = rightBuf[..rightLen];
 
             int rightCol = rect.Width - rightLen - 1;
@@ -87,9 +89,11 @@ internal static class StatusBar
         }
     }
 
-    private static int BuildRightText(Span<char> buf, int itemCount, int selectedIndex, FileSystemEntry? selectedEntry, string? fileTypeLabel, string? encoding = null, string? lineEnding = null)
+    private static int BuildRightText(Span<char> buf, int itemCount, int selectedIndex, FileSystemEntry? selectedEntry, string? fileTypeLabel, string? encoding = null, string? lineEnding = null, SortMode sortMode = SortMode.Name, bool sortAscending = true)
     {
         int pos = 0;
+
+        pos += FormatSortIndicator(buf[pos..], sortMode, sortAscending);
 
         if (fileTypeLabel is not null && selectedEntry is { IsDirectory: false })
         {
@@ -144,6 +148,23 @@ internal static class StatusBar
             pos += 5;
         }
 
+        return pos;
+    }
+
+    private static int FormatSortIndicator(Span<char> buf, SortMode sortMode, bool sortAscending)
+    {
+        ReadOnlySpan<char> label = sortMode switch
+        {
+            SortMode.Modified => "time",
+            SortMode.Size => "size",
+            SortMode.Extension => "ext",
+            _ => "name",
+        };
+        label.CopyTo(buf);
+        int pos = label.Length;
+        buf[pos++] = sortAscending ? '\u2191' : '\u2193'; // ↑ or ↓
+        buf[pos++] = ' ';
+        buf[pos++] = ' ';
         return pos;
     }
 

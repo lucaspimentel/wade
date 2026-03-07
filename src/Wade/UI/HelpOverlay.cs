@@ -20,6 +20,8 @@ internal static class HelpOverlay
         ("Ctrl+R",              "Refresh"),
         ("Space",               "Toggle mark (multi-select)"),
         (".",                   "Toggle hidden files"),
+        ("s",                   "Cycle sort mode"),
+        ("S",                   "Reverse sort direction"),
         ("/",                   "Search / filter"),
         ("Esc (in search)",     "Clear filter"),
         ("?",                   "Show help"),

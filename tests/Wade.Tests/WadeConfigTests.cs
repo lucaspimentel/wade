@@ -201,6 +201,46 @@ public class WadeConfigTests
         Assert.StartsWith(home, config.StartPath, StringComparison.OrdinalIgnoreCase);
     }
 
+    // ── Sort config ──────────────────────────────────────────────────────────
+
+    [Theory]
+    [InlineData("name")]
+    [InlineData("modified")]
+    [InlineData("size")]
+    [InlineData("extension")]
+    public void ConfigFile_ParsesSortMode(string mode)
+    {
+        var path = WriteTempConfig($"sort_mode = {mode}");
+        try
+        {
+            var config = WadeConfig.Load([], configFilePath: path);
+            Assert.Equal(mode, config.SortMode);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Theory]
+    [InlineData("true", true)]
+    [InlineData("false", false)]
+    public void ConfigFile_ParsesSortAscending(string value, bool expected)
+    {
+        var path = WriteTempConfig($"sort_ascending = {value}");
+        try
+        {
+            var config = WadeConfig.Load([], configFilePath: path);
+            Assert.Equal(expected, config.SortAscending);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void Defaults_SortMode_IsName()
+    {
+        var config = WadeConfig.Load([], configFilePath: "/nonexistent/path.toml");
+        Assert.Equal("name", config.SortMode);
+        Assert.True(config.SortAscending);
+    }
+
     // ── ParseBool edge cases ──────────────────────────────────────────────────
 
     [Theory]

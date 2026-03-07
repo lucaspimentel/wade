@@ -15,8 +15,9 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Directory preview** — shows contents of the selected directory
 - **Drive navigation** — browse across drives on Windows (Backspace from a drive root)
 - **Detail columns** — file size and modification date in the center pane; columns adapt responsively as the terminal narrows (full date → date only → short date → size only → name only)
-- **Status bar** — current path, item count, file type label (language name, "Text", or "Binary"), encoding (UTF-8, UTF-8 BOM, UTF-16 LE/BE), line endings (CRLF, LF, CR, Mixed), and file size
+- **Status bar** — current path, item count, file type label (language name, "Text", or "Binary"), encoding (UTF-8, UTF-8 BOM, UTF-16 LE/BE), line endings (CRLF, LF, CR, Mixed), file size, and sort indicator
 - **Hidden files toggle** — dotfiles and system-hidden files are hidden by default; press `.` to toggle visibility at runtime, or set `show_hidden_files = true` in config
+- **Sort order** — sort by name (default), modification time, size, or extension; press `s` to cycle modes, `S` to reverse direction; directories always listed first; configurable via `sort_mode` and `sort_ascending` in config; current sort mode shown in status bar
 - **Search / filter** — press `/` to type a query that narrows visible entries in real-time; Enter persists the filter, Escape clears it; filter auto-clears on directory change
 - **Multi-select** — press Space to mark/unmark entries for future bulk operations; marks are path-based and survive scrolling and filtering; marked entries highlighted with a distinct background; mark count shown in status bar
 - **Mouse support** — click to select entries in any pane, scroll wheel to navigate; left/right pane clicks navigate directories
@@ -67,6 +68,8 @@ wade C:\Users     # open in a specific directory
 show_icons_enabled = true
 image_previews_enabled = true
 show_hidden_files = false
+sort_mode = name                # name, modified, size, extension
+sort_ascending = true
 ```
 
 ### CLI flags
@@ -92,6 +95,8 @@ wade -h                               # same as --help
 | Scroll | Navigate up/down |
 | Space | Toggle mark (multi-select) |
 | . | Toggle hidden files |
+| s | Cycle sort (name / time / size / ext) |
+| S | Reverse sort direction |
 | / | Search / filter |
 | Esc (in search) | Clear filter |
 | Ctrl+R | Refresh |

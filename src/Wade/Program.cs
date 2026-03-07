@@ -40,6 +40,8 @@ static void PrintHelp()
           Scroll                          Navigate up/down
           Ctrl+R                          Refresh
           .                               Toggle hidden files
+          s                               Cycle sort (name / time / size / ext)
+          S                               Reverse sort direction
           ?                               Show help overlay
           q / Escape                      Quit
 
@@ -48,5 +50,7 @@ static void PrintHelp()
           show_icons_enabled = true
           image_previews_enabled = true
           show_hidden_files = false
+          sort_mode = name                # name, modified, size, extension
+          sort_ascending = true
         """);
 }

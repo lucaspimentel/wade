@@ -70,6 +70,22 @@ public class StatusBarTests
         Assert.Contains("Saved!", output);
     }
 
+    [Theory]
+    [InlineData((int)SortMode.Name, true, "name\u2191")]
+    [InlineData((int)SortMode.Modified, true, "time\u2191")]
+    [InlineData((int)SortMode.Size, false, "size\u2193")]
+    [InlineData((int)SortMode.Extension, false, "ext\u2193")]
+    public void Render_ShowsSortIndicator(int sortModeInt, bool ascending, string expected)
+    {
+        var sortMode = (SortMode)sortModeInt;
+        var buf = new ScreenBuffer(80, 1);
+
+        StatusBar.Render(buf, StatusBarRect(80), "/home", 5, 0, null, sortMode: sortMode, sortAscending: ascending);
+
+        string output = Flush(buf);
+        Assert.Contains(expected, output);
+    }
+
     [Fact]
     public void Render_NotificationTruncatedToFit()
     {

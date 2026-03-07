@@ -83,6 +83,22 @@ public class InputReaderTests
         Assert.Equal(AppAction.ToggleMark, InputReader.MapKey(evt));
     }
 
+    // ── Sort keys ─────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void MapKey_S_ReturnsCycleSortMode()
+    {
+        var evt = new KeyEvent(ConsoleKey.S, 's', false, false, false);
+        Assert.Equal(AppAction.CycleSortMode, InputReader.MapKey(evt));
+    }
+
+    [Fact]
+    public void MapKey_ShiftS_ReturnsToggleSortDirection()
+    {
+        var evt = new KeyEvent(ConsoleKey.S, 'S', true, false, false);
+        Assert.Equal(AppAction.ToggleSortDirection, InputReader.MapKey(evt));
+    }
+
     // ── Modifier combinations ───────────────────────────────────────────────────
 
     [Fact]

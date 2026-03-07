@@ -79,6 +79,14 @@ internal sealed class App
     {
         _currentPath = Path.GetFullPath(_config.StartPath);
         _directoryContents.ShowHiddenFiles = _config.ShowHiddenFiles;
+        _directoryContents.SortMode = _config.SortMode.ToLowerInvariant() switch
+        {
+            "modified" => SortMode.Modified,
+            "size" => SortMode.Size,
+            "extension" => SortMode.Extension,
+            _ => SortMode.Name,
+        };
+        _directoryContents.SortAscending = _config.SortAscending;
 
         using var terminal = new TerminalSetup();
         using var inputSource = InputPipeline.CreatePlatformSource();
@@ -389,6 +397,26 @@ internal sealed class App
                     _directoryContents.InvalidateAll();
                     ClearPreviewCache(previewLoader, buffer);
                     break;
+
+                case AppAction.CycleSortMode:
+                    _directoryContents.SortMode = _directoryContents.SortMode switch
+                    {
+                        SortMode.Name => SortMode.Modified,
+                        SortMode.Modified => SortMode.Size,
+                        SortMode.Size => SortMode.Extension,
+                        _ => SortMode.Name,
+                    };
+                    _directoryContents.InvalidateAll();
+                    ClearPreviewCache(previewLoader, buffer);
+                    ShowNotification($"Sort: {FormatSortMode(_directoryContents.SortMode)}");
+                    break;
+
+                case AppAction.ToggleSortDirection:
+                    _directoryContents.SortAscending = !_directoryContents.SortAscending;
+                    _directoryContents.InvalidateAll();
+                    ClearPreviewCache(previewLoader, buffer);
+                    ShowNotification($"Sort: {(_directoryContents.SortAscending ? "ascending" : "descending")}");
+                    break;
             }
 
             // Clamp selection
@@ -519,7 +547,7 @@ internal sealed class App
             ? entries[_selectedIndex]
             : null;
         string displayPath = _currentPath == DirectoryContents.DrivesPath ? "Drives" : _currentPath;
-        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count);
+        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count, _directoryContents.SortMode, _directoryContents.SortAscending);
 
         // Help overlay
         if (_showHelp)
@@ -863,7 +891,7 @@ internal sealed class App
             ? entries[_selectedIndex]
             : null;
         string displayPath = _currentPath == DirectoryContents.DrivesPath ? "Drives" : _currentPath;
-        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count);
+        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count, _directoryContents.SortMode, _directoryContents.SortAscending);
     }
 
     // ── Modal input handlers ────────────────────────────────────────────────
@@ -968,6 +996,14 @@ internal sealed class App
     {
         _notification = new Notification(message, kind, Environment.TickCount64);
     }
+
+    private static string FormatSortMode(SortMode mode) => mode switch
+    {
+        SortMode.Modified => "time",
+        SortMode.Size => "size",
+        SortMode.Extension => "ext",
+        _ => "name",
+    };
 
     // ── Search/filter helpers ────────────────────────────────────────────────
 

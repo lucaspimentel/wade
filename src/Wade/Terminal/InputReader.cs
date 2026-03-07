@@ -17,6 +17,8 @@ internal enum AppAction
     Search,
     ToggleHiddenFiles,
     ToggleMark,
+    CycleSortMode,
+    ToggleSortDirection,
 }
 
 internal static class InputReader
@@ -31,6 +33,12 @@ internal static class InputReader
 
         if (key.KeyChar == '.')
             return AppAction.ToggleHiddenFiles;
+
+        if (key.KeyChar == 's')
+            return AppAction.CycleSortMode;
+
+        if (key.KeyChar == 'S')
+            return AppAction.ToggleSortDirection;
 
         if (key.Key == ConsoleKey.Spacebar)
             return AppAction.ToggleMark;

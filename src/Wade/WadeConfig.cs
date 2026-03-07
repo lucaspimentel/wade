@@ -5,6 +5,8 @@ internal sealed class WadeConfig
     public bool ShowIconsEnabled { get; set; } = true;
     public bool ImagePreviewsEnabled { get; set; } = true;
     public bool ShowHiddenFiles { get; set; } = false;
+    public string SortMode { get; set; } = "name";
+    public bool SortAscending { get; set; } = true;
     public string StartPath { get; set; } = Directory.GetCurrentDirectory();
     public bool ShowConfig { get; set; } = false;
     public bool ShowHelp { get; set; } = false;
@@ -61,6 +63,12 @@ internal sealed class WadeConfig
                     case "show_hidden_files":
                         config.ShowHiddenFiles = ParseBool(value, config.ShowHiddenFiles);
                         break;
+                    case "sort_mode":
+                        config.SortMode = value.ToLowerInvariant();
+                        break;
+                    case "sort_ascending":
+                        config.SortAscending = ParseBool(value, config.SortAscending);
+                        break;
                 }
             }
         }
@@ -106,7 +114,7 @@ internal sealed class WadeConfig
     internal string ToJson()
     {
         var escapedPath = StartPath.Replace("\\", "\\\\");
-        return $"{{\"show_icons_enabled\":{(ShowIconsEnabled ? "true" : "false")},\"image_previews_enabled\":{(ImagePreviewsEnabled ? "true" : "false")},\"show_hidden_files\":{(ShowHiddenFiles ? "true" : "false")},\"start_path\":\"{escapedPath}\"}}";
+        return $"{{\"show_icons_enabled\":{(ShowIconsEnabled ? "true" : "false")},\"image_previews_enabled\":{(ImagePreviewsEnabled ? "true" : "false")},\"show_hidden_files\":{(ShowHiddenFiles ? "true" : "false")},\"sort_mode\":\"{SortMode}\",\"sort_ascending\":{(SortAscending ? "true" : "false")},\"start_path\":\"{escapedPath}\"}}";
     }
 
     internal static bool ParseBool(string value, bool fallback)

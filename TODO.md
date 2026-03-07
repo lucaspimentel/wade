@@ -79,15 +79,9 @@ Implemented: Press `/` to enter search mode. Typing narrows visible entries by c
 
 - **Depends on:** Text input widget, Modal input mode
 
-## Sort order
+## ~~Sort order~~ ✅
 
-Allow sorting the file list by different criteria.
-
-- Sort by name (default), modification time, size, extension
-- Toggle ascending / descending
-- Keybinding to cycle sort mode (e.g. `s`) or open a sort picker
-- Directories always sorted before files (existing behavior) unless overridden
-- Persist sort preference per session or via config
+Implemented: Configurable sort modes (name, modified time, size, extension) with ascending/descending toggle. `s` cycles sort mode, `S` toggles direction. Directories always sorted before files regardless of direction. Sort preference configurable via `sort_mode` and `sort_ascending` in config file. Current sort mode shown in status bar with direction arrow (e.g. `name↑`, `size↓`). Notifications shown on sort change.
 
 ## File actions
 

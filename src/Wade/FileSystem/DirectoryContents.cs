@@ -1,5 +1,7 @@
 namespace Wade.FileSystem;
 
+internal enum SortMode { Name, Modified, Size, Extension }
+
 internal sealed class DirectoryContents
 {
     /// <summary>
@@ -10,6 +12,8 @@ internal sealed class DirectoryContents
     private readonly Dictionary<string, List<FileSystemEntry>> _cache = new(StringComparer.OrdinalIgnoreCase);
 
     public bool ShowHiddenFiles { get; set; }
+    public SortMode SortMode { get; set; } = SortMode.Name;
+    public bool SortAscending { get; set; } = true;
 
     public List<FileSystemEntry> GetEntries(string path)
     {
@@ -103,15 +107,36 @@ internal sealed class DirectoryContents
             // Silently skip I/O errors
         }
 
-        // Directories first, then files, both sorted by name
+        SortEntries(list);
+
+        return list;
+    }
+
+    private void SortEntries(List<FileSystemEntry> list)
+    {
         list.Sort((a, b) =>
         {
             if (a.IsDirectory != b.IsDirectory)
                 return a.IsDirectory ? -1 : 1;
-            return string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
-        });
 
-        return list;
+            int cmp = SortMode switch
+            {
+                SortMode.Modified => a.LastModified.CompareTo(b.LastModified),
+                SortMode.Size => a.Size.CompareTo(b.Size),
+                SortMode.Extension => CompareExtension(a.Name, b.Name),
+                _ => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase),
+            };
+
+            return SortAscending ? cmp : -cmp;
+        });
+    }
+
+    private static int CompareExtension(string nameA, string nameB)
+    {
+        int cmp = string.Compare(
+            Path.GetExtension(nameA), Path.GetExtension(nameB),
+            StringComparison.OrdinalIgnoreCase);
+        return cmp != 0 ? cmp : string.Compare(nameA, nameB, StringComparison.OrdinalIgnoreCase);
     }
 }
 
