@@ -178,6 +178,60 @@ public class FileActionsTests : IDisposable
     }
 
     [Fact]
+    public void CopyFile_Overwrite_ReplacesDestination()
+    {
+        string src = Path.Combine(_tempDir, "src.txt");
+        File.WriteAllText(src, "new content");
+        string destDir = Path.Combine(_tempDir, "dest");
+        Directory.CreateDirectory(destDir);
+        string dest = Path.Combine(destDir, "src.txt");
+        File.WriteAllText(dest, "old content");
+
+        File.Copy(src, dest, overwrite: true);
+
+        Assert.Equal("new content", File.ReadAllText(dest));
+        Assert.True(File.Exists(src));
+    }
+
+    [Fact]
+    public void CopyDirectory_Overwrite_ReplacesDestination()
+    {
+        string srcDir = Path.Combine(_tempDir, "srcdir");
+        Directory.CreateDirectory(srcDir);
+        File.WriteAllText(Path.Combine(srcDir, "file.txt"), "new");
+
+        string destDir = Path.Combine(_tempDir, "destdir");
+        Directory.CreateDirectory(destDir);
+        File.WriteAllText(Path.Combine(destDir, "file.txt"), "old");
+        File.WriteAllText(Path.Combine(destDir, "extra.txt"), "extra");
+
+        // Simulate overwrite: delete destination then copy
+        Directory.Delete(destDir, true);
+        FileOperations.CopyDirectory(srcDir, destDir);
+
+        Assert.Equal("new", File.ReadAllText(Path.Combine(destDir, "file.txt")));
+        Assert.False(File.Exists(Path.Combine(destDir, "extra.txt")));
+    }
+
+    [Fact]
+    public void MoveFile_Overwrite_ReplacesDestination()
+    {
+        string src = Path.Combine(_tempDir, "moveme.txt");
+        File.WriteAllText(src, "new content");
+        string destDir = Path.Combine(_tempDir, "dest");
+        Directory.CreateDirectory(destDir);
+        string dest = Path.Combine(destDir, "moveme.txt");
+        File.WriteAllText(dest, "old content");
+
+        // Simulate overwrite: delete destination then move
+        File.Delete(dest);
+        File.Move(src, dest);
+
+        Assert.Equal("new content", File.ReadAllText(dest));
+        Assert.False(File.Exists(src));
+    }
+
+    [Fact]
     public void CopyDirectory_ThenPaste_BothExist()
     {
         string srcDir = Path.Combine(_tempDir, "copydir");

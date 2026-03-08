@@ -108,7 +108,7 @@ Implemented: Open with default app (`o`), rename (`F2`), delete (`Del`), copy (`
 
 **Remaining**
 - Recycle Bin support on Windows (use `SHFileOperation` or shell API instead of permanent delete)
-- Overwrite confirmation on paste when destination already exists
+- ~~Overwrite confirmation on paste when destination already exists~~ ✅
 - OS clipboard integration for copy/cut/paste (interop with system clipboard so files copied in wade can be pasted in Explorer/Finder and vice versa)
 - Progress indicator for large copy/move operations
 

@@ -591,58 +591,16 @@ internal sealed class App
                     }
                     else
                     {
-                        int errors = 0;
-                        int success = 0;
-                        var sourceParents = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        int conflicts = _clipboardPaths.Count(p => Path.Exists(Path.Combine(_currentPath, Path.GetFileName(p))));
 
-                        foreach (string sourcePath in _clipboardPaths)
+                        if (conflicts > 0)
                         {
-                            string destName = Path.GetFileName(sourcePath);
-                            string destPath = Path.Combine(_currentPath, destName);
-
-                            if (Path.Exists(destPath))
-                            {
-                                errors++;
-                                continue;
-                            }
-
-                            try
-                            {
-                                if (_clipboardIsCut)
-                                {
-                                    if (Directory.Exists(sourcePath))
-                                        Directory.Move(sourcePath, destPath);
-                                    else
-                                        File.Move(sourcePath, destPath);
-
-                                    sourceParents.Add(Path.GetDirectoryName(sourcePath)!);
-                                }
-                                else
-                                {
-                                    if (Directory.Exists(sourcePath))
-                                        FileOperations.CopyDirectory(sourcePath, destPath);
-                                    else
-                                        File.Copy(sourcePath, destPath);
-                                }
-                                success++;
-                            }
-                            catch
-                            {
-                                errors++;
-                            }
+                            ShowConfirmDialog("Overwrite", $"{conflicts} item(s) already exist. Overwrite?", () => ExecutePaste(overwrite: true));
                         }
-
-                        _directoryContents.Invalidate(_currentPath);
-                        foreach (string parent in sourceParents)
-                            _directoryContents.Invalidate(parent);
-
-                        if (_clipboardIsCut && errors == 0)
-                            _clipboardPaths.Clear();
-
-                        if (errors > 0)
-                            ShowNotification($"Pasted {success}, {errors} failed", NotificationKind.Error);
                         else
-                            ShowNotification($"Pasted {success} item(s)", NotificationKind.Success);
+                        {
+                            ExecutePaste(overwrite: false);
+                        }
                     }
                     break;
             }
@@ -657,6 +615,78 @@ internal sealed class App
             // Adjust scroll offset to keep selection visible
             AdjustScroll(VisibleFileListHeight);
         }
+    }
+
+    private void ExecutePaste(bool overwrite)
+    {
+        int errors = 0;
+        int success = 0;
+        var sourceParents = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (string sourcePath in _clipboardPaths)
+        {
+            string destName = Path.GetFileName(sourcePath);
+            string destPath = Path.Combine(_currentPath, destName);
+
+            if (Path.Exists(destPath))
+            {
+                if (!overwrite)
+                {
+                    errors++;
+                    continue;
+                }
+
+                try
+                {
+                    if (Directory.Exists(destPath))
+                        Directory.Delete(destPath, true);
+                    else
+                        File.Delete(destPath);
+                }
+                catch
+                {
+                    errors++;
+                    continue;
+                }
+            }
+
+            try
+            {
+                if (_clipboardIsCut)
+                {
+                    if (Directory.Exists(sourcePath))
+                        Directory.Move(sourcePath, destPath);
+                    else
+                        File.Move(sourcePath, destPath);
+
+                    sourceParents.Add(Path.GetDirectoryName(sourcePath)!);
+                }
+                else
+                {
+                    if (Directory.Exists(sourcePath))
+                        FileOperations.CopyDirectory(sourcePath, destPath);
+                    else
+                        File.Copy(sourcePath, destPath);
+                }
+                success++;
+            }
+            catch
+            {
+                errors++;
+            }
+        }
+
+        _directoryContents.Invalidate(_currentPath);
+        foreach (string parent in sourceParents)
+            _directoryContents.Invalidate(parent);
+
+        if (_clipboardIsCut && errors == 0)
+            _clipboardPaths.Clear();
+
+        if (errors > 0)
+            ShowNotification($"Pasted {success}, {errors} failed", NotificationKind.Error);
+        else
+            ShowNotification($"Pasted {success} item(s)", NotificationKind.Success);
     }
 
     private void Render(ScreenBuffer buffer)
