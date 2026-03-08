@@ -211,3 +211,11 @@ Implemented: Added `InvalidateFilteredEntries()` calls after `_directoryContents
 ### ~~Drive letters on Windows should always be capitalized~~ ✅
 
 Fixed: `PathCompletion.CapitalizeDriveLetter()` applied at all `_currentPath` assignment sites in `App.cs` and in `DirectoryContents.GetDriveEntries()`. Ensures drive letters are always uppercase throughout the UI.
+
+### CLI path argument format handling
+
+Wade accepts a path as a CLI argument but some formats don't work or cause crashes. Confirm and fix handling for: `C:\`, `c:\`, `C:/`, `/`, etc.
+
+### Never show system+hidden filesystem entries on Windows
+
+On Windows, entries with both `System` and `Hidden` file attributes (e.g. `$Recycle.Bin`, `System Volume Information`) should never be shown, even when "show hidden files" is enabled.
