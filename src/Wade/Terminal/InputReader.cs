@@ -26,6 +26,8 @@ internal enum AppAction
     Copy,
     Cut,
     Paste,
+    NewFile,
+    NewDirectory,
 }
 
 internal static class InputReader
@@ -67,6 +69,12 @@ internal static class InputReader
 
         if (key.KeyChar is 'p' or 'v')
             return AppAction.Paste;
+
+        if (key.KeyChar == 'N')
+            return AppAction.NewFile;
+
+        if (key.Key == ConsoleKey.F7)
+            return AppAction.NewDirectory;
 
         if (key.Key == ConsoleKey.F2)
             return AppAction.Rename;

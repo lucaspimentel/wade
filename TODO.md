@@ -165,13 +165,10 @@ Show/hide additional columns in the file list.
 - Keybinding to cycle or toggle columns
 - Persist column preferences via config
 
-## Create new file / directory
+## ~~Create new file / directory~~ ✅
 
-Create files and directories from within the file manager.
+Implemented: `Shift+N` creates a new empty file, `F7` creates a new directory. Both use the text input dialog to enter the name. Validates against invalid characters and existing names. Selects the newly created entry after creation.
 
-- Keybinding for new directory (e.g. `F7` or `Shift+D`)
-- Keybinding for new file (e.g. `Shift+N`)
-- Uses input dialog to enter the name
 - **Depends on:** Text input widget, Modal input mode
 
 ## Symlink creation

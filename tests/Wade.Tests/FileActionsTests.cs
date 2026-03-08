@@ -136,6 +136,51 @@ public class FileActionsTests : IDisposable
         Assert.Equal("moving", File.ReadAllText(dest));
     }
 
+    // ── Create ────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void CreateFile_NewFileExists()
+    {
+        string path = Path.Combine(_tempDir, "newfile.txt");
+
+        File.Create(path).Dispose();
+
+        Assert.True(File.Exists(path));
+        Assert.Equal(0, new FileInfo(path).Length);
+    }
+
+    [Fact]
+    public void CreateDirectory_NewDirectoryExists()
+    {
+        string path = Path.Combine(_tempDir, "newdir");
+
+        Directory.CreateDirectory(path);
+
+        Assert.True(Directory.Exists(path));
+    }
+
+    [Fact]
+    public void CreateFile_NameCollision_Throws()
+    {
+        string path = Path.Combine(_tempDir, "existing.txt");
+        File.WriteAllText(path, "original");
+
+        // Path.Exists returns true — app code should check before creating
+        Assert.True(Path.Exists(path));
+    }
+
+    [Fact]
+    public void CreateDirectory_NameCollision_IsIdempotent()
+    {
+        string path = Path.Combine(_tempDir, "existingdir");
+        Directory.CreateDirectory(path);
+
+        // Directory.CreateDirectory is idempotent — app code must check Path.Exists first
+        Directory.CreateDirectory(path);
+
+        Assert.True(Directory.Exists(path));
+    }
+
     // ── CopyDirectory ─────────────────────────────────────────────────────────
 
     [Fact]

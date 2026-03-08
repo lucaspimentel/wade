@@ -31,6 +31,8 @@ internal static class HelpOverlay
         ("c / Ctrl+C",          "Copy"),
         ("x / Ctrl+X",          "Cut"),
         ("p / v",               "Paste"),
+        ("Shift+N",             "Create new file"),
+        ("F7",                  "Create new directory"),
         ("?",                   "Show help"),
         ("q / Escape",          "Quit"),
     ];

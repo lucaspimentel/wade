@@ -584,6 +584,92 @@ internal sealed class App
                     }
                     break;
 
+                case AppAction.NewFile:
+                    ShowTextInputDialog("New File", "", name =>
+                    {
+                        if (string.IsNullOrWhiteSpace(name))
+                            return;
+
+                        if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+                        {
+                            ShowNotification("Invalid file name", NotificationKind.Error);
+                            return;
+                        }
+
+                        string destPath = Path.Combine(_currentPath, name);
+
+                        if (Path.Exists(destPath))
+                        {
+                            ShowNotification($"'{name}' already exists", NotificationKind.Error);
+                            return;
+                        }
+
+                        try
+                        {
+                            File.Create(destPath).Dispose();
+                            _directoryContents.Invalidate(_currentPath);
+                            ShowNotification($"Created '{name}'", NotificationKind.Success);
+
+                            var updatedEntries = GetVisibleEntries();
+                            for (int i = 0; i < updatedEntries.Count; i++)
+                            {
+                                if (updatedEntries[i].Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    _selectedIndex = i;
+                                    break;
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            ShowNotification($"Create failed: {ex.Message}", NotificationKind.Error);
+                        }
+                    });
+                    break;
+
+                case AppAction.NewDirectory:
+                    ShowTextInputDialog("New Directory", "", name =>
+                    {
+                        if (string.IsNullOrWhiteSpace(name))
+                            return;
+
+                        if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+                        {
+                            ShowNotification("Invalid directory name", NotificationKind.Error);
+                            return;
+                        }
+
+                        string destPath = Path.Combine(_currentPath, name);
+
+                        if (Path.Exists(destPath))
+                        {
+                            ShowNotification($"'{name}' already exists", NotificationKind.Error);
+                            return;
+                        }
+
+                        try
+                        {
+                            Directory.CreateDirectory(destPath);
+                            _directoryContents.Invalidate(_currentPath);
+                            ShowNotification($"Created '{name}'", NotificationKind.Success);
+
+                            var updatedEntries = GetVisibleEntries();
+                            for (int i = 0; i < updatedEntries.Count; i++)
+                            {
+                                if (updatedEntries[i].Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    _selectedIndex = i;
+                                    break;
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            ShowNotification($"Create failed: {ex.Message}", NotificationKind.Error);
+                        }
+                    });
+                    break;
+
                 case AppAction.Paste:
                     if (_clipboardPaths.Count == 0)
                     {
