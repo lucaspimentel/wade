@@ -193,6 +193,7 @@ public class ModalInputTests
     [InlineData(nameof(InputMode.GoToPath), false)]
     [InlineData(nameof(InputMode.TextInput), false)]
     [InlineData(nameof(InputMode.Confirm), false)]
+    [InlineData(nameof(InputMode.Help), false)]
     public void ShouldHandleMouse_ReturnsExpectedResult(string modeName, bool expected)
     {
         var mode = Enum.Parse<InputMode>(modeName);
@@ -310,12 +311,15 @@ public class ModalInputTests
         /// Returns whether mouse events should be handled in the given mode.
         /// Mirrors the guard logic in App's main loop.
         /// </summary>
-        public bool ShouldHandleMouse() => _inputMode is not (InputMode.GoToPath or InputMode.TextInput or InputMode.Confirm);
+        public bool ShouldHandleMouse() => _inputMode is not (InputMode.Help or InputMode.GoToPath or InputMode.TextInput or InputMode.Confirm);
 
         public void HandleKey(KeyEvent key)
         {
             switch (_inputMode)
             {
+                case InputMode.Help:
+                    _inputMode = InputMode.Normal;
+                    break;
                 case InputMode.TextInput:
                     HandleTextInputKey(key);
                     break;

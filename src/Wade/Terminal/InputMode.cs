@@ -8,4 +8,5 @@ internal enum InputMode
     Search,
     ExpandedPreview,
     GoToPath,
+    Help,
 }

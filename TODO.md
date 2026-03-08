@@ -2,25 +2,18 @@
 
 ## Bugs
 
-### Help dialog doesn't block mouse input
+### ~~Help dialog doesn't block mouse input~~ ✅
 
-Mouse clicks on filesystem entries still register while the help dialog is open.
-The rename (`TextInput`), go-to-path (`GoToPath`), and confirm (`Confirm`) dialogs
-correctly block mouse events via the `InputMode` guard in `App.cs:224`, but the help
-dialog uses a separate `_showHelp` boolean (`App.cs:20`) that isn't checked there.
-
-**Key locations:**
-- `src/Wade/App.cs:224` — mouse-blocking guard (missing `_showHelp` check)
-- `src/Wade/App.cs:390-391` — help toggle sets `_showHelp = true`
-- `src/Wade/Terminal/InputMode.cs` — enum (help not included)
+Fixed: Help dialog now uses `InputMode.Help` instead of a separate `_showHelp` boolean,
+so it participates in the modal mouse-blocking guard like all other dialogs.
 
 ### Image preview renders on top of help dialog
 
 When the help dialog is opened while a Sixel image preview is visible, the image
 appears on top of the dialog. Sixel data is written directly to stdout *after* the
 ScreenBuffer flush (`App.cs:127-140`), so it always overlays buffer-rendered content
-like the help dialog. Fix likely needs to suppress the Sixel write when `_showHelp`
-is true (or when any overlay is active).
+like the help dialog. Fix likely needs to suppress the Sixel write when `InputMode.Help`
+is active (or when any overlay is active).
 
 **Key locations:**
 - `src/Wade/App.cs:127-140` — Sixel data written after buffer flush

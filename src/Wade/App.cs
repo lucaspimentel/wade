@@ -17,8 +17,6 @@ internal sealed class App
     private string _currentPath = "";
     private int _selectedIndex;
     private int _scrollOffset;
-    private bool _showHelp;
-
     // Modal input state
     private InputMode _inputMode = InputMode.Normal;
 
@@ -221,7 +219,7 @@ internal sealed class App
                 }
 
                 // Discard mouse events while a modal dialog is open
-                if (_inputMode is InputMode.GoToPath or InputMode.TextInput or InputMode.Confirm)
+                if (_inputMode is InputMode.Help or InputMode.GoToPath or InputMode.TextInput or InputMode.Confirm)
                 {
                     continue;
                 }
@@ -243,15 +241,12 @@ internal sealed class App
             if (inputEvent is not KeyEvent keyEvent)
                 continue;
 
-            if (_showHelp)
-            {
-                _showHelp = false;
-                continue;
-            }
-
             // Modal input dispatch — consume all keys when in a modal mode
             switch (_inputMode)
             {
+                case InputMode.Help:
+                    _inputMode = InputMode.Normal;
+                    continue;
                 case InputMode.Search:
                     HandleSearchKey(keyEvent);
                     var searchEntries = GetVisibleEntries();
@@ -388,7 +383,7 @@ internal sealed class App
                     break;
 
                 case AppAction.ShowHelp:
-                    _showHelp = true;
+                    _inputMode = InputMode.Help;
                     break;
 
                 case AppAction.Refresh:
@@ -782,7 +777,7 @@ internal sealed class App
         StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count, _directoryContents.SortMode, _directoryContents.SortAscending, _clipboardPaths.Count, _clipboardIsCut);
 
         // Help overlay
-        if (_showHelp)
+        if (_inputMode == InputMode.Help)
             HelpOverlay.Render(buffer, width, height);
 
         // Modal overlays (render last, on top)
