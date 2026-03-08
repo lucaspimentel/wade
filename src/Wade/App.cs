@@ -122,7 +122,8 @@ internal sealed class App
             buffer.Flush(_flushBuffer);
 
             // Write Sixel data after flush (bypasses cell grid)
-            if (_sixelPending && _cachedSixelData is not null)
+            if (_sixelPending && _cachedSixelData is not null
+                && _inputMode is InputMode.Normal or InputMode.Search or InputMode.ExpandedPreview)
             {
                 _sixelPending = false;
                 var sixelPane = _inputMode == InputMode.ExpandedPreview ? _layout.ExpandedPane : _layout.RightPane;

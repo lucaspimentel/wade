@@ -215,6 +215,37 @@ public class ModalInputTests
         Assert.Equal(expected, harness.ShouldHandleMouse());
     }
 
+    // ── Sixel suppression in modal modes ────────────────────────────────
+
+    [Theory]
+    [InlineData(nameof(InputMode.Normal), true)]
+    [InlineData(nameof(InputMode.Search), true)]
+    [InlineData(nameof(InputMode.ExpandedPreview), true)]
+    [InlineData(nameof(InputMode.GoToPath), false)]
+    [InlineData(nameof(InputMode.TextInput), false)]
+    [InlineData(nameof(InputMode.Confirm), false)]
+    [InlineData(nameof(InputMode.Help), false)]
+    public void ShouldWriteSixel_ReturnsExpectedResult(string modeName, bool expected)
+    {
+        var mode = Enum.Parse<InputMode>(modeName);
+        var harness = new ModalHarness();
+
+        switch (mode)
+        {
+            case InputMode.Confirm:
+                harness.ShowConfirm("Test", "Test?", () => { });
+                break;
+            case InputMode.TextInput:
+                harness.ShowTextInput("Test", "", _ => { });
+                break;
+            default:
+                harness.SetMode(mode);
+                break;
+        }
+
+        Assert.Equal(expected, harness.ShouldWriteSixel());
+    }
+
     // ── Rendering ───────────────────────────────────────────────────────────
 
     [Fact]
@@ -312,6 +343,12 @@ public class ModalInputTests
         /// Mirrors the guard logic in App's main loop.
         /// </summary>
         public bool ShouldHandleMouse() => _inputMode is not (InputMode.Help or InputMode.GoToPath or InputMode.TextInput or InputMode.Confirm);
+
+        /// <summary>
+        /// Returns whether Sixel image output should be written in the given mode.
+        /// Mirrors the guard logic in App's main loop.
+        /// </summary>
+        public bool ShouldWriteSixel() => _inputMode is InputMode.Normal or InputMode.Search or InputMode.ExpandedPreview;
 
         public void HandleKey(KeyEvent key)
         {

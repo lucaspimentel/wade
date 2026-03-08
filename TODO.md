@@ -7,18 +7,10 @@
 Fixed: Help dialog now uses `InputMode.Help` instead of a separate `_showHelp` boolean,
 so it participates in the modal mouse-blocking guard like all other dialogs.
 
-### Image preview renders on top of help dialog
+### ~~Image preview renders on top of help dialog~~ ✅
 
-When the help dialog is opened while a Sixel image preview is visible, the image
-appears on top of the dialog. Sixel data is written directly to stdout *after* the
-ScreenBuffer flush (`App.cs:127-140`), so it always overlays buffer-rendered content
-like the help dialog. Fix likely needs to suppress the Sixel write when `InputMode.Help`
-is active (or when any overlay is active).
-
-**Key locations:**
-- `src/Wade/App.cs:127-140` — Sixel data written after buffer flush
-- `src/Wade/App.cs:785-786` — help overlay rendered to ScreenBuffer
-- `src/Wade/Imaging/ImagePreview.cs` — image preview logic
+Fixed: Sixel write is now suppressed when any modal overlay is active (Help, Confirm,
+TextInput, GoToPath). Only Normal, Search, and ExpandedPreview modes allow Sixel output.
 
 ### ~~Status bar notifications hide file metadata unnecessarily~~ ✅
 
