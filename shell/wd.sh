@@ -5,6 +5,11 @@
 #   source /path/to/wd.sh
 
 wd() {
+    if ! command -v wade &> /dev/null; then
+        echo "wade not found." >&2
+        return 1
+    fi
+
     local tmp
     tmp="$(mktemp)"
     wade --cwd-file="$tmp" "$@"

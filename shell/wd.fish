@@ -3,6 +3,11 @@
 # Add to ~/.config/fish/functions/wd.fish or source in config.fish
 
 function wd
+    if not command -v wade &> /dev/null
+        echo "wade not found." >&2
+        return 1
+    end
+
     set tmp (mktemp)
     wade --cwd-file="$tmp" $argv
     set ret $status

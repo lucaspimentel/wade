@@ -86,6 +86,27 @@ wade --help                           # print usage info and exit
 wade -h                               # same as --help
 ```
 
+## Shell integration (cd on exit)
+
+Wade can change your shell's working directory when you quit with `q`. Source the appropriate wrapper function in your shell config:
+
+**Bash / Zsh** — add to `~/.bashrc` or `~/.zshrc`:
+```bash
+source /path/to/wade/shell/wd.sh
+```
+
+**Fish** — copy to `~/.config/fish/functions/` or source in `config.fish`:
+```fish
+source /path/to/wade/shell/wd.fish
+```
+
+**PowerShell** — add to your `$PROFILE`:
+```powershell
+. /path/to/wade/shell/wd.ps1
+```
+
+Then use `wd` instead of `wade` to browse. Press `q` to quit and cd to the last directory, or `Q` to quit without changing directory.
+
 ## Keybindings
 
 | Key | Action |
