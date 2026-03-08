@@ -1824,12 +1824,12 @@ internal sealed class App
                 break;
 
             case ConsoleKey.LeftArrow or ConsoleKey.H:
-                if (_configSelectedIndex == 3) // SortMode
+                if (_configSelectedIndex == 2) // SortMode
                     _configSortMode = CycleSortModePrev(_configSortMode);
                 break;
 
             case ConsoleKey.RightArrow or ConsoleKey.L:
-                if (_configSelectedIndex == 3) // SortMode
+                if (_configSelectedIndex == 2) // SortMode
                     _configSortMode = CycleSortModeNext(_configSortMode);
                 break;
         }
@@ -1840,15 +1840,15 @@ internal sealed class App
         switch (_configSelectedIndex)
         {
             case 0: _configShowIcons = !_configShowIcons; break;
-            case 1:
+            case 1: _configShowHidden = !_configShowHidden; break;
+            case 2: _configSortMode = CycleSortModeNext(_configSortMode); break;
+            case 3: _configSortAscending = !_configSortAscending; break;
+            case 4: _configConfirmDelete = !_configConfirmDelete; break;
+            case 5: _configPreviewPane = !_configPreviewPane; break;
+            case 6:
                 if (_configPreviewPane)
                     _configImagePreviews = !_configImagePreviews;
                 break;
-            case 2: _configShowHidden = !_configShowHidden; break;
-            case 3: _configSortMode = CycleSortModeNext(_configSortMode); break;
-            case 4: _configSortAscending = !_configSortAscending; break;
-            case 5: _configConfirmDelete = !_configConfirmDelete; break;
-            case 6: _configPreviewPane = !_configPreviewPane; break;
             case 7: _configDetailColumns = !_configDetailColumns; break;
         }
     }
@@ -1923,12 +1923,12 @@ internal sealed class App
         (string label, string value, bool enabled)[] items =
         [
             ("Show Icons", FormatBool(_configShowIcons), true),
-            ("Image Previews", FormatBool(_configImagePreviews), _configPreviewPane),
             ("Show Hidden Files", FormatBool(_configShowHidden), true),
             ("Sort Mode", $"\u25c4 {_configSortMode.ToString().ToLowerInvariant()} \u25ba", true),
             ("Sort Ascending", FormatBool(_configSortAscending), true),
             ("Confirm Delete", FormatBool(_configConfirmDelete), true),
             ("Preview Pane", FormatBool(_configPreviewPane), true),
+            ("  Image Previews", FormatBool(_configImagePreviews), _configPreviewPane),
             ("Detail Columns", FormatBool(_configDetailColumns), true),
         ];
 

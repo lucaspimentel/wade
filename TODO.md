@@ -118,7 +118,7 @@ Implemented: Hidden files (dotfiles on all platforms, `Hidden` attribute on Wind
 
 ## ~~Config dialog~~ ✅
 
-Implemented: Press `,` to open an in-app config dialog. Displays all 5 settings (show icons, image previews, show hidden files, sort mode, sort ascending) with toggle/cycle controls. Up/Down to navigate, Space to toggle booleans, Left/Right to cycle sort mode, Enter to save, Escape to cancel. Changes are applied immediately to runtime state and written to the config file on save.
+Implemented: Press `,` to open an in-app config dialog. Displays all 8 settings (show icons, show hidden files, sort mode, sort ascending, confirm delete, preview pane, image previews, detail columns) with toggle/cycle controls. Up/Down to navigate, Space to toggle booleans, Left/Right to cycle sort mode, Enter to save, Escape to cancel. Changes are applied immediately to runtime state and written to the config file on save. Image previews is nested under preview pane (indented label) and only toggleable when preview pane is enabled.
 
 - **Depends on:** Dialog / overlay framework, Modal input mode
 
