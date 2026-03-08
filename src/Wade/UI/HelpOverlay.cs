@@ -43,8 +43,10 @@ internal static class HelpOverlay
 
     public static void Render(ScreenBuffer buffer, int screenWidth, int screenHeight)
     {
-        const int ContentWidth = 46;
-        int contentHeight = Bindings.Length;
+        const int ColumnWidth = 46;
+        const int ColumnGap = 4;
+        const int ContentWidth = ColumnWidth * 2 + ColumnGap;
+        int contentHeight = (Bindings.Length + 1) / 2;
 
         var content = DialogBox.Render(
             buffer, screenWidth, screenHeight,
@@ -55,12 +57,24 @@ internal static class HelpOverlay
         var keyStyle = new CellStyle(KeyColor, DialogBox.BgColor);
         var descStyle = new CellStyle(DescColor, DialogBox.BgColor);
 
-        for (int i = 0; i < Bindings.Length; i++)
+        for (int row = 0; row < contentHeight; row++)
         {
-            var (key, desc) = Bindings[i];
-            int row = content.Top + i;
-            buffer.WriteString(row, content.Left, key, keyStyle, 22);
-            buffer.WriteString(row, content.Left + 24, desc, descStyle, ContentWidth - 24);
+            // Left column
+            var (key, desc) = Bindings[row];
+            int y = content.Top + row;
+            buffer.WriteString(y, content.Left, key, keyStyle, 22);
+            buffer.WriteString(y, content.Left + 24, desc, descStyle, ColumnWidth - 24);
+
+            // Right column
+            int rightIndex = row + contentHeight;
+
+            if (rightIndex < Bindings.Length)
+            {
+                var (key2, desc2) = Bindings[rightIndex];
+                int rightCol = content.Left + ColumnWidth + ColumnGap;
+                buffer.WriteString(y, rightCol, key2, keyStyle, 22);
+                buffer.WriteString(y, rightCol + 24, desc2, descStyle, ColumnWidth - 24);
+            }
         }
     }
 }

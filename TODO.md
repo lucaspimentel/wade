@@ -190,9 +190,9 @@ Popup menu at click position with contextual actions.
 - **Depends on:** Dialog / overlay framework, Mouse support, File actions
 
 
-## Help dialog layout
+## ~~Help dialog layout~~ ✅
 
-Help dialog is too tall (36 rows for 30 keybinding entries in a single column). Reformat into 2 columns of key-description pairs side by side, halving the height to ~15 content rows. Affects `HelpOverlay.cs` — the `Bindings` array stays the same, but `Render()` needs to split entries across two columns and `contentWidth` needs to roughly double (currently 46). `DialogBox.Render` handles centering automatically based on the new dimensions.
+Reformatted help dialog from a single column (29 rows) to 2 columns side by side (~15 rows). `ContentWidth` doubled to 96 (two 46-char columns + 4-char gap). `Bindings` array unchanged; `Render()` splits entries across left and right columns.
 
 ## Config audit
 
