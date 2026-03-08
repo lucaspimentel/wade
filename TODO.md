@@ -85,8 +85,8 @@ Implemented: Image thumbnails render in the right preview pane using Sixel graph
 **Depends on:** Async preview loading
 
 **Remaining**
-- Terminal capability detection: query DA1/DA2 or check `WT_SESSION` for auto-enable
-- Cell pixel size query via `ESC [ 16 t` (currently assumes 8×16 px/cell)
+- ~~Terminal capability detection: query DA1/DA2 or check `WT_SESSION` for auto-enable~~ ✅
+- ~~Cell pixel size query via `ESC [ 16 t` (currently assumes 8×16 px/cell)~~ ✅
 
 ## ~~`--help` CLI switch~~ ✅
 

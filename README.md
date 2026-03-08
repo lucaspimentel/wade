@@ -10,7 +10,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **File-type icons** — Nerd Fonts v3 glyphs per file extension (enabled by default; requires a Nerd Font)
 - **Syntax highlighting** — per-token coloring for 15 languages (C#, JS/TS, Python, Go, Rust, Java, Shell, PowerShell, CSS, JSON, TOML, YAML, XML/HTML, Markdown) using a hand-rolled tokenizer; VS Code Dark+ inspired palette
 - **File preview** — displays first 100 lines of text files; shows `[binary file]` for binary files
-- **Image preview** — renders image thumbnails in the preview pane using Sixel graphics (requires a Sixel-capable terminal such as Windows Terminal v1.22+; enabled by default; disable with `image_previews_enabled = false` in config)
+- **Image preview** — renders image thumbnails in the preview pane using Sixel graphics (auto-detects Sixel support; works with Windows Terminal v1.22+, kitty, WezTerm, and other Sixel-capable terminals; enabled by default; disable with `image_previews_enabled = false` in config)
 - **Expanded preview** — press Right/Enter on a file to expand the preview to full terminal width; scroll with Up/Down/J/K/PageUp/PageDown/Home/End/mouse wheel; press Left/Escape to collapse back to 3-pane view
 - **Directory preview** — shows contents of the selected directory
 - **Drive navigation** — browse across drives on Windows (Backspace from a drive root)

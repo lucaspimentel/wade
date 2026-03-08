@@ -9,9 +9,6 @@ internal sealed record ImagePreviewResult(string SixelData, int PixelWidth, int 
 
 internal static class ImagePreview
 {
-    private const int CellPixelWidth = 8;
-    private const int CellPixelHeight = 16;
-
     private static readonly FrozenSet<string> s_imageExtensions =
         new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -24,12 +21,13 @@ internal static class ImagePreview
         return ext.Length > 0 && s_imageExtensions.Contains(ext);
     }
 
-    public static ImagePreviewResult? Load(string path, int paneWidthCells, int paneHeightCells, CancellationToken ct)
+    public static ImagePreviewResult? Load(string path, int paneWidthCells, int paneHeightCells,
+        int cellPixelWidth, int cellPixelHeight, CancellationToken ct)
     {
         try
         {
-            int maxPixelWidth = paneWidthCells * CellPixelWidth;
-            int maxPixelHeight = paneHeightCells * CellPixelHeight;
+            int maxPixelWidth = paneWidthCells * cellPixelWidth;
+            int maxPixelHeight = paneHeightCells * cellPixelHeight;
 
             if (maxPixelWidth <= 0 || maxPixelHeight <= 0)
                 return null;

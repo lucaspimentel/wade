@@ -69,6 +69,11 @@ internal sealed class App
     private bool _isImagePreview;
     private bool _sixelPending;
 
+    // Terminal capability state
+    private bool _imagePreviewsEffective;
+    private int _cellPixelWidth = 8;
+    private int _cellPixelHeight = 16;
+
     // Track selected index per directory so we restore position when navigating back
     private readonly Dictionary<string, int> _selectedIndexPerDir = new(StringComparer.OrdinalIgnoreCase);
 
@@ -101,12 +106,18 @@ internal sealed class App
         _previewLoader = new PreviewLoader(pipeline);
         var previewLoader = _previewLoader;
 
+        var caps = terminal.Capabilities;
+        _imagePreviewsEffective = _config.ImagePreviewsEnabled && caps.SixelSupported;
+        _cellPixelWidth = caps.CellPixelWidth;
+        _cellPixelHeight = caps.CellPixelHeight;
+
         int lastWidth = Console.WindowWidth;
         int lastHeight = Console.WindowHeight;
 
         var buffer = new ScreenBuffer(lastWidth, lastHeight);
         _layout.Calculate(lastWidth, lastHeight);
-        previewLoader.Configure(_config.ImagePreviewsEnabled, _layout.RightPane.Width, _layout.RightPane.Height);
+        previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
+            _cellPixelWidth, _cellPixelHeight);
 
         bool quit = false;
 
@@ -132,7 +143,7 @@ internal sealed class App
 
                 if (_inputMode == InputMode.ExpandedPreview && _cachedImagePixelWidth > 0 && _cachedImagePixelHeight > 0)
                 {
-                    (cursorRow, cursorCol) = sixelPane.CenterContent(_cachedImagePixelWidth / 8, _cachedImagePixelHeight / 16);
+                    (cursorRow, cursorCol) = sixelPane.CenterContent(_cachedImagePixelWidth / _cellPixelWidth, _cachedImagePixelHeight / _cellPixelHeight);
                 }
 
                 var moveCursor = AnsiCodes.MoveCursor(cursorRow, cursorCol);
@@ -175,7 +186,8 @@ internal sealed class App
                     buffer.Resize(lastWidth, lastHeight);
                     _layout.Calculate(lastWidth, lastHeight);
                     var resizePane = _inputMode == InputMode.ExpandedPreview ? _layout.ExpandedPane : _layout.RightPane;
-                    previewLoader.Configure(_config.ImagePreviewsEnabled, resizePane.Width, resizePane.Height);
+                    previewLoader.Configure(_imagePreviewsEffective, resizePane.Width, resizePane.Height,
+                        _cellPixelWidth, _cellPixelHeight);
                     Console.Write(AnsiCodes.ClearScreen);
 
                     // Re-render image at new size
@@ -1105,7 +1117,8 @@ internal sealed class App
 
         if (_isImagePreview && _cachedImagePath is not null)
         {
-            previewLoader.Configure(_config.ImagePreviewsEnabled, _layout.ExpandedPane.Width, _layout.ExpandedPane.Height);
+            previewLoader.Configure(_imagePreviewsEffective, _layout.ExpandedPane.Width, _layout.ExpandedPane.Height,
+                _cellPixelWidth, _cellPixelHeight);
             _cachedSixelData = null;
             _sixelPending = false;
             _pendingPreviewPath = _cachedImagePath;
@@ -1121,7 +1134,8 @@ internal sealed class App
         _inputMode = InputMode.Normal;
         _expandedPreviewScrollOffset = 0;
 
-        previewLoader.Configure(_config.ImagePreviewsEnabled, _layout.RightPane.Width, _layout.RightPane.Height);
+        previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
+            _cellPixelWidth, _cellPixelHeight);
 
         if (_isImagePreview && _cachedImagePath is not null)
         {

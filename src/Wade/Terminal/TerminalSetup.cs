@@ -12,6 +12,8 @@ internal sealed class TerminalSetup : IDisposable
     private readonly byte[]? _savedTermios;
     private bool _disposed;
 
+    public TerminalCapabilities Capabilities { get; } = TerminalCapabilities.Default;
+
     public TerminalSetup()
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
@@ -40,6 +42,12 @@ internal sealed class TerminalSetup : IDisposable
                              | EnableMouseInput
                              | EnableExtendedFlags;
             SetConsoleMode(_stdinHandle, inputMode);
+
+            // Windows Terminal supports Sixel since v1.22; detect via WT_SESSION.
+            // Cell pixel size uses defaults (8×16) — Windows Terminal doesn't deliver
+            // ESC[16t responses through ReadConsoleInput since VT input is disabled.
+            bool wtSession = Environment.GetEnvironmentVariable("WT_SESSION") is not null;
+            Capabilities = new TerminalCapabilities(wtSession, 8, 16);
         }
 
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -59,6 +67,9 @@ internal sealed class TerminalSetup : IDisposable
                     _savedTermios = null;
                 }
             }
+
+            // Query terminal capabilities BEFORE entering alternate screen
+            Capabilities = DetectCapabilitiesUnix(_ttyFd);
         }
 
         Console.Write(AnsiCodes.EnterAlternateScreen);
@@ -98,6 +109,46 @@ internal sealed class TerminalSetup : IDisposable
 
         if (_ttyFd >= 0)
             LibC.close(_ttyFd);
+    }
+
+    private static TerminalCapabilities DetectCapabilitiesUnix(int ttyFd)
+    {
+        if (ttyFd < 0)
+            return TerminalCapabilities.Default;
+
+        try
+        {
+            // Send DA1 query and cell size query
+            Console.Write("\x1b[c\x1b[16t");
+            Console.Out.Flush();
+
+            var buf = new byte[256];
+            int total = 0;
+
+            // Read responses with a 200ms timeout using poll
+            while (total < buf.Length)
+            {
+                var pfd = new LibC.PollFd { fd = ttyFd, events = LibC.POLLIN, revents = 0 };
+                int pollResult = LibC.poll(ref pfd, 1, 200);
+                if (pollResult <= 0)
+                    break;
+
+                nint n = LibC.read(ttyFd, buf, total, buf.Length - total);
+                if (n <= 0)
+                    break;
+
+                total += (int)n;
+            }
+
+            if (total == 0)
+                return TerminalCapabilities.Default;
+
+            return TerminalCapabilities.ParseQueryResponses(buf.AsSpan(0, total));
+        }
+        catch
+        {
+            return TerminalCapabilities.Default;
+        }
     }
 
     // Windows console API constants

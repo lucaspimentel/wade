@@ -12,17 +12,22 @@ internal sealed class PreviewLoader
     private bool _imagePreviewsEnabled;
     private int _paneWidthCells;
     private int _paneHeightCells;
+    private int _cellPixelWidth = 8;
+    private int _cellPixelHeight = 16;
 
     public PreviewLoader(InputPipeline pipeline)
     {
         _pipeline = pipeline;
     }
 
-    public void Configure(bool imagePreviewsEnabled, int paneWidthCells, int paneHeightCells)
+    public void Configure(bool imagePreviewsEnabled, int paneWidthCells, int paneHeightCells,
+        int cellPixelWidth, int cellPixelHeight)
     {
         _imagePreviewsEnabled = imagePreviewsEnabled;
         _paneWidthCells = paneWidthCells;
         _paneHeightCells = paneHeightCells;
+        _cellPixelWidth = cellPixelWidth;
+        _cellPixelHeight = cellPixelHeight;
     }
 
     public void BeginLoad(string path)
@@ -35,8 +40,10 @@ internal sealed class PreviewLoader
         bool imageEnabled = _imagePreviewsEnabled;
         int paneW = _paneWidthCells;
         int paneH = _paneHeightCells;
+        int cellW = _cellPixelWidth;
+        int cellH = _cellPixelHeight;
 
-        Task.Run(() => LoadPreview(path, imageEnabled, paneW, paneH, token), token);
+        Task.Run(() => LoadPreview(path, imageEnabled, paneW, paneH, cellW, cellH, token), token);
     }
 
     public void Cancel()
@@ -46,7 +53,8 @@ internal sealed class PreviewLoader
         _cts = null;
     }
 
-    private void LoadPreview(string path, bool imageEnabled, int paneW, int paneH, CancellationToken ct)
+    private void LoadPreview(string path, bool imageEnabled, int paneW, int paneH,
+        int cellW, int cellH, CancellationToken ct)
     {
         try
         {
@@ -56,7 +64,7 @@ internal sealed class PreviewLoader
             // Try image preview first
             if (imageEnabled && ImagePreview.IsImageFile(path))
             {
-                var result = ImagePreview.Load(path, paneW, paneH, ct);
+                var result = ImagePreview.Load(path, paneW, paneH, cellW, cellH, ct);
                 if (result is not null)
                 {
                     if (ct.IsCancellationRequested)
