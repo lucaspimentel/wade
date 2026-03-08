@@ -76,6 +76,32 @@ public class LayoutTests
         Assert.Equal(10, col);
     }
 
+    [Theory]
+    [InlineData(120, 40)]
+    [InlineData(80, 24)]
+    [InlineData(200, 60)]
+    public void Calculate_PreviewDisabled_HidesRightPane(int width, int height)
+    {
+        var layout = new Layout();
+        layout.Calculate(width, height, previewEnabled: false);
+
+        // Right pane should have zero width
+        Assert.Equal(0, layout.RightPane.Width);
+
+        // Left and center should still have positive dimensions
+        Assert.True(layout.LeftPane.Width > 0);
+        Assert.True(layout.CenterPane.Width > 0);
+
+        // Only 1 border column (between left and center)
+        Assert.True(layout.CenterPane.Left > layout.LeftPane.Right);
+
+        // Center pane should extend to terminal width
+        Assert.Equal(width, layout.CenterPane.Right);
+
+        // Status bar still at the bottom
+        Assert.Equal(height - 1, layout.StatusBar.Top);
+    }
+
     [Fact]
     public void CenterContent_LargerThanPane_ClampsToTopLeft()
     {

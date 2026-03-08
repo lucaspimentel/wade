@@ -59,6 +59,9 @@ internal sealed class App
     private bool _configShowHidden;
     private SortMode _configSortMode;
     private bool _configSortAscending;
+    private bool _configConfirmDelete;
+    private bool _configPreviewEnabled;
+    private bool _configDetailColumns;
 
     private string? _cachedPreviewPath;
     private StyledLine[]? _cachedStyledLines;
@@ -119,7 +122,7 @@ internal sealed class App
         int lastHeight = Console.WindowHeight;
 
         var buffer = new ScreenBuffer(lastWidth, lastHeight);
-        _layout.Calculate(lastWidth, lastHeight);
+        _layout.Calculate(lastWidth, lastHeight, _config.PreviewEnabled);
         previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
             _cellPixelWidth, _cellPixelHeight);
 
@@ -138,7 +141,7 @@ internal sealed class App
             buffer.Flush(_flushBuffer);
 
             // Write Sixel data after flush (bypasses cell grid)
-            if (_sixelPending && _cachedSixelData is not null
+            if (_sixelPending && _cachedSixelData is not null && _config.PreviewEnabled
                 && _inputMode is InputMode.Normal or InputMode.Search or InputMode.ExpandedPreview)
             {
                 _sixelPending = false;
@@ -189,7 +192,7 @@ internal sealed class App
                     lastWidth = resize.Width;
                     lastHeight = resize.Height;
                     buffer.Resize(lastWidth, lastHeight);
-                    _layout.Calculate(lastWidth, lastHeight);
+                    _layout.Calculate(lastWidth, lastHeight, _config.PreviewEnabled);
                     var resizePane = _inputMode == InputMode.ExpandedPreview ? _layout.ExpandedPane : _layout.RightPane;
                     previewLoader.Configure(_imagePreviewsEffective, resizePane.Width, resizePane.Height,
                         _cellPixelWidth, _cellPixelHeight);
@@ -567,22 +570,18 @@ internal sealed class App
 
                         bool permanent = action == AppAction.DeletePermanently;
                         bool isPermanent = permanent || !OperatingSystem.IsWindows();
-                        string title = isPermanent ? "Permanently Delete" : "Delete";
-                        string warning = isPermanent ? "\nThis cannot be undone!" : "";
 
-                        ShowConfirmDialog(title, prompt + warning, () =>
+                        if (_config.ConfirmDeleteEnabled)
                         {
-                            int errors = FileOperations.Delete(targets, permanent);
+                            string title = isPermanent ? "Permanently Delete" : "Delete";
+                            string warning = isPermanent ? "\nThis cannot be undone!" : "";
 
-                            _directoryContents.Invalidate(_currentPath);
-                            InvalidateFilteredEntries();
-                            _markedPaths.Clear();
-
-                            if (errors > 0)
-                                ShowNotification($"Deleted with {errors} error(s)", NotificationKind.Error);
-                            else
-                                ShowNotification($"Deleted {targets.Count} item(s)", NotificationKind.Success);
-                        });
+                            ShowConfirmDialog(title, prompt + warning, () => ExecuteDelete(targets, permanent));
+                        }
+                        else
+                        {
+                            ExecuteDelete(targets, permanent);
+                        }
                     }
                     break;
 
@@ -869,7 +868,7 @@ internal sealed class App
             : _layout.CenterPane;
 
         // Center pane: current directory
-        PaneRenderer.RenderFileList(buffer, fileListPane, entries, _selectedIndex, _scrollOffset, isActive: true, showIcons: _config.ShowIconsEnabled, showDetails: true, markedPaths: _markedPaths);
+        PaneRenderer.RenderFileList(buffer, fileListPane, entries, _selectedIndex, _scrollOffset, isActive: true, showIcons: _config.ShowIconsEnabled, showDetails: _config.DetailColumnsEnabled, markedPaths: _markedPaths);
 
         // Search bar at bottom of center pane
         if (showSearchBar)
@@ -920,7 +919,7 @@ internal sealed class App
         }
 
         // Right pane: preview
-        if (entries.Count > 0 && _selectedIndex < entries.Count)
+        if (_config.PreviewEnabled && entries.Count > 0 && _selectedIndex < entries.Count)
         {
             var selected = entries[_selectedIndex];
             if (selected.IsDirectory)
@@ -959,7 +958,7 @@ internal sealed class App
         }
 
         // Borders
-        PaneRenderer.RenderBorders(buffer, _layout, height);
+        PaneRenderer.RenderBorders(buffer, _layout, height, _config.PreviewEnabled);
 
         // Status bar
         FileSystemEntry? selectedEntry = entries.Count > 0 && _selectedIndex < entries.Count
@@ -1594,6 +1593,20 @@ internal sealed class App
 
     // ── Modal entry points ──────────────────────────────────────────────────
 
+    private void ExecuteDelete(List<string> targets, bool permanent)
+    {
+        int errors = FileOperations.Delete(targets, permanent);
+
+        _directoryContents.Invalidate(_currentPath);
+        InvalidateFilteredEntries();
+        _markedPaths.Clear();
+
+        if (errors > 0)
+            ShowNotification($"Deleted with {errors} error(s)", NotificationKind.Error);
+        else
+            ShowNotification($"Deleted {targets.Count} item(s)", NotificationKind.Success);
+    }
+
     private void ShowConfirmDialog(string title, string message, Action onYes)
     {
         _inputMode = InputMode.Confirm;
@@ -1779,6 +1792,9 @@ internal sealed class App
         _configShowHidden = _config.ShowHiddenFiles;
         _configSortMode = _config.SortMode;
         _configSortAscending = _config.SortAscending;
+        _configConfirmDelete = _config.ConfirmDeleteEnabled;
+        _configPreviewEnabled = _config.PreviewEnabled;
+        _configDetailColumns = _config.DetailColumnsEnabled;
     }
 
     private void HandleConfigKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer)
@@ -1791,7 +1807,7 @@ internal sealed class App
                 break;
 
             case ConsoleKey.DownArrow or ConsoleKey.J:
-                if (_configSelectedIndex < 4)
+                if (_configSelectedIndex < 7)
                     _configSelectedIndex++;
                 break;
 
@@ -1828,6 +1844,9 @@ internal sealed class App
             case 2: _configShowHidden = !_configShowHidden; break;
             case 3: _configSortMode = CycleSortModeNext(_configSortMode); break;
             case 4: _configSortAscending = !_configSortAscending; break;
+            case 5: _configConfirmDelete = !_configConfirmDelete; break;
+            case 6: _configPreviewEnabled = !_configPreviewEnabled; break;
+            case 7: _configDetailColumns = !_configDetailColumns; break;
         }
     }
 
@@ -1838,6 +1857,9 @@ internal sealed class App
         _config.ShowHiddenFiles = _configShowHidden;
         _config.SortMode = _configSortMode;
         _config.SortAscending = _configSortAscending;
+        _config.ConfirmDeleteEnabled = _configConfirmDelete;
+        _config.PreviewEnabled = _configPreviewEnabled;
+        _config.DetailColumnsEnabled = _configDetailColumns;
 
         _directoryContents.ShowHiddenFiles = _config.ShowHiddenFiles;
         _directoryContents.SortMode = _config.SortMode;
@@ -1846,6 +1868,7 @@ internal sealed class App
 
         _directoryContents.InvalidateAll();
         ClearPreviewCache(previewLoader, buffer);
+        _layout.Calculate(Console.WindowWidth, Console.WindowHeight, _config.PreviewEnabled);
         previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
             _cellPixelWidth, _cellPixelHeight);
 
@@ -1883,7 +1906,7 @@ internal sealed class App
     private void RenderConfigDialog(ScreenBuffer buffer, int width, int height)
     {
         const int ContentWidth = 40;
-        const int ContentHeight = 5;
+        const int ContentHeight = 8;
         const string Footer = "[Space] Toggle [◄►] Cycle [Enter] Save [Esc] Cancel";
 
         var content = DialogBox.Render(buffer, width, height, Math.Max(ContentWidth, Footer.Length), ContentHeight, title: "Configuration", footer: Footer);
@@ -1900,6 +1923,9 @@ internal sealed class App
             ("Show Hidden Files", FormatBool(_configShowHidden)),
             ("Sort Mode", $"\u25c4 {_configSortMode.ToString().ToLowerInvariant()} \u25ba"),
             ("Sort Ascending", FormatBool(_configSortAscending)),
+            ("Confirm Delete", FormatBool(_configConfirmDelete)),
+            ("Preview Pane", FormatBool(_configPreviewEnabled)),
+            ("Detail Columns", FormatBool(_configDetailColumns)),
         ];
 
         for (int i = 0; i < items.Length; i++)

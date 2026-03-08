@@ -6,7 +6,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 
 ## Features
 
-- **Miller columns** — three-pane layout: parent / current directory / preview
+- **Miller columns** — three-pane layout: parent / current directory / preview; preview pane can be hidden for a 2-pane layout via `preview_enabled` config
 - **File-type icons** — Nerd Fonts v3 glyphs per file extension (enabled by default; requires a Nerd Font)
 - **Syntax highlighting** — per-token coloring for 15 languages (C#, JS/TS, Python, Go, Rust, Java, Shell, PowerShell, CSS, JSON, TOML, YAML, XML/HTML, Markdown) using a hand-rolled tokenizer; VS Code Dark+ inspired palette
 - **File preview** — displays first 100 lines of text files; shows `[binary file]` for binary files
@@ -14,16 +14,16 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Expanded preview** — press Right/Enter on a file to expand the preview to full terminal width; scroll with Up/Down/J/K/PageUp/PageDown/Home/End/mouse wheel; press Left/Escape to collapse back to 3-pane view
 - **Directory preview** — shows contents of the selected directory
 - **Drive navigation** — browse across drives on Windows (Backspace from a drive root)
-- **Detail columns** — file size and modification date in the center pane; columns adapt responsively as the terminal narrows (full date → date only → short date → size only → name only)
+- **Detail columns** — file size and modification date in the center pane; columns adapt responsively as the terminal narrows (full date → date only → short date → size only → name only); toggle with `detail_columns_enabled` config
 - **Status bar** — current path, item count, file type label (language name, "Text", or "Binary"), encoding (UTF-8, UTF-8 BOM, UTF-16 LE/BE), line endings (CRLF, LF, CR, Mixed), file size, and sort indicator
 - **Hidden files toggle** — dotfiles and system-hidden files are hidden by default; press `.` to toggle visibility at runtime, or set `show_hidden_files = true` in config
 - **Sort order** — sort by name (default), modification time, size, or extension; press `s` to cycle modes, `S` to reverse direction; directories always listed first; configurable via `sort_mode` and `sort_ascending` in config; current sort mode shown in status bar
 - **Go-to-path bar** — press `g` to type an arbitrary path and jump to it; Tab auto-completes from the filesystem; navigates to directories or selects files
 - **Search / filter** — press `/` to type a query that narrows visible entries in real-time; Enter persists the filter, Escape clears it; filter auto-clears on directory change
 - **Multi-select** — press Space to mark/unmark entries for future bulk operations; marks are path-based and survive scrolling and filtering; marked entries highlighted with a distinct background; mark count shown in status bar
-- **File actions** — open files with default app, rename, delete, copy/cut/paste with internal clipboard; multi-select supported for delete/copy/cut
+- **File actions** — open files with default app, rename, delete (with optional confirmation), copy/cut/paste with internal clipboard; multi-select supported for delete/copy/cut; delete confirmation can be toggled via `confirm_delete_enabled` config
 - **Mouse support** — click to select entries in any pane, scroll wheel to navigate; left/right pane clicks navigate directories
-- **In-app configuration** — press `,` to open a config dialog; toggle booleans, cycle sort modes, and save changes directly to the config file
+- **In-app configuration** — press `,` to open a config dialog with 8 toggleable options: icons, image previews, hidden files, sort mode, sort direction, delete confirmation, preview pane, and detail columns; changes are saved directly to the config file
 - **Shell integration** — press `Ctrl+T` to open a new terminal in the current directory; use shell wrapper functions (`wd`) to cd to the final directory on exit (bash, zsh, fish, PowerShell wrappers provided)
 - **Minimal rendering** — raw VT/ANSI escape sequences, double-buffered with dirty-row tracking, cell diff, and style diffing
 
@@ -74,6 +74,9 @@ image_previews_enabled = true
 show_hidden_files = false
 sort_mode = name                # name, modified, size, extension
 sort_ascending = true
+confirm_delete_enabled = true
+preview_enabled = true
+detail_columns_enabled = true
 ```
 
 ### CLI flags

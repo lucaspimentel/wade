@@ -9,6 +9,9 @@ internal sealed class WadeConfig
     public bool ShowHiddenFiles { get; set; } = false;
     public SortMode SortMode { get; set; } = SortMode.Name;
     public bool SortAscending { get; set; } = true;
+    public bool ConfirmDeleteEnabled { get; set; } = true;
+    public bool PreviewEnabled { get; set; } = true;
+    public bool DetailColumnsEnabled { get; set; } = true;
     public string StartPath { get; set; } = Directory.GetCurrentDirectory();
     public bool ShowConfig { get; set; } = false;
     public bool ShowHelp { get; set; } = false;
@@ -73,6 +76,15 @@ internal sealed class WadeConfig
                         break;
                     case "sort_ascending":
                         config.SortAscending = ParseBool(value, config.SortAscending);
+                        break;
+                    case "confirm_delete_enabled":
+                        config.ConfirmDeleteEnabled = ParseBool(value, config.ConfirmDeleteEnabled);
+                        break;
+                    case "preview_enabled":
+                        config.PreviewEnabled = ParseBool(value, config.PreviewEnabled);
+                        break;
+                    case "detail_columns_enabled":
+                        config.DetailColumnsEnabled = ParseBool(value, config.DetailColumnsEnabled);
                         break;
                 }
             }
@@ -142,6 +154,9 @@ internal sealed class WadeConfig
             show_hidden_files = {(ShowHiddenFiles ? "true" : "false")}
             sort_mode = {sortModeStr}
             sort_ascending = {(SortAscending ? "true" : "false")}
+            confirm_delete_enabled = {(ConfirmDeleteEnabled ? "true" : "false")}
+            preview_enabled = {(PreviewEnabled ? "true" : "false")}
+            detail_columns_enabled = {(DetailColumnsEnabled ? "true" : "false")}
             """;
 
         File.WriteAllText(ConfigFilePath, content);
@@ -151,7 +166,17 @@ internal sealed class WadeConfig
     {
         var escapedPath = StartPath.Replace("\\", "\\\\");
         var sortModeStr = SortMode.ToString().ToLowerInvariant();
-        return $"{{\"show_icons_enabled\":{(ShowIconsEnabled ? "true" : "false")},\"image_previews_enabled\":{(ImagePreviewsEnabled ? "true" : "false")},\"show_hidden_files\":{(ShowHiddenFiles ? "true" : "false")},\"sort_mode\":\"{sortModeStr}\",\"sort_ascending\":{(SortAscending ? "true" : "false")},\"start_path\":\"{escapedPath}\"}}";
+        return "{" +
+            $"\"show_icons_enabled\":{(ShowIconsEnabled ? "true" : "false")}," +
+            $"\"image_previews_enabled\":{(ImagePreviewsEnabled ? "true" : "false")}," +
+            $"\"show_hidden_files\":{(ShowHiddenFiles ? "true" : "false")}," +
+            $"\"sort_mode\":\"{sortModeStr}\"," +
+            $"\"sort_ascending\":{(SortAscending ? "true" : "false")}," +
+            $"\"confirm_delete_enabled\":{(ConfirmDeleteEnabled ? "true" : "false")}," +
+            $"\"preview_enabled\":{(PreviewEnabled ? "true" : "false")}," +
+            $"\"detail_columns_enabled\":{(DetailColumnsEnabled ? "true" : "false")}," +
+            $"\"start_path\":\"{escapedPath}\"" +
+            "}";
     }
 
     internal static bool ParseBool(string value, bool fallback)

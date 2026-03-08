@@ -26,6 +26,9 @@ public class WadeConfigTests
         Assert.False(config.ShowConfig);
         Assert.False(config.ShowHelp);
         Assert.False(config.ShowHiddenFiles);
+        Assert.True(config.ConfirmDeleteEnabled);
+        Assert.True(config.PreviewEnabled);
+        Assert.True(config.DetailColumnsEnabled);
         Assert.Equal(Directory.GetCurrentDirectory(), config.StartPath);
     }
 
@@ -47,6 +50,34 @@ public class WadeConfigTests
             Assert.Equal(expectedIcons, config.ShowIconsEnabled);
             Assert.Equal(expectedPreviews, config.ImagePreviewsEnabled);
             Assert.Equal(expectedHidden, config.ShowHiddenFiles);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Theory]
+    [InlineData("confirm_delete_enabled", true)]
+    [InlineData("confirm_delete_enabled", false)]
+    [InlineData("preview_enabled", true)]
+    [InlineData("preview_enabled", false)]
+    [InlineData("detail_columns_enabled", true)]
+    [InlineData("detail_columns_enabled", false)]
+    public void ConfigFile_ParsesNewBoolSettings(string key, bool value)
+    {
+        var path = WriteTempConfig($"{key} = {(value ? "true" : "false")}");
+        try
+        {
+            var config = WadeConfig.Load([], configFilePath: path);
+            bool actual = key switch
+            {
+                "confirm_delete_enabled" => config.ConfirmDeleteEnabled,
+                "preview_enabled" => config.PreviewEnabled,
+                "detail_columns_enabled" => config.DetailColumnsEnabled,
+                _ => throw new ArgumentException($"Unknown key: {key}"),
+            };
+            Assert.Equal(value, actual);
         }
         finally
         {
@@ -331,6 +362,9 @@ public class WadeConfigTests
             original.ShowHiddenFiles = true;
             original.SortMode = SortMode.Extension;
             original.SortAscending = false;
+            original.ConfirmDeleteEnabled = false;
+            original.PreviewEnabled = false;
+            original.DetailColumnsEnabled = false;
             original.Save();
 
             var loaded = WadeConfig.Load([], configFilePath: configPath);
@@ -339,6 +373,9 @@ public class WadeConfigTests
             Assert.True(loaded.ShowHiddenFiles);
             Assert.Equal(SortMode.Extension, loaded.SortMode);
             Assert.False(loaded.SortAscending);
+            Assert.False(loaded.ConfirmDeleteEnabled);
+            Assert.False(loaded.PreviewEnabled);
+            Assert.False(loaded.DetailColumnsEnabled);
         }
         finally
         {

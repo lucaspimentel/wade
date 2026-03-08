@@ -278,17 +278,25 @@ internal static class PaneRenderer
         buffer.WriteString(pane.Top, pane.Left + 1, message, style, pane.Width - 1);
     }
 
-    public static void RenderBorders(ScreenBuffer buffer, Layout layout, int terminalHeight)
+    public static void RenderBorders(ScreenBuffer buffer, Layout layout, int terminalHeight, bool previewEnabled = true)
     {
         var style = new CellStyle(BorderColor, null);
         int borderCol1 = layout.LeftPane.Right;
-        int borderCol2 = layout.CenterPane.Right;
         int contentHeight = terminalHeight - 1;
 
         for (int row = 0; row < contentHeight; row++)
         {
             buffer.Put(row, borderCol1, '│', style);
-            buffer.Put(row, borderCol2, '│', style);
+        }
+
+        if (previewEnabled)
+        {
+            int borderCol2 = layout.CenterPane.Right;
+
+            for (int row = 0; row < contentHeight; row++)
+            {
+                buffer.Put(row, borderCol2, '│', style);
+            }
         }
     }
 }

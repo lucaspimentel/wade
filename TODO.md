@@ -194,11 +194,9 @@ Popup menu at click position with contextual actions.
 
 Reformatted help dialog from a single column (29 rows) to 2 columns side by side (~15 rows). `ContentWidth` doubled to 96 (two 46-char columns + 4-char gap). `Bindings` array unchanged; `Render()` splits entries across left and right columns.
 
-## Config audit
+## ~~Config audit~~ ✅
 
-Review existing config options and evaluate whether any should be added, removed, or changed.
-
-- Are all current options (`show_icons_enabled`, `image_previews_enabled`, `show_hidden_files`, `sort_mode`, `sort_ascending`) still needed?
+Reviewed all 5 existing config options — all are actively used and appropriate. Added 3 new options: `confirm_delete_enabled` (skip delete confirmation), `preview_enabled` (hide right preview pane for 2-pane layout), `detail_columns_enabled` (hide size/date columns in center pane). All default to `true`. Config dialog updated to show 8 options.
 
 ## Bugs (open)
 
