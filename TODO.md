@@ -208,6 +208,6 @@ Review existing config options and evaluate whether any should be added, removed
 
 Implemented: Added `InvalidateFilteredEntries()` calls after `_directoryContents.Invalidate(_currentPath)` in all file action handlers (delete, rename, new file, new directory, paste) so the filtered entry cache is also refreshed.
 
-### Drive letters on Windows should always be capitalized
+### ~~Drive letters on Windows should always be capitalized~~ ✅
 
-Ensure drive letters are always uppercase (e.g. `C:\`, not `c:\`) throughout the UI — path bar, go-to-path, status bar, etc.
+Fixed: `PathCompletion.CapitalizeDriveLetter()` applied at all `_currentPath` assignment sites in `App.cs` and in `DirectoryContents.GetDriveEntries()`. Ensures drive letters are always uppercase throughout the UI.

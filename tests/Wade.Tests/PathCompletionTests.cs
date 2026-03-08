@@ -176,4 +176,20 @@ public class PathCompletionTests
         }
         finally { CleanupDir(dir); }
     }
+
+    // ── Drive letter capitalization ─────────────────────────────────────────
+
+    [Theory]
+    [InlineData(@"c:\Users\foo", @"C:\Users\foo")]
+    [InlineData(@"d:\", @"D:\")]
+    [InlineData(@"C:\Users\foo", @"C:\Users\foo")]
+    [InlineData(@"D:\", @"D:\")]
+    [InlineData("/usr/local/bin", "/usr/local/bin")]
+    [InlineData("relative/path", "relative/path")]
+    [InlineData("", "")]
+    [InlineData("x", "x")]
+    public void CapitalizeDriveLetter_ReturnsExpected(string input, string expected)
+    {
+        Assert.Equal(expected, PathCompletion.CapitalizeDriveLetter(input));
+    }
 }

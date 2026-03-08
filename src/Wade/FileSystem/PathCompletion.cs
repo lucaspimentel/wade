@@ -17,6 +17,18 @@ internal static class PathCompletion
     }
 
     /// <summary>
+    /// Ensures the drive letter (e.g. <c>C:</c>) is uppercase on Windows paths.
+    /// Non-Windows-style paths and already-uppercase paths are returned unchanged.
+    /// </summary>
+    public static string CapitalizeDriveLetter(string path)
+    {
+        if (path.Length >= 2 && path[1] == ':' && char.IsLower(path[0]))
+            return string.Concat(char.ToUpperInvariant(path[0]).ToString(), path.AsSpan(1));
+
+        return path;
+    }
+
+    /// <summary>
     /// Normalizes path separators to the platform's preferred separator.
     /// On Windows this converts <c>/</c> to <c>\</c>; on Unix it's a no-op.
     /// </summary>

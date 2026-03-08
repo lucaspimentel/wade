@@ -98,7 +98,7 @@ internal sealed class App
 
     public string? Run()
     {
-        _currentPath = Path.GetFullPath(_config.StartPath);
+        _currentPath = PathCompletion.CapitalizeDriveLetter(Path.GetFullPath(_config.StartPath));
         _directoryContents.ShowHiddenFiles = _config.ShowHiddenFiles;
         _directoryContents.SortMode = _config.SortMode;
         _directoryContents.SortAscending = _config.SortAscending;
@@ -319,7 +319,7 @@ internal sealed class App
                     if (entries.Count > 0 && entries[_selectedIndex].IsDirectory)
                     {
                         _selectedIndexPerDir[_currentPath] = _selectedIndex;
-                        _currentPath = entries[_selectedIndex].FullPath;
+                        _currentPath = PathCompletion.CapitalizeDriveLetter(entries[_selectedIndex].FullPath);
                         _selectedIndex = _selectedIndexPerDir.GetValueOrDefault(_currentPath, 0);
                         _scrollOffset = 0;
                         _notification = null;
@@ -358,7 +358,7 @@ internal sealed class App
                         var parent = Directory.GetParent(_currentPath);
                         if (parent is not null)
                         {
-                            _currentPath = parent.FullName;
+                            _currentPath = PathCompletion.CapitalizeDriveLetter(parent.FullName);
                             var parentEntries = _directoryContents.GetEntries(_currentPath);
                             string oldName = Path.GetFileName(oldPath);
                             int idx = parentEntries.FindIndex(e => e.Name.Equals(oldName, StringComparison.OrdinalIgnoreCase));
@@ -1101,7 +1101,7 @@ internal sealed class App
                 if (clicked.IsDirectory)
                 {
                     _selectedIndexPerDir[_currentPath] = _selectedIndex;
-                    _currentPath = clicked.FullPath;
+                    _currentPath = PathCompletion.CapitalizeDriveLetter(clicked.FullPath);
                     _selectedIndex = _selectedIndexPerDir.GetValueOrDefault(_currentPath, 0);
                     _scrollOffset = 0;
                     _markedPaths.Clear();
@@ -1115,7 +1115,7 @@ internal sealed class App
                     var parentDir = Directory.GetParent(_currentPath);
                     if (parentDir is not null)
                     {
-                        _currentPath = parentDir.FullName;
+                        _currentPath = PathCompletion.CapitalizeDriveLetter(parentDir.FullName);
                         var parentEntries = _directoryContents.GetEntries(_currentPath);
                         int idx = parentEntries.FindIndex(e => e.Name.Equals(clicked.Name, StringComparison.OrdinalIgnoreCase));
                         _selectedIndex = idx >= 0 ? idx : 0;
@@ -1143,7 +1143,7 @@ internal sealed class App
                         if (clicked.IsDirectory)
                         {
                             _selectedIndexPerDir[_currentPath] = _selectedIndex;
-                            _currentPath = clicked.FullPath;
+                            _currentPath = PathCompletion.CapitalizeDriveLetter(clicked.FullPath);
                             _selectedIndex = _selectedIndexPerDir.GetValueOrDefault(_currentPath, 0);
                             _scrollOffset = 0;
                             _markedPaths.Clear();
@@ -1154,7 +1154,7 @@ internal sealed class App
                         {
                             // File in previewed directory — navigate there, select the file
                             _selectedIndexPerDir[_currentPath] = _selectedIndex;
-                            _currentPath = selected.FullPath;
+                            _currentPath = PathCompletion.CapitalizeDriveLetter(selected.FullPath);
                             var dirEntries = _directoryContents.GetEntries(_currentPath);
                             int idx = dirEntries.FindIndex(e => e.Name.Equals(clicked.Name, StringComparison.OrdinalIgnoreCase));
                             _selectedIndex = idx >= 0 ? idx : 0;
@@ -1521,7 +1521,7 @@ internal sealed class App
         if (Directory.Exists(path))
         {
             _selectedIndexPerDir[_currentPath] = _selectedIndex;
-            _currentPath = path;
+            _currentPath = PathCompletion.CapitalizeDriveLetter(path);
             _selectedIndex = 0;
             _scrollOffset = 0;
             _markedPaths.Clear();
@@ -1534,7 +1534,7 @@ internal sealed class App
             if (parent is not null)
             {
                 _selectedIndexPerDir[_currentPath] = _selectedIndex;
-                _currentPath = parent;
+                _currentPath = PathCompletion.CapitalizeDriveLetter(parent);
                 var entries = _directoryContents.GetEntries(_currentPath);
                 string fileName = Path.GetFileName(path);
                 int idx = entries.FindIndex(e => e.Name.Equals(fileName, StringComparison.OrdinalIgnoreCase));

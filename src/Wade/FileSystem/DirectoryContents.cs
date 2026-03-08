@@ -43,7 +43,7 @@ internal sealed class DirectoryContents
             string name = drive.Name.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             list.Add(new FileSystemEntry(
                 name,
-                drive.RootDirectory.FullName,
+                PathCompletion.CapitalizeDriveLetter(drive.RootDirectory.FullName),
                 IsDirectory: true,
                 Size: 0,
                 LastModified: default,
