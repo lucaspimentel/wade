@@ -184,10 +184,28 @@ public class WadeConfigTests
     [InlineData(@"C:\foo\bar/",  @"C:\foo\bar")]
     [InlineData(@"C:\foo\bar\\", @"C:\foo\bar")]
     [InlineData(@"C:\foo\bar",   @"C:\foo\bar")]
+    [InlineData(@"C:\",          @"C:\")]     // drive root preserved
+    [InlineData(@"C:/",          @"C:\")]     // forward-slash drive root → backslash root
+    [InlineData(@"/",            @"/")]       // Unix root preserved
     public void StartPath_TrailingSeparatorsAreStripped(string input, string expected)
     {
         var config = WadeConfig.Load([input], configFilePath: "/nonexistent/path.toml");
         Assert.Equal(expected, config.StartPath);
+    }
+
+    [Fact]
+    public void StartPath_BareDriveLetter_PassesThrough()
+    {
+        var config = WadeConfig.Load(["C:"], configFilePath: "/nonexistent/path.toml");
+        Assert.Equal("C:", config.StartPath);
+    }
+
+    [Fact]
+    public void CliFlag_ShortHelp_DoesNotSetStartPath()
+    {
+        var config = WadeConfig.Load(["-h"], configFilePath: "/nonexistent/path.toml");
+        Assert.True(config.ShowHelp);
+        Assert.Equal(Directory.GetCurrentDirectory(), config.StartPath);
     }
 
     [Theory]

@@ -101,7 +101,7 @@ internal sealed class WadeConfig
         // First non-flag arg is start path
         foreach (var arg in args)
         {
-            if (!arg.StartsWith("--"))
+            if (!arg.StartsWith('-'))
             {
                 config.StartPath = arg;
                 break;
@@ -117,7 +117,14 @@ internal sealed class WadeConfig
 
         // Use explicit chars (not Path.DirectorySeparatorChar/AltDirectorySeparatorChar) so that
         // Windows-style backslashes are also stripped when running on Linux/macOS.
-        config.StartPath = config.StartPath.TrimEnd('/', '\\');
+        var startPath = config.StartPath.TrimEnd('/', '\\');
+
+        if (startPath.Length == 0)
+            startPath = config.StartPath[..1]; // "/" or "\" → preserve root
+        else if (startPath.Length == 2 && startPath[1] == ':' && startPath.Length < config.StartPath.Length)
+            startPath += '\\'; // "C:\" was trimmed to "C:" — restore the root separator
+
+        config.StartPath = startPath;
 
         return config;
     }

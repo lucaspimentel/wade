@@ -212,9 +212,9 @@ Implemented: Added `InvalidateFilteredEntries()` calls after `_directoryContents
 
 Fixed: `PathCompletion.CapitalizeDriveLetter()` applied at all `_currentPath` assignment sites in `App.cs` and in `DirectoryContents.GetDriveEntries()`. Ensures drive letters are always uppercase throughout the UI.
 
-### CLI path argument format handling
+### ~~CLI path argument format handling~~ ✅
 
-Wade accepts a path as a CLI argument but some formats don't work or cause crashes. Confirm and fix handling for: `C:\`, `c:\`, `C:/`, `/`, etc.
+Fixed: `TrimEnd` no longer destroys root paths (`C:\` → `C:` or `/` → `""`). Root separators are preserved after trimming. Short flags like `-h` are no longer matched as start paths.
 
 ### ~~Never show system+hidden filesystem entries on Windows~~ ✅
 
