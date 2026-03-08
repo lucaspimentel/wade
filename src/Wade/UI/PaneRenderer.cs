@@ -259,9 +259,12 @@ internal static class PaneRenderer
                 pos++;
             }
 
+            int w = RuneWidth.GetWidth(rune);
+            if (charsWritten + w > maxWidth) break;
+
             buffer.Put(row, col, rune, style);
-            col++;
-            charsWritten++;
+            col += w;
+            charsWritten += w;
             pos++;
         }
     }

@@ -51,7 +51,13 @@ internal sealed class ScreenBuffer
     public void Put(int row, int col, Rune rune, CellStyle style)
     {
         if (row < 0 || row >= _height || col < 0 || col >= _width) return;
-        _back[row * _width + col] = new Cell(rune, style);
+        int idx = row * _width + col;
+        _back[idx] = new Cell(rune, style);
+
+        // Wide characters occupy 2 terminal columns; store a continuation marker in the next cell
+        if (RuneWidth.GetWidth(rune) == 2 && col + 1 < _width)
+            _back[idx + 1] = Cell.WideContinuation;
+
         _dirtyRows[row >> 6] |= 1UL << (row & 63);
     }
 
@@ -77,13 +83,19 @@ internal sealed class ScreenBuffer
         int clampedEnd = (int)Math.Min((long)col + maxWidth, _width);
         if (clampedStart >= clampedEnd) return;
 
+        int rowOffset = row * _width;
         int c = col;
         foreach (var rune in text.EnumerateRunes())
         {
-            if (c >= clampedEnd) break;
+            int w = RuneWidth.GetWidth(rune);
+            if (c + w > clampedEnd) break;
             if (c >= 0)
-                _back[row * _width + c] = new Cell(rune, style);
-            c++;
+            {
+                _back[rowOffset + c] = new Cell(rune, style);
+                if (w == 2 && c + 1 < _width)
+                    _back[rowOffset + c + 1] = Cell.WideContinuation;
+            }
+            c += w;
         }
         _dirtyRows[row >> 6] |= 1UL << (row & 63);
     }
@@ -95,13 +107,19 @@ internal sealed class ScreenBuffer
         int clampedEnd = (int)Math.Min((long)col + maxWidth, _width);
         if (clampedStart >= clampedEnd) return;
 
+        int rowOffset = row * _width;
         int c = col;
         foreach (var rune in text.EnumerateRunes())
         {
-            if (c >= clampedEnd) break;
+            int w = RuneWidth.GetWidth(rune);
+            if (c + w > clampedEnd) break;
             if (c >= 0)
-                _back[row * _width + c] = new Cell(rune, style);
-            c++;
+            {
+                _back[rowOffset + c] = new Cell(rune, style);
+                if (w == 2 && c + 1 < _width)
+                    _back[rowOffset + c + 1] = Cell.WideContinuation;
+            }
+            c += w;
         }
         _dirtyRows[row >> 6] |= 1UL << (row & 63);
     }
@@ -130,6 +148,10 @@ internal sealed class ScreenBuffer
 
                 front = back;
 
+                // Skip continuation cells — the wide character at col-1 already covers this column
+                if (back.IsWideContinuation)
+                    continue;
+
                 // Only emit cursor move if not already positioned here
                 if (row != lastRow || col != lastCol)
                     AnsiCodes.AppendMoveCursor(sb, row, col);
@@ -144,8 +166,9 @@ internal sealed class ScreenBuffer
                 int charLen = back.Char.EncodeToUtf16(charBuf);
                 sb.Append(charBuf[..charLen]);
 
+                int charWidth = RuneWidth.GetWidth(back.Char);
                 lastRow = row;
-                lastCol = col + 1;
+                lastCol = col + charWidth;
             }
         }
 
@@ -257,4 +280,8 @@ internal readonly record struct Cell(Rune Char, CellStyle Style)
     public static readonly Cell Empty = new(new Rune(' '), CellStyle.Default);
     // Sentinel value that never matches any real cell, used to force a full redraw
     public static readonly Cell Dirty = new(new Rune('\0'), new CellStyle(new Color(255, 255, 255), new Color(255, 255, 255)));
+    // Placeholder for the second column of a wide character
+    public static readonly Cell WideContinuation = new(new Rune('\0'), CellStyle.Default);
+
+    public bool IsWideContinuation => this == WideContinuation;
 }
