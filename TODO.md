@@ -199,3 +199,15 @@ Help dialog is too tall (36 rows for 30 keybinding entries in a single column). 
 Review existing config options and evaluate whether any should be added, removed, or changed.
 
 - Are all current options (`show_icons_enabled`, `image_previews_enabled`, `show_hidden_files`, `sort_mode`, `sort_ascending`) still needed?
+
+## Bugs (open)
+
+### ~~Refresh file list after file actions~~ ✅
+
+~~File actions (delete, paste, etc.) that change the directory contents should refresh the file list so the UI reflects the updated state immediately.~~
+
+Implemented: Added `InvalidateFilteredEntries()` calls after `_directoryContents.Invalidate(_currentPath)` in all file action handlers (delete, rename, new file, new directory, paste) so the filtered entry cache is also refreshed.
+
+### Drive letters on Windows should always be capitalized
+
+Ensure drive letters are always uppercase (e.g. `C:\`, not `c:\`) throughout the UI — path bar, go-to-path, status bar, etc.

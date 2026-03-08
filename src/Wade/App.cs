@@ -521,6 +521,7 @@ internal sealed class App
                                     File.Move(entry.FullPath, newPath);
 
                                 _directoryContents.Invalidate(_currentPath);
+                                InvalidateFilteredEntries();
                                 ShowNotification($"Renamed to '{newName}'", NotificationKind.Success);
 
                                 // Re-select the renamed entry
@@ -574,6 +575,7 @@ internal sealed class App
                             int errors = FileOperations.Delete(targets, permanent);
 
                             _directoryContents.Invalidate(_currentPath);
+                            InvalidateFilteredEntries();
                             _markedPaths.Clear();
 
                             if (errors > 0)
@@ -642,6 +644,7 @@ internal sealed class App
                         {
                             File.Create(destPath).Dispose();
                             _directoryContents.Invalidate(_currentPath);
+                            InvalidateFilteredEntries();
                             ShowNotification($"Created '{name}'", NotificationKind.Success);
 
                             var updatedEntries = GetVisibleEntries();
@@ -685,6 +688,7 @@ internal sealed class App
                         {
                             Directory.CreateDirectory(destPath);
                             _directoryContents.Invalidate(_currentPath);
+                            InvalidateFilteredEntries();
                             ShowNotification($"Created '{name}'", NotificationKind.Success);
 
                             var updatedEntries = GetVisibleEntries();
@@ -833,6 +837,7 @@ internal sealed class App
         }
 
         _directoryContents.Invalidate(_currentPath);
+        InvalidateFilteredEntries();
         foreach (string parent in sourceParents)
             _directoryContents.Invalidate(parent);
 
