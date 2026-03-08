@@ -27,18 +27,10 @@ is true (or when any overlay is active).
 - `src/Wade/App.cs:785-786` — help overlay rendered to ScreenBuffer
 - `src/Wade/Imaging/ImagePreview.cs` — image preview logic
 
-### Status bar notifications hide file metadata unnecessarily
+### ~~Status bar notifications hide file metadata unnecessarily~~ ✅
 
-Notifications replace file metadata on the right side of the status bar via a
-mutually exclusive if-else branch (`StatusBar.cs:78-110`), even when there's enough
-width to show both. The notification and metadata could coexist — e.g., show the
-notification after the path on the left and keep metadata right-aligned, truncating
-only when space is actually tight.
-
-**Key locations:**
-- `src/Wade/UI/StatusBar.cs:78-110` — if-else that enforces mutual exclusivity
-- `src/Wade/UI/StatusBar.cs:113-173` — `BuildRightText()` metadata builder
-- `tests/Wade.Tests/StatusBarTests.cs:36-46` — test that enforces current behavior
+Fixed: Metadata is now always rendered right-aligned. Notifications render in the
+gap between the left-side content and metadata, truncating when space is tight.
 
 ---
 
@@ -75,7 +67,7 @@ Implemented: `HashSet<string>` of marked absolute paths (`_markedPaths`) in `App
 
 ### ~~Status bar notifications~~ ✅
 
-Implemented: `Notification` record (`Message`, `Kind`, `Timestamp`) with `IsExpired()` tick-based check. `NotificationKind` enum (`Info`, `Success`, `Error`) controls color (gray, green, red). `ShowNotification()` helper on `App` sets the notification; expiry check runs at the top of the main loop (clears on next input after 4 s). Notification renders right-aligned in the status bar, replacing metadata when active. Auto-clears on directory change (Open, Back, Refresh).
+Implemented: `Notification` record (`Message`, `Kind`, `Timestamp`) with `IsExpired()` tick-based check. `NotificationKind` enum (`Info`, `Success`, `Error`) controls color (gray, green, red). `ShowNotification()` helper on `App` sets the notification; expiry check runs at the top of the main loop (clears on next input after 4 s). Notification renders in the status bar gap between left content and right-aligned metadata, truncating when space is tight. Auto-clears on directory change (Open, Back, Refresh).
 
 - **Required by:** File actions
 

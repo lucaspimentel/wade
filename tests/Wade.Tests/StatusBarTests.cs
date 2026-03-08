@@ -33,7 +33,7 @@ public class StatusBarTests
     }
 
     [Fact]
-    public void Render_WithNotification_HidesMetadata()
+    public void Render_WithNotification_ShowsBothNotificationAndMetadata()
     {
         var buf = new ScreenBuffer(80, 1);
         var notification = new Notification("Done", NotificationKind.Info, 0);
@@ -43,7 +43,24 @@ public class StatusBarTests
 
         string output = Flush(buf);
         Assert.Contains("Done", output);
-        Assert.DoesNotContain("3/5", output);
+        Assert.Contains("3/5", output);
+    }
+
+    [Fact]
+    public void Render_NarrowTerminal_TruncatesNotificationKeepsMetadata()
+    {
+        // Very narrow: path takes half, metadata takes most of the rest — notification should truncate or be skipped
+        int width = 30;
+        var buf = new ScreenBuffer(width, 1);
+        var notification = new Notification("This is a long notification", NotificationKind.Success, 0);
+
+        StatusBar.Render(buf, StatusBarRect(width), "/home", 5, 2, null, notification: notification);
+
+        string output = Flush(buf);
+        // Metadata (position) should always be present
+        Assert.Contains("3/5", output);
+        // The full notification should not appear (truncated or skipped)
+        Assert.DoesNotContain("This is a long notification", output);
     }
 
     [Fact]

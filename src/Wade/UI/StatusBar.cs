@@ -75,9 +75,21 @@ internal static class StatusBar
             buffer.WriteString(rect.Top, infoCol, clipBuf[..clipLen], clipStyle, infoMaxWidth);
         }
 
+        // Right side: always show metadata right-aligned
+        Span<char> rightBuf = stackalloc char[128];
+        int rightLen = BuildRightText(rightBuf, itemCount, selectedIndex, selectedEntry, fileTypeLabel, encoding, lineEnding, sortMode, sortAscending);
+        ReadOnlySpan<char> right = rightBuf[..rightLen];
+
+        int rightCol = rect.Width - rightLen - 1;
+        if (rightCol > 0)
+        {
+            for (int i = 0; i < rightLen; i++)
+                buffer.Put(rect.Top, rect.Left + rightCol + i, right[i], bgStyle);
+        }
+
+        // Notification: render in the gap between left content and metadata
         if (notification is { } notif)
         {
-            // Right side: notification message (replaces metadata)
             Color notifFg = notif.Kind switch
             {
                 NotificationKind.Success => SuccessFg,
@@ -85,27 +97,21 @@ internal static class StatusBar
                 _ => StatusFg,
             };
             var notifStyle = new CellStyle(notifFg, StatusBg);
-            int maxLen = rect.Width - pathMaxWidth - 2; // leave gap after path
-            string message = notif.Message;
-            if (message.Length > maxLen && maxLen > 0)
-                message = message[..maxLen];
 
-            int notifCol = rect.Width - message.Length - 1;
-            if (notifCol >= pathMaxWidth + 1)
-                buffer.WriteString(rect.Top, rect.Left + notifCol, message, notifStyle);
-        }
-        else
-        {
-            // Right side: item count + selected info — build without heap allocations
-            Span<char> rightBuf = stackalloc char[128];
-            int rightLen = BuildRightText(rightBuf, itemCount, selectedIndex, selectedEntry, fileTypeLabel, encoding, lineEnding, sortMode, sortAscending);
-            ReadOnlySpan<char> right = rightBuf[..rightLen];
+            // Available gap: from end of left half to 2 chars before metadata
+            int gapEnd = rightCol > 0 ? rightCol - 2 : rect.Width - rightLen - 3;
+            int gapStart = pathMaxWidth + 1;
+            int gapWidth = gapEnd - gapStart;
 
-            int rightCol = rect.Width - rightLen - 1;
-            if (rightCol > 0)
+            if (gapWidth > 0)
             {
-                for (int i = 0; i < rightLen; i++)
-                    buffer.Put(rect.Top, rect.Left + rightCol + i, right[i], bgStyle);
+                string message = notif.Message;
+                if (message.Length > gapWidth)
+                    message = message[..gapWidth];
+
+                // Right-align notification within the gap (closer to metadata)
+                int notifCol = gapEnd - message.Length;
+                buffer.WriteString(rect.Top, rect.Left + notifCol, message, notifStyle);
             }
         }
     }
