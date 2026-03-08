@@ -134,11 +134,15 @@ internal static class FilePreview
     {
         string filename = Path.GetFileName(filePath);
         if (s_filenameLabels.TryGetValue(filename, out string? filenameLabel))
+        {
             return filenameLabel;
+        }
 
         string ext = Path.GetExtension(filePath);
         if (ext.Length > 0 && s_extensionLabels.TryGetValue(ext, out string? extLabel))
+        {
             return extLabel;
+        }
 
         return null;
     }
@@ -151,7 +155,9 @@ internal static class FilePreview
         {
             metadata = DetectFileMetadata(filePath);
             if (metadata.IsBinary)
+            {
                 return ["[binary file]"];
+            }
 
             var lines = new List<string>(MaxPreviewLines);
             using var reader = new StreamReader(filePath);
@@ -183,14 +189,18 @@ internal static class FilePreview
             // Known binary extensions — skip byte scan
             string ext = Path.GetExtension(filePath);
             if (ext.Length > 0 && s_binaryExtensions.Contains(ext))
+            {
                 return new FileMetadata(IsBinary: true, Encoding: "", LineEnding: null);
+            }
 
             Span<byte> buffer = stackalloc byte[BinaryCheckSize];
             using var stream = File.OpenRead(filePath);
             int bytesRead = stream.Read(buffer);
 
             if (bytesRead == 0)
+            {
                 return new FileMetadata(IsBinary: false, Encoding: "UTF-8", LineEnding: null);
+            }
 
             buffer = buffer[..bytesRead];
 
@@ -221,7 +231,9 @@ internal static class FilePreview
             for (int i = dataStart; i < bytesRead; i++)
             {
                 if (buffer[i] == 0)
+                {
                     return new FileMetadata(IsBinary: true, Encoding: "", LineEnding: null);
+                }
 
                 if (buffer[i] == '\r')
                 {

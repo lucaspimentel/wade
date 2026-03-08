@@ -113,22 +113,33 @@ internal static class FileIcons
     public static Rune GetIcon(FileSystemEntry entry)
     {
         if (entry.IsDrive)
+        {
             return DriveIcon;
+        }
 
         if (entry.IsDirectory)
+        {
             return FolderIcon;
+        }
 
         var ext = Path.GetExtension(entry.Name);
         if (ext.Length > 0 && ExtensionIcons.TryGetValue(ext, out var icon))
+        {
             return icon;
+        }
 
         // Special filenames without extension
         var name = entry.Name;
         if (name.Equals("Dockerfile", StringComparison.OrdinalIgnoreCase))
+        {
             return new Rune(0xF308);
+        }
+
         if (name.Equals(".gitignore", StringComparison.OrdinalIgnoreCase) ||
             name.Equals(".gitattributes", StringComparison.OrdinalIgnoreCase))
+        {
             return new Rune(0xF1D3);
+        }
 
         return FileIcon;
     }

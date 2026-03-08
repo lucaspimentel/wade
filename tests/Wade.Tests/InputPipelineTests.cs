@@ -23,7 +23,10 @@ public class InputPipelineTests
                 if (_events.TryDequeue(out var evt))
                 {
                     if (_events.Count == 0)
+                    {
                         _hasEvents.Reset();
+                    }
+
                     return evt;
                 }
 

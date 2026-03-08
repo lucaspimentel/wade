@@ -17,11 +17,15 @@ internal static class RuneWidth
 
         // Control characters and zero-width
         if (cp < 0x20 || (cp >= 0x7F && cp < 0xA0))
+        {
             return 1;
+        }
 
         // East Asian Wide and Fullwidth ranges
         if (IsWide(cp))
+        {
             return 2;
+        }
 
         return 1;
     }

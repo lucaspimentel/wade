@@ -38,7 +38,9 @@ internal sealed record TerminalCapabilities(
 
                 // Find the terminating 'c'
                 while (i < data.Length && data[i] != 'c')
+                {
                     i++;
+                }
 
                 if (i < data.Length)
                 {
@@ -55,7 +57,9 @@ internal sealed record TerminalCapabilities(
 
                 // Find the terminating letter
                 while (i < data.Length && data[i] is not ((byte)'t' or (byte)'c' or >= 0x40 and <= 0x7E))
+                {
                     i++;
+                }
 
                 if (i < data.Length && data[i] == 't')
                 {
@@ -83,7 +87,9 @@ internal sealed record TerminalCapabilities(
             if (i == paramSpan.Length || paramSpan[i] == ';')
             {
                 if (hasValue && value == target)
+                {
                     return true;
+                }
 
                 value = 0;
                 hasValue = false;
@@ -111,11 +117,17 @@ internal sealed record TerminalCapabilities(
             if (i == paramSpan.Length || paramSpan[i] == ';')
             {
                 if (paramIndex == 0)
+                {
                     firstParam = hasValue ? value : -1;
+                }
                 else if (paramIndex == 1 && firstParam == 6 && hasValue)
+                {
                     height = value;
+                }
                 else if (paramIndex == 2 && firstParam == 6 && hasValue)
+                {
                     width = value;
+                }
 
                 paramIndex++;
                 value = 0;

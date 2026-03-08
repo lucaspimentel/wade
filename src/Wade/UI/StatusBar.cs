@@ -31,7 +31,9 @@ internal static class StatusBar
         // Fill background
         var bgStyle = new CellStyle(StatusFg, StatusBg);
         for (int col = 0; col < rect.Width; col++)
+        {
             buffer.Put(rect.Top, rect.Left + col, ' ', bgStyle);
+        }
 
         // Left side: current path
         var pathStyle = new CellStyle(PathFg, StatusBg, Bold: true);
@@ -54,7 +56,10 @@ internal static class StatusBar
             " marked".AsSpan().CopyTo(markBuf[markLen..]);
             markLen += 7;
             if (infoMaxWidth > 0)
+            {
                 buffer.WriteString(rect.Top, infoCol, markBuf[..markLen], markStyle, infoMaxWidth);
+            }
+
             infoCol += markLen;
             infoMaxWidth -= markLen;
         }
@@ -84,7 +89,9 @@ internal static class StatusBar
         if (rightCol > 0)
         {
             for (int i = 0; i < rightLen; i++)
+            {
                 buffer.Put(rect.Top, rect.Left + rightCol + i, right[i], bgStyle);
+            }
         }
 
         // Notification: render in the gap between left content and metadata
@@ -107,7 +114,9 @@ internal static class StatusBar
             {
                 string message = notif.Message;
                 if (message.Length > gapWidth)
+                {
                     message = message[..gapWidth];
+                }
 
                 // Right-align notification within the gap (closer to metadata)
                 int notifCol = gapEnd - message.Length;

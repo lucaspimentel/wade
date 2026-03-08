@@ -73,7 +73,9 @@ public class PreviewLoaderTests
                 {
                     lastPreview = p;
                     if (p.Path == tempFile2)
+                    {
                         break;
+                    }
                 }
             }
 

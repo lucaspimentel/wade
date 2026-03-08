@@ -34,8 +34,15 @@ internal sealed class ShellLanguage : RegexLanguage
         {
             int p = pos + 1;
             while (p < line.Length && line[p] != '\'')
+            {
                 p++;
-            if (p < line.Length) p++;
+            }
+
+            if (p < line.Length)
+            {
+                p++;
+            }
+
             spans.Add(new StyledSpan(pos, p - pos, TokenKind.String));
             end = p;
             return true;

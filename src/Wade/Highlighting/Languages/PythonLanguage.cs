@@ -40,7 +40,10 @@ internal sealed class PythonLanguage : RegexLanguage
         {
             int end = pos + 1;
             while (end < line.Length && (char.IsLetterOrDigit(line[end]) || line[end] == '_' || line[end] == '.'))
+            {
                 end++;
+            }
+
             if (end > pos + 1)
             {
                 spans.Add(new StyledSpan(pos, end - pos, TokenKind.Attribute));

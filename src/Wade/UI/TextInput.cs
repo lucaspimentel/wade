@@ -29,25 +29,39 @@ internal sealed class TextInput
 
     public void DeleteBackward()
     {
-        if (_cursorPos <= 0) return;
+        if (_cursorPos <= 0)
+        {
+            return;
+        }
+
         _cursorPos--;
         _buffer.Remove(_cursorPos, 1);
     }
 
     public void DeleteForward()
     {
-        if (_cursorPos >= _buffer.Length) return;
+        if (_cursorPos >= _buffer.Length)
+        {
+            return;
+        }
+
         _buffer.Remove(_cursorPos, 1);
     }
 
     public void MoveCursorLeft()
     {
-        if (_cursorPos > 0) _cursorPos--;
+        if (_cursorPos > 0)
+        {
+            _cursorPos--;
+        }
     }
 
     public void MoveCursorRight()
     {
-        if (_cursorPos < _buffer.Length) _cursorPos++;
+        if (_cursorPos < _buffer.Length)
+        {
+            _cursorPos++;
+        }
     }
 
     public void MoveCursorHome() => _cursorPos = 0;
@@ -63,13 +77,20 @@ internal sealed class TextInput
 
     public void Render(ScreenBuffer buffer, int row, int col, int maxWidth, CellStyle style)
     {
-        if (maxWidth <= 0) return;
+        if (maxWidth <= 0)
+        {
+            return;
+        }
 
         // Adjust scroll offset to keep cursor visible
         if (_cursorPos < _scrollOffset)
+        {
             _scrollOffset = _cursorPos;
+        }
         else if (_cursorPos >= _scrollOffset + maxWidth)
+        {
             _scrollOffset = _cursorPos - maxWidth + 1;
+        }
 
         var cursorStyle = style with { Inverse = true };
         int visibleEnd = Math.Min(_scrollOffset + maxWidth, _buffer.Length);
@@ -93,6 +114,8 @@ internal sealed class TextInput
         // Fill remaining width with spaces to clear stale content
         int remaining = maxWidth - (c - col);
         if (remaining > 0)
+        {
             buffer.FillRow(row, c, remaining, ' ', style);
+        }
     }
 }

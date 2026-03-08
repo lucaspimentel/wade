@@ -58,7 +58,9 @@ public class SearchFilterTests
             _filteredEntries = null;
             _searchInput = null;
             if (_inputMode == InputMode.Search)
+            {
                 _inputMode = InputMode.Normal;
+            }
         }
 
         public void HandleSearchKey(KeyEvent key)
@@ -77,14 +79,20 @@ public class SearchFilterTests
 
                 case ConsoleKey.UpArrow:
                     if (SelectedIndex > 0)
+                    {
                         SelectedIndex--;
+                    }
+
                     break;
 
                 case ConsoleKey.DownArrow:
                 {
                     var entries = GetVisibleEntries();
                     if (SelectedIndex < entries.Count - 1)
+                    {
                         SelectedIndex++;
+                    }
+
                     break;
                 }
 
@@ -305,7 +313,9 @@ public class SearchFilterTests
     private static void TypeString(SearchHarness harness, string text)
     {
         foreach (char c in text)
+        {
             harness.HandleSearchKey(new KeyEvent(ConsoleKey.None, c, false, false, false));
+        }
     }
 
     private static string Flush(ScreenBuffer buf)

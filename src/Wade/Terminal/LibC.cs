@@ -28,7 +28,10 @@ internal static class LibC
         var tmp = new byte[count];
         nint n = read(fd, tmp, count);
         if (n > 0)
+        {
             Array.Copy(tmp, 0, buf, offset, (int)n);
+        }
+
         return n;
     }
 

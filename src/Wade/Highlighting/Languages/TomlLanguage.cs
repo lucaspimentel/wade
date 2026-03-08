@@ -5,7 +5,9 @@ internal sealed class TomlLanguage : ILanguage
     public StyledLine TokenizeLine(string line, ref byte state)
     {
         if (line.Length == 0)
+        {
             return new StyledLine(line, null);
+        }
 
         var spans = new List<StyledSpan>();
         int len = line.Length;
@@ -81,18 +83,30 @@ internal sealed class TomlLanguage : ILanguage
                 if (ch == '"')
                 {
                     pos++;
-                    while (pos < len && line[pos] != '"') pos++;
-                    if (pos < len) pos++;
+                    while (pos < len && line[pos] != '"')
+                    {
+                        pos++;
+                    }
+
+                    if (pos < len)
+                    {
+                        pos++;
+                    }
                 }
                 else
                 {
                     while (pos < len && (char.IsLetterOrDigit(line[pos]) || line[pos] == '_' || line[pos] == '-' || line[pos] == '.'))
+                    {
                         pos++;
+                    }
                 }
                 int keyEnd = pos;
 
                 // Skip whitespace
-                while (pos < len && line[pos] == ' ') pos++;
+                while (pos < len && line[pos] == ' ')
+                {
+                    pos++;
+                }
 
                 if (pos < len && line[pos] == '=')
                 {
@@ -116,8 +130,15 @@ internal sealed class TomlLanguage : ILanguage
     private static void ScanValue(string line, int start, int len, List<StyledSpan> spans, ref byte state)
     {
         int pos = start;
-        while (pos < len && line[pos] == ' ') pos++;
-        if (pos >= len) return;
+        while (pos < len && line[pos] == ' ')
+        {
+            pos++;
+        }
+
+        if (pos >= len)
+        {
+            return;
+        }
 
         char ch = line[pos];
 
@@ -159,7 +180,10 @@ internal sealed class TomlLanguage : ILanguage
         {
             int numStart = pos;
             while (pos < len && !char.IsWhiteSpace(line[pos]) && line[pos] != '#' && line[pos] != ',')
+            {
                 pos++;
+            }
+
             spans.Add(new StyledSpan(numStart, pos - numStart, TokenKind.Number));
             return;
         }

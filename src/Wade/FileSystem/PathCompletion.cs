@@ -23,7 +23,9 @@ internal static class PathCompletion
     public static string CapitalizeDriveLetter(string path)
     {
         if (path.Length >= 2 && path[1] == ':' && char.IsLower(path[0]))
+        {
             return string.Concat(char.ToUpperInvariant(path[0]).ToString(), path.AsSpan(1));
+        }
 
         return path;
     }
@@ -35,7 +37,9 @@ internal static class PathCompletion
     public static string NormalizeSeparators(string path)
     {
         if (Path.DirectorySeparatorChar == '\\' && path.Contains('/'))
+        {
             return path.Replace('/', '\\');
+        }
 
         return path;
     }
@@ -50,7 +54,9 @@ internal static class PathCompletion
     public static string? GetSuggestion(string input, bool showHidden = true)
     {
         if (string.IsNullOrEmpty(input))
+        {
             return null;
+        }
 
         try
         {
@@ -59,7 +65,9 @@ internal static class PathCompletion
             if (input[^1] == Path.DirectorySeparatorChar || input[^1] == Path.AltDirectorySeparatorChar)
             {
                 if (Directory.Exists(input))
+                {
                     return FirstEntry(input, showHidden);
+                }
 
                 return null;
             }
@@ -67,11 +75,15 @@ internal static class PathCompletion
             // Split into parent + partial name
             string? parentDir = Path.GetDirectoryName(input);
             if (parentDir is null || !Directory.Exists(parentDir))
+            {
                 return null;
+            }
 
             string partial = Path.GetFileName(input);
             if (string.IsNullOrEmpty(partial))
+            {
                 return null;
+            }
 
             // If the user is typing a dot-prefixed name, don't filter hidden entries
             bool skipHidden = !showHidden && !partial.StartsWith('.');
@@ -80,10 +92,14 @@ internal static class PathCompletion
             foreach (var entry in new DirectoryInfo(parentDir).EnumerateFileSystemInfos())
             {
                 if (skipHidden && IsHidden(entry))
+                {
                     continue;
+                }
 
                 if (entry.Name.StartsWith(partial, StringComparison.OrdinalIgnoreCase))
+                {
                     return entry.FullName;
+                }
             }
         }
         catch
@@ -101,7 +117,9 @@ internal static class PathCompletion
             foreach (var entry in new DirectoryInfo(dirPath).EnumerateFileSystemInfos())
             {
                 if (!showHidden && IsHidden(entry))
+                {
                     continue;
+                }
 
                 return entry.FullName;
             }

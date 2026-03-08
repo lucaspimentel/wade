@@ -20,7 +20,10 @@ public class RegexLanguageTests
         byte state = 0;
         var result = new StyledLine[lines.Length];
         for (int i = 0; i < lines.Length; i++)
+        {
             result[i] = lang.TokenizeLine(lines[i], ref state);
+        }
+
         return result;
     }
 

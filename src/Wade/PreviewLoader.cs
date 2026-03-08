@@ -59,7 +59,9 @@ internal sealed class PreviewLoader
         try
         {
             if (ct.IsCancellationRequested)
+            {
                 return;
+            }
 
             // Try image preview first
             if (imageEnabled && ImagePreview.IsImageFile(path))
@@ -68,7 +70,9 @@ internal sealed class PreviewLoader
                 if (result is not null)
                 {
                     if (ct.IsCancellationRequested)
+                    {
                         return;
+                    }
 
                     _pipeline.Inject(new ImagePreviewReadyEvent(path, result.SixelData, result.PixelWidth, result.PixelHeight, result.Label));
                     return;
@@ -79,7 +83,9 @@ internal sealed class PreviewLoader
             var rawLines = FilePreview.GetPreviewLines(path, out var metadata);
 
             if (ct.IsCancellationRequested)
+            {
                 return;
+            }
 
             string? fileTypeLabel;
             string? encoding;
@@ -101,7 +107,9 @@ internal sealed class PreviewLoader
             var styledLines = SyntaxHighlighter.Highlight(rawLines, path);
 
             if (ct.IsCancellationRequested)
+            {
                 return;
+            }
 
             _pipeline.Inject(new PreviewReadyEvent(path, styledLines, fileTypeLabel, encoding, lineEnding));
         }

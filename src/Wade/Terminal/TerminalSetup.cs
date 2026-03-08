@@ -85,7 +85,11 @@ internal sealed class TerminalSetup : IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+        {
+            return;
+        }
+
         _disposed = true;
 
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -94,7 +98,9 @@ internal sealed class TerminalSetup : IDisposable
             Console.Write(AnsiCodes.DisableMouseReporting);
 
             if (_savedTermios != null && _ttyFd >= 0)
+            {
                 LibC.tcsetattr(_ttyFd, LibC.TCSAFLUSH, _savedTermios);
+            }
         }
 
         Console.Write(AnsiCodes.ResetAttributes);
@@ -108,13 +114,17 @@ internal sealed class TerminalSetup : IDisposable
         }
 
         if (_ttyFd >= 0)
+        {
             LibC.close(_ttyFd);
+        }
     }
 
     private static TerminalCapabilities DetectCapabilitiesUnix(int ttyFd)
     {
         if (ttyFd < 0)
+        {
             return TerminalCapabilities.Default;
+        }
 
         try
         {
@@ -131,17 +141,23 @@ internal sealed class TerminalSetup : IDisposable
                 var pfd = new LibC.PollFd { fd = ttyFd, events = LibC.POLLIN, revents = 0 };
                 int pollResult = LibC.poll(ref pfd, 1, 200);
                 if (pollResult <= 0)
+                {
                     break;
+                }
 
                 nint n = LibC.read(ttyFd, buf, total, buf.Length - total);
                 if (n <= 0)
+                {
                     break;
+                }
 
                 total += (int)n;
             }
 
             if (total == 0)
+            {
                 return TerminalCapabilities.Default;
+            }
 
             return TerminalCapabilities.ParseQueryResponses(buf.AsSpan(0, total));
         }

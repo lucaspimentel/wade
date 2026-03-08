@@ -39,64 +39,104 @@ internal static class InputReader
     public static AppAction MapKey(KeyEvent key)
     {
         if (key.KeyChar == '?')
+        {
             return AppAction.ShowHelp;
+        }
 
         if (key.KeyChar == '/')
+        {
             return AppAction.Search;
+        }
 
         if (key.KeyChar == '.')
+        {
             return AppAction.ToggleHiddenFiles;
+        }
 
         if (key.KeyChar == 's')
+        {
             return AppAction.CycleSortMode;
+        }
 
         if (key.KeyChar == 'S')
+        {
             return AppAction.ToggleSortDirection;
+        }
 
         if (key.KeyChar == 'Q')
+        {
             return AppAction.QuitNoCd;
+        }
 
         if (key.KeyChar == 'q')
+        {
             return AppAction.Quit;
+        }
 
         if (key.KeyChar == ',')
+        {
             return AppAction.ShowConfig;
+        }
 
         if (key.KeyChar == 'g')
+        {
             return AppAction.GoToPath;
+        }
 
         if (key.KeyChar == 'o')
+        {
             return AppAction.OpenExternal;
+        }
 
         if (key.Key == ConsoleKey.Spacebar)
+        {
             return AppAction.ToggleMark;
+        }
 
         if (key.Key == ConsoleKey.R && key.Control)
+        {
             return AppAction.Refresh;
+        }
 
         if (key.Key == ConsoleKey.T && key.Control)
+        {
             return AppAction.OpenTerminal;
+        }
 
         if (key.KeyChar == 'c' || (key.Key == ConsoleKey.C && key.Control))
+        {
             return AppAction.Copy;
+        }
 
         if (key.KeyChar == 'x' || (key.Key == ConsoleKey.X && key.Control))
+        {
             return AppAction.Cut;
+        }
 
         if (key.KeyChar is 'p' or 'v')
+        {
             return AppAction.Paste;
+        }
 
         if (key.KeyChar == 'N')
+        {
             return AppAction.NewFile;
+        }
 
         if (key.Key == ConsoleKey.F7)
+        {
             return AppAction.NewDirectory;
+        }
 
         if (key.Key == ConsoleKey.F2)
+        {
             return AppAction.Rename;
+        }
 
         if (key.Key is ConsoleKey.Delete)
+        {
             return key.Shift ? AppAction.DeletePermanently : AppAction.Delete;
+        }
 
         return key.Key switch
         {

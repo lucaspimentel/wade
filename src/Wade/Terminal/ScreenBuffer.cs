@@ -50,13 +50,19 @@ internal sealed class ScreenBuffer
 
     public void Put(int row, int col, Rune rune, CellStyle style)
     {
-        if (row < 0 || row >= _height || col < 0 || col >= _width) return;
+        if (row < 0 || row >= _height || col < 0 || col >= _width)
+        {
+            return;
+        }
+
         int idx = row * _width + col;
         _back[idx] = new Cell(rune, style);
 
         // Wide characters occupy 2 terminal columns; store a continuation marker in the next cell
         if (RuneWidth.GetWidth(rune) == 2 && col + 1 < _width)
+        {
             _back[idx + 1] = Cell.WideContinuation;
+        }
 
         _dirtyRows[row >> 6] |= 1UL << (row & 63);
     }
@@ -66,10 +72,17 @@ internal sealed class ScreenBuffer
 
     public void FillRow(int row, int startCol, int count, char ch, CellStyle style)
     {
-        if (row < 0 || row >= _height) return;
+        if (row < 0 || row >= _height)
+        {
+            return;
+        }
+
         int clampedStart = Math.Max(startCol, 0);
         int clampedEnd = Math.Min(startCol + count, _width);
-        if (clampedStart >= clampedEnd) return;
+        if (clampedStart >= clampedEnd)
+        {
+            return;
+        }
 
         var cell = new Cell(new Rune(ch), style);
         _back.AsSpan(row * _width + clampedStart, clampedEnd - clampedStart).Fill(cell);
@@ -78,22 +91,35 @@ internal sealed class ScreenBuffer
 
     public void WriteString(int row, int col, string text, CellStyle style, int maxWidth = int.MaxValue)
     {
-        if (row < 0 || row >= _height) return;
+        if (row < 0 || row >= _height)
+        {
+            return;
+        }
+
         int clampedStart = Math.Max(col, 0);
         int clampedEnd = (int)Math.Min((long)col + maxWidth, _width);
-        if (clampedStart >= clampedEnd) return;
+        if (clampedStart >= clampedEnd)
+        {
+            return;
+        }
 
         int rowOffset = row * _width;
         int c = col;
         foreach (var rune in text.EnumerateRunes())
         {
             int w = RuneWidth.GetWidth(rune);
-            if (c + w > clampedEnd) break;
+            if (c + w > clampedEnd)
+            {
+                break;
+            }
+
             if (c >= 0)
             {
                 _back[rowOffset + c] = new Cell(rune, style);
                 if (w == 2 && c + 1 < _width)
+                {
                     _back[rowOffset + c + 1] = Cell.WideContinuation;
+                }
             }
             c += w;
         }
@@ -102,22 +128,35 @@ internal sealed class ScreenBuffer
 
     public void WriteString(int row, int col, ReadOnlySpan<char> text, CellStyle style, int maxWidth = int.MaxValue)
     {
-        if (row < 0 || row >= _height) return;
+        if (row < 0 || row >= _height)
+        {
+            return;
+        }
+
         int clampedStart = Math.Max(col, 0);
         int clampedEnd = (int)Math.Min((long)col + maxWidth, _width);
-        if (clampedStart >= clampedEnd) return;
+        if (clampedStart >= clampedEnd)
+        {
+            return;
+        }
 
         int rowOffset = row * _width;
         int c = col;
         foreach (var rune in text.EnumerateRunes())
         {
             int w = RuneWidth.GetWidth(rune);
-            if (c + w > clampedEnd) break;
+            if (c + w > clampedEnd)
+            {
+                break;
+            }
+
             if (c >= 0)
             {
                 _back[rowOffset + c] = new Cell(rune, style);
                 if (w == 2 && c + 1 < _width)
+                {
                     _back[rowOffset + c + 1] = Cell.WideContinuation;
+                }
             }
             c += w;
         }
@@ -136,7 +175,9 @@ internal sealed class ScreenBuffer
         {
             // Skip clean rows
             if ((_dirtyRows[row >> 6] & (1UL << (row & 63))) == 0)
+            {
                 continue;
+            }
 
             for (int col = 0; col < _width; col++)
             {
@@ -144,17 +185,24 @@ internal sealed class ScreenBuffer
                 ref var front = ref _front[idx];
                 ref var back = ref _back[idx];
 
-                if (front == back) continue;
+                if (front == back)
+                {
+                    continue;
+                }
 
                 front = back;
 
                 // Skip continuation cells — the wide character at col-1 already covers this column
                 if (back.IsWideContinuation)
+                {
                     continue;
+                }
 
                 // Only emit cursor move if not already positioned here
                 if (row != lastRow || col != lastCol)
+                {
                     AnsiCodes.AppendMoveCursor(sb, row, col);
+                }
 
                 if (!hasStyle || currentStyle != back.Style)
                 {
@@ -182,7 +230,9 @@ internal sealed class ScreenBuffer
             // Write via stdout stream to avoid ToString() allocation
             int totalChars = sb.Length;
             if (_writeBuffer.Length < totalChars)
+            {
                 _writeBuffer = new char[totalChars * 2];
+            }
 
             sb.CopyTo(0, _writeBuffer, 0, totalChars);
 
@@ -236,15 +286,30 @@ internal sealed class ScreenBuffer
         {
             sb.Append(AnsiCodes.ResetAttributes);
             if (newStyle.Fg is { } fg)
+            {
                 AnsiCodes.AppendSetFg(sb, fg.R, fg.G, fg.B);
+            }
+
             if (newStyle.Bg is { } bg)
+            {
                 AnsiCodes.AppendSetBg(sb, bg.R, bg.G, bg.B);
+            }
+
             if (newStyle.Bold)
+            {
                 sb.Append("\x1b[1m");
+            }
+
             if (newStyle.Dim)
+            {
                 sb.Append("\x1b[2m");
+            }
+
             if (newStyle.Inverse)
+            {
                 sb.Append("\x1b[7m");
+            }
+
             return;
         }
 
@@ -252,19 +317,29 @@ internal sealed class ScreenBuffer
         if (oldStyle.Fg != newStyle.Fg)
         {
             if (newStyle.Fg is { } fg)
+            {
                 AnsiCodes.AppendSetFg(sb, fg.R, fg.G, fg.B);
+            }
             else
+            {
                 sb.Append("\x1b[39m"); // default fg
+            }
         }
 
         if (!oldStyle.Bold && newStyle.Bold)
+        {
             sb.Append("\x1b[1m");
+        }
 
         if (!oldStyle.Dim && newStyle.Dim)
+        {
             sb.Append("\x1b[2m");
+        }
 
         if (!oldStyle.Inverse && newStyle.Inverse)
+        {
             sb.Append("\x1b[7m");
+        }
     }
 }
 

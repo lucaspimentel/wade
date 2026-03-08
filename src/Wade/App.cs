@@ -133,7 +133,9 @@ internal sealed class App
         {
             // Auto-clear expired notifications
             if (_notification is { } notif && notif.IsExpired(Environment.TickCount64))
+            {
                 _notification = null;
+            }
 
             // Render
             buffer.Clear();
@@ -169,19 +171,27 @@ internal sealed class App
                     bool wasImage = _isImagePreview;
                     HandlePreviewReady(previewReady);
                     if (wasImage)
+                    {
                         buffer.ForceFullRedraw();
+                    }
                 }
                 else if (extra is ImagePreviewReadyEvent imagePreviewReady)
                 {
                     bool wasImage = _isImagePreview;
                     HandleImagePreviewReady(imagePreviewReady);
                     if (wasImage)
+                    {
                         buffer.ForceFullRedraw();
+                    }
                 }
                 else if (extra is ResizeEvent)
+                {
                     inputEvent = extra;
+                }
                 else if (extra is KeyEvent or MouseEvent)
+                {
                     inputEvent = extra;
+                }
             }
 
             // Handle resize events
@@ -217,7 +227,10 @@ internal sealed class App
                 bool wasImage = _isImagePreview;
                 HandlePreviewReady(previewEvt);
                 if (wasImage)
+                {
                     buffer.ForceFullRedraw();
+                }
+
                 continue;
             }
 
@@ -226,7 +239,10 @@ internal sealed class App
                 bool wasImage = _isImagePreview;
                 HandleImagePreviewReady(imagePreviewEvt);
                 if (wasImage)
+                {
                     buffer.ForceFullRedraw();
+                }
+
                 continue;
             }
 
@@ -251,16 +267,23 @@ internal sealed class App
                 // Clamp and adjust scroll after mouse handling
                 var currentAfterMouse = GetVisibleEntries();
                 if (currentAfterMouse.Count > 0)
+                {
                     _selectedIndex = Math.Clamp(_selectedIndex, 0, currentAfterMouse.Count - 1);
+                }
                 else
+                {
                     _selectedIndex = 0;
+                }
+
                 AdjustScroll(VisibleFileListHeight);
                 continue;
             }
 
             // Handle key events
             if (inputEvent is not KeyEvent keyEvent)
+            {
                 continue;
+            }
 
             // Modal input dispatch — consume all keys when in a modal mode
             switch (_inputMode)
@@ -272,9 +295,14 @@ internal sealed class App
                     HandleSearchKey(keyEvent);
                     var searchEntries = GetVisibleEntries();
                     if (searchEntries.Count > 0)
+                    {
                         _selectedIndex = Math.Clamp(_selectedIndex, 0, searchEntries.Count - 1);
+                    }
                     else
+                    {
                         _selectedIndex = 0;
+                    }
+
                     AdjustScroll(VisibleFileListHeight);
                     continue;
 
@@ -310,12 +338,18 @@ internal sealed class App
             {
                 case AppAction.NavigateUp:
                     if (_selectedIndex > 0)
+                    {
                         _selectedIndex--;
+                    }
+
                     break;
 
                 case AppAction.NavigateDown:
                     if (_selectedIndex < entries.Count - 1)
+                    {
                         _selectedIndex++;
+                    }
+
                     break;
 
                 case AppAction.Open:
@@ -339,7 +373,9 @@ internal sealed class App
                 case AppAction.Back:
                 {
                     if (_currentPath == DirectoryContents.DrivesPath)
+                    {
                         break; // Already at the top level
+                    }
 
                     _notification = null;
                     _markedPaths.Clear();
@@ -434,9 +470,14 @@ internal sealed class App
                     {
                         string path = entries[_selectedIndex].FullPath;
                         if (!_markedPaths.Remove(path))
+                        {
                             _markedPaths.Add(path);
+                        }
+
                         if (_selectedIndex < entries.Count - 1)
+                        {
                             _selectedIndex++;
+                        }
                     }
                     break;
 
@@ -505,7 +546,9 @@ internal sealed class App
                         ShowTextInputDialog("Rename", entry.Name, newName =>
                         {
                             if (string.IsNullOrWhiteSpace(newName) || newName == entry.Name)
+                            {
                                 return;
+                            }
 
                             string parentDir = Path.GetDirectoryName(entry.FullPath)!;
                             string newPath = Path.Combine(parentDir, newName);
@@ -519,9 +562,13 @@ internal sealed class App
                             try
                             {
                                 if (entry.IsDirectory)
+                                {
                                     Directory.Move(entry.FullPath, newPath);
+                                }
                                 else
+                                {
                                     File.Move(entry.FullPath, newPath);
+                                }
 
                                 _directoryContents.Invalidate(_currentPath);
                                 InvalidateFilteredEntries();
@@ -623,7 +670,9 @@ internal sealed class App
                     ShowTextInputDialog("New File", "", name =>
                     {
                         if (string.IsNullOrWhiteSpace(name))
+                        {
                             return;
+                        }
 
                         if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
                         {
@@ -667,7 +716,9 @@ internal sealed class App
                     ShowTextInputDialog("New Directory", "", name =>
                     {
                         if (string.IsNullOrWhiteSpace(name))
+                        {
                             return;
+                        }
 
                         if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
                         {
@@ -731,9 +782,13 @@ internal sealed class App
             // Clamp selection
             var currentEntries = GetVisibleEntries();
             if (currentEntries.Count > 0)
+            {
                 _selectedIndex = Math.Clamp(_selectedIndex, 0, currentEntries.Count - 1);
+            }
             else
+            {
                 _selectedIndex = 0;
+            }
 
             // Adjust scroll offset to keep selection visible
             AdjustScroll(VisibleFileListHeight);
@@ -798,9 +853,13 @@ internal sealed class App
                 try
                 {
                     if (Directory.Exists(destPath))
+                    {
                         Directory.Delete(destPath, true);
+                    }
                     else
+                    {
                         File.Delete(destPath);
+                    }
                 }
                 catch
                 {
@@ -814,18 +873,26 @@ internal sealed class App
                 if (_clipboardIsCut)
                 {
                     if (Directory.Exists(sourcePath))
+                    {
                         Directory.Move(sourcePath, destPath);
+                    }
                     else
+                    {
                         File.Move(sourcePath, destPath);
+                    }
 
                     sourceParents.Add(Path.GetDirectoryName(sourcePath)!);
                 }
                 else
                 {
                     if (Directory.Exists(sourcePath))
+                    {
                         FileOperations.CopyDirectory(sourcePath, destPath);
+                    }
                     else
+                    {
                         File.Copy(sourcePath, destPath);
+                    }
                 }
                 success++;
             }
@@ -838,15 +905,23 @@ internal sealed class App
         _directoryContents.Invalidate(_currentPath);
         InvalidateFilteredEntries();
         foreach (string parent in sourceParents)
+        {
             _directoryContents.Invalidate(parent);
+        }
 
         if (_clipboardIsCut && errors == 0)
+        {
             _clipboardPaths.Clear();
+        }
 
         if (errors > 0)
+        {
             ShowNotification($"Pasted {success}, {errors} failed", NotificationKind.Error);
+        }
         else
+        {
             ShowNotification($"Pasted {success} item(s)", NotificationKind.Success);
+        }
     }
 
     private void Render(ScreenBuffer buffer)
@@ -872,7 +947,9 @@ internal sealed class App
 
         // Search bar at bottom of center pane
         if (showSearchBar)
+        {
             RenderSearchBar(buffer);
+        }
 
         // Left pane: parent directory (or drives list)
         if (_currentPath == DirectoryContents.DrivesPath)
@@ -907,7 +984,10 @@ internal sealed class App
                     break;
                 }
             }
-            if (parentSelected < 0) parentSelected = 0;
+            if (parentSelected < 0)
+            {
+                parentSelected = 0;
+            }
 
             int parentScroll = CalculateScroll(parentSelected, _layout.LeftPane.Height, parentEntries.Count);
             PaneRenderer.RenderFileList(buffer, _layout.LeftPane, parentEntries, parentSelected, parentScroll, isActive: false, showIcons: _config.ShowIconsEnabled);
@@ -926,9 +1006,13 @@ internal sealed class App
             {
                 var previewEntries = _directoryContents.GetEntries(selected.FullPath);
                 if (previewEntries.Count > 0)
+                {
                     PaneRenderer.RenderFileList(buffer, _layout.RightPane, previewEntries, -1, 0, isActive: false, showIcons: _config.ShowIconsEnabled);
+                }
                 else
+                {
                     PaneRenderer.RenderMessage(buffer, _layout.RightPane, "[empty directory]");
+                }
             }
             else
             {
@@ -947,7 +1031,10 @@ internal sealed class App
                 {
                     // Fill right pane with spaces so ScreenBuffer claims the area
                     for (int row = _layout.RightPane.Top; row < _layout.RightPane.Bottom; row++)
+                    {
                         buffer.FillRow(row, _layout.RightPane.Left, _layout.RightPane.Width, ' ', CellStyle.Default);
+                    }
+
                     _sixelPending = true;
                 }
                 else if (_cachedStyledLines is not null)
@@ -969,7 +1056,9 @@ internal sealed class App
 
         // Help overlay
         if (_inputMode == InputMode.Help)
+        {
             HelpOverlay.Render(buffer, width, height);
+        }
 
         // Modal overlays (render last, on top)
         switch (_inputMode)
@@ -992,15 +1081,21 @@ internal sealed class App
     private void AdjustScroll(int visibleHeight)
     {
         if (_selectedIndex < _scrollOffset)
+        {
             _scrollOffset = _selectedIndex;
+        }
         else if (_selectedIndex >= _scrollOffset + visibleHeight)
+        {
             _scrollOffset = _selectedIndex - visibleHeight + 1;
+        }
     }
 
     private void HandlePreviewReady(PreviewReadyEvent evt)
     {
         if (evt.Path != _pendingPreviewPath)
+        {
             return;
+        }
 
         _cachedPreviewPath = evt.Path;
         _cachedStyledLines = evt.StyledLines;
@@ -1016,7 +1111,9 @@ internal sealed class App
     private void HandleImagePreviewReady(ImagePreviewReadyEvent evt)
     {
         if (evt.Path != _pendingPreviewPath)
+        {
             return;
+        }
 
         _cachedImagePath = evt.Path;
         _cachedPreviewPath = evt.Path;
@@ -1055,7 +1152,9 @@ internal sealed class App
         _sixelPending = false;
 
         if (wasImage)
+        {
             buffer?.ForceFullRedraw();
+        }
     }
 
     private void HandleMouseEvent(MouseEvent mouse, List<FileSystemEntry> entries, PreviewLoader previewLoader, ScreenBuffer buffer)
@@ -1064,20 +1163,28 @@ internal sealed class App
         if (mouse.Button == MouseButton.ScrollUp)
         {
             if (_selectedIndex > 0)
+            {
                 _selectedIndex--;
+            }
+
             return;
         }
 
         if (mouse.Button == MouseButton.ScrollDown)
         {
             if (_selectedIndex < entries.Count - 1)
+            {
                 _selectedIndex++;
+            }
+
             return;
         }
 
         // Ignore releases and non-left-click
         if (mouse.IsRelease || mouse.Button != MouseButton.Left)
+        {
             return;
+        }
 
         // Hit-test: which pane was clicked?
         int row = mouse.Row;
@@ -1088,7 +1195,9 @@ internal sealed class App
             // Center pane click — select the entry (same as arrow keys)
             int entryIndex = _scrollOffset + (row - _layout.CenterPane.Top);
             if (entryIndex >= 0 && entryIndex < entries.Count)
+            {
                 _selectedIndex = entryIndex;
+            }
         }
         else if (HitTestPane(_layout.LeftPane, row, col) && _leftPaneEntries is not null)
         {
@@ -1176,7 +1285,11 @@ internal sealed class App
 
     private static int CalculateScroll(int selectedIndex, int visibleHeight, int totalCount)
     {
-        if (totalCount <= visibleHeight) return 0;
+        if (totalCount <= visibleHeight)
+        {
+            return 0;
+        }
+
         int scroll = selectedIndex - visibleHeight / 2;
         return Math.Clamp(scroll, 0, totalCount - visibleHeight);
     }
@@ -1238,7 +1351,10 @@ internal sealed class App
             case ConsoleKey.UpArrow:
             case ConsoleKey.K:
                 if (_expandedPreviewScrollOffset > 0)
+                {
                     _expandedPreviewScrollOffset--;
+                }
+
                 break;
 
             case ConsoleKey.DownArrow:
@@ -1247,7 +1363,9 @@ internal sealed class App
                 {
                     int maxScroll = Math.Max(0, _cachedStyledLines.Length - _layout.ExpandedPane.Height);
                     if (_expandedPreviewScrollOffset < maxScroll)
+                    {
                         _expandedPreviewScrollOffset++;
+                    }
                 }
                 break;
 
@@ -1269,7 +1387,10 @@ internal sealed class App
 
             case ConsoleKey.End:
                 if (_cachedStyledLines is not null)
+                {
                     _expandedPreviewScrollOffset = Math.Max(0, _cachedStyledLines.Length - _layout.ExpandedPane.Height);
+                }
+
                 break;
         }
     }
@@ -1279,7 +1400,9 @@ internal sealed class App
         if (mouse.Button == MouseButton.ScrollUp)
         {
             if (_expandedPreviewScrollOffset > 0)
+            {
                 _expandedPreviewScrollOffset--;
+            }
         }
         else if (mouse.Button == MouseButton.ScrollDown)
         {
@@ -1287,7 +1410,9 @@ internal sealed class App
             {
                 int maxScroll = Math.Max(0, _cachedStyledLines.Length - _layout.ExpandedPane.Height);
                 if (_expandedPreviewScrollOffset < maxScroll)
+                {
                     _expandedPreviewScrollOffset++;
+                }
             }
         }
     }
@@ -1303,7 +1428,10 @@ internal sealed class App
         else if (_isImagePreview && _cachedSixelData is not null)
         {
             for (int row = pane.Top; row < pane.Bottom; row++)
+            {
                 buffer.FillRow(row, pane.Left, pane.Width, ' ', CellStyle.Default);
+            }
+
             _sixelPending = true;
         }
         else if (_cachedStyledLines is not null)
@@ -1369,7 +1497,10 @@ internal sealed class App
 
             default:
                 if (key.KeyChar >= ' ')
+                {
                     _activeTextInput!.InsertChar(key.KeyChar);
+                }
+
                 break;
         }
     }
@@ -1432,7 +1563,10 @@ internal sealed class App
                 {
                     string accepted = _goToPathSuggestion;
                     if (Directory.Exists(accepted))
+                    {
                         accepted += Path.DirectorySeparatorChar;
+                    }
+
                     _goToPathInput = new TextInput(accepted);
                     _goToPathSuggestion = GetPathSuggestion(accepted);
                 }
@@ -1457,7 +1591,10 @@ internal sealed class App
                 {
                     string accepted = _goToPathSuggestion;
                     if (Directory.Exists(accepted))
+                    {
                         accepted += Path.DirectorySeparatorChar;
+                    }
+
                     _goToPathInput = new TextInput(accepted);
                     _goToPathSuggestion = GetPathSuggestion(accepted);
                 }
@@ -1505,7 +1642,9 @@ internal sealed class App
     private void NavigateToPath(string path, PreviewLoader previewLoader, ScreenBuffer buffer)
     {
         if (string.IsNullOrWhiteSpace(path))
+        {
             return;
+        }
 
         try
         {
@@ -1602,9 +1741,13 @@ internal sealed class App
         _markedPaths.Clear();
 
         if (errors > 0)
+        {
             ShowNotification($"Deleted with {errors} error(s)", NotificationKind.Error);
+        }
         else
+        {
             ShowNotification($"Deleted {targets.Count} item(s)", NotificationKind.Success);
+        }
     }
 
     private void ShowConfirmDialog(string title, string message, Action onYes)
@@ -1654,7 +1797,9 @@ internal sealed class App
         _filteredEntries = null;
         _searchInput = null;
         if (_inputMode == InputMode.Search)
+        {
             _inputMode = InputMode.Normal;
+        }
     }
 
     private void InvalidateFilteredEntries()
@@ -1684,14 +1829,20 @@ internal sealed class App
 
             case ConsoleKey.UpArrow:
                 if (_selectedIndex > 0)
+                {
                     _selectedIndex--;
+                }
+
                 break;
 
             case ConsoleKey.DownArrow:
             {
                 var entries = GetVisibleEntries();
                 if (_selectedIndex < entries.Count - 1)
+                {
                     _selectedIndex++;
+                }
+
                 break;
             }
 
@@ -1751,7 +1902,9 @@ internal sealed class App
         foreach (string line in lines)
         {
             if (line.Length > maxLineLen)
+            {
                 maxLineLen = line.Length;
+            }
         }
 
         int contentWidth = Math.Max(maxLineLen, footer.Length) + 2;
@@ -1803,12 +1956,18 @@ internal sealed class App
         {
             case ConsoleKey.UpArrow or ConsoleKey.K:
                 if (_configSelectedIndex > 0)
+                {
                     _configSelectedIndex--;
+                }
+
                 break;
 
             case ConsoleKey.DownArrow or ConsoleKey.J:
                 if (_configSelectedIndex < 7)
+                {
                     _configSelectedIndex++;
+                }
+
                 break;
 
             case ConsoleKey.Spacebar:
@@ -1825,12 +1984,18 @@ internal sealed class App
 
             case ConsoleKey.LeftArrow or ConsoleKey.H:
                 if (_configSelectedIndex == 2) // SortMode
+                {
                     _configSortMode = CycleSortModePrev(_configSortMode);
+                }
+
                 break;
 
             case ConsoleKey.RightArrow or ConsoleKey.L:
                 if (_configSelectedIndex == 2) // SortMode
+                {
                     _configSortMode = CycleSortModeNext(_configSortMode);
+                }
+
                 break;
         }
     }
@@ -1847,7 +2012,10 @@ internal sealed class App
             case 5: _configPreviewPane = !_configPreviewPane; break;
             case 6:
                 if (_configPreviewPane)
+                {
                     _configImagePreviews = !_configImagePreviews;
+                }
+
                 break;
             case 7: _configDetailColumns = !_configDetailColumns; break;
         }

@@ -54,7 +54,9 @@ public class TextInputTests
         // Move cursor to specified position
         input.MoveCursorHome();
         for (int i = 0; i < cursorPos; i++)
+        {
             input.MoveCursorRight();
+        }
 
         input.DeleteBackward();
         Assert.Equal(expectedValue, input.Value);
@@ -98,7 +100,9 @@ public class TextInputTests
         var input = new TextInput("abc");
         input.MoveCursorHome();
         for (int i = 0; i < startPos; i++)
+        {
             input.MoveCursorRight();
+        }
 
         input.MoveCursorLeft();
         Assert.Equal(expectedPos, input.CursorPosition);
@@ -112,7 +116,9 @@ public class TextInputTests
         var input = new TextInput("abc");
         input.MoveCursorHome();
         for (int i = 0; i < startPos; i++)
+        {
             input.MoveCursorRight();
+        }
 
         input.MoveCursorRight();
         Assert.Equal(expectedPos, input.CursorPosition);

@@ -15,9 +15,13 @@ public class DirectoryContentsTests
         foreach (var entry in entries)
         {
             if (!entry.IsDirectory)
+            {
                 seenFile = true;
+            }
             else if (seenFile)
+            {
                 Assert.Fail("Directory found after a file — directories should come first.");
+            }
         }
     }
 
@@ -185,7 +189,9 @@ public class DirectoryContentsTests
     public void LoadEntries_WindowsSystemHiddenEntries_AlwaysExcluded()
     {
         if (!OperatingSystem.IsWindows())
+        {
             return; // FileAttributes.System is Windows-only
+        }
 
         string dir = CreateSortTestDir();
         try

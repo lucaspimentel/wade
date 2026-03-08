@@ -37,7 +37,10 @@ internal sealed class RustLanguage : RegexLanguage
             int depth = 0;
             while (end < line.Length)
             {
-                if (line[end] == '[') depth++;
+                if (line[end] == '[')
+                {
+                    depth++;
+                }
                 else if (line[end] == ']') { depth--; if (depth == 0) { end++; break; } }
                 end++;
             }
@@ -72,8 +75,16 @@ internal sealed class RustLanguage : RegexLanguage
             {
                 // Escape sequence char literal: '\n', '\t', etc.
                 int p = pos + 2;
-                while (p < line.Length && line[p] != '\'') p++;
-                if (p < line.Length) p++;
+                while (p < line.Length && line[p] != '\'')
+                {
+                    p++;
+                }
+
+                if (p < line.Length)
+                {
+                    p++;
+                }
+
                 spans.Add(new StyledSpan(pos, p - pos, TokenKind.String));
                 end = p;
                 return true;

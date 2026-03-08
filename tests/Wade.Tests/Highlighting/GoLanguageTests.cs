@@ -29,7 +29,11 @@ public class GoLanguageTests
     public void GoKeywords_Classified(string keyword)
     {
         // "goroutine" is not a keyword, just test actual ones
-        if (keyword == "goroutine") return; // skip
+        if (keyword == "goroutine")
+        {
+            return; // skip
+        }
+
         var spans = Tokenize(keyword);
         Assert.Contains(spans, s => s.Kind == TokenKind.Keyword);
     }

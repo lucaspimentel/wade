@@ -38,7 +38,9 @@ internal abstract class RegexLanguage : ILanguage
     public virtual StyledLine TokenizeLine(string line, ref byte state)
     {
         if (line.Length == 0)
+        {
             return new StyledLine(line, null);
+        }
 
         var spans = new List<StyledSpan>();
 
@@ -65,7 +67,9 @@ internal abstract class RegexLanguage : ILanguage
         {
             int end = TryEndMultiString(line, 0, spans, ref state);
             if (state == StateMultiString)
+            {
                 return MakeResult(line, spans); // still in multi-line string
+            }
 
             ScanLine(line, end, spans, ref state);
             return MakeResult(line, spans);
@@ -73,7 +77,9 @@ internal abstract class RegexLanguage : ILanguage
 
         int prefixEnd = TryMatchLinePrefix(line, spans, ref state);
         if (prefixEnd < 0)
+        {
             return MakeResult(line, spans);
+        }
 
         ScanLine(line, prefixEnd, spans, ref state);
         return MakeResult(line, spans);
@@ -141,7 +147,10 @@ internal abstract class RegexLanguage : ILanguage
             if (TryMatchString(line, pos, spans, ref state, out int strEnd))
             {
                 if (state == StateMultiString)
+                {
                     return;
+                }
+
                 pos = strEnd;
                 continue;
             }
@@ -159,12 +168,17 @@ internal abstract class RegexLanguage : ILanguage
             {
                 int idEnd = pos + 1;
                 while (idEnd < len && (char.IsLetterOrDigit(line[idEnd]) || line[idEnd] == '_'))
+                {
                     idEnd++;
+                }
 
                 string word = line[pos..idEnd];
                 TokenKind kind = ClassifyWord(word);
                 if (kind != TokenKind.Plain)
+                {
                     spans.Add(new StyledSpan(pos, idEnd - pos, kind));
+                }
+
                 pos = idEnd;
                 continue;
             }
@@ -227,7 +241,10 @@ internal abstract class RegexLanguage : ILanguage
         {
             pos += 2;
             while (pos < line.Length && (char.IsAsciiHexDigit(line[pos]) || line[pos] == '_'))
+            {
                 pos++;
+            }
+
             end = pos;
             return true;
         }
@@ -248,7 +265,9 @@ internal abstract class RegexLanguage : ILanguage
         }
         // Skip trailing type suffix (f, d, L, m, u, ul, etc.)
         while (pos < line.Length && char.IsLetter(line[pos]))
+        {
             pos++;
+        }
 
         end = pos;
         return pos > start;
@@ -256,13 +275,26 @@ internal abstract class RegexLanguage : ILanguage
 
     protected virtual TokenKind ClassifyWord(string word)
     {
-        if (Keywords.Contains(word))  return TokenKind.Keyword;
-        if (Constants.Contains(word)) return TokenKind.Constant;
-        if (Builtins.Contains(word))  return TokenKind.BuiltinFunc;
+        if (Keywords.Contains(word))
+        {
+            return TokenKind.Keyword;
+        }
+
+        if (Constants.Contains(word))
+        {
+            return TokenKind.Constant;
+        }
+
+        if (Builtins.Contains(word))
+        {
+            return TokenKind.BuiltinFunc;
+        }
 
         // PascalCase heuristic -> Type
         if (word.Length >= 2 && char.IsUpper(word[0]) && word.Any(char.IsLower))
+        {
             return TokenKind.Type;
+        }
 
         return TokenKind.Plain;
     }
@@ -289,7 +321,9 @@ internal abstract class RegexLanguage : ILanguage
                     (ch == '&' && n == '&') || (ch == '|' && n == '|') ||
                     (ch == '+' && n == '+') || (ch == '-' && n == '-') ||
                     (ch == '<' && n == '<') || (ch == '>' && n == '>'))
+                {
                     opLen = 2;
+                }
             }
             spans.Add(new StyledSpan(pos, opLen, TokenKind.Operator));
             end = pos + opLen;

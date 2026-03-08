@@ -15,7 +15,9 @@ public class FileActionsTests : IDisposable
     public void Dispose()
     {
         if (Directory.Exists(_tempDir))
+        {
             Directory.Delete(_tempDir, true);
+        }
     }
 
     // ── Rename ────────────────────────────────────────────────────────────────
@@ -87,7 +89,9 @@ public class FileActionsTests : IDisposable
 
         Assert.Equal(0, errors);
         foreach (string f in files)
+        {
             Assert.False(File.Exists(f));
+        }
     }
 
     [Fact]

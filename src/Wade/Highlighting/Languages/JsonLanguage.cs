@@ -5,7 +5,9 @@ internal sealed class JsonLanguage : ILanguage
     public StyledLine TokenizeLine(string line, ref byte state)
     {
         if (line.Length == 0)
+        {
             return new StyledLine(line, null);
+        }
 
         var spans = new List<StyledSpan>();
         ScanJson(line, 0, spans);
@@ -32,7 +34,11 @@ internal sealed class JsonLanguage : ILanguage
             if (ch is '{' or '}' or '[' or ']' or ',')
             {
                 spans.Add(new StyledSpan(pos, 1, TokenKind.Punctuation));
-                if (ch is '{' or '[') expectKey = true;
+                if (ch is '{' or '[')
+                {
+                    expectKey = true;
+                }
+
                 pos++;
                 continue;
             }
@@ -67,9 +73,16 @@ internal sealed class JsonLanguage : ILanguage
             if (char.IsDigit(ch) || ch == '-')
             {
                 int numStart = pos;
-                if (ch == '-') pos++;
-                while (pos < len && (char.IsDigit(line[pos]) || line[pos] == '.' || line[pos] == 'e' || line[pos] == 'E' || line[pos] == '+' || line[pos] == '-'))
+                if (ch == '-')
+                {
                     pos++;
+                }
+
+                while (pos < len && (char.IsDigit(line[pos]) || line[pos] == '.' || line[pos] == 'e' || line[pos] == 'E' || line[pos] == '+' || line[pos] == '-'))
+                {
+                    pos++;
+                }
+
                 spans.Add(new StyledSpan(numStart, pos - numStart, TokenKind.Number));
                 expectKey = false;
                 continue;

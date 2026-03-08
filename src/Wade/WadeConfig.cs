@@ -45,11 +45,15 @@ internal sealed class WadeConfig
             {
                 var trimmed = line.Trim();
                 if (trimmed.Length == 0 || trimmed[0] == '#')
+                {
                     continue;
+                }
 
                 int eq = trimmed.IndexOf('=');
                 if (eq < 0)
+                {
                     continue;
+                }
 
                 var key = trimmed[..eq].Trim();
                 var value = trimmed[(eq + 1)..].Trim();
@@ -57,7 +61,9 @@ internal sealed class WadeConfig
                 // Strip inline comment
                 int commentIdx = value.IndexOf('#');
                 if (commentIdx >= 0)
+                {
                     value = value[..commentIdx].Trim();
+                }
 
                 switch (key)
                 {
@@ -72,7 +78,10 @@ internal sealed class WadeConfig
                         break;
                     case "sort_mode":
                         if (Enum.TryParse<SortMode>(value, ignoreCase: true, out var sortMode))
+                        {
                             config.SortMode = sortMode;
+                        }
+
                         break;
                     case "sort_ascending":
                         config.SortAscending = ParseBool(value, config.SortAscending);
@@ -132,9 +141,13 @@ internal sealed class WadeConfig
         var startPath = config.StartPath.TrimEnd('/', '\\');
 
         if (startPath.Length == 0)
+        {
             startPath = config.StartPath[..1]; // "/" or "\" → preserve root
+        }
         else if (startPath.Length == 2 && startPath[1] == ':' && startPath.Length < config.StartPath.Length)
+        {
             startPath += '\\'; // "C:\" was trimmed to "C:" — restore the root separator
+        }
 
         config.StartPath = startPath;
 
@@ -145,7 +158,9 @@ internal sealed class WadeConfig
     {
         var dir = Path.GetDirectoryName(ConfigFilePath);
         if (dir is not null && !Directory.Exists(dir))
+        {
             Directory.CreateDirectory(dir);
+        }
 
         var sortModeStr = SortMode.ToString().ToLowerInvariant();
         var content = $"""

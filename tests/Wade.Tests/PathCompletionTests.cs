@@ -148,9 +148,13 @@ public class PathCompletionTests
     {
         string result = PathCompletion.NormalizeSeparators("C:/Users/foo");
         if (Path.DirectorySeparatorChar == '\\')
+        {
             Assert.Equal(@"C:\Users\foo", result);
+        }
         else
+        {
             Assert.Equal("C:/Users/foo", result); // no-op on Unix
+        }
     }
 
     [Fact]

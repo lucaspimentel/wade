@@ -20,20 +20,28 @@ internal sealed class WindowsInputSource : IInputSource
             uint waitResult = WaitForSingleObject(_stdinHandle, 100);
 
             if (waitResult != WaitObject0)
+            {
                 continue; // timeout or error — loop back and check cancellation
+            }
 
             if (!GetNumberOfConsoleInputEvents(_stdinHandle, out uint count) || count == 0)
+            {
                 continue;
+            }
 
             var record = new INPUT_RECORD();
             if (!ReadConsoleInput(_stdinHandle, ref record, 1, out uint eventsRead) || eventsRead == 0)
+            {
                 continue;
+            }
 
             switch (record.EventType)
             {
                 case KeyEventType:
                     if (record.Event.KeyEvent.bKeyDown == 0)
+                    {
                         break; // skip key-up events
+                    }
 
                     var k = record.Event.KeyEvent;
                     var modifiers = (ControlKeyState)k.dwControlKeyState;
@@ -46,7 +54,9 @@ internal sealed class WindowsInputSource : IInputSource
                 case MouseEventType:
                     var m = record.Event.MouseEvent;
                     if (m.dwEventFlags == MouseMoved)
+                    {
                         break; // ignore mouse move
+                    }
 
                     if (m.dwEventFlags == MouseWheeled)
                     {
@@ -59,10 +69,14 @@ internal sealed class WindowsInputSource : IInputSource
                     if (m.dwEventFlags == 0) // button press or release
                     {
                         if ((m.dwButtonState & FromLeft1stButtonPressed) != 0)
+                        {
                             return new MouseEvent(MouseButton.Left, m.Y, m.X, false);
+                        }
 
                         if (m.dwButtonState == 0)
+                        {
                             return new MouseEvent(MouseButton.Left, m.Y, m.X, true);
+                        }
                     }
                     break;
 

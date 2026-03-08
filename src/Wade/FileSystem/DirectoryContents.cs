@@ -18,10 +18,14 @@ internal sealed class DirectoryContents
     public List<FileSystemEntry> GetEntries(string path)
     {
         if (path == DrivesPath)
+        {
             return GetDriveEntries();
+        }
 
         if (_cache.TryGetValue(path, out var cached))
+        {
             return cached;
+        }
 
         var entries = LoadEntries(path);
         _cache[path] = entries;
@@ -39,7 +43,11 @@ internal sealed class DirectoryContents
         var list = new List<FileSystemEntry>();
         foreach (var drive in DriveInfo.GetDrives())
         {
-            if (!drive.IsReady) continue;
+            if (!drive.IsReady)
+            {
+                continue;
+            }
+
             string name = drive.Name.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             list.Add(new FileSystemEntry(
                 name,
@@ -75,11 +83,15 @@ internal sealed class DirectoryContents
                 // Always hide system+hidden entries on Windows (e.g. $Recycle.Bin)
                 if (OperatingSystem.IsWindows() &&
                     (dir.Attributes & (FileAttributes.System | FileAttributes.Hidden)) == (FileAttributes.System | FileAttributes.Hidden))
+                {
                     continue;
+                }
 
                 if (!ShowHiddenFiles &&
                     ((dir.Attributes & FileAttributes.Hidden) != 0 || dir.Name.StartsWith('.')))
+                {
                     continue;
+                }
 
                 list.Add(new FileSystemEntry(
                     dir.Name,
@@ -94,11 +106,15 @@ internal sealed class DirectoryContents
                 // Always hide system+hidden entries on Windows (e.g. $Recycle.Bin)
                 if (OperatingSystem.IsWindows() &&
                     (file.Attributes & (FileAttributes.System | FileAttributes.Hidden)) == (FileAttributes.System | FileAttributes.Hidden))
+                {
                     continue;
+                }
 
                 if (!ShowHiddenFiles &&
                     ((file.Attributes & FileAttributes.Hidden) != 0 || file.Name.StartsWith('.')))
+                {
                     continue;
+                }
 
                 list.Add(new FileSystemEntry(
                     file.Name,
@@ -127,7 +143,9 @@ internal sealed class DirectoryContents
         list.Sort((a, b) =>
         {
             if (a.IsDirectory != b.IsDirectory)
+            {
                 return a.IsDirectory ? -1 : 1;
+            }
 
             int cmp = SortMode switch
             {

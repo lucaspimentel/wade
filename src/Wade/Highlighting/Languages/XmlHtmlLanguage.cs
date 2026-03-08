@@ -9,7 +9,9 @@ internal sealed class XmlHtmlLanguage : ILanguage
     public StyledLine TokenizeLine(string line, ref byte state)
     {
         if (line.Length == 0)
+        {
             return new StyledLine(line, null);
+        }
 
         var spans = new List<StyledSpan>();
         int pos = 0;
@@ -52,16 +54,24 @@ internal sealed class XmlHtmlLanguage : ILanguage
                 int tagStart = pos;
                 pos++;
                 bool isClose = pos < len && line[pos] == '/';
-                if (isClose) pos++;
+                if (isClose)
+                {
+                    pos++;
+                }
 
                 // Tag name
                 int nameStart = pos;
                 while (pos < len && (char.IsLetterOrDigit(line[pos]) || line[pos] == '-' || line[pos] == ':' || line[pos] == '_'))
+                {
                     pos++;
+                }
+
                 int nameEnd = pos;
 
                 if (nameEnd > nameStart)
+                {
                     spans.Add(new StyledSpan(nameStart, nameEnd - nameStart, TokenKind.TagName));
+                }
 
                 // Scan attributes until '>'
                 while (pos < len && line[pos] != '>')
@@ -78,9 +88,14 @@ internal sealed class XmlHtmlLanguage : ILanguage
                     // Attribute name
                     int attrStart = pos;
                     while (pos < len && line[pos] != '=' && line[pos] != '>' && !char.IsWhiteSpace(line[pos]))
+                    {
                         pos++;
+                    }
+
                     if (pos > attrStart)
+                    {
                         spans.Add(new StyledSpan(attrStart, pos - attrStart, TokenKind.AttrName));
+                    }
 
                     if (pos < len && line[pos] == '=')
                     {
@@ -93,8 +108,16 @@ internal sealed class XmlHtmlLanguage : ILanguage
                             char q = line[pos];
                             int valStart = pos;
                             pos++;
-                            while (pos < len && line[pos] != q) pos++;
-                            if (pos < len) pos++;
+                            while (pos < len && line[pos] != q)
+                            {
+                                pos++;
+                            }
+
+                            if (pos < len)
+                            {
+                                pos++;
+                            }
+
                             spans.Add(new StyledSpan(valStart, pos - valStart, TokenKind.AttrValue));
                         }
                     }
@@ -114,8 +137,15 @@ internal sealed class XmlHtmlLanguage : ILanguage
                 int entityStart = pos;
                 pos++;
                 while (pos < len && line[pos] != ';' && !char.IsWhiteSpace(line[pos]))
+                {
                     pos++;
-                if (pos < len && line[pos] == ';') pos++;
+                }
+
+                if (pos < len && line[pos] == ';')
+                {
+                    pos++;
+                }
+
                 spans.Add(new StyledSpan(entityStart, pos - entityStart, TokenKind.Constant));
                 continue;
             }

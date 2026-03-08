@@ -133,7 +133,9 @@ public class ModalInputTests
 
         // Append " world"
         foreach (char c in " world")
+        {
             harness.HandleKey(new KeyEvent(ConsoleKey.None, c, false, false, false));
+        }
 
         harness.HandleKey(new KeyEvent(ConsoleKey.Enter, '\r', false, false, false));
 
@@ -414,7 +416,10 @@ public class ModalInputTests
 
                 default:
                     if (key.KeyChar >= ' ')
+                    {
                         _activeTextInput!.InsertChar(key.KeyChar);
+                    }
+
                     break;
             }
         }

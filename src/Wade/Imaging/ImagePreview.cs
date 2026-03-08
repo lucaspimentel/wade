@@ -30,7 +30,9 @@ internal static class ImagePreview
             int maxPixelHeight = paneHeightCells * cellPixelHeight;
 
             if (maxPixelWidth <= 0 || maxPixelHeight <= 0)
+            {
                 return null;
+            }
 
             using var stream = File.OpenRead(path);
             using var image = Image.Load<Rgba32>(stream);
@@ -44,7 +46,10 @@ internal static class ImagePreview
             double scaleY = (double)maxPixelHeight / srcHeight;
             double scale = Math.Min(scaleX, scaleY);
             // Don't upscale
-            if (scale > 1.0) scale = 1.0;
+            if (scale > 1.0)
+            {
+                scale = 1.0;
+            }
 
             int targetWidth = Math.Max(1, (int)(srcWidth * scale));
             int targetHeight = Math.Max(1, (int)(srcHeight * scale));

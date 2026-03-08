@@ -16,7 +16,9 @@ internal sealed class UnixInputSource : IInputSource
     {
         _fd = LibC.open("/dev/tty", LibC.O_RDONLY);
         if (_fd < 0)
+        {
             throw new InvalidOperationException("Failed to open /dev/tty for reading");
+        }
 
         _sigwinchReg = PosixSignalRegistration.Create(PosixSignal.SIGWINCH, ctx =>
         {
@@ -30,7 +32,9 @@ internal sealed class UnixInputSource : IInputSource
         while (!ct.IsCancellationRequested)
         {
             if (_pending.TryDequeue(out var queued))
+            {
                 return queued;
+            }
 
             // Blocks until at least 1 byte available (VMIN=1, VTIME=0),
             // then returns all available bytes up to buffer size.
@@ -52,7 +56,9 @@ internal sealed class UnixInputSource : IInputSource
 
             var events = VtParser.Parse(_buf.AsSpan(0, bytesRead));
             foreach (var evt in events)
+            {
                 _pending.Enqueue(evt);
+            }
         }
 
         return null;
@@ -64,7 +70,9 @@ internal sealed class UnixInputSource : IInputSource
         _sigwinchReg = null;
 
         if (_fd >= 0)
+        {
             LibC.close(_fd);
+        }
     }
 
     /// <summary>
@@ -77,7 +85,9 @@ internal sealed class UnixInputSource : IInputSource
         int ret = LibC.poll(ref pfd, 1, timeoutMs);
 
         if (ret <= 0 || (pfd.revents & LibC.POLLIN) == 0)
+        {
             return 0;
+        }
 
         nint n = LibC.read(_fd, buf, offset, buf.Length - offset);
         return n > 0 ? (int)n : 0;
@@ -124,7 +134,10 @@ internal static class VtParser
                             _ => (ConsoleKey)0,
                         };
                         if (key != 0)
+                        {
                             events.Add(new KeyEvent(key, '\0', false, false, false));
+                        }
+
                         i++;
                     }
                 }
@@ -203,10 +216,14 @@ internal static class VtParser
 
         // Collect parameter and intermediate bytes
         while (i < data.Length && data[i] >= 0x20 && data[i] <= 0x3F)
+        {
             i++;
+        }
 
         if (i >= data.Length)
+        {
             return i;
+        }
 
         byte finalByte = data[i];
         i++;
@@ -265,7 +282,10 @@ internal static class VtParser
                     _ => (ConsoleKey)0,
                 };
                 if (key != 0)
+                {
                     events.Add(new KeyEvent(key, '\0', false, false, false));
+                }
+
                 break;
         }
 
@@ -294,9 +314,13 @@ internal static class VtParser
         }
 
         if (inSecond)
+        {
             param2 = current;
+        }
         else
+        {
             param1 = current;
+        }
     }
 
     private static void ParseSgrMouse(ReadOnlySpan<byte> paramData, byte finalByte, List<InputEvent> events)
@@ -310,8 +334,15 @@ internal static class VtParser
         {
             if (b == ';')
             {
-                if (field == 0) cb = current;
-                else if (field == 1) cx = current;
+                if (field == 0)
+                {
+                    cb = current;
+                }
+                else if (field == 1)
+                {
+                    cx = current;
+                }
+
                 current = 0;
                 field++;
             }
@@ -321,7 +352,10 @@ internal static class VtParser
             }
         }
 
-        if (field == 2) cy = current;
+        if (field == 2)
+        {
+            cy = current;
+        }
 
         bool isRelease = finalByte == 'm';
 
@@ -366,9 +400,21 @@ internal static class VtParser
 
     private static int Utf8SequenceLength(byte leadByte)
     {
-        if ((leadByte & 0xE0) == 0xC0) return 2;
-        if ((leadByte & 0xF0) == 0xE0) return 3;
-        if ((leadByte & 0xF8) == 0xF0) return 4;
+        if ((leadByte & 0xE0) == 0xC0)
+        {
+            return 2;
+        }
+
+        if ((leadByte & 0xF0) == 0xE0)
+        {
+            return 3;
+        }
+
+        if ((leadByte & 0xF8) == 0xF0)
+        {
+            return 4;
+        }
+
         return 1; // invalid, consume one byte
     }
 

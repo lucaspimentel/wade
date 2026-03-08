@@ -35,8 +35,15 @@ internal sealed class GoLanguage : RegexLanguage
         {
             int p = pos + 1;
             while (p < line.Length && line[p] != '`')
+            {
                 p++;
-            if (p < line.Length) p++; // consume closing backtick
+            }
+
+            if (p < line.Length)
+            {
+                p++; // consume closing backtick
+            }
+
             spans.Add(new StyledSpan(pos, p - pos, TokenKind.String));
             end = p;
             return true;

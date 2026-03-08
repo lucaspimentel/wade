@@ -106,25 +106,41 @@ internal static class PaneRenderer
 
             CellStyle style;
             if (isSelected && isMarked && isActive)
+            {
                 style = MarkedSelectedStyle;
+            }
             else if (isSelected && isActive)
+            {
                 style = ActiveSelectionStyle;
+            }
             else if (isSelected)
+            {
                 style = InactiveSelectionStyle;
+            }
             else if (isMarked && entry.IsDirectory)
+            {
                 style = MarkedDirStyle;
+            }
             else if (isMarked)
+            {
                 style = MarkedStyle;
+            }
             else if (entry.IsDirectory)
+            {
                 style = DirStyle;
+            }
             else
+            {
                 style = FileStyle;
+            }
 
             CellStyle detailStyle = isSelected || isMarked ? style : DetailStyle;
 
             // If selected or marked, fill the row background
             if (isSelected || isMarked)
+            {
                 buffer.FillRow(pane.Top + row, pane.Left, pane.Width, ' ', style);
+            }
 
             int screenRow = pane.Top + row;
             int entryCol = pane.Left;
@@ -164,7 +180,10 @@ internal static class PaneRenderer
                     int sizeLen = FormatHelpers.FormatSize(tempBuf, entry.Size);
                     // Right-align size in the field
                     if (sizeLen <= SizeWidth)
+                    {
                         tempBuf[..sizeLen].CopyTo(sizeBuf[(SizeWidth - sizeLen)..]);
+                    }
+
                     buffer.WriteString(screenRow, detailCol + GapWidth, sizeBuf, detailStyle, SizeWidth);
                 }
             }
@@ -186,7 +205,10 @@ internal static class PaneRenderer
         for (int row = 0; row < pane.Height; row++)
         {
             int lineIndex = scrollOffset + row;
-            if (lineIndex >= lines.Length) break;
+            if (lineIndex >= lines.Length)
+            {
+                break;
+            }
 
             var styledLine = lines[lineIndex];
 
@@ -201,7 +223,10 @@ internal static class PaneRenderer
                 lineNumBuf[..(4 - numLen)].Fill(' ');
             }
             for (int i = 0; i < 4; i++)
+            {
                 buffer.Put(pane.Top + row, pane.Left + i, lineNumBuf[i], lineNumStyle);
+            }
+
             buffer.Put(pane.Top + row, pane.Left + 4, ' ', lineNumStyle);
 
             // Content
@@ -209,9 +234,13 @@ internal static class PaneRenderer
             int contentWidth = pane.Width - 5;
 
             if (styledLine.Spans is { Length: > 0 } spans)
+            {
                 RenderStyledContent(buffer, pane.Top + row, contentCol, contentWidth, styledLine.Text, spans, defaultStyle);
+            }
             else
+            {
                 buffer.WriteString(pane.Top + row, contentCol, styledLine.Text, defaultStyle, contentWidth);
+            }
         }
     }
 
@@ -260,7 +289,10 @@ internal static class PaneRenderer
             }
 
             int w = RuneWidth.GetWidth(rune);
-            if (charsWritten + w > maxWidth) break;
+            if (charsWritten + w > maxWidth)
+            {
+                break;
+            }
 
             buffer.Put(row, col, rune, style);
             col += w;

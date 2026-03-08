@@ -9,7 +9,9 @@ internal static class SixelEncoder
     public static string Encode(byte[] rgba, int width, int height, int maxColors = 256)
     {
         if (width <= 0 || height <= 0)
+        {
             return "";
+        }
 
         int pixelCount = width * height;
 
@@ -33,7 +35,9 @@ internal static class SixelEncoder
                 for (int i = 1; i < pixelCount; i++)
                 {
                     if (uniqueColors[i] != uniqueColors[i - 1])
+                    {
                         uniqueColors[uniqueCount++] = uniqueColors[i];
+                    }
                 }
 
                 // Step 3: In-place median cut
@@ -87,7 +91,11 @@ internal static class SixelEncoder
             int bestRange = -1;
             for (int i = 0; i < boxCount; i++)
             {
-                if (boxes[i].length < 2) continue;
+                if (boxes[i].length < 2)
+                {
+                    continue;
+                }
+
                 if (boxes[i].range > bestRange)
                 {
                     bestRange = boxes[i].range;
@@ -95,7 +103,10 @@ internal static class SixelEncoder
                 }
             }
 
-            if (bestIdx == -1) break;
+            if (bestIdx == -1)
+            {
+                break;
+            }
 
             var (start, length, _, channel) = boxes[bestIdx];
 
@@ -138,18 +149,50 @@ internal static class SixelEncoder
             int r = (c >> 16) & 0xFF;
             int g = (c >> 8) & 0xFF;
             int b = c & 0xFF;
-            if (r < rMin) rMin = r; if (r > rMax) rMax = r;
-            if (g < gMin) gMin = g; if (g > gMax) gMax = g;
-            if (b < bMin) bMin = b; if (b > bMax) bMax = b;
+            if (r < rMin)
+            {
+                rMin = r;
+            }
+
+            if (r > rMax)
+            {
+                rMax = r;
+            }
+
+            if (g < gMin)
+            {
+                gMin = g;
+            }
+
+            if (g > gMax)
+            {
+                gMax = g;
+            }
+
+            if (b < bMin)
+            {
+                bMin = b;
+            }
+
+            if (b > bMax)
+            {
+                bMax = b;
+            }
         }
         int rRange = rMax - rMin;
         int gRange = gMax - gMin;
         int bRange = bMax - bMin;
 
         if (rRange >= gRange && rRange >= bRange)
+        {
             return (start, length, rRange, 0);
+        }
+
         if (gRange >= rRange && gRange >= bRange)
+        {
             return (start, length, gRange, 1);
+        }
+
         return (start, length, bRange, 2);
     }
 
@@ -185,7 +228,10 @@ internal static class SixelEncoder
             {
                 bestDist = dist;
                 bestIdx = i;
-                if (dist == 0) break;
+                if (dist == 0)
+                {
+                    break;
+                }
             }
         }
 
@@ -232,16 +278,27 @@ internal static class SixelEncoder
                     for (int bit = 0; bit < bandHeight; bit++)
                     {
                         if (indexed[baseOffset + bit * width] == colorIdx)
+                        {
                             sixel |= 1 << bit;
+                        }
                     }
                     sixelRow[x] = sixel;
-                    if (sixel != 0) hasAny = true;
+                    if (sixel != 0)
+                    {
+                        hasAny = true;
+                    }
                 }
 
-                if (!hasAny) continue;
+                if (!hasAny)
+                {
+                    continue;
+                }
 
                 if (!firstColorInBand)
+                {
                     sb.Append('$');
+                }
+
                 firstColorInBand = false;
 
                 sb.Append('#').Append(colorIdx);
@@ -253,23 +310,33 @@ internal static class SixelEncoder
                     int val = sixelRow[runStart];
                     int runEnd = runStart + 1;
                     while (runEnd < width && sixelRow[runEnd] == val)
+                    {
                         runEnd++;
+                    }
 
                     int runLen = runEnd - runStart;
                     char sixelChar = (char)(val + 63);
 
                     if (runLen >= 4)
+                    {
                         sb.Append('!').Append(runLen).Append(sixelChar);
+                    }
                     else
+                    {
                         for (int r = 0; r < runLen; r++)
+                        {
                             sb.Append(sixelChar);
+                        }
+                    }
 
                     runStart = runEnd;
                 }
             }
 
             if (band < bandCount - 1)
+            {
                 sb.Append('-');
+            }
         }
 
         sb.Append("\x1b\\");

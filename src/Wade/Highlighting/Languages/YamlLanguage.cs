@@ -5,15 +5,24 @@ internal sealed class YamlLanguage : ILanguage
     public StyledLine TokenizeLine(string line, ref byte state)
     {
         if (line.Length == 0)
+        {
             return new StyledLine(line, null);
+        }
 
         var spans = new List<StyledSpan>();
         int len = line.Length;
         int pos = 0;
 
         // Skip indentation
-        while (pos < len && line[pos] == ' ') pos++;
-        if (pos >= len) return new StyledLine(line, null);
+        while (pos < len && line[pos] == ' ')
+        {
+            pos++;
+        }
+
+        if (pos >= len)
+        {
+            return new StyledLine(line, null);
+        }
 
         char ch = line[pos];
 
@@ -36,7 +45,11 @@ internal sealed class YamlLanguage : ILanguage
         {
             spans.Add(new StyledSpan(pos, 1, TokenKind.Punctuation));
             pos++;
-            if (pos < len && line[pos] == ' ') pos++;
+            if (pos < len && line[pos] == ' ')
+            {
+                pos++;
+            }
+
             ScanYamlValue(line, pos, len, spans);
             return MakeResult(line, spans);
         }
@@ -48,29 +61,49 @@ internal sealed class YamlLanguage : ILanguage
         {
             char q = ch;
             pos++;
-            while (pos < len && line[pos] != q) pos++;
-            if (pos < len) pos++;
+            while (pos < len && line[pos] != q)
+            {
+                pos++;
+            }
+
+            if (pos < len)
+            {
+                pos++;
+            }
         }
         else
         {
             // Unquoted key: scan to ':'
-            while (pos < len && line[pos] != ':' && line[pos] != '#') pos++;
+            while (pos < len && line[pos] != ':' && line[pos] != '#')
+            {
+                pos++;
+            }
         }
 
         int keyEnd = pos;
 
         // Check for ':'
         int afterKey = pos;
-        while (afterKey < len && line[afterKey] == ' ') afterKey++;
+        while (afterKey < len && line[afterKey] == ' ')
+        {
+            afterKey++;
+        }
 
         if (afterKey < len && line[afterKey] == ':')
         {
             spans.Add(new StyledSpan(keyStart, keyEnd - keyStart, TokenKind.Key));
             spans.Add(new StyledSpan(afterKey, 1, TokenKind.Punctuation));
             int valueStart = afterKey + 1;
-            while (valueStart < len && line[valueStart] == ' ') valueStart++;
+            while (valueStart < len && line[valueStart] == ' ')
+            {
+                valueStart++;
+            }
+
             if (valueStart < len)
+            {
                 ScanYamlValue(line, valueStart, len, spans);
+            }
+
             return MakeResult(line, spans);
         }
 
@@ -81,7 +114,10 @@ internal sealed class YamlLanguage : ILanguage
 
     private static void ScanYamlValue(string line, int pos, int len, List<StyledSpan> spans)
     {
-        if (pos >= len) return;
+        if (pos >= len)
+        {
+            return;
+        }
 
         char ch = line[pos];
 
@@ -101,7 +137,10 @@ internal sealed class YamlLanguage : ILanguage
             }
             spans.Add(new StyledSpan(pos, p - pos, TokenKind.String));
             if (commentIdx >= p)
+            {
                 spans.Add(new StyledSpan(commentIdx + 1, len - commentIdx - 1, TokenKind.Comment));
+            }
+
             return;
         }
 
@@ -114,7 +153,10 @@ internal sealed class YamlLanguage : ILanguage
             int end = commentIdx > pos ? commentIdx : len;
             spans.Add(new StyledSpan(pos, end - pos, TokenKind.Constant));
             if (commentIdx > pos)
+            {
                 spans.Add(new StyledSpan(commentIdx + 1, len - commentIdx - 1, TokenKind.Comment));
+            }
+
             return;
         }
 
@@ -122,16 +164,25 @@ internal sealed class YamlLanguage : ILanguage
         if (char.IsDigit(ch) || (ch == '-' && pos + 1 < len && char.IsDigit(line[pos + 1])))
         {
             int p = pos;
-            while (p < len && !char.IsWhiteSpace(line[p]) && line[p] != '#') p++;
+            while (p < len && !char.IsWhiteSpace(line[p]) && line[p] != '#')
+            {
+                p++;
+            }
+
             spans.Add(new StyledSpan(pos, p - pos, TokenKind.Number));
             if (commentIdx >= p)
+            {
                 spans.Add(new StyledSpan(commentIdx + 1, len - commentIdx - 1, TokenKind.Comment));
+            }
+
             return;
         }
 
         // Plain string — no span (leave as default)
         if (commentIdx > pos)
+        {
             spans.Add(new StyledSpan(commentIdx + 1, len - commentIdx - 1, TokenKind.Comment));
+        }
     }
 
     private static StyledLine MakeResult(string line, List<StyledSpan> spans) =>

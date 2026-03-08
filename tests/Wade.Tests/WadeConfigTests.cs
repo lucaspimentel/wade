@@ -380,7 +380,9 @@ public class WadeConfigTests
         finally
         {
             if (Directory.Exists(dir))
+            {
                 Directory.Delete(dir, recursive: true);
+            }
         }
     }
 
@@ -400,7 +402,9 @@ public class WadeConfigTests
         {
             var root = Path.GetDirectoryName(dir)!;
             if (Directory.Exists(root))
+            {
                 Directory.Delete(root, recursive: true);
+            }
         }
     }
 

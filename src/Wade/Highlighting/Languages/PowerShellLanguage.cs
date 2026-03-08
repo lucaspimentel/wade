@@ -38,8 +38,15 @@ internal sealed class PowerShellLanguage : RegexLanguage
             int depth = 1;
             while (end < line.Length && depth > 0)
             {
-                if (line[end] == '[') depth++;
-                else if (line[end] == ']') depth--;
+                if (line[end] == '[')
+                {
+                    depth++;
+                }
+                else if (line[end] == ']')
+                {
+                    depth--;
+                }
+
                 end++;
             }
             if (depth == 0)

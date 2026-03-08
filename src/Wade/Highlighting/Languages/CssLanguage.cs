@@ -22,7 +22,9 @@ internal sealed class CssLanguage : RegexLanguage
     public override StyledLine TokenizeLine(string line, ref byte state)
     {
         if (line.Length == 0)
+        {
             return new StyledLine(line, null);
+        }
 
         var spans = new List<StyledSpan>();
 
@@ -83,11 +85,16 @@ internal sealed class CssLanguage : RegexLanguage
             {
                 int idStart = pos;
                 while (pos < len && (char.IsLetterOrDigit(line[pos]) || line[pos] == '-' || line[pos] == '_'))
+                {
                     pos++;
+                }
 
                 // Find next non-whitespace
                 int afterId = pos;
-                while (afterId < len && line[afterId] == ' ') afterId++;
+                while (afterId < len && line[afterId] == ' ')
+                {
+                    afterId++;
+                }
 
                 if (afterId < len && line[afterId] == ':')
                 {

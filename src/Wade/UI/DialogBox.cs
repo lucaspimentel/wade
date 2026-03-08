@@ -38,8 +38,15 @@ internal static class DialogBox
 
         // Height: top border + (title + separator if title) + content rows + (blank + footer if footer) + bottom border
         int boxHeight = 1 + contentHeight + 1; // top border + content + bottom border
-        if (title is not null) boxHeight += 2;  // title row + separator
-        if (footer is not null) boxHeight += 2; // blank row + footer row
+        if (title is not null)
+        {
+            boxHeight += 2;  // title row + separator
+        }
+
+        if (footer is not null)
+        {
+            boxHeight += 2; // blank row + footer row
+        }
 
         int left = (screenWidth - boxWidth) / 2;
         int top = (screenHeight - boxHeight) / 2;
@@ -111,7 +118,10 @@ internal static class DialogBox
     {
         buffer.Put(row, left, leftCap, style);
         for (int c = 1; c < width - 1; c++)
+        {
             buffer.Put(row, left + c, fill, style);
+        }
+
         buffer.Put(row, left + width - 1, rightCap, style);
     }
 
@@ -119,6 +129,8 @@ internal static class DialogBox
     {
         var style = new CellStyle(null, BgColor);
         for (int c = 0; c < width; c++)
+        {
             buffer.Put(row, left + c, ' ', style);
+        }
     }
 }

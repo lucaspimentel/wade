@@ -38,14 +38,20 @@ internal sealed class InputPipeline : IDisposable
     public static IInputSource CreatePlatformSource()
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
             return new WindowsInputSource();
+        }
 
         return new UnixInputSource();
     }
 
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+        {
+            return;
+        }
+
         _disposed = true;
 
         _cts.Cancel();
@@ -64,7 +70,9 @@ internal sealed class InputPipeline : IDisposable
             {
                 var evt = _source.ReadNext(_cts.Token);
                 if (evt is not null && !_cts.Token.IsCancellationRequested)
+                {
                     _queue.Add(evt, _cts.Token);
+                }
             }
         }
         catch (OperationCanceledException)

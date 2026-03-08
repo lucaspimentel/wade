@@ -11,7 +11,9 @@ internal static class FileOperations
     public static int Delete(IReadOnlyList<string> paths, bool permanent = false)
     {
         if (paths.Count == 0)
+        {
             return 0;
+        }
 
         if (!permanent && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
@@ -25,11 +27,17 @@ internal static class FileOperations
             try
             {
                 if (Directory.Exists(path))
+                {
                     Directory.Delete(path, true);
+                }
                 else if (File.Exists(path))
+                {
                     File.Delete(path);
+                }
                 else
+                {
                     errors++;
+                }
             }
             catch
             {

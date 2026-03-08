@@ -75,7 +75,9 @@ internal static class LanguageMap
     {
         string ext = Path.GetExtension(filePath);
         if (ext.Length > 0)
+        {
             return ByExtension.TryGetValue(ext, out var lang) ? lang : null;
+        }
 
         string name = Path.GetFileName(filePath);
         return NoExtensionShellNames.Contains(name) ? Shell : null;

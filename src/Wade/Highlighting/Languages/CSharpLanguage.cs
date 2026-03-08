@@ -35,7 +35,11 @@ internal sealed class CSharpLanguage : RegexLanguage
     {
         // Preprocessor directives: #if, #else, #endif, #define, #pragma, #region, etc.
         int i = 0;
-        while (i < line.Length && line[i] == ' ') i++;
+        while (i < line.Length && line[i] == ' ')
+        {
+            i++;
+        }
+
         if (i < line.Length && line[i] == '#')
         {
             spans.Add(new StyledSpan(0, line.Length, TokenKind.Directive));
@@ -53,8 +57,15 @@ internal sealed class CSharpLanguage : RegexLanguage
             int depth = 1;
             while (end < line.Length && depth > 0)
             {
-                if (line[end] == '[') depth++;
-                else if (line[end] == ']') depth--;
+                if (line[end] == '[')
+                {
+                    depth++;
+                }
+                else if (line[end] == ']')
+                {
+                    depth--;
+                }
+
                 end++;
             }
             if (depth == 0)

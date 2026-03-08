@@ -22,7 +22,9 @@ internal sealed partial class MarkdownLanguage : ILanguage
     public StyledLine TokenizeLine(string line, ref byte state)
     {
         if (line.Length == 0)
+        {
             return new StyledLine(line, null);
+        }
 
         var spans = new List<StyledSpan>();
 
@@ -84,7 +86,11 @@ internal sealed partial class MarkdownLanguage : ILanguage
         else if (trimmed.Length > 0 && char.IsDigit(trimmed[0]))
         {
             int i = 0;
-            while (i < trimmed.Length && char.IsDigit(trimmed[i])) i++;
+            while (i < trimmed.Length && char.IsDigit(trimmed[i]))
+            {
+                i++;
+            }
+
             if (i < trimmed.Length && trimmed[i] == '.')
             {
                 int indent = line.Length - trimmed.Length;
@@ -102,18 +108,26 @@ internal sealed partial class MarkdownLanguage : ILanguage
     {
         // Code spans: `code` or ``code``
         foreach (Match m in CodeSpanPattern().Matches(line))
+        {
             spans.Add(new StyledSpan(m.Index, m.Length, TokenKind.CodeSpan));
+        }
 
         // Bold: **text** or __text__
         foreach (Match m in BoldPattern().Matches(line))
+        {
             spans.Add(new StyledSpan(m.Index, m.Length, TokenKind.Bold));
+        }
 
         // Italic: *text* or _text_
         foreach (Match m in ItalicPattern().Matches(line))
+        {
             spans.Add(new StyledSpan(m.Index, m.Length, TokenKind.Italic));
+        }
 
         // Links: [text](url)
         foreach (Match m in LinkPattern().Matches(line))
+        {
             spans.Add(new StyledSpan(m.Index, m.Length, TokenKind.Link));
+        }
     }
 }

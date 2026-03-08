@@ -25,7 +25,10 @@ internal sealed class Layout
     {
         // Reserve 1 row for status bar at the bottom
         int contentHeight = terminalHeight - 1;
-        if (contentHeight < 1) contentHeight = 1;
+        if (contentHeight < 1)
+        {
+            contentHeight = 1;
+        }
 
         if (previewPaneEnabled)
         {

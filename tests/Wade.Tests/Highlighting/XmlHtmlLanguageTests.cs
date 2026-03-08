@@ -18,7 +18,10 @@ public class XmlHtmlLanguageTests
         byte state = 0;
         var result = new StyledLine[lines.Length];
         for (int i = 0; i < lines.Length; i++)
+        {
             result[i] = Lang.TokenizeLine(lines[i], ref state);
+        }
+
         return result;
     }
 
