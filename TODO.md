@@ -116,15 +116,11 @@ Implemented: Open with default app (`o`), rename (`F2`), delete (`Del`), copy (`
 
 Implemented: Hidden files (dotfiles on all platforms, `Hidden` attribute on Windows) are excluded by default. Toggle visibility at runtime with `.` keybinding. Config flag `show_hidden_files` (default: `false`) in config file. `DirectoryContents.ShowHiddenFiles` controls filtering; cache is invalidated on toggle.
 
-## Config dialog
+## ~~Config dialog~~ ✅
 
-An in-app dialog that lets the user view and edit configuration settings, updating the config file on save.
+Implemented: Press `,` to open an in-app config dialog. Displays all 5 settings (show icons, image previews, show hidden files, sort mode, sort ascending) with toggle/cycle controls. Up/Down to navigate, Space to toggle booleans, Left/Right to cycle sort mode, Enter to save, Escape to cancel. Changes are applied immediately to runtime state and written to the config file on save.
 
-- Open via keybinding (e.g. `,` or `Ctrl+,`)
-- Display current config options with their values
-- Allow toggling boolean options, cycling enum options, editing string/numeric values
-- Write changes back to the config file on confirm
-- **Depends on:** Dialog / overlay framework, Text input widget, Modal input mode
+- **Depends on:** Dialog / overlay framework, Modal input mode
 
 ## Bookmarks / favorites
 

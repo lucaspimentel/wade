@@ -52,6 +52,14 @@ internal sealed class App
     private TextInput? _goToPathInput;
     private string? _goToPathSuggestion;
 
+    // Config dialog state
+    private int _configSelectedIndex;
+    private bool _configShowIcons;
+    private bool _configImagePreviews;
+    private bool _configShowHidden;
+    private SortMode _configSortMode;
+    private bool _configSortAscending;
+
     private string? _cachedPreviewPath;
     private StyledLine[]? _cachedStyledLines;
     private string? _cachedPreviewFileTypeLabel;
@@ -71,6 +79,7 @@ internal sealed class App
 
     // Terminal capability state
     private bool _imagePreviewsEffective;
+    private bool _sixelSupported;
     private int _cellPixelWidth = 8;
     private int _cellPixelHeight = 16;
 
@@ -91,13 +100,7 @@ internal sealed class App
     {
         _currentPath = Path.GetFullPath(_config.StartPath);
         _directoryContents.ShowHiddenFiles = _config.ShowHiddenFiles;
-        _directoryContents.SortMode = _config.SortMode.ToLowerInvariant() switch
-        {
-            "modified" => SortMode.Modified,
-            "size" => SortMode.Size,
-            "extension" => SortMode.Extension,
-            _ => SortMode.Name,
-        };
+        _directoryContents.SortMode = _config.SortMode;
         _directoryContents.SortAscending = _config.SortAscending;
 
         using var terminal = new TerminalSetup();
@@ -107,7 +110,8 @@ internal sealed class App
         var previewLoader = _previewLoader;
 
         var caps = terminal.Capabilities;
-        _imagePreviewsEffective = _config.ImagePreviewsEnabled && caps.SixelSupported;
+        _sixelSupported = caps.SixelSupported;
+        _imagePreviewsEffective = _config.ImagePreviewsEnabled && _sixelSupported;
         _cellPixelWidth = caps.CellPixelWidth;
         _cellPixelHeight = caps.CellPixelHeight;
 
@@ -232,7 +236,7 @@ internal sealed class App
                 }
 
                 // Discard mouse events while a modal dialog is open
-                if (_inputMode is InputMode.Help or InputMode.GoToPath or InputMode.TextInput or InputMode.Confirm)
+                if (_inputMode is InputMode.Help or InputMode.GoToPath or InputMode.TextInput or InputMode.Confirm or InputMode.Config)
                 {
                     continue;
                 }
@@ -284,6 +288,10 @@ internal sealed class App
 
                 case InputMode.GoToPath:
                     HandleGoToPathKey(keyEvent, previewLoader, buffer);
+                    continue;
+
+                case InputMode.Config:
+                    HandleConfigKey(keyEvent, previewLoader, buffer);
                     continue;
 
                 case InputMode.Normal:
@@ -397,6 +405,10 @@ internal sealed class App
 
                 case AppAction.ShowHelp:
                     _inputMode = InputMode.Help;
+                    break;
+
+                case AppAction.ShowConfig:
+                    ShowConfigDialog();
                     break;
 
                 case AppAction.Refresh:
@@ -912,6 +924,9 @@ internal sealed class App
                 break;
             case InputMode.GoToPath:
                 RenderGoToPathDialog(buffer, width, height);
+                break;
+            case InputMode.Config:
+                RenderConfigDialog(buffer, width, height);
                 break;
         }
     }
@@ -1695,6 +1710,152 @@ internal sealed class App
         var inputStyle = new CellStyle(new Color(200, 200, 200), DialogBox.BgColor);
         _activeTextInput?.Render(buffer, content.Top, content.Left, content.Width, inputStyle);
     }
+
+    private void ShowConfigDialog()
+    {
+        _inputMode = InputMode.Config;
+        _configSelectedIndex = 0;
+        _configShowIcons = _config.ShowIconsEnabled;
+        _configImagePreviews = _config.ImagePreviewsEnabled;
+        _configShowHidden = _config.ShowHiddenFiles;
+        _configSortMode = _config.SortMode;
+        _configSortAscending = _config.SortAscending;
+    }
+
+    private void HandleConfigKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer)
+    {
+        switch (key.Key)
+        {
+            case ConsoleKey.UpArrow or ConsoleKey.K:
+                if (_configSelectedIndex > 0)
+                    _configSelectedIndex--;
+                break;
+
+            case ConsoleKey.DownArrow or ConsoleKey.J:
+                if (_configSelectedIndex < 4)
+                    _configSelectedIndex++;
+                break;
+
+            case ConsoleKey.Spacebar:
+                ToggleConfigOption();
+                break;
+
+            case ConsoleKey.Enter:
+                ApplyConfigChanges(previewLoader, buffer);
+                break;
+
+            case ConsoleKey.Escape:
+                _inputMode = InputMode.Normal;
+                break;
+
+            case ConsoleKey.LeftArrow or ConsoleKey.H:
+                if (_configSelectedIndex == 3) // SortMode
+                    _configSortMode = CycleSortModePrev(_configSortMode);
+                break;
+
+            case ConsoleKey.RightArrow or ConsoleKey.L:
+                if (_configSelectedIndex == 3) // SortMode
+                    _configSortMode = CycleSortModeNext(_configSortMode);
+                break;
+        }
+    }
+
+    private void ToggleConfigOption()
+    {
+        switch (_configSelectedIndex)
+        {
+            case 0: _configShowIcons = !_configShowIcons; break;
+            case 1: _configImagePreviews = !_configImagePreviews; break;
+            case 2: _configShowHidden = !_configShowHidden; break;
+            case 3: _configSortMode = CycleSortModeNext(_configSortMode); break;
+            case 4: _configSortAscending = !_configSortAscending; break;
+        }
+    }
+
+    private void ApplyConfigChanges(PreviewLoader previewLoader, ScreenBuffer buffer)
+    {
+        _config.ShowIconsEnabled = _configShowIcons;
+        _config.ImagePreviewsEnabled = _configImagePreviews;
+        _config.ShowHiddenFiles = _configShowHidden;
+        _config.SortMode = _configSortMode;
+        _config.SortAscending = _configSortAscending;
+
+        _directoryContents.ShowHiddenFiles = _config.ShowHiddenFiles;
+        _directoryContents.SortMode = _config.SortMode;
+        _directoryContents.SortAscending = _config.SortAscending;
+        _imagePreviewsEffective = _config.ImagePreviewsEnabled && _sixelSupported;
+
+        _directoryContents.InvalidateAll();
+        ClearPreviewCache(previewLoader, buffer);
+        previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
+            _cellPixelWidth, _cellPixelHeight);
+
+        try
+        {
+            _config.Save();
+            ShowNotification("Configuration saved", NotificationKind.Success);
+        }
+        catch (Exception ex)
+        {
+            ShowNotification($"Save failed: {ex.Message}", NotificationKind.Error);
+        }
+
+        _inputMode = InputMode.Normal;
+    }
+
+    private static SortMode CycleSortModeNext(SortMode current) =>
+        current switch
+        {
+            SortMode.Name => SortMode.Modified,
+            SortMode.Modified => SortMode.Size,
+            SortMode.Size => SortMode.Extension,
+            _ => SortMode.Name,
+        };
+
+    private static SortMode CycleSortModePrev(SortMode current) =>
+        current switch
+        {
+            SortMode.Name => SortMode.Extension,
+            SortMode.Modified => SortMode.Name,
+            SortMode.Size => SortMode.Modified,
+            _ => SortMode.Size,
+        };
+
+    private void RenderConfigDialog(ScreenBuffer buffer, int width, int height)
+    {
+        const int ContentWidth = 40;
+        const int ContentHeight = 5;
+        const string Footer = "[Space] Toggle [◄►] Cycle [Enter] Save [Esc] Cancel";
+
+        var content = DialogBox.Render(buffer, width, height, Math.Max(ContentWidth, Footer.Length), ContentHeight, title: "Configuration", footer: Footer);
+
+        var normalStyle = new CellStyle(new Color(200, 200, 200), DialogBox.BgColor);
+        var selectedStyle = new CellStyle(new Color(20, 20, 35), new Color(200, 200, 200));
+        var valueStyle = new CellStyle(new Color(100, 200, 255), DialogBox.BgColor);
+        var valueSelectedStyle = new CellStyle(new Color(20, 20, 35), new Color(200, 200, 200));
+
+        (string label, string value)[] items =
+        [
+            ("Show Icons", FormatBool(_configShowIcons)),
+            ("Image Previews", FormatBool(_configImagePreviews)),
+            ("Show Hidden Files", FormatBool(_configShowHidden)),
+            ("Sort Mode", $"\u25c4 {_configSortMode.ToString().ToLowerInvariant()} \u25ba"),
+            ("Sort Ascending", FormatBool(_configSortAscending)),
+        ];
+
+        for (int i = 0; i < items.Length; i++)
+        {
+            bool selected = i == _configSelectedIndex;
+            var style = selected ? selectedStyle : normalStyle;
+            var vStyle = selected ? valueSelectedStyle : valueStyle;
+            int row = content.Top + i;
+
+            buffer.WriteString(row, content.Left, items[i].label, style, 22);
+            buffer.WriteString(row, content.Left + 22, items[i].value, vStyle, content.Width - 22);
+        }
+    }
+
+    private static string FormatBool(bool value) => value ? "[X]" : "[ ]";
 
     private void RenderSearchBar(ScreenBuffer buffer)
     {

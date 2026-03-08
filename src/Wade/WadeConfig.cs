@@ -1,3 +1,5 @@
+using Wade.FileSystem;
+
 namespace Wade;
 
 internal sealed class WadeConfig
@@ -5,11 +7,12 @@ internal sealed class WadeConfig
     public bool ShowIconsEnabled { get; set; } = true;
     public bool ImagePreviewsEnabled { get; set; } = true;
     public bool ShowHiddenFiles { get; set; } = false;
-    public string SortMode { get; set; } = "name";
+    public SortMode SortMode { get; set; } = SortMode.Name;
     public bool SortAscending { get; set; } = true;
     public string StartPath { get; set; } = Directory.GetCurrentDirectory();
     public bool ShowConfig { get; set; } = false;
     public bool ShowHelp { get; set; } = false;
+    public string ConfigFilePath { get; private set; } = "";
 
     public static WadeConfig Load(
         string[] args,
@@ -29,7 +32,7 @@ internal sealed class WadeConfig
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             ".config", "wade", "config.toml");
 
-        var config = new WadeConfig();
+        var config = new WadeConfig { ConfigFilePath = configFilePath };
 
         // Config file
         if (File.Exists(configFilePath))
@@ -64,7 +67,8 @@ internal sealed class WadeConfig
                         config.ShowHiddenFiles = ParseBool(value, config.ShowHiddenFiles);
                         break;
                     case "sort_mode":
-                        config.SortMode = value.ToLowerInvariant();
+                        if (Enum.TryParse<SortMode>(value, ignoreCase: true, out var sortMode))
+                            config.SortMode = sortMode;
                         break;
                     case "sort_ascending":
                         config.SortAscending = ParseBool(value, config.SortAscending);
@@ -111,10 +115,29 @@ internal sealed class WadeConfig
         return config;
     }
 
+    internal void Save()
+    {
+        var dir = Path.GetDirectoryName(ConfigFilePath);
+        if (dir is not null && !Directory.Exists(dir))
+            Directory.CreateDirectory(dir);
+
+        var sortModeStr = SortMode.ToString().ToLowerInvariant();
+        var content = $"""
+            show_icons_enabled = {(ShowIconsEnabled ? "true" : "false")}
+            image_previews_enabled = {(ImagePreviewsEnabled ? "true" : "false")}
+            show_hidden_files = {(ShowHiddenFiles ? "true" : "false")}
+            sort_mode = {sortModeStr}
+            sort_ascending = {(SortAscending ? "true" : "false")}
+            """;
+
+        File.WriteAllText(ConfigFilePath, content);
+    }
+
     internal string ToJson()
     {
         var escapedPath = StartPath.Replace("\\", "\\\\");
-        return $"{{\"show_icons_enabled\":{(ShowIconsEnabled ? "true" : "false")},\"image_previews_enabled\":{(ImagePreviewsEnabled ? "true" : "false")},\"show_hidden_files\":{(ShowHiddenFiles ? "true" : "false")},\"sort_mode\":\"{SortMode}\",\"sort_ascending\":{(SortAscending ? "true" : "false")},\"start_path\":\"{escapedPath}\"}}";
+        var sortModeStr = SortMode.ToString().ToLowerInvariant();
+        return $"{{\"show_icons_enabled\":{(ShowIconsEnabled ? "true" : "false")},\"image_previews_enabled\":{(ImagePreviewsEnabled ? "true" : "false")},\"show_hidden_files\":{(ShowHiddenFiles ? "true" : "false")},\"sort_mode\":\"{sortModeStr}\",\"sort_ascending\":{(SortAscending ? "true" : "false")},\"start_path\":\"{escapedPath}\"}}";
     }
 
     internal static bool ParseBool(string value, bool fallback)

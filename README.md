@@ -23,6 +23,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Multi-select** — press Space to mark/unmark entries for future bulk operations; marks are path-based and survive scrolling and filtering; marked entries highlighted with a distinct background; mark count shown in status bar
 - **File actions** — open files with default app, rename, delete, copy/cut/paste with internal clipboard; multi-select supported for delete/copy/cut
 - **Mouse support** — click to select entries in any pane, scroll wheel to navigate; left/right pane clicks navigate directories
+- **In-app configuration** — press `,` to open a config dialog; toggle booleans, cycle sort modes, and save changes directly to the config file
 - **Minimal rendering** — raw VT/ANSI escape sequences, double-buffered with dirty-row tracking, cell diff, and style diffing
 
 ## Requirements
@@ -112,6 +113,7 @@ wade -h                               # same as --help
 | p / v | Paste |
 | Shift+N | Create new file |
 | F7 | Create new directory |
+| , | Configuration |
 | ? | Show help |
 | q / Escape | Quit |
 

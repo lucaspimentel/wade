@@ -1,4 +1,5 @@
 using Wade;
+using Wade.FileSystem;
 
 namespace Wade.Tests;
 
@@ -204,17 +205,18 @@ public class WadeConfigTests
     // ── Sort config ──────────────────────────────────────────────────────────
 
     [Theory]
-    [InlineData("name")]
-    [InlineData("modified")]
-    [InlineData("size")]
-    [InlineData("extension")]
-    public void ConfigFile_ParsesSortMode(string mode)
+    [InlineData("name", 0)]      // SortMode.Name
+    [InlineData("modified", 1)]  // SortMode.Modified
+    [InlineData("size", 2)]      // SortMode.Size
+    [InlineData("extension", 3)] // SortMode.Extension
+    public void ConfigFile_ParsesSortMode(string mode, int expectedValue)
     {
+        var expected = (SortMode)expectedValue;
         var path = WriteTempConfig($"sort_mode = {mode}");
         try
         {
             var config = WadeConfig.Load([], configFilePath: path);
-            Assert.Equal(mode, config.SortMode);
+            Assert.Equal(expected, config.SortMode);
         }
         finally { File.Delete(path); }
     }
@@ -237,7 +239,7 @@ public class WadeConfigTests
     public void Defaults_SortMode_IsName()
     {
         var config = WadeConfig.Load([], configFilePath: "/nonexistent/path.toml");
-        Assert.Equal("name", config.SortMode);
+        Assert.Equal(SortMode.Name, config.SortMode);
         Assert.True(config.SortAscending);
     }
 
@@ -271,5 +273,80 @@ public class WadeConfigTests
     public void ParseBool_UnknownValue_ReturnsFallback(string input, bool fallback)
     {
         Assert.Equal(fallback, WadeConfig.ParseBool(input, fallback));
+    }
+
+    // ── Save / round-trip ──────────────────────────────────────────────────
+
+    [Fact]
+    public void Save_RoundTrips_AllSettings()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        var configPath = Path.Combine(dir, "config.toml");
+        try
+        {
+            var original = WadeConfig.Load([], configFilePath: configPath);
+            original.ShowIconsEnabled = false;
+            original.ImagePreviewsEnabled = false;
+            original.ShowHiddenFiles = true;
+            original.SortMode = SortMode.Extension;
+            original.SortAscending = false;
+            original.Save();
+
+            var loaded = WadeConfig.Load([], configFilePath: configPath);
+            Assert.False(loaded.ShowIconsEnabled);
+            Assert.False(loaded.ImagePreviewsEnabled);
+            Assert.True(loaded.ShowHiddenFiles);
+            Assert.Equal(SortMode.Extension, loaded.SortMode);
+            Assert.False(loaded.SortAscending);
+        }
+        finally
+        {
+            if (Directory.Exists(dir))
+                Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Save_CreatesParentDirectory()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName(), "nested");
+        var configPath = Path.Combine(dir, "config.toml");
+        try
+        {
+            var config = WadeConfig.Load([], configFilePath: configPath);
+            config.Save();
+
+            Assert.True(File.Exists(configPath));
+        }
+        finally
+        {
+            var root = Path.GetDirectoryName(dir)!;
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData(0)] // SortMode.Name
+    [InlineData(1)] // SortMode.Modified
+    [InlineData(2)] // SortMode.Size
+    [InlineData(3)] // SortMode.Extension
+    public void Save_RoundTrips_SortMode(int modeValue)
+    {
+        var mode = (SortMode)modeValue;
+        var configPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".toml");
+        try
+        {
+            var config = WadeConfig.Load([], configFilePath: configPath);
+            config.SortMode = mode;
+            config.Save();
+
+            var loaded = WadeConfig.Load([], configFilePath: configPath);
+            Assert.Equal(mode, loaded.SortMode);
+        }
+        finally
+        {
+            File.Delete(configPath);
+        }
     }
 }

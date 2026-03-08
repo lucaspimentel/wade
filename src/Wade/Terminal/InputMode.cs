@@ -9,4 +9,5 @@ internal enum InputMode
     ExpandedPreview,
     GoToPath,
     Help,
+    Config,
 }

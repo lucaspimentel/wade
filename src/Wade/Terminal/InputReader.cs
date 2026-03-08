@@ -29,6 +29,7 @@ internal enum AppAction
     Paste,
     NewFile,
     NewDirectory,
+    ShowConfig,
 }
 
 internal static class InputReader
@@ -49,6 +50,9 @@ internal static class InputReader
 
         if (key.KeyChar == 'S')
             return AppAction.ToggleSortDirection;
+
+        if (key.KeyChar == ',')
+            return AppAction.ShowConfig;
 
         if (key.KeyChar == 'g')
             return AppAction.GoToPath;
