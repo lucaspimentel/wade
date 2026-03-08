@@ -81,7 +81,6 @@ sort_ascending = true
 ```bash
 wade --show-config                    # print current config as JSON and exit
 wade --config-file=/path/to/config    # use a custom config file
-wade --cwd-file=/tmp/cwd              # write final directory to file on exit (for shell integration)
 wade --help                           # print usage info and exit
 wade -h                               # same as --help
 ```

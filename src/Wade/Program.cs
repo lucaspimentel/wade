@@ -34,7 +34,6 @@ static void PrintHelp()
           -h, --help                      Show this help and exit
           --show-config                   Print resolved config as JSON and exit
           --config-file=<path>            Use a custom config file
-          --cwd-file=<path>               Write final directory to file on exit
 
         Keybindings:
           Up / k                          Move selection up
