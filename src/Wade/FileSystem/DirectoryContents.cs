@@ -72,6 +72,11 @@ internal sealed class DirectoryContents
 
             foreach (var dir in dirInfo.EnumerateDirectories())
             {
+                // Always hide system+hidden entries on Windows (e.g. $Recycle.Bin)
+                if (OperatingSystem.IsWindows() &&
+                    (dir.Attributes & (FileAttributes.System | FileAttributes.Hidden)) == (FileAttributes.System | FileAttributes.Hidden))
+                    continue;
+
                 if (!ShowHiddenFiles &&
                     ((dir.Attributes & FileAttributes.Hidden) != 0 || dir.Name.StartsWith('.')))
                     continue;
@@ -86,6 +91,11 @@ internal sealed class DirectoryContents
 
             foreach (var file in dirInfo.EnumerateFiles())
             {
+                // Always hide system+hidden entries on Windows (e.g. $Recycle.Bin)
+                if (OperatingSystem.IsWindows() &&
+                    (file.Attributes & (FileAttributes.System | FileAttributes.Hidden)) == (FileAttributes.System | FileAttributes.Hidden))
+                    continue;
+
                 if (!ShowHiddenFiles &&
                     ((file.Attributes & FileAttributes.Hidden) != 0 || file.Name.StartsWith('.')))
                     continue;

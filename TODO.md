@@ -216,6 +216,6 @@ Fixed: `PathCompletion.CapitalizeDriveLetter()` applied at all `_currentPath` as
 
 Wade accepts a path as a CLI argument but some formats don't work or cause crashes. Confirm and fix handling for: `C:\`, `c:\`, `C:/`, `/`, etc.
 
-### Never show system+hidden filesystem entries on Windows
+### ~~Never show system+hidden filesystem entries on Windows~~ ✅
 
-On Windows, entries with both `System` and `Hidden` file attributes (e.g. `$Recycle.Bin`, `System Volume Information`) should never be shown, even when "show hidden files" is enabled.
+Fixed: Entries with both `System` and `Hidden` file attributes (e.g. `$Recycle.Bin`, `System Volume Information`) are now unconditionally excluded on Windows, regardless of the "show hidden files" setting.
