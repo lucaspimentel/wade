@@ -1300,6 +1300,7 @@ internal sealed class App
         switch (key.Key)
         {
             case ConsoleKey.Y:
+            case ConsoleKey.Enter:
                 Action? yesAction = _confirmYesAction;
                 _inputMode = InputMode.Normal;
                 _confirmTitle = null;
@@ -1651,7 +1652,7 @@ internal sealed class App
     private void RenderConfirmDialog(ScreenBuffer buffer, int width, int height)
     {
         string message = _confirmMessage ?? "";
-        string footer = "[Y] Yes  [N] No";
+        string footer = "[Y/Enter] Yes  [N/Esc] No";
         int contentWidth = Math.Max(message.Length, footer.Length) + 2;
         int contentHeight = 1; // single line for the message
 

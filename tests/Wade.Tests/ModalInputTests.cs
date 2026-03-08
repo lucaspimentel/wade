@@ -11,14 +11,16 @@ public class ModalInputTests
 
     // ── Confirm dialog ──────────────────────────────────────────────────────
 
-    [Fact]
-    public void ConfirmDialog_YKey_InvokesActionAndReturnsToNormal()
+    [Theory]
+    [InlineData(ConsoleKey.Y, 'y')]
+    [InlineData(ConsoleKey.Enter, '\r')]
+    public void ConfirmDialog_YOrEnter_InvokesActionAndReturnsToNormal(ConsoleKey key, char keyChar)
     {
         var harness = new ModalHarness();
         bool invoked = false;
         harness.ShowConfirm("Delete?", "Are you sure?", () => invoked = true);
 
-        harness.HandleKey(new KeyEvent(ConsoleKey.Y, 'y', false, false, false));
+        harness.HandleKey(new KeyEvent(key, keyChar, false, false, false));
 
         Assert.True(invoked);
         Assert.Equal(InputMode.Normal, harness.Mode);
@@ -41,7 +43,6 @@ public class ModalInputTests
 
     [Theory]
     [InlineData(ConsoleKey.A, 'a')]
-    [InlineData(ConsoleKey.Enter, '\r')]
     [InlineData(ConsoleKey.J, 'j')]
     public void ConfirmDialog_OtherKeys_ConsumedButIgnored(ConsoleKey key, char keyChar)
     {
@@ -253,7 +254,7 @@ public class ModalInputTests
     {
         var buf = new ScreenBuffer(80, 24);
         string message = "Are you sure?";
-        string footer = "[Y] Yes  [N] No";
+        string footer = "[Y/Enter] Yes  [N/Esc] No";
 
         int contentWidth = Math.Max(message.Length, footer.Length) + 2;
         Rect content = DialogBox.Render(buf, 80, 24, contentWidth, 1, title: "Delete", footer: footer);
@@ -265,8 +266,8 @@ public class ModalInputTests
         string output = StripAnsi(Flush(buf));
         Assert.Contains("Delete", output);
         Assert.Contains("Are you sure?", output);
-        Assert.Contains("[Y] Yes", output);
-        Assert.Contains("[N] No", output);
+        Assert.Contains("[Y/Enter] Yes", output);
+        Assert.Contains("[N/Esc] No", output);
     }
 
     [Fact]
@@ -423,6 +424,7 @@ public class ModalInputTests
             switch (key.Key)
             {
                 case ConsoleKey.Y:
+                case ConsoleKey.Enter:
                     Action? yesAction = _confirmYesAction;
                     _inputMode = InputMode.Normal;
                     _confirmTitle = null;
