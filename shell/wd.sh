@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Shell wrapper for wade — cd on exit
+# Press q to quit and cd to the last directory; press Q to quit without cd.
 # Source this file in your .bashrc or .zshrc:
 #   source /path/to/wd.sh
 

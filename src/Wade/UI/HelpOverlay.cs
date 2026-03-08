@@ -38,6 +38,7 @@ internal static class HelpOverlay
         (",",                   "Configuration"),
         ("?",                   "Show help"),
         ("q / Escape",          "Quit"),
+        ("Q",                   "Quit without cd"),
     ];
 
     public static void Render(ScreenBuffer buffer, int screenWidth, int screenHeight)

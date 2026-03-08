@@ -1,4 +1,5 @@
 # Shell wrapper for wade — cd on exit
+# Press q to quit and cd to the last directory; press Q to quit without cd.
 # Dot-source this file in your $PROFILE:
 #   . /path/to/wd.ps1
 

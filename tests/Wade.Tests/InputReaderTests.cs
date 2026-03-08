@@ -36,7 +36,6 @@ public class InputReaderTests
     [InlineData(ConsoleKey.Enter, (int)AppAction.Open)]
     [InlineData(ConsoleKey.Backspace, (int)AppAction.Back)]
     [InlineData(ConsoleKey.Escape, (int)AppAction.Quit)]
-    [InlineData(ConsoleKey.Q, (int)AppAction.Quit)]
     [InlineData(ConsoleKey.PageUp, (int)AppAction.PageUp)]
     [InlineData(ConsoleKey.PageDown, (int)AppAction.PageDown)]
     [InlineData(ConsoleKey.Home, (int)AppAction.Home)]
@@ -180,5 +179,21 @@ public class InputReaderTests
     {
         var evt = new KeyEvent(ConsoleKey.T, '\x14', false, false, true);
         Assert.Equal(AppAction.OpenTerminal, InputReader.MapKey(evt));
+    }
+
+    // ── Quit variants ─────────────────────────────────────────────────────
+
+    [Fact]
+    public void MapKey_LowercaseQ_ReturnsQuit()
+    {
+        var evt = new KeyEvent(ConsoleKey.Q, 'q', false, false, false);
+        Assert.Equal(AppAction.Quit, InputReader.MapKey(evt));
+    }
+
+    [Fact]
+    public void MapKey_ShiftQ_ReturnsQuitNoCd()
+    {
+        var evt = new KeyEvent(ConsoleKey.Q, 'Q', true, false, false);
+        Assert.Equal(AppAction.QuitNoCd, InputReader.MapKey(evt));
     }
 }

@@ -96,7 +96,7 @@ internal sealed class App
         _config = config;
     }
 
-    public string Run()
+    public string? Run()
     {
         _currentPath = Path.GetFullPath(_config.StartPath);
         _directoryContents.ShowHiddenFiles = _config.ShowHiddenFiles;
@@ -124,6 +124,7 @@ internal sealed class App
             _cellPixelWidth, _cellPixelHeight);
 
         bool quit = false;
+        bool writeCwd = true;
 
         while (!quit)
         {
@@ -396,6 +397,11 @@ internal sealed class App
                     {
                         quit = true;
                     }
+                    break;
+
+                case AppAction.QuitNoCd:
+                    quit = true;
+                    writeCwd = false;
                     break;
 
                 case AppAction.Search:
@@ -730,7 +736,7 @@ internal sealed class App
             AdjustScroll(VisibleFileListHeight);
         }
 
-        return _currentPath;
+        return writeCwd ? _currentPath : null;
     }
 
     private static void OpenTerminalHere(string workingDirectory)
@@ -739,7 +745,7 @@ internal sealed class App
         {
             try
             {
-                Process.Start(new ProcessStartInfo("wt.exe", $"new-tab -d \"{workingDirectory}\"")
+                Process.Start(new ProcessStartInfo("wt.exe", $"-w 0 new-tab -d \"{workingDirectory}\"")
                 {
                     UseShellExecute = false,
                     CreateNoWindow = true,

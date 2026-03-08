@@ -119,6 +119,7 @@ wade -h                               # same as --help
 | , | Configuration |
 | ? | Show help |
 | q / Escape | Quit |
+| Q | Quit without cd |
 
 ## Building
 

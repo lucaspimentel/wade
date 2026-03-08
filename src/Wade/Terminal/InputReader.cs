@@ -31,6 +31,7 @@ internal enum AppAction
     NewDirectory,
     ShowConfig,
     OpenTerminal,
+    QuitNoCd,
 }
 
 internal static class InputReader
@@ -51,6 +52,12 @@ internal static class InputReader
 
         if (key.KeyChar == 'S')
             return AppAction.ToggleSortDirection;
+
+        if (key.KeyChar == 'Q')
+            return AppAction.QuitNoCd;
+
+        if (key.KeyChar == 'q')
+            return AppAction.Quit;
 
         if (key.KeyChar == ',')
             return AppAction.ShowConfig;
@@ -98,7 +105,6 @@ internal static class InputReader
             ConsoleKey.RightArrow or ConsoleKey.Enter or ConsoleKey.L => AppAction.Open,
             ConsoleKey.LeftArrow or ConsoleKey.Backspace or ConsoleKey.H => AppAction.Back,
             ConsoleKey.Escape => AppAction.Quit,
-            ConsoleKey.Q => AppAction.Quit,
             ConsoleKey.PageUp => AppAction.PageUp,
             ConsoleKey.PageDown => AppAction.PageDown,
             ConsoleKey.Home => AppAction.Home,

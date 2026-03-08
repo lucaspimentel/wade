@@ -16,7 +16,7 @@ if (config.ShowConfig)
 
 var finalPath = new App(config).Run();
 
-if (config.CwdFilePath is not null)
+if (config.CwdFilePath is not null && finalPath is not null)
 {
     try { File.WriteAllText(config.CwdFilePath, finalPath); }
     catch { /* silently ignore */ }
@@ -59,6 +59,7 @@ static void PrintHelp()
           p / v                           Paste
           ?                               Show help overlay
           q / Escape                      Quit
+          Q                               Quit without cd
 
         Config file: ~/.config/wade/config.toml
 
