@@ -14,7 +14,13 @@ if (config.ShowConfig)
     return;
 }
 
-new App(config).Run();
+var finalPath = new App(config).Run();
+
+if (config.CwdFilePath is not null)
+{
+    try { File.WriteAllText(config.CwdFilePath, finalPath); }
+    catch { /* silently ignore */ }
+}
 
 static void PrintHelp()
 {
@@ -28,6 +34,7 @@ static void PrintHelp()
           -h, --help                      Show this help and exit
           --show-config                   Print resolved config as JSON and exit
           --config-file=<path>            Use a custom config file
+          --cwd-file=<path>               Write final directory to file on exit
 
         Keybindings:
           Up / k                          Move selection up
@@ -39,6 +46,7 @@ static void PrintHelp()
           Left Click                      Select / Open
           Scroll                          Navigate up/down
           Ctrl+R                          Refresh
+          Ctrl+T                          Open terminal here
           .                               Toggle hidden files
           s                               Cycle sort (name / time / size / ext)
           S                               Reverse sort direction

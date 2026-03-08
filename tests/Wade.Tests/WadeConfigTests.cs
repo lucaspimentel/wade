@@ -243,6 +243,29 @@ public class WadeConfigTests
         Assert.True(config.SortAscending);
     }
 
+    // ── CwdFile flag ────────────────────────────────────────────────────────
+
+    [Fact]
+    public void CliFlag_CwdFile_SetsCwdFilePath()
+    {
+        var config = WadeConfig.Load(["--cwd-file=/tmp/foo"], configFilePath: "/nonexistent/path.toml");
+        Assert.Equal("/tmp/foo", config.CwdFilePath);
+    }
+
+    [Fact]
+    public void Defaults_CwdFilePath_IsNull()
+    {
+        var config = WadeConfig.Load([], configFilePath: "/nonexistent/path.toml");
+        Assert.Null(config.CwdFilePath);
+    }
+
+    [Fact]
+    public void CwdFileFlag_DoesNotAffectStartPath()
+    {
+        var config = WadeConfig.Load(["--cwd-file=/tmp/foo"], configFilePath: "/nonexistent/path.toml");
+        Assert.Equal(Directory.GetCurrentDirectory(), config.StartPath);
+    }
+
     // ── ParseBool edge cases ──────────────────────────────────────────────────
 
     [Theory]

@@ -30,6 +30,7 @@ internal enum AppAction
     NewFile,
     NewDirectory,
     ShowConfig,
+    OpenTerminal,
 }
 
 internal static class InputReader
@@ -65,6 +66,9 @@ internal static class InputReader
 
         if (key.Key == ConsoleKey.R && key.Control)
             return AppAction.Refresh;
+
+        if (key.Key == ConsoleKey.T && key.Control)
+            return AppAction.OpenTerminal;
 
         if (key.KeyChar == 'c' || (key.Key == ConsoleKey.C && key.Control))
             return AppAction.Copy;

@@ -96,7 +96,7 @@ internal sealed class App
         _config = config;
     }
 
-    public void Run()
+    public string Run()
     {
         _currentPath = Path.GetFullPath(_config.StartPath);
         _directoryContents.ShowHiddenFiles = _config.ShowHiddenFiles;
@@ -477,6 +477,18 @@ internal sealed class App
                     }
                     break;
 
+                case AppAction.OpenTerminal:
+                    try
+                    {
+                        OpenTerminalHere(_currentPath);
+                        ShowNotification("Opened terminal", NotificationKind.Info);
+                    }
+                    catch (Exception ex)
+                    {
+                        ShowNotification($"Error: {ex.Message}", NotificationKind.Error);
+                    }
+                    break;
+
                 case AppAction.Rename:
                     if (entries.Count > 0 && _selectedIndex < entries.Count)
                     {
@@ -716,6 +728,42 @@ internal sealed class App
 
             // Adjust scroll offset to keep selection visible
             AdjustScroll(VisibleFileListHeight);
+        }
+
+        return _currentPath;
+    }
+
+    private static void OpenTerminalHere(string workingDirectory)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo("wt.exe", $"new-tab -d \"{workingDirectory}\"")
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                });
+            }
+            catch
+            {
+                // wt.exe not available — fall back to COMSPEC (cmd.exe)
+                var comspec = Environment.GetEnvironmentVariable("COMSPEC") ?? "cmd.exe";
+                Process.Start(new ProcessStartInfo(comspec)
+                {
+                    WorkingDirectory = workingDirectory,
+                    UseShellExecute = false,
+                });
+            }
+        }
+        else
+        {
+            var shell = Environment.GetEnvironmentVariable("SHELL") ?? "/bin/sh";
+            Process.Start(new ProcessStartInfo(shell)
+            {
+                WorkingDirectory = workingDirectory,
+                UseShellExecute = false,
+            });
         }
     }
 

@@ -13,6 +13,7 @@ internal sealed class WadeConfig
     public bool ShowConfig { get; set; } = false;
     public bool ShowHelp { get; set; } = false;
     public string ConfigFilePath { get; private set; } = "";
+    public string? CwdFilePath { get; set; }
 
     public static WadeConfig Load(
         string[] args,
@@ -80,6 +81,12 @@ internal sealed class WadeConfig
         // CLI flags
         foreach (var arg in args)
         {
+            if (arg.StartsWith("--cwd-file="))
+            {
+                config.CwdFilePath = arg["--cwd-file=".Length..];
+                continue;
+            }
+
             switch (arg)
             {
                 case "--show-config":

@@ -24,6 +24,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **File actions** — open files with default app, rename, delete, copy/cut/paste with internal clipboard; multi-select supported for delete/copy/cut
 - **Mouse support** — click to select entries in any pane, scroll wheel to navigate; left/right pane clicks navigate directories
 - **In-app configuration** — press `,` to open a config dialog; toggle booleans, cycle sort modes, and save changes directly to the config file
+- **Shell integration** — press `Ctrl+T` to open a new terminal in the current directory; use shell wrapper functions (`wd`) to cd to the final directory on exit (bash, zsh, fish, PowerShell wrappers provided)
 - **Minimal rendering** — raw VT/ANSI escape sequences, double-buffered with dirty-row tracking, cell diff, and style diffing
 
 ## Requirements
@@ -80,6 +81,7 @@ sort_ascending = true
 ```bash
 wade --show-config                    # print current config as JSON and exit
 wade --config-file=/path/to/config    # use a custom config file
+wade --cwd-file=/tmp/cwd              # write final directory to file on exit (for shell integration)
 wade --help                           # print usage info and exit
 wade -h                               # same as --help
 ```
@@ -96,14 +98,15 @@ wade -h                               # same as --help
 | Home / End | Jump to first / last item |
 | Left Click | Select / Open |
 | Scroll | Navigate up/down |
-| Space | Toggle mark (multi-select) |
+| Ctrl+R | Refresh |
+| Ctrl+T | Open terminal here |
 | . | Toggle hidden files |
 | s | Cycle sort (name / time / size / ext) |
 | S | Reverse sort direction |
 | g | Go to path (Esc clears input, Up goes up a directory) |
 | / | Search / filter |
 | Esc (in search) | Clear filter |
-| Ctrl+R | Refresh |
+| Space | Toggle mark (multi-select) |
 | o | Open with default app |
 | F2 | Rename |
 | Del | Delete (Recycle Bin on Windows) |

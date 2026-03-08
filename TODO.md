@@ -175,16 +175,9 @@ Create symbolic links from within the file manager.
 - Uses input dialog for the link name/destination
 - **Depends on:** Text input widget, Modal input mode
 
-## Open terminal here / cd here
+## ~~Open terminal here / cd here~~ ✅
 
-Shell integration for opening a terminal or changing directory.
-
-- **Open terminal here:** spawn a new shell in the current directory (e.g. `Ctrl+T`)
-- **cd here:** exit wade and change the calling shell's working directory to the current path
-  - Requires a shell wrapper function (like broot's `br` and yazi's `yy`)
-  - Wade writes the target path to a temp file; the wrapper `cd`s to it after exit
-  - Support bash, zsh, fish, PowerShell wrappers
-  - Reference implementations: [broot shell integration](https://dystroy.org/broot/install-br/), [yazi shell wrapper](https://yazi-rs.github.io/docs/quick-start#shell-wrapper)
+Implemented: `Ctrl+T` opens a new terminal in the current directory (Windows Terminal `wt.exe` with `cmd.exe` fallback; Unix uses `$SHELL`). `--cwd-file=<path>` CLI flag writes the final directory path to a file on exit, enabling shell wrapper functions (`wd`) to cd after exit. Shell wrappers provided for bash/zsh (`shell/wd.sh`), fish (`shell/wd.fish`), and PowerShell (`shell/wd.ps1`).
 
 ## Right-click context menu
 

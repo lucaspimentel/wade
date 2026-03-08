@@ -172,4 +172,13 @@ public class InputReaderTests
         var evt = new KeyEvent(ConsoleKey.V, 'v', false, false, false);
         Assert.Equal(AppAction.Paste, InputReader.MapKey(evt));
     }
+
+    // ── Open terminal ───────────────────────────────────────────────────────
+
+    [Fact]
+    public void MapKey_CtrlT_ReturnsOpenTerminal()
+    {
+        var evt = new KeyEvent(ConsoleKey.T, '\x14', false, false, true);
+        Assert.Equal(AppAction.OpenTerminal, InputReader.MapKey(evt));
+    }
 }

@@ -26,6 +26,7 @@ internal static class HelpOverlay
         ("/",                   "Search / filter"),
         ("Esc (in search)",     "Clear filter"),
         ("o",                   "Open with default app"),
+        ("Ctrl+T",              "Open terminal here"),
         ("F2",                  "Rename"),
         ("Del",                 "Delete (Recycle Bin on Windows)"),
         ("Shift+Del",           "Delete permanently"),
