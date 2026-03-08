@@ -501,6 +501,7 @@ internal sealed class App
                     break;
 
                 case AppAction.Delete:
+                case AppAction.DeletePermanently:
                     if (entries.Count > 0)
                     {
                         List<string> targets;
@@ -521,23 +522,14 @@ internal sealed class App
                             break;
                         }
 
-                        ShowConfirmDialog("Delete", prompt, () =>
+                        bool permanent = action == AppAction.DeletePermanently;
+                        bool isPermanent = permanent || !OperatingSystem.IsWindows();
+                        string title = isPermanent ? "Permanently Delete" : "Delete";
+                        string warning = isPermanent ? "\nThis cannot be undone!" : "";
+
+                        ShowConfirmDialog(title, prompt + warning, () =>
                         {
-                            int errors = 0;
-                            foreach (string target in targets)
-                            {
-                                try
-                                {
-                                    if (Directory.Exists(target))
-                                        Directory.Delete(target, true);
-                                    else if (File.Exists(target))
-                                        File.Delete(target);
-                                }
-                                catch
-                                {
-                                    errors++;
-                                }
-                            }
+                            int errors = FileOperations.Delete(targets, permanent);
 
                             _directoryContents.Invalidate(_currentPath);
                             _markedPaths.Clear();
@@ -1652,15 +1644,30 @@ internal sealed class App
     private void RenderConfirmDialog(ScreenBuffer buffer, int width, int height)
     {
         string message = _confirmMessage ?? "";
+        string[] lines = message.Split('\n');
         string footer = "[Y/Enter] Yes  [N/Esc] No";
-        int contentWidth = Math.Max(message.Length, footer.Length) + 2;
-        int contentHeight = 1; // single line for the message
+        int maxLineLen = 0;
+        foreach (string line in lines)
+        {
+            if (line.Length > maxLineLen)
+                maxLineLen = line.Length;
+        }
+
+        int contentWidth = Math.Max(maxLineLen, footer.Length) + 2;
+        int contentHeight = lines.Length;
 
         Rect content = DialogBox.Render(buffer, width, height, contentWidth, contentHeight, title: _confirmTitle, footer: footer);
 
         var textStyle = new CellStyle(new Color(200, 200, 200), DialogBox.BgColor);
-        int msgCol = content.Left + (content.Width - message.Length) / 2;
-        buffer.WriteString(content.Top, msgCol, message, textStyle);
+        var warnStyle = new CellStyle(new Color(255, 100, 100), DialogBox.BgColor);
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            string line = lines[i];
+            int msgCol = content.Left + (content.Width - line.Length) / 2;
+            var style = i > 0 ? warnStyle : textStyle;
+            buffer.WriteString(content.Top + i, msgCol, line, style);
+        }
     }
 
     private void RenderTextInputDialog(ScreenBuffer buffer, int width, int height)

@@ -105,7 +105,8 @@ wade -h                               # same as --help
 | Ctrl+R | Refresh |
 | o | Open with default app |
 | F2 | Rename |
-| Del | Delete |
+| Del | Delete (Recycle Bin on Windows) |
+| Shift+Del | Delete permanently |
 | c / Ctrl+C | Copy |
 | x / Ctrl+X | Cut |
 | p / v | Paste |

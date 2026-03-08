@@ -107,7 +107,7 @@ Implemented: Configurable sort modes (name, modified time, size, extension) with
 Implemented: Open with default app (`o`), rename (`F2`), delete (`Del`), copy (`c`/`Ctrl+C`), cut (`x`/`Ctrl+X`), paste (`p`/`v`). Multi-select supported for delete/copy/cut. Internal clipboard with status bar indicator. Confirm dialog for delete. Error notifications for name collisions and failed operations.
 
 **Remaining**
-- Recycle Bin support on Windows (use `SHFileOperation` or shell API instead of permanent delete)
+- ~~Recycle Bin support on Windows (use `SHFileOperation` or shell API instead of permanent delete)~~ ✅
 - ~~Overwrite confirmation on paste when destination already exists~~ ✅
 - OS clipboard integration for copy/cut/paste (interop with system clipboard so files copied in wade can be pasted in Explorer/Finder and vice versa)
 - Progress indicator for large copy/move operations

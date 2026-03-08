@@ -23,6 +23,7 @@ internal enum AppAction
     OpenExternal,
     Rename,
     Delete,
+    DeletePermanently,
     Copy,
     Cut,
     Paste,
@@ -80,7 +81,7 @@ internal static class InputReader
             return AppAction.Rename;
 
         if (key.Key is ConsoleKey.Delete)
-            return AppAction.Delete;
+            return key.Shift ? AppAction.DeletePermanently : AppAction.Delete;
 
         return key.Key switch
         {

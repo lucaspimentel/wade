@@ -53,8 +53,9 @@ public class FileActionsTests : IDisposable
         string path = Path.Combine(_tempDir, "delete_me.txt");
         File.WriteAllText(path, "bye");
 
-        File.Delete(path);
+        int errors = FileOperations.Delete([path], permanent: true);
 
+        Assert.Equal(0, errors);
         Assert.False(File.Exists(path));
     }
 
@@ -65,8 +66,9 @@ public class FileActionsTests : IDisposable
         Directory.CreateDirectory(dir);
         File.WriteAllText(Path.Combine(dir, "child.txt"), "x");
 
-        Directory.Delete(dir, true);
+        int errors = FileOperations.Delete([dir], permanent: true);
 
+        Assert.Equal(0, errors);
         Assert.False(Directory.Exists(dir));
     }
 
@@ -81,11 +83,21 @@ public class FileActionsTests : IDisposable
             files.Add(f);
         }
 
-        foreach (string f in files)
-            File.Delete(f);
+        int errors = FileOperations.Delete(files, permanent: true);
 
+        Assert.Equal(0, errors);
         foreach (string f in files)
             Assert.False(File.Exists(f));
+    }
+
+    [Fact]
+    public void Delete_NonExistentPath_ReturnsError()
+    {
+        string path = Path.Combine(_tempDir, "does_not_exist.txt");
+
+        int errors = FileOperations.Delete([path], permanent: true);
+
+        Assert.True(errors > 0);
     }
 
     // ── Copy + Paste ──────────────────────────────────────────────────────────
