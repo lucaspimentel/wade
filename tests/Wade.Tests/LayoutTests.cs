@@ -83,7 +83,7 @@ public class LayoutTests
     public void Calculate_PreviewDisabled_HidesRightPane(int width, int height)
     {
         var layout = new Layout();
-        layout.Calculate(width, height, previewEnabled: false);
+        layout.Calculate(width, height, previewPaneEnabled: false);
 
         // Right pane should have zero width
         Assert.Equal(0, layout.RightPane.Width);

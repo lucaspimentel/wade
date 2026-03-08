@@ -10,7 +10,7 @@ internal sealed class WadeConfig
     public SortMode SortMode { get; set; } = SortMode.Name;
     public bool SortAscending { get; set; } = true;
     public bool ConfirmDeleteEnabled { get; set; } = true;
-    public bool PreviewEnabled { get; set; } = true;
+    public bool PreviewPaneEnabled { get; set; } = true;
     public bool DetailColumnsEnabled { get; set; } = true;
     public string StartPath { get; set; } = Directory.GetCurrentDirectory();
     public bool ShowConfig { get; set; } = false;
@@ -80,8 +80,8 @@ internal sealed class WadeConfig
                     case "confirm_delete_enabled":
                         config.ConfirmDeleteEnabled = ParseBool(value, config.ConfirmDeleteEnabled);
                         break;
-                    case "preview_enabled":
-                        config.PreviewEnabled = ParseBool(value, config.PreviewEnabled);
+                    case "preview_pane_enabled":
+                        config.PreviewPaneEnabled = ParseBool(value, config.PreviewPaneEnabled);
                         break;
                     case "detail_columns_enabled":
                         config.DetailColumnsEnabled = ParseBool(value, config.DetailColumnsEnabled);
@@ -155,7 +155,7 @@ internal sealed class WadeConfig
             sort_mode = {sortModeStr}
             sort_ascending = {(SortAscending ? "true" : "false")}
             confirm_delete_enabled = {(ConfirmDeleteEnabled ? "true" : "false")}
-            preview_enabled = {(PreviewEnabled ? "true" : "false")}
+            preview_pane_enabled = {(PreviewPaneEnabled ? "true" : "false")}
             detail_columns_enabled = {(DetailColumnsEnabled ? "true" : "false")}
             """;
 
@@ -173,7 +173,7 @@ internal sealed class WadeConfig
             $"\"sort_mode\":\"{sortModeStr}\"," +
             $"\"sort_ascending\":{(SortAscending ? "true" : "false")}," +
             $"\"confirm_delete_enabled\":{(ConfirmDeleteEnabled ? "true" : "false")}," +
-            $"\"preview_enabled\":{(PreviewEnabled ? "true" : "false")}," +
+            $"\"preview_pane_enabled\":{(PreviewPaneEnabled ? "true" : "false")}," +
             $"\"detail_columns_enabled\":{(DetailColumnsEnabled ? "true" : "false")}," +
             $"\"start_path\":\"{escapedPath}\"" +
             "}";

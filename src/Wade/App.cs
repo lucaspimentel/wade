@@ -60,7 +60,7 @@ internal sealed class App
     private SortMode _configSortMode;
     private bool _configSortAscending;
     private bool _configConfirmDelete;
-    private bool _configPreviewEnabled;
+    private bool _configPreviewPane;
     private bool _configDetailColumns;
 
     private string? _cachedPreviewPath;
@@ -122,7 +122,7 @@ internal sealed class App
         int lastHeight = Console.WindowHeight;
 
         var buffer = new ScreenBuffer(lastWidth, lastHeight);
-        _layout.Calculate(lastWidth, lastHeight, _config.PreviewEnabled);
+        _layout.Calculate(lastWidth, lastHeight, _config.PreviewPaneEnabled);
         previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
             _cellPixelWidth, _cellPixelHeight);
 
@@ -141,7 +141,7 @@ internal sealed class App
             buffer.Flush(_flushBuffer);
 
             // Write Sixel data after flush (bypasses cell grid)
-            if (_sixelPending && _cachedSixelData is not null && _config.PreviewEnabled
+            if (_sixelPending && _cachedSixelData is not null && _config.PreviewPaneEnabled
                 && _inputMode is InputMode.Normal or InputMode.Search or InputMode.ExpandedPreview)
             {
                 _sixelPending = false;
@@ -192,7 +192,7 @@ internal sealed class App
                     lastWidth = resize.Width;
                     lastHeight = resize.Height;
                     buffer.Resize(lastWidth, lastHeight);
-                    _layout.Calculate(lastWidth, lastHeight, _config.PreviewEnabled);
+                    _layout.Calculate(lastWidth, lastHeight, _config.PreviewPaneEnabled);
                     var resizePane = _inputMode == InputMode.ExpandedPreview ? _layout.ExpandedPane : _layout.RightPane;
                     previewLoader.Configure(_imagePreviewsEffective, resizePane.Width, resizePane.Height,
                         _cellPixelWidth, _cellPixelHeight);
@@ -919,7 +919,7 @@ internal sealed class App
         }
 
         // Right pane: preview
-        if (_config.PreviewEnabled && entries.Count > 0 && _selectedIndex < entries.Count)
+        if (_config.PreviewPaneEnabled && entries.Count > 0 && _selectedIndex < entries.Count)
         {
             var selected = entries[_selectedIndex];
             if (selected.IsDirectory)
@@ -958,7 +958,7 @@ internal sealed class App
         }
 
         // Borders
-        PaneRenderer.RenderBorders(buffer, _layout, height, _config.PreviewEnabled);
+        PaneRenderer.RenderBorders(buffer, _layout, height, _config.PreviewPaneEnabled);
 
         // Status bar
         FileSystemEntry? selectedEntry = entries.Count > 0 && _selectedIndex < entries.Count
@@ -1793,7 +1793,7 @@ internal sealed class App
         _configSortMode = _config.SortMode;
         _configSortAscending = _config.SortAscending;
         _configConfirmDelete = _config.ConfirmDeleteEnabled;
-        _configPreviewEnabled = _config.PreviewEnabled;
+        _configPreviewPane = _config.PreviewPaneEnabled;
         _configDetailColumns = _config.DetailColumnsEnabled;
     }
 
@@ -1840,12 +1840,15 @@ internal sealed class App
         switch (_configSelectedIndex)
         {
             case 0: _configShowIcons = !_configShowIcons; break;
-            case 1: _configImagePreviews = !_configImagePreviews; break;
+            case 1:
+                if (_configPreviewPane)
+                    _configImagePreviews = !_configImagePreviews;
+                break;
             case 2: _configShowHidden = !_configShowHidden; break;
             case 3: _configSortMode = CycleSortModeNext(_configSortMode); break;
             case 4: _configSortAscending = !_configSortAscending; break;
             case 5: _configConfirmDelete = !_configConfirmDelete; break;
-            case 6: _configPreviewEnabled = !_configPreviewEnabled; break;
+            case 6: _configPreviewPane = !_configPreviewPane; break;
             case 7: _configDetailColumns = !_configDetailColumns; break;
         }
     }
@@ -1858,7 +1861,7 @@ internal sealed class App
         _config.SortMode = _configSortMode;
         _config.SortAscending = _configSortAscending;
         _config.ConfirmDeleteEnabled = _configConfirmDelete;
-        _config.PreviewEnabled = _configPreviewEnabled;
+        _config.PreviewPaneEnabled = _configPreviewPane;
         _config.DetailColumnsEnabled = _configDetailColumns;
 
         _directoryContents.ShowHiddenFiles = _config.ShowHiddenFiles;
@@ -1868,7 +1871,7 @@ internal sealed class App
 
         _directoryContents.InvalidateAll();
         ClearPreviewCache(previewLoader, buffer);
-        _layout.Calculate(Console.WindowWidth, Console.WindowHeight, _config.PreviewEnabled);
+        _layout.Calculate(Console.WindowWidth, Console.WindowHeight, _config.PreviewPaneEnabled);
         previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
             _cellPixelWidth, _cellPixelHeight);
 
@@ -1915,28 +1918,41 @@ internal sealed class App
         var selectedStyle = new CellStyle(new Color(20, 20, 35), new Color(200, 200, 200));
         var valueStyle = new CellStyle(new Color(100, 200, 255), DialogBox.BgColor);
         var valueSelectedStyle = new CellStyle(new Color(20, 20, 35), new Color(200, 200, 200));
+        var disabledStyle = new CellStyle(new Color(80, 80, 80), DialogBox.BgColor);
 
-        (string label, string value)[] items =
+        (string label, string value, bool enabled)[] items =
         [
-            ("Show Icons", FormatBool(_configShowIcons)),
-            ("Image Previews", FormatBool(_configImagePreviews)),
-            ("Show Hidden Files", FormatBool(_configShowHidden)),
-            ("Sort Mode", $"\u25c4 {_configSortMode.ToString().ToLowerInvariant()} \u25ba"),
-            ("Sort Ascending", FormatBool(_configSortAscending)),
-            ("Confirm Delete", FormatBool(_configConfirmDelete)),
-            ("Preview Pane", FormatBool(_configPreviewEnabled)),
-            ("Detail Columns", FormatBool(_configDetailColumns)),
+            ("Show Icons", FormatBool(_configShowIcons), true),
+            ("Image Previews", FormatBool(_configImagePreviews), _configPreviewPane),
+            ("Show Hidden Files", FormatBool(_configShowHidden), true),
+            ("Sort Mode", $"\u25c4 {_configSortMode.ToString().ToLowerInvariant()} \u25ba", true),
+            ("Sort Ascending", FormatBool(_configSortAscending), true),
+            ("Confirm Delete", FormatBool(_configConfirmDelete), true),
+            ("Preview Pane", FormatBool(_configPreviewPane), true),
+            ("Detail Columns", FormatBool(_configDetailColumns), true),
         ];
 
         for (int i = 0; i < items.Length; i++)
         {
             bool selected = i == _configSelectedIndex;
-            var style = selected ? selectedStyle : normalStyle;
-            var vStyle = selected ? valueSelectedStyle : valueStyle;
+            var (label, value, enabled) = items[i];
+            CellStyle style, vStyle;
+
+            if (!enabled)
+            {
+                style = disabledStyle;
+                vStyle = disabledStyle;
+            }
+            else
+            {
+                style = selected ? selectedStyle : normalStyle;
+                vStyle = selected ? valueSelectedStyle : valueStyle;
+            }
+
             int row = content.Top + i;
 
-            buffer.WriteString(row, content.Left, items[i].label, style, 22);
-            buffer.WriteString(row, content.Left + 22, items[i].value, vStyle, content.Width - 22);
+            buffer.WriteString(row, content.Left, label, style, 22);
+            buffer.WriteString(row, content.Left + 22, value, vStyle, content.Width - 22);
         }
     }
 

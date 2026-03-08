@@ -68,7 +68,7 @@ static void PrintHelp()
           sort_mode = name                # name, modified, size, extension
           sort_ascending = true
           confirm_delete_enabled = true
-          preview_enabled = true
+          preview_pane_enabled = true
           detail_columns_enabled = true
         """);
 }

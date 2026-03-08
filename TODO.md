@@ -196,7 +196,7 @@ Reformatted help dialog from a single column (29 rows) to 2 columns side by side
 
 ## ~~Config audit~~ ✅
 
-Reviewed all 5 existing config options — all are actively used and appropriate. Added 3 new options: `confirm_delete_enabled` (skip delete confirmation), `preview_enabled` (hide right preview pane for 2-pane layout), `detail_columns_enabled` (hide size/date columns in center pane). All default to `true`. Config dialog updated to show 8 options.
+Reviewed all 5 existing config options — all are actively used and appropriate. Added 3 new options: `confirm_delete_enabled` (skip delete confirmation), `preview_pane_enabled` (hide right preview pane for 2-pane layout), `detail_columns_enabled` (hide size/date columns in center pane). All default to `true`. Config dialog updated to show 8 options.
 
 ## Bugs (open)
 

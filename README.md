@@ -6,7 +6,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 
 ## Features
 
-- **Miller columns** — three-pane layout: parent / current directory / preview; preview pane can be hidden for a 2-pane layout via `preview_enabled` config
+- **Miller columns** — three-pane layout: parent / current directory / preview; preview pane can be hidden for a 2-pane layout via `preview_pane_enabled` config
 - **File-type icons** — Nerd Fonts v3 glyphs per file extension (enabled by default; requires a Nerd Font)
 - **Syntax highlighting** — per-token coloring for 15 languages (C#, JS/TS, Python, Go, Rust, Java, Shell, PowerShell, CSS, JSON, TOML, YAML, XML/HTML, Markdown) using a hand-rolled tokenizer; VS Code Dark+ inspired palette
 - **File preview** — displays first 100 lines of text files; shows `[binary file]` for binary files
@@ -75,7 +75,7 @@ show_hidden_files = false
 sort_mode = name                # name, modified, size, extension
 sort_ascending = true
 confirm_delete_enabled = true
-preview_enabled = true
+preview_pane_enabled = true
 detail_columns_enabled = true
 ```
 

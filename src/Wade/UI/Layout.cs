@@ -21,13 +21,13 @@ internal sealed class Layout
     public Rect ExpandedPane { get; private set; }
     public Rect StatusBar { get; private set; }
 
-    public void Calculate(int terminalWidth, int terminalHeight, bool previewEnabled = true)
+    public void Calculate(int terminalWidth, int terminalHeight, bool previewPaneEnabled = true)
     {
         // Reserve 1 row for status bar at the bottom
         int contentHeight = terminalHeight - 1;
         if (contentHeight < 1) contentHeight = 1;
 
-        if (previewEnabled)
+        if (previewPaneEnabled)
         {
             // Split: 20% / 40% / 40% with 1-char border (vertical line) between panes
             int usableWidth = terminalWidth - 2; // 2 border columns

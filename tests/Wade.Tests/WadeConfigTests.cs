@@ -27,7 +27,7 @@ public class WadeConfigTests
         Assert.False(config.ShowHelp);
         Assert.False(config.ShowHiddenFiles);
         Assert.True(config.ConfirmDeleteEnabled);
-        Assert.True(config.PreviewEnabled);
+        Assert.True(config.PreviewPaneEnabled);
         Assert.True(config.DetailColumnsEnabled);
         Assert.Equal(Directory.GetCurrentDirectory(), config.StartPath);
     }
@@ -60,8 +60,8 @@ public class WadeConfigTests
     [Theory]
     [InlineData("confirm_delete_enabled", true)]
     [InlineData("confirm_delete_enabled", false)]
-    [InlineData("preview_enabled", true)]
-    [InlineData("preview_enabled", false)]
+    [InlineData("preview_pane_enabled", true)]
+    [InlineData("preview_pane_enabled", false)]
     [InlineData("detail_columns_enabled", true)]
     [InlineData("detail_columns_enabled", false)]
     public void ConfigFile_ParsesNewBoolSettings(string key, bool value)
@@ -73,7 +73,7 @@ public class WadeConfigTests
             bool actual = key switch
             {
                 "confirm_delete_enabled" => config.ConfirmDeleteEnabled,
-                "preview_enabled" => config.PreviewEnabled,
+                "preview_pane_enabled" => config.PreviewPaneEnabled,
                 "detail_columns_enabled" => config.DetailColumnsEnabled,
                 _ => throw new ArgumentException($"Unknown key: {key}"),
             };
@@ -363,7 +363,7 @@ public class WadeConfigTests
             original.SortMode = SortMode.Extension;
             original.SortAscending = false;
             original.ConfirmDeleteEnabled = false;
-            original.PreviewEnabled = false;
+            original.PreviewPaneEnabled = false;
             original.DetailColumnsEnabled = false;
             original.Save();
 
@@ -374,7 +374,7 @@ public class WadeConfigTests
             Assert.Equal(SortMode.Extension, loaded.SortMode);
             Assert.False(loaded.SortAscending);
             Assert.False(loaded.ConfirmDeleteEnabled);
-            Assert.False(loaded.PreviewEnabled);
+            Assert.False(loaded.PreviewPaneEnabled);
             Assert.False(loaded.DetailColumnsEnabled);
         }
         finally
