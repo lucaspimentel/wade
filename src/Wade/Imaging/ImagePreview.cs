@@ -67,7 +67,7 @@ internal static class ImagePreview
             string sixelData = SixelEncoder.Encode(rgba, targetWidth, targetHeight);
 
             string ext = Path.GetExtension(path).TrimStart('.').ToUpperInvariant();
-            string label = $"{ext} Image ({srcWidth}x{srcHeight})";
+            string label = $"{ext} Image ({srcWidth} x {srcHeight})";
 
             return new ImagePreviewResult(sixelData, targetWidth, targetHeight, label);
         }
