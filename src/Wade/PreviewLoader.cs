@@ -15,7 +15,9 @@ internal sealed class PreviewLoader
     private int _cellPixelWidth = 8;
     private int _cellPixelHeight = 16;
 
+#pragma warning disable CSLINT221 // Consider using a primary constructor
     public PreviewLoader(InputPipeline pipeline)
+#pragma warning restore CSLINT221
     {
         _pipeline = pipeline;
     }

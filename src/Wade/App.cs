@@ -94,7 +94,9 @@ internal sealed class App
     private int _leftPaneScroll;
     private int _leftPaneSelected;
 
+#pragma warning disable CSLINT221 // Consider using a primary constructor
     public App(WadeConfig config)
+#pragma warning restore CSLINT221
     {
         _config = config;
     }
