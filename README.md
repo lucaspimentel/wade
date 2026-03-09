@@ -1,6 +1,8 @@
 # wade
 
-A terminal file browser with Miller columns, written in .NET 10.
+A terminal file browser with Miller columns, written in C#.
+
+Pre-built binaries support Windows and Linux. macOS is supported when built from source.
 
 Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/Canop/broot), and [ranger](https://github.com/ranger/ranger).
 
