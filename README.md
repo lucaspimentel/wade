@@ -34,6 +34,13 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 
 ## Installation
 
+### Scoop (Windows)
+
+```powershell
+scoop bucket add lucaspimentel https://github.com/lucaspimentel/scoop-bucket
+scoop install wade
+```
+
 ### From GitHub releases (no build tools needed)
 
 ```powershell
