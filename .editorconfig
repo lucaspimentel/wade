@@ -36,11 +36,11 @@ dotnet_style_qualification_for_event = false:warning
 #csharp_style_var_elsewhere = false:suggestion
 
 # ── Tier 3: style – expression bodies ──
-csharp_style_expression_bodied_methods = when_on_single_line:suggestion
-csharp_style_expression_bodied_properties = true:suggestion
-csharp_style_expression_bodied_accessors = true:suggestion
-csharp_style_expression_bodied_lambdas = true:suggestion
-csharp_style_expression_bodied_local_functions = when_on_single_line:suggestion
+#csharp_style_expression_bodied_methods = when_on_single_line:suggestion
+#csharp_style_expression_bodied_properties = when_on_single_line:suggestion
+#csharp_style_expression_bodied_accessors = when_on_single_line:suggestion
+#csharp_style_expression_bodied_lambdas = when_on_single_line:suggestion
+#csharp_style_expression_bodied_local_functions = when_on_single_line:suggestion
 
 # ── Tier 3: style – braces, namespaces, modifiers ──
 csharp_prefer_braces = true:warning
