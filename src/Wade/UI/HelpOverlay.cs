@@ -35,6 +35,7 @@ internal static class HelpOverlay
         ("p / v",               "Paste"),
         ("Shift+N",             "Create new file"),
         ("F7",                  "Create new directory"),
+        ("i",                   "Properties"),
         (",",                   "Configuration"),
         ("?",                   "Show help"),
         ("q / Escape",          "Quit"),

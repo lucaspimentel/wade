@@ -32,6 +32,7 @@ internal enum AppAction
     ShowConfig,
     OpenTerminal,
     QuitNoCd,
+    ShowProperties,
 }
 
 internal static class InputReader
@@ -76,6 +77,11 @@ internal static class InputReader
         if (key.KeyChar == ',')
         {
             return AppAction.ShowConfig;
+        }
+
+        if (key.KeyChar == 'i')
+        {
+            return AppAction.ShowProperties;
         }
 
         if (key.KeyChar == 'g')

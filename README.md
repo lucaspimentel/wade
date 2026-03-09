@@ -23,6 +23,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Multi-select** — press Space to mark/unmark entries for future bulk operations; marks are path-based and survive scrolling and filtering; marked entries highlighted with a distinct background; mark count shown in status bar
 - **File actions** — open files with default app, rename, delete (with optional confirmation), copy/cut/paste with internal clipboard; multi-select supported for delete/copy/cut; delete confirmation can be toggled via `confirm_delete_enabled` config
 - **Mouse support** — click to select entries in any pane, scroll wheel to navigate; left/right pane clicks navigate directories
+- **File properties** — press `i` to open a properties overlay showing detailed metadata: name, full path, type, formatted size with raw bytes, created/modified/accessed timestamps, file attributes, and read-only status
 - **In-app configuration** — press `,` to open a config dialog with 8 toggleable options: icons, image previews, hidden files, sort mode, sort direction, delete confirmation, preview pane, and detail columns; changes are saved directly to the config file
 - **Shell integration** — press `Ctrl+T` to open a new terminal in the current directory; use shell wrapper functions (`wd`) to cd to the final directory on exit (bash, zsh, fish, PowerShell wrappers provided)
 - **Minimal rendering** — raw VT/ANSI escape sequences, double-buffered with dirty-row tracking, cell diff, and style diffing
@@ -139,6 +140,7 @@ Then use `wd` instead of `wade` to browse. Press `q` to quit and cd to the last 
 | p / v | Paste |
 | Shift+N | Create new file |
 | F7 | Create new directory |
+| i | Properties |
 | , | Configuration |
 | ? | Show help |
 | q / Escape | Quit |

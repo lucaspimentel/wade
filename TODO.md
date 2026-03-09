@@ -136,13 +136,9 @@ Save frequently used directories for quick access.
 Implemented: Press `g` to open a path input dialog. Tab auto-completes from the filesystem (first matching entry). Suggestion shown on a second row in dimmed text. Enter navigates to the path (directories open directly; files navigate to parent and select the file). Escape cancels. Error notification shown for invalid/nonexistent paths.
 
 
-## File details / properties panel
+## ~~File details / properties panel~~ ✅
 
-Show detailed file metadata as a toggle or overlay.
-
-- Size, permissions, modified/created date, owner
-- Toggle via keybinding (e.g. `i`) or as an overlay dialog
-- **Depends on:** Dialog / overlay framework
+Implemented: Press `i` to show a Properties overlay dialog for the selected file/directory. Displays name, full path, type (File/Directory/Drive), formatted size with raw bytes, created/modified/accessed timestamps, file attributes, and read-only status. Any key dismisses the dialog. Sixel image previews are suppressed while the overlay is visible.
 
 ## Directory size calculation
 

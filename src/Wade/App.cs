@@ -259,7 +259,7 @@ internal sealed class App
                 }
 
                 // Discard mouse events while a modal dialog is open
-                if (_inputMode is InputMode.Help or InputMode.GoToPath or InputMode.TextInput or InputMode.Confirm or InputMode.Config)
+                if (_inputMode is InputMode.Help or InputMode.GoToPath or InputMode.TextInput or InputMode.Confirm or InputMode.Config or InputMode.Properties)
                 {
                     continue;
                 }
@@ -292,6 +292,7 @@ internal sealed class App
             switch (_inputMode)
             {
                 case InputMode.Help:
+                case InputMode.Properties:
                     _inputMode = InputMode.Normal;
                     continue;
                 case InputMode.Search:
@@ -454,6 +455,13 @@ internal sealed class App
 
                 case AppAction.ShowHelp:
                     _inputMode = InputMode.Help;
+                    break;
+
+                case AppAction.ShowProperties:
+                    if (entries.Count > 0 && _selectedIndex < entries.Count)
+                    {
+                        _inputMode = InputMode.Properties;
+                    }
                     break;
 
                 case AppAction.ShowConfig:
@@ -1080,6 +1088,12 @@ internal sealed class App
                 break;
             case InputMode.Config:
                 RenderConfigDialog(buffer, width, height);
+                break;
+            case InputMode.Properties:
+                if (selectedEntry is not null)
+                {
+                    PropertiesOverlay.Render(buffer, width, height, selectedEntry);
+                }
                 break;
         }
     }

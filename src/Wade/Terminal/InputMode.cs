@@ -10,4 +10,5 @@ internal enum InputMode
     GoToPath,
     Help,
     Config,
+    Properties,
 }
