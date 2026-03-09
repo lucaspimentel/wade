@@ -1,5 +1,7 @@
 using System.Text;
 
+#pragma warning disable CSLINT220 // Pattern matching combinators — range tables read better with && / ||
+
 namespace Wade.Terminal;
 
 /// <summary>
