@@ -4,6 +4,7 @@ namespace Wade.Highlighting.Languages;
 
 internal sealed class PythonLanguage : RegexLanguage
 {
+    private static readonly string[] TripleQuotes = ["\"\"\"", "'''" ];
     protected override FrozenSet<string> Keywords { get; } = new[]
     {
         "and", "as", "assert", "async", "await", "break", "class", "continue",
@@ -111,7 +112,7 @@ internal sealed class PythonLanguage : RegexLanguage
     protected override int TryEndMultiString(string line, int pos, List<StyledSpan> spans, ref byte state)
     {
         // Try both triple quote styles
-        foreach (string triple in new[] { "\"\"\"", "'''" })
+        foreach (string triple in TripleQuotes)
         {
             int closeIdx = line.IndexOf(triple, pos, StringComparison.Ordinal);
             if (closeIdx >= 0)
