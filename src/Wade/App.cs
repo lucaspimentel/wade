@@ -293,7 +293,10 @@ internal sealed class App
             {
                 case InputMode.Help:
                 case InputMode.Properties:
-                    _inputMode = InputMode.Normal;
+                    if (!keyEvent.IsModifierOnly)
+                    {
+                        _inputMode = InputMode.Normal;
+                    }
                     continue;
                 case InputMode.Search:
                     HandleSearchKey(keyEvent);

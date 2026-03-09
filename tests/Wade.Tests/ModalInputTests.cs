@@ -187,6 +187,65 @@ public class ModalInputTests
         Assert.Equal(InputMode.Normal, harness.Mode);
     }
 
+    // ── Help / Properties — modifier-only keys ignored ─────────────────
+
+    [Theory]
+    [InlineData(nameof(InputMode.Help))]
+    [InlineData(nameof(InputMode.Properties))]
+    public void HelpOrProperties_ModifierOnlyKey_StaysOpen(string modeName)
+    {
+        var mode = Enum.Parse<InputMode>(modeName);
+        var harness = new ModalHarness();
+        harness.SetMode(mode);
+
+        // Shift, Ctrl, Alt virtual key codes
+        harness.HandleKey(new KeyEvent((ConsoleKey)16, '\0', true, false, false));
+        Assert.Equal(mode, harness.Mode);
+
+        harness.HandleKey(new KeyEvent((ConsoleKey)17, '\0', false, false, true));
+        Assert.Equal(mode, harness.Mode);
+
+        harness.HandleKey(new KeyEvent((ConsoleKey)18, '\0', false, true, false));
+        Assert.Equal(mode, harness.Mode);
+    }
+
+    [Theory]
+    [InlineData(nameof(InputMode.Help))]
+    [InlineData(nameof(InputMode.Properties))]
+    public void HelpOrProperties_NonModifierKey_Closes(string modeName)
+    {
+        var mode = Enum.Parse<InputMode>(modeName);
+        var harness = new ModalHarness();
+        harness.SetMode(mode);
+
+        harness.HandleKey(new KeyEvent(ConsoleKey.Escape, '\x1b', false, false, false));
+
+        Assert.Equal(InputMode.Normal, harness.Mode);
+    }
+
+    // ── KeyEvent.IsModifierOnly ──────────────────────────────────────────
+
+    [Theory]
+    [InlineData(16)]  // VK_SHIFT
+    [InlineData(17)]  // VK_CONTROL
+    [InlineData(18)]  // VK_MENU (Alt)
+    public void IsModifierOnly_TrueForModifierKeys(int vk)
+    {
+        var key = new KeyEvent((ConsoleKey)vk, '\0', false, false, false);
+        Assert.True(key.IsModifierOnly);
+    }
+
+    [Theory]
+    [InlineData(ConsoleKey.A)]
+    [InlineData(ConsoleKey.Escape)]
+    [InlineData(ConsoleKey.Enter)]
+    [InlineData(ConsoleKey.Spacebar)]
+    public void IsModifierOnly_FalseForNonModifierKeys(ConsoleKey consoleKey)
+    {
+        var key = new KeyEvent(consoleKey, '\0', false, false, false);
+        Assert.False(key.IsModifierOnly);
+    }
+
     // ── Mouse blocking in modal modes ─────────────────────────────────
 
     [Theory]
@@ -358,7 +417,11 @@ public class ModalInputTests
             switch (_inputMode)
             {
                 case InputMode.Help:
-                    _inputMode = InputMode.Normal;
+                case InputMode.Properties:
+                    if (!key.IsModifierOnly)
+                    {
+                        _inputMode = InputMode.Normal;
+                    }
                     break;
                 case InputMode.TextInput:
                     HandleTextInputKey(key);
