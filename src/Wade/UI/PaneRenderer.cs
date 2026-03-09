@@ -222,6 +222,7 @@ internal static class PaneRenderer
                 lineNumBuf[..numLen].CopyTo(lineNumBuf[(4 - numLen)..]);
                 lineNumBuf[..(4 - numLen)].Fill(' ');
             }
+
             for (int i = 0; i < 4; i++)
             {
                 buffer.Put(pane.Top + row, pane.Left + i, lineNumBuf[i], lineNumStyle);

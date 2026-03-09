@@ -222,6 +222,7 @@ internal abstract class RegexLanguage : ILanguage
             if (c == quote) { pos++; break; }
             pos++;
         }
+
         spans.Add(new StyledSpan(start, pos - start, TokenKind.String));
         return pos;
     }
@@ -263,6 +264,7 @@ internal abstract class RegexLanguage : ILanguage
             }
             break;
         }
+
         // Skip trailing type suffix (f, d, L, m, u, ul, etc.)
         while (pos < line.Length && char.IsLetter(line[pos]))
         {
@@ -325,10 +327,12 @@ internal abstract class RegexLanguage : ILanguage
                     opLen = 2;
                 }
             }
+
             spans.Add(new StyledSpan(pos, opLen, TokenKind.Operator));
             end = pos + opLen;
             return true;
         }
+
         if (ch == '.')
         {
             spans.Add(new StyledSpan(pos, 1, TokenKind.Punctuation));

@@ -41,6 +41,7 @@ internal sealed partial class MarkdownLanguage : ILanguage
             {
                 spans.Add(new StyledSpan(0, line.Length, TokenKind.CodeSpan));
             }
+
             return new StyledLine(line, [.. spans]);
         }
 

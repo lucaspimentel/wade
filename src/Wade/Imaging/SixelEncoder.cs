@@ -56,6 +56,7 @@ internal static class SixelEncoder
                             palIdx = FindNearest(color, palette);
                             colorMap[color] = palIdx;
                         }
+
                         indexed[i] = palIdx;
                     }
 
@@ -132,9 +133,11 @@ internal static class SixelEncoder
                 gSum += (colors[j] >> 8) & 0xFF;
                 bSum += colors[j] & 0xFF;
             }
+
             int n = boxes[i].length;
             palette[i] = ((int)(rSum / n) << 16) | ((int)(gSum / n) << 8) | (int)(bSum / n);
         }
+
         return palette;
     }
 
@@ -179,6 +182,7 @@ internal static class SixelEncoder
                 bMax = b;
             }
         }
+
         int rRange = rMax - rMin;
         int gRange = gMax - gMin;
         int bRange = bMax - bMin;
@@ -282,6 +286,7 @@ internal static class SixelEncoder
                             sixel |= 1 << bit;
                         }
                     }
+
                     sixelRow[x] = sixel;
                     if (sixel != 0)
                     {

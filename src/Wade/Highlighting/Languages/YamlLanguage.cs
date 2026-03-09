@@ -135,6 +135,7 @@ internal sealed class YamlLanguage : ILanguage
                 if (line[p] == q) { p++; break; }
                 p++;
             }
+
             spans.Add(new StyledSpan(pos, p - pos, TokenKind.String));
             if (commentIdx >= p)
             {

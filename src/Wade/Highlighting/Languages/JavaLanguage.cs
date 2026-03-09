@@ -46,6 +46,7 @@ internal sealed class JavaLanguage : RegexLanguage
                 return end - pos;
             }
         }
+
         return 0;
     }
 

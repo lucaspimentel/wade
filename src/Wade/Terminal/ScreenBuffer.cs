@@ -121,8 +121,10 @@ internal sealed class ScreenBuffer
                     _back[rowOffset + c + 1] = Cell.WideContinuation;
                 }
             }
+
             c += w;
         }
+
         _dirtyRows[row >> 6] |= 1UL << (row & 63);
     }
 
@@ -158,8 +160,10 @@ internal sealed class ScreenBuffer
                     _back[rowOffset + c + 1] = Cell.WideContinuation;
                 }
             }
+
             c += w;
         }
+
         _dirtyRows[row >> 6] |= 1UL << (row & 63);
     }
 

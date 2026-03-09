@@ -128,6 +128,7 @@ internal sealed class XmlHtmlLanguage : ILanguage
                     spans.Add(new StyledSpan(pos, 1, TokenKind.Punctuation));
                     pos++;
                 }
+
                 continue;
             }
 

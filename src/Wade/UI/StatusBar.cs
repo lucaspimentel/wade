@@ -166,6 +166,7 @@ internal static class StatusBar
             {
                 pos += FormatHelpers.FormatSize(buf[pos..], selectedEntry.Size);
             }
+
             buf[pos++] = ' ';
             buf[pos++] = ' ';
         }

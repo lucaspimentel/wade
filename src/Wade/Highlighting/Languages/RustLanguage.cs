@@ -42,11 +42,14 @@ internal sealed class RustLanguage : RegexLanguage
                     depth++;
                 }
                 else if (line[end] == ']') { depth--; if (depth == 0) { end++; break; } }
+
                 end++;
             }
+
             spans.Add(new StyledSpan(pos, end - pos, TokenKind.Attribute));
             return end - pos;
         }
+
         return 0;
     }
 

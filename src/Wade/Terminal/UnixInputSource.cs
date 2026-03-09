@@ -196,6 +196,7 @@ internal static class VtParser
                     char decoded = DecodeUtf8Char(charSpan);
                     events.Add(new KeyEvent((ConsoleKey)0, decoded, false, false, false));
                 }
+
                 i += seqLen;
             }
             else

@@ -101,6 +101,7 @@ internal sealed class CssLanguage : RegexLanguage
                     // CSS property key
                     spans.Add(new StyledSpan(idStart, pos - idStart, TokenKind.Key));
                 }
+
                 continue;
             }
 

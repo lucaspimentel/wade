@@ -137,6 +137,7 @@ public class ImagePreviewTests
                 writer.Write(g); // green
                 writer.Write(r); // red
             }
+
             if (rowPadding.Length > 0)
             {
                 writer.Write(rowPadding);

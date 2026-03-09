@@ -50,6 +50,7 @@ internal sealed class PythonLanguage : RegexLanguage
                 return end - pos;
             }
         }
+
         return 0;
     }
 
@@ -99,6 +100,7 @@ internal sealed class PythonLanguage : RegexLanguage
                 var last = spans[^1];
                 spans[^1] = new StyledSpan(spanStart, last.Start + last.Length - spanStart, TokenKind.String);
             }
+
             return true;
         }
 
@@ -120,6 +122,7 @@ internal sealed class PythonLanguage : RegexLanguage
                 return closeEnd;
             }
         }
+
         spans.Add(new StyledSpan(pos, line.Length - pos, TokenKind.String));
         return line.Length;
     }

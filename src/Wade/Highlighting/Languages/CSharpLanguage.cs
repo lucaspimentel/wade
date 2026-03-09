@@ -68,12 +68,14 @@ internal sealed class CSharpLanguage : RegexLanguage
 
                 end++;
             }
+
             if (depth == 0)
             {
                 spans.Add(new StyledSpan(pos, end - pos, TokenKind.Attribute));
                 return end - pos;
             }
         }
+
         return 0;
     }
 
@@ -112,6 +114,7 @@ internal sealed class CSharpLanguage : RegexLanguage
                 }
                 p++;
             }
+
             spans.Add(new StyledSpan(pos, p - pos, TokenKind.String));
             end = p;
             return true;
@@ -127,6 +130,7 @@ internal sealed class CSharpLanguage : RegexLanguage
                 var last = spans[^1];
                 spans[^1] = new StyledSpan(pos, last.Length + 1, TokenKind.String);
             }
+
             return true;
         }
 

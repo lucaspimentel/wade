@@ -49,6 +49,7 @@ public class RenderBenchmarks
             var style = row % 2 == 0 ? style1 : style2;
             _buffer.WriteString(row, 0, "Program.cs  binary.dat  src  README.md  Makefile", style, 120);
         }
+
         _buffer.ForceFullRedraw();
     }
 

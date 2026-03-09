@@ -218,6 +218,7 @@ internal sealed class App
                         previewLoader.BeginLoad(_cachedImagePath);
                     }
                 }
+
                 continue;
             }
 
@@ -404,6 +405,7 @@ internal sealed class App
                             _selectedIndex = idx >= 0 ? idx : _selectedIndexPerDir.GetValueOrDefault(_currentPath, 0);
                         }
                     }
+
                     _scrollOffset = 0;
                     ClearPreviewCache(previewLoader, buffer);
                     break;
@@ -894,6 +896,7 @@ internal sealed class App
                         File.Copy(sourcePath, destPath);
                     }
                 }
+
                 success++;
             }
             catch
@@ -984,6 +987,7 @@ internal sealed class App
                     break;
                 }
             }
+
             if (parentSelected < 0)
             {
                 parentSelected = 0;
@@ -1136,6 +1140,7 @@ internal sealed class App
             _inputMode = InputMode.Normal;
             _expandedPreviewScrollOffset = 0;
         }
+
         loader.Cancel();
         _cachedPreviewPath = null;
         _cachedStyledLines = null;
@@ -1626,6 +1631,7 @@ internal sealed class App
                         _goToPathSuggestion = GetPathSuggestion(parent);
                     }
                 }
+
                 break;
             }
 

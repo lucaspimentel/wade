@@ -41,6 +41,7 @@ internal class JavaScriptLanguage : RegexLanguage
                 if (line[p] == '`') { p++; break; }
                 p++;
             }
+
             spans.Add(new StyledSpan(pos, p - pos, TokenKind.String));
             end = p;
             return true;

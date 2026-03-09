@@ -62,6 +62,7 @@ internal sealed class TomlLanguage : ILanguage
                     pos = end + 1;
                     continue;
                 }
+
                 spans.Add(new StyledSpan(pos, 1, TokenKind.Punctuation));
                 pos++;
                 continue;
@@ -100,6 +101,7 @@ internal sealed class TomlLanguage : ILanguage
                         pos++;
                     }
                 }
+
                 int keyEnd = pos;
 
                 // Skip whitespace
@@ -167,6 +169,7 @@ internal sealed class TomlLanguage : ILanguage
                 if (line[p] == quote) { p++; break; }
                 p++;
             }
+
             spans.Add(new StyledSpan(pos, p - pos, TokenKind.String));
             return;
         }

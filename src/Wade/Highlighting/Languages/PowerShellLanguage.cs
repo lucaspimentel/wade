@@ -49,12 +49,14 @@ internal sealed class PowerShellLanguage : RegexLanguage
 
                 end++;
             }
+
             if (depth == 0)
             {
                 spans.Add(new StyledSpan(pos, end - pos, TokenKind.Attribute));
                 return end - pos;
             }
         }
+
         return 0;
     }
 }

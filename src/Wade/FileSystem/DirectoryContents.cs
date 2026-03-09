@@ -57,6 +57,7 @@ internal sealed class DirectoryContents
                 LastModified: default,
                 IsDrive: true));
         }
+
         return list;
     }
 
