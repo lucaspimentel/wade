@@ -52,15 +52,15 @@ internal sealed class TerminalSetup : IDisposable
 
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            _ttyFd = LibC.open("/dev/tty", LibC.O_RDWR);
+            _ttyFd = LibC.Open("/dev/tty", LibC.O_RDWR);
             if (_ttyFd >= 0)
             {
                 _savedTermios = new byte[LibC.TermiosSize];
-                if (LibC.tcgetattr(_ttyFd, _savedTermios) == 0)
+                if (LibC.Tcgetattr(_ttyFd, _savedTermios) == 0)
                 {
                     byte[] raw = (byte[])_savedTermios.Clone();
-                    LibC.cfmakeraw(raw);
-                    LibC.tcsetattr(_ttyFd, LibC.TCSAFLUSH, raw);
+                    LibC.Cfmakeraw(raw);
+                    LibC.Tcsetattr(_ttyFd, LibC.TCSAFLUSH, raw);
                 }
                 else
                 {
@@ -99,7 +99,7 @@ internal sealed class TerminalSetup : IDisposable
 
             if (_savedTermios != null && _ttyFd >= 0)
             {
-                LibC.tcsetattr(_ttyFd, LibC.TCSAFLUSH, _savedTermios);
+                LibC.Tcsetattr(_ttyFd, LibC.TCSAFLUSH, _savedTermios);
             }
         }
 
@@ -115,7 +115,7 @@ internal sealed class TerminalSetup : IDisposable
 
         if (_ttyFd >= 0)
         {
-            LibC.close(_ttyFd);
+            LibC.Close(_ttyFd);
         }
     }
 
@@ -139,13 +139,13 @@ internal sealed class TerminalSetup : IDisposable
             while (total < buf.Length)
             {
                 var pfd = new LibC.PollFd { fd = ttyFd, events = LibC.POLLIN, revents = 0 };
-                int pollResult = LibC.poll(ref pfd, 1, 200);
+                int pollResult = LibC.Poll(ref pfd, 1, 200);
                 if (pollResult <= 0)
                 {
                     break;
                 }
 
-                nint n = LibC.read(ttyFd, buf, total, buf.Length - total);
+                nint n = LibC.Read(ttyFd, buf, total, buf.Length - total);
                 if (n <= 0)
                 {
                     break;

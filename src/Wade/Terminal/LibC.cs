@@ -11,18 +11,36 @@ internal static class LibC
     public const short POLLIN = 0x0001;
 
     [DllImport("libc", SetLastError = true)]
-    public static extern int open(string pathname, int flags);
+    private static extern int open(string pathname, int flags);
 
     [DllImport("libc", SetLastError = true)]
-    public static extern int close(int fd);
+    private static extern int close(int fd);
 
     [DllImport("libc", SetLastError = true)]
-    public static extern nint read(int fd, byte[] buf, nint count);
+    private static extern nint read(int fd, byte[] buf, nint count);
+
+    [DllImport("libc", SetLastError = true)]
+    private static extern int poll(ref PollFd fds, int nfds, int timeout);
+
+    [DllImport("libc", SetLastError = true)]
+    private static extern int tcgetattr(int fd, byte[] termios);
+
+    [DllImport("libc", SetLastError = true)]
+    private static extern int tcsetattr(int fd, int optionalActions, byte[] termios);
+
+    [DllImport("libc")]
+    private static extern void cfmakeraw(byte[] termios);
+
+    public static int Open(string pathname, int flags) => open(pathname, flags);
+
+    public static int Close(int fd) => close(fd);
+
+    public static nint Read(int fd, byte[] buf, nint count) => read(fd, buf, count);
 
     /// <summary>
     /// Read into buf starting at the given offset.
     /// </summary>
-    public static nint read(int fd, byte[] buf, int offset, int count)
+    public static nint Read(int fd, byte[] buf, int offset, int count)
     {
         // Create a temporary buffer for the offset read, then copy back
         var tmp = new byte[count];
@@ -35,17 +53,13 @@ internal static class LibC
         return n;
     }
 
-    [DllImport("libc", SetLastError = true)]
-    public static extern int poll(ref PollFd fds, int nfds, int timeout);
+    public static int Poll(ref PollFd fds, int nfds, int timeout) => poll(ref fds, nfds, timeout);
 
-    [DllImport("libc", SetLastError = true)]
-    public static extern int tcgetattr(int fd, byte[] termios);
+    public static int Tcgetattr(int fd, byte[] termios) => tcgetattr(fd, termios);
 
-    [DllImport("libc", SetLastError = true)]
-    public static extern int tcsetattr(int fd, int optionalActions, byte[] termios);
+    public static int Tcsetattr(int fd, int optionalActions, byte[] termios) => tcsetattr(fd, optionalActions, termios);
 
-    [DllImport("libc")]
-    public static extern void cfmakeraw(byte[] termios);
+    public static void Cfmakeraw(byte[] termios) => cfmakeraw(termios);
 
     [StructLayout(LayoutKind.Sequential)]
     public struct PollFd

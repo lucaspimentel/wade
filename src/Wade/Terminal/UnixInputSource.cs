@@ -14,7 +14,7 @@ internal sealed class UnixInputSource : IInputSource
 
     public UnixInputSource()
     {
-        _fd = LibC.open("/dev/tty", LibC.O_RDONLY);
+        _fd = LibC.Open("/dev/tty", LibC.O_RDONLY);
         if (_fd < 0)
         {
             throw new InvalidOperationException("Failed to open /dev/tty for reading");
@@ -38,7 +38,7 @@ internal sealed class UnixInputSource : IInputSource
 
             // Blocks until at least 1 byte available (VMIN=1, VTIME=0),
             // then returns all available bytes up to buffer size.
-            int bytesRead = (int)LibC.read(_fd, _buf, _buf.Length);
+            int bytesRead = (int)LibC.Read(_fd, _buf, _buf.Length);
 
             if (bytesRead <= 0)
             {
@@ -71,7 +71,7 @@ internal sealed class UnixInputSource : IInputSource
 
         if (_fd >= 0)
         {
-            LibC.close(_fd);
+            LibC.Close(_fd);
         }
     }
 
@@ -82,14 +82,14 @@ internal sealed class UnixInputSource : IInputSource
     private int PollAndRead(byte[] buf, int offset, int timeoutMs)
     {
         var pfd = new LibC.PollFd { fd = _fd, events = LibC.POLLIN };
-        int ret = LibC.poll(ref pfd, 1, timeoutMs);
+        int ret = LibC.Poll(ref pfd, 1, timeoutMs);
 
         if (ret <= 0 || (pfd.revents & LibC.POLLIN) == 0)
         {
             return 0;
         }
 
-        nint n = LibC.read(_fd, buf, offset, buf.Length - offset);
+        nint n = LibC.Read(_fd, buf, offset, buf.Length - offset);
         return n > 0 ? (int)n : 0;
     }
 }
