@@ -8,26 +8,38 @@ internal static class FormatHelpers
     {
         if (bytes < 1024)
         {
-            bytes.TryFormat(buf, out int n);
-            " B".AsSpan().CopyTo(buf[n..]);
-            return n + 2;
+            if (!bytes.TryFormat(buf, out int n))
+            {
+                return 0;
+            }
+
+            return TryAppend(buf, n, " B");
         }
         if (bytes < 1024 * 1024)
         {
-            (bytes / 1024.0).TryFormat(buf, out int n, "F1");
-            " KB".AsSpan().CopyTo(buf[n..]);
-            return n + 3;
+            if (!(bytes / 1024.0).TryFormat(buf, out int n, "F1"))
+            {
+                return 0;
+            }
+
+            return TryAppend(buf, n, " KB");
         }
         if (bytes < 1024L * 1024 * 1024)
         {
-            (bytes / (1024.0 * 1024.0)).TryFormat(buf, out int n, "F1");
-            " MB".AsSpan().CopyTo(buf[n..]);
-            return n + 3;
+            if (!(bytes / (1024.0 * 1024.0)).TryFormat(buf, out int n, "F1"))
+            {
+                return 0;
+            }
+
+            return TryAppend(buf, n, " MB");
         }
         {
-            (bytes / (1024.0 * 1024.0 * 1024.0)).TryFormat(buf, out int n, "F1");
-            " GB".AsSpan().CopyTo(buf[n..]);
-            return n + 3;
+            if (!(bytes / (1024.0 * 1024.0 * 1024.0)).TryFormat(buf, out int n, "F1"))
+            {
+                return 0;
+            }
+
+            return TryAppend(buf, n, " GB");
         }
     }
 
@@ -48,6 +60,16 @@ internal static class FormatHelpers
             // Short: "MMM dd"
             return dt.TryFormat(buf, out int n, "MMM dd", CultureInfo.InvariantCulture) ? n : 0;
         }
+        return 0;
+    }
+
+    private static int TryAppend(Span<char> buf, int offset, ReadOnlySpan<char> suffix)
+    {
+        if (suffix.TryCopyTo(buf[offset..]))
+        {
+            return offset + suffix.Length;
+        }
+
         return 0;
     }
 }

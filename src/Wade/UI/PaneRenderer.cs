@@ -87,7 +87,7 @@ internal static class PaneRenderer
         int nameWidth = pane.Width - detailWidth;
 
         Span<char> sizeBuf = stackalloc char[SizeWidth];
-        Span<char> tempBuf = stackalloc char[SizeWidth];
+        Span<char> tempBuf = stackalloc char[32];
         Span<char> dateBuf = stackalloc char[FullDateWidth];
 
         for (int row = 0; row < pane.Height; row++)
