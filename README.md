@@ -1,5 +1,7 @@
 # wade
 
+[![CI](https://github.com/lucaspimentel/wade/actions/workflows/ci.yml/badge.svg)](https://github.com/lucaspimentel/wade/actions/workflows/ci.yml) [![Release](https://github.com/lucaspimentel/wade/actions/workflows/release.yml/badge.svg)](https://github.com/lucaspimentel/wade/actions/workflows/release.yml)
+
 A terminal file browser with Miller columns, written in C#.
 
 Pre-built binaries support Windows and Linux. macOS is supported when built from source.
