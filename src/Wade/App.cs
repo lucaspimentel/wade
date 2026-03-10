@@ -1468,7 +1468,12 @@ internal sealed class App
         FileSystemEntry? selectedEntry = entries.Count > 0 && _selectedIndex < entries.Count
             ? entries[_selectedIndex]
             : null;
-        string displayPath = _currentPath == DirectoryContents.DrivesPath ? "Drives" : _currentPath;
+        string displayPath = _cachedPreviewPath ?? _currentPath;
+        if (displayPath == DirectoryContents.DrivesPath)
+        {
+            displayPath = "Drives";
+        }
+
         StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count, _directoryContents.SortMode, _directoryContents.SortAscending, _clipboardPaths.Count, _clipboardIsCut);
     }
 
