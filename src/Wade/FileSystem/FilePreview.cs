@@ -11,7 +11,7 @@ internal static class FilePreview
         new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             // Images
-            ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico", ".bmp", ".tga", ".tiff", ".pbm",
+            ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico", ".bmp", ".tga", ".tiff", ".pbm", ".pdn",
             // Documents
             ".pdf",
             // Archives
@@ -102,6 +102,7 @@ internal static class FilePreview
             [".webp"] = "Image",
             [".ico"] = "Image",
             [".bmp"] = "Image",
+            [".pdn"] = "Image",
             // Archives
             [".zip"] = "Archive",
             [".tar"] = "Archive",
