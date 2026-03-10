@@ -11,4 +11,5 @@ internal enum InputMode
     Help,
     Config,
     Properties,
+    ActionPalette,
 }

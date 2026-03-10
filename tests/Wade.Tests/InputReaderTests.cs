@@ -181,6 +181,15 @@ public class InputReaderTests
         Assert.Equal(AppAction.OpenTerminal, InputReader.MapKey(evt));
     }
 
+    // ── Action palette ──────────────────────────────────────────────────────
+
+    [Fact]
+    public void MapKey_CtrlP_ReturnsShowActionPalette()
+    {
+        var evt = new KeyEvent(ConsoleKey.P, '\x10', false, false, true);
+        Assert.Equal(AppAction.ShowActionPalette, InputReader.MapKey(evt));
+    }
+
     // ── Quit variants ─────────────────────────────────────────────────────
 
     [Fact]

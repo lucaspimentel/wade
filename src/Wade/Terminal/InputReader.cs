@@ -33,12 +33,18 @@ internal enum AppAction
     OpenTerminal,
     QuitNoCd,
     ShowProperties,
+    ShowActionPalette,
 }
 
 internal static class InputReader
 {
     public static AppAction MapKey(KeyEvent key)
     {
+        if (key.Key == ConsoleKey.P && key.Control && !key.Shift)
+        {
+            return AppAction.ShowActionPalette;
+        }
+
         if (key.KeyChar == '?')
         {
             return AppAction.ShowHelp;

@@ -37,6 +37,7 @@ internal static class HelpOverlay
         ("F7",                  "Create new directory"),
         ("i",                   "Properties"),
         (",",                   "Configuration"),
+        ("Ctrl+P",             "Action palette"),
         ("?",                   "Show help"),
         ("q / Escape",          "Quit"),
         ("Q",                   "Quit without cd"),

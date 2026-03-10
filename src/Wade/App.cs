@@ -52,6 +52,12 @@ internal sealed class App
     private TextInput? _goToPathInput;
     private string? _goToPathSuggestion;
 
+    // Action palette state
+    private int _actionPaletteSelectedIndex;
+    private TextInput? _actionPaletteInput;
+    private (string Label, string Shortcut, AppAction Action)[]? _actionPaletteItems;
+    private int _actionPaletteScrollOffset;
+
     // Config dialog state
     private int _configSelectedIndex;
     private bool _configShowIcons;
@@ -260,7 +266,7 @@ internal sealed class App
                 }
 
                 // Discard mouse events while a modal dialog is open
-                if (_inputMode is InputMode.Help or InputMode.GoToPath or InputMode.TextInput or InputMode.Confirm or InputMode.Config or InputMode.Properties)
+                if (_inputMode is InputMode.Help or InputMode.GoToPath or InputMode.TextInput or InputMode.Confirm or InputMode.Config or InputMode.Properties or InputMode.ActionPalette)
                 {
                     continue;
                 }
@@ -332,6 +338,10 @@ internal sealed class App
 
                 case InputMode.Config:
                     HandleConfigKey(keyEvent, previewLoader, buffer);
+                    continue;
+
+                case InputMode.ActionPalette:
+                    HandleActionPaletteKey(keyEvent, previewLoader, buffer);
                     continue;
 
                 case InputMode.Normal:
@@ -466,6 +476,10 @@ internal sealed class App
                     {
                         _inputMode = InputMode.Properties;
                     }
+                    break;
+
+                case AppAction.ShowActionPalette:
+                    ShowActionPalette();
                     break;
 
                 case AppAction.ShowConfig:
@@ -1102,6 +1116,9 @@ internal sealed class App
                 {
                     PropertiesOverlay.Render(buffer, width, height, selectedEntry);
                 }
+                break;
+            case InputMode.ActionPalette:
+                RenderActionPalette(buffer, width, height);
                 break;
         }
     }
@@ -1969,6 +1986,611 @@ internal sealed class App
 
         var inputStyle = new CellStyle(new Color(200, 200, 200), DialogBox.BgColor);
         _activeTextInput?.Render(buffer, content.Top, content.Left, content.Width, inputStyle);
+    }
+
+    // ── Action palette ─────────────────────────────────────────────────────
+
+    private void ShowActionPalette()
+    {
+        _inputMode = InputMode.ActionPalette;
+        _actionPaletteSelectedIndex = 0;
+        _actionPaletteScrollOffset = 0;
+        _actionPaletteInput = new TextInput();
+        _actionPaletteItems = BuildActionPaletteItems();
+    }
+
+    private (string Label, string Shortcut, AppAction Action)[] BuildActionPaletteItems()
+    {
+        var items = new List<(string Label, string Shortcut, AppAction Action)>
+        {
+            ("Open with default app", "o", AppAction.OpenExternal),
+            ("Rename", "F2", AppAction.Rename),
+            ("Delete", "Del", AppAction.Delete),
+            ("Copy", "c", AppAction.Copy),
+            ("Cut", "x", AppAction.Cut),
+        };
+
+        if (_clipboardPaths.Count > 0)
+        {
+            items.Add(("Paste", "p", AppAction.Paste));
+        }
+
+        items.Add(("New file", "Shift+N", AppAction.NewFile));
+        items.Add(("New directory", "F7", AppAction.NewDirectory));
+        items.Add(("Properties", "i", AppAction.ShowProperties));
+        items.Add(("Toggle hidden files", ".", AppAction.ToggleHiddenFiles));
+        items.Add(("Cycle sort mode", "s", AppAction.CycleSortMode));
+        items.Add(("Reverse sort direction", "S", AppAction.ToggleSortDirection));
+        items.Add(("Go to path", "g", AppAction.GoToPath));
+        items.Add(("Search / filter", "/", AppAction.Search));
+        items.Add(("Open terminal here", "Ctrl+T", AppAction.OpenTerminal));
+        items.Add(("Configuration", ",", AppAction.ShowConfig));
+        items.Add(("Help", "?", AppAction.ShowHelp));
+        items.Add(("Refresh", "Ctrl+R", AppAction.Refresh));
+
+        return items.ToArray();
+    }
+
+    private List<(string Label, string Shortcut, AppAction Action)> GetFilteredActionPaletteItems()
+    {
+        if (_actionPaletteItems is null)
+        {
+            return [];
+        }
+
+        string filter = _actionPaletteInput?.Value ?? "";
+
+        if (string.IsNullOrEmpty(filter))
+        {
+            return [.. _actionPaletteItems];
+        }
+
+        var result = new List<(string Label, string Shortcut, AppAction Action)>();
+
+        foreach (var item in _actionPaletteItems)
+        {
+            if (item.Label.Contains(filter, StringComparison.OrdinalIgnoreCase))
+            {
+                result.Add(item);
+            }
+        }
+
+        return result;
+    }
+
+    private void HandleActionPaletteKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer)
+    {
+        var filtered = GetFilteredActionPaletteItems();
+
+        switch (key.Key)
+        {
+            case ConsoleKey.Escape:
+                _inputMode = InputMode.Normal;
+                _actionPaletteInput = null;
+                _actionPaletteItems = null;
+                break;
+
+            case ConsoleKey.Enter:
+                if (filtered.Count > 0 && _actionPaletteSelectedIndex < filtered.Count)
+                {
+                    var selectedAction = filtered[_actionPaletteSelectedIndex].Action;
+                    _inputMode = InputMode.Normal;
+                    _actionPaletteInput = null;
+                    _actionPaletteItems = null;
+                    DispatchActionPaletteAction(selectedAction, previewLoader, buffer);
+                }
+
+                break;
+
+            case ConsoleKey.UpArrow:
+                if (_actionPaletteSelectedIndex > 0)
+                {
+                    _actionPaletteSelectedIndex--;
+                }
+
+                break;
+
+            case ConsoleKey.DownArrow:
+                if (_actionPaletteSelectedIndex < filtered.Count - 1)
+                {
+                    _actionPaletteSelectedIndex++;
+                }
+
+                break;
+
+            case ConsoleKey.PageUp:
+            {
+                int visibleCount = Math.Min(18, filtered.Count);
+                _actionPaletteSelectedIndex = Math.Max(0, _actionPaletteSelectedIndex - visibleCount);
+                break;
+            }
+
+            case ConsoleKey.PageDown:
+            {
+                int visibleCount = Math.Min(18, filtered.Count);
+                _actionPaletteSelectedIndex = Math.Min(filtered.Count - 1, _actionPaletteSelectedIndex + visibleCount);
+                break;
+            }
+
+            case ConsoleKey.Home:
+                _actionPaletteSelectedIndex = 0;
+                break;
+
+            case ConsoleKey.End:
+                _actionPaletteSelectedIndex = Math.Max(0, filtered.Count - 1);
+                break;
+
+            case ConsoleKey.Backspace:
+                _actionPaletteInput!.DeleteBackward();
+                _actionPaletteSelectedIndex = 0;
+                _actionPaletteScrollOffset = 0;
+                break;
+
+            case ConsoleKey.Delete:
+                _actionPaletteInput!.DeleteForward();
+                _actionPaletteSelectedIndex = 0;
+                _actionPaletteScrollOffset = 0;
+                break;
+
+            case ConsoleKey.LeftArrow:
+                _actionPaletteInput!.MoveCursorLeft();
+                break;
+
+            case ConsoleKey.RightArrow:
+                _actionPaletteInput!.MoveCursorRight();
+                break;
+
+            default:
+                if (key.Key == ConsoleKey.K && key.Control)
+                {
+                    if (_actionPaletteSelectedIndex > 0)
+                    {
+                        _actionPaletteSelectedIndex--;
+                    }
+                }
+                else if (key.Key == ConsoleKey.J && key.Control)
+                {
+                    if (_actionPaletteSelectedIndex < filtered.Count - 1)
+                    {
+                        _actionPaletteSelectedIndex++;
+                    }
+                }
+                else if (key.KeyChar >= ' ')
+                {
+                    _actionPaletteInput!.InsertChar(key.KeyChar);
+                    _actionPaletteSelectedIndex = 0;
+                    _actionPaletteScrollOffset = 0;
+                }
+
+                break;
+        }
+
+        // Adjust scroll offset to keep selection visible
+        filtered = GetFilteredActionPaletteItems();
+
+        if (filtered.Count > 0)
+        {
+            _actionPaletteSelectedIndex = Math.Clamp(_actionPaletteSelectedIndex, 0, filtered.Count - 1);
+        }
+        else
+        {
+            _actionPaletteSelectedIndex = 0;
+        }
+
+        int maxVisible = 18;
+
+        if (_actionPaletteSelectedIndex < _actionPaletteScrollOffset)
+        {
+            _actionPaletteScrollOffset = _actionPaletteSelectedIndex;
+        }
+        else if (_actionPaletteSelectedIndex >= _actionPaletteScrollOffset + maxVisible)
+        {
+            _actionPaletteScrollOffset = _actionPaletteSelectedIndex - maxVisible + 1;
+        }
+    }
+
+    private void DispatchActionPaletteAction(AppAction action, PreviewLoader previewLoader, ScreenBuffer buffer)
+    {
+        var entries = GetVisibleEntries();
+
+        switch (action)
+        {
+            case AppAction.OpenExternal:
+                if (entries.Count > 0 && _selectedIndex < entries.Count)
+                {
+                    var entry = entries[_selectedIndex];
+
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo(entry.FullPath) { UseShellExecute = true });
+                        ShowNotification($"Opened '{entry.Name}'", NotificationKind.Info);
+                    }
+                    catch (Exception ex)
+                    {
+                        ShowNotification($"Error: {ex.Message}", NotificationKind.Error);
+                    }
+                }
+
+                break;
+
+            case AppAction.Rename:
+                if (entries.Count > 0 && _selectedIndex < entries.Count)
+                {
+                    var entry = entries[_selectedIndex];
+                    ShowTextInputDialog("Rename", entry.Name, newName =>
+                    {
+                        if (string.IsNullOrWhiteSpace(newName) || newName == entry.Name)
+                        {
+                            return;
+                        }
+
+                        string parentDir = Path.GetDirectoryName(entry.FullPath)!;
+                        string newPath = Path.Combine(parentDir, newName);
+
+                        if (Path.Exists(newPath))
+                        {
+                            ShowNotification($"'{newName}' already exists", NotificationKind.Error);
+                            return;
+                        }
+
+                        try
+                        {
+                            if (entry.IsDirectory)
+                            {
+                                Directory.Move(entry.FullPath, newPath);
+                            }
+                            else
+                            {
+                                File.Move(entry.FullPath, newPath);
+                            }
+
+                            _directoryContents.Invalidate(_currentPath);
+                            InvalidateFilteredEntries();
+                            ShowNotification($"Renamed to '{newName}'", NotificationKind.Success);
+
+                            var updatedEntries = GetVisibleEntries();
+                            for (int i = 0; i < updatedEntries.Count; i++)
+                            {
+                                if (updatedEntries[i].Name.Equals(newName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    _selectedIndex = i;
+                                    break;
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            ShowNotification($"Rename failed: {ex.Message}", NotificationKind.Error);
+                        }
+                    });
+                }
+
+                break;
+
+            case AppAction.Delete:
+                if (entries.Count > 0)
+                {
+                    List<string> targets;
+                    string prompt;
+
+                    if (_markedPaths.Count > 0)
+                    {
+                        targets = [.. _markedPaths];
+                        prompt = $"Delete {targets.Count} item(s)?";
+                    }
+                    else if (_selectedIndex < entries.Count)
+                    {
+                        targets = [entries[_selectedIndex].FullPath];
+                        prompt = $"Delete '{entries[_selectedIndex].Name}'?";
+                    }
+                    else
+                    {
+                        break;
+                    }
+
+                    bool isPermanent = !OperatingSystem.IsWindows();
+
+                    if (_config.ConfirmDeleteEnabled)
+                    {
+                        string title = isPermanent ? "Permanently Delete" : "Delete";
+                        string warning = isPermanent ? "\nThis cannot be undone!" : "";
+                        ShowConfirmDialog(title, prompt + warning, () => ExecuteDelete(targets, false));
+                    }
+                    else
+                    {
+                        ExecuteDelete(targets, false);
+                    }
+                }
+
+                break;
+
+            case AppAction.Copy:
+                if (_markedPaths.Count > 0)
+                {
+                    _clipboardPaths.Clear();
+                    _clipboardPaths.AddRange(_markedPaths);
+                    _clipboardIsCut = false;
+                    ShowNotification($"Copied {_markedPaths.Count} item(s)", NotificationKind.Info);
+                }
+                else if (entries.Count > 0 && _selectedIndex < entries.Count)
+                {
+                    _clipboardPaths.Clear();
+                    _clipboardPaths.Add(entries[_selectedIndex].FullPath);
+                    _clipboardIsCut = false;
+                    ShowNotification($"Copied '{entries[_selectedIndex].Name}'", NotificationKind.Info);
+                }
+
+                break;
+
+            case AppAction.Cut:
+                if (_markedPaths.Count > 0)
+                {
+                    _clipboardPaths.Clear();
+                    _clipboardPaths.AddRange(_markedPaths);
+                    _clipboardIsCut = true;
+                    ShowNotification($"Cut {_markedPaths.Count} item(s)", NotificationKind.Info);
+                }
+                else if (entries.Count > 0 && _selectedIndex < entries.Count)
+                {
+                    _clipboardPaths.Clear();
+                    _clipboardPaths.Add(entries[_selectedIndex].FullPath);
+                    _clipboardIsCut = true;
+                    ShowNotification($"Cut '{entries[_selectedIndex].Name}'", NotificationKind.Info);
+                }
+
+                break;
+
+            case AppAction.Paste:
+                if (_clipboardPaths.Count == 0)
+                {
+                    ShowNotification("Clipboard is empty", NotificationKind.Error);
+                }
+                else
+                {
+                    int conflicts = _clipboardPaths.Count(p => Path.Exists(Path.Combine(_currentPath, Path.GetFileName(p))));
+
+                    if (conflicts > 0)
+                    {
+                        ShowConfirmDialog("Overwrite", $"{conflicts} item(s) already exist. Overwrite?", () => ExecutePaste(overwrite: true));
+                    }
+                    else
+                    {
+                        ExecutePaste(overwrite: false);
+                    }
+                }
+
+                break;
+
+            case AppAction.NewFile:
+                ShowTextInputDialog("New File", "", name =>
+                {
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        return;
+                    }
+
+                    if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+                    {
+                        ShowNotification("Invalid file name", NotificationKind.Error);
+                        return;
+                    }
+
+                    string destPath = Path.Combine(_currentPath, name);
+
+                    if (Path.Exists(destPath))
+                    {
+                        ShowNotification($"'{name}' already exists", NotificationKind.Error);
+                        return;
+                    }
+
+                    try
+                    {
+                        File.Create(destPath).Dispose();
+                        _directoryContents.Invalidate(_currentPath);
+                        InvalidateFilteredEntries();
+                        ShowNotification($"Created '{name}'", NotificationKind.Success);
+
+                        var updatedEntries = GetVisibleEntries();
+                        for (int i = 0; i < updatedEntries.Count; i++)
+                        {
+                            if (updatedEntries[i].Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                            {
+                                _selectedIndex = i;
+                                break;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        ShowNotification($"Create failed: {ex.Message}", NotificationKind.Error);
+                    }
+                });
+                break;
+
+            case AppAction.NewDirectory:
+                ShowTextInputDialog("New Directory", "", name =>
+                {
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        return;
+                    }
+
+                    if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+                    {
+                        ShowNotification("Invalid directory name", NotificationKind.Error);
+                        return;
+                    }
+
+                    string destPath = Path.Combine(_currentPath, name);
+
+                    if (Path.Exists(destPath))
+                    {
+                        ShowNotification($"'{name}' already exists", NotificationKind.Error);
+                        return;
+                    }
+
+                    try
+                    {
+                        Directory.CreateDirectory(destPath);
+                        _directoryContents.Invalidate(_currentPath);
+                        InvalidateFilteredEntries();
+                        ShowNotification($"Created '{name}'", NotificationKind.Success);
+
+                        var updatedEntries = GetVisibleEntries();
+                        for (int i = 0; i < updatedEntries.Count; i++)
+                        {
+                            if (updatedEntries[i].Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                            {
+                                _selectedIndex = i;
+                                break;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        ShowNotification($"Create failed: {ex.Message}", NotificationKind.Error);
+                    }
+                });
+                break;
+
+            case AppAction.ShowProperties:
+                if (entries.Count > 0 && _selectedIndex < entries.Count)
+                {
+                    _inputMode = InputMode.Properties;
+                }
+
+                break;
+
+            case AppAction.ToggleHiddenFiles:
+                _directoryContents.ShowHiddenFiles = !_directoryContents.ShowHiddenFiles;
+                _directoryContents.InvalidateAll();
+                ClearPreviewCache(previewLoader, buffer);
+                break;
+
+            case AppAction.CycleSortMode:
+                _directoryContents.SortMode = _directoryContents.SortMode switch
+                {
+                    SortMode.Name => SortMode.Modified,
+                    SortMode.Modified => SortMode.Size,
+                    SortMode.Size => SortMode.Extension,
+                    _ => SortMode.Name,
+                };
+                _directoryContents.InvalidateAll();
+                ClearPreviewCache(previewLoader, buffer);
+                break;
+
+            case AppAction.ToggleSortDirection:
+                _directoryContents.SortAscending = !_directoryContents.SortAscending;
+                _directoryContents.InvalidateAll();
+                ClearPreviewCache(previewLoader, buffer);
+                break;
+
+            case AppAction.GoToPath:
+                _inputMode = InputMode.GoToPath;
+                _goToPathInput = new TextInput();
+                _goToPathSuggestion = null;
+                break;
+
+            case AppAction.Search:
+                _inputMode = InputMode.Search;
+                _searchInput = new TextInput(_searchFilter);
+                break;
+
+            case AppAction.OpenTerminal:
+                try
+                {
+                    OpenTerminalHere(_currentPath);
+                    ShowNotification("Opened terminal", NotificationKind.Info);
+                }
+                catch (Exception ex)
+                {
+                    ShowNotification($"Error: {ex.Message}", NotificationKind.Error);
+                }
+
+                break;
+
+            case AppAction.ShowConfig:
+                ShowConfigDialog();
+                break;
+
+            case AppAction.ShowHelp:
+                _inputMode = InputMode.Help;
+                break;
+
+            case AppAction.Refresh:
+                _notification = null;
+                _markedPaths.Clear();
+                ClearSearchFilter();
+                _directoryContents.InvalidateAll();
+                ClearPreviewCache(previewLoader, buffer);
+                buffer.ForceFullRedraw();
+                break;
+        }
+    }
+
+    private void RenderActionPalette(ScreenBuffer buffer, int width, int height)
+    {
+        var filtered = GetFilteredActionPaletteItems();
+        int contentWidth = Math.Min(60, width - 8);
+        int itemRows = Math.Min(filtered.Count, 18);
+        int contentHeight = itemRows + 2; // 1 row for text input + 1 separator + item rows
+        const string Footer = "[↑↓] Navigate  [Enter] Select  [Esc] Cancel";
+
+        var content = DialogBox.Render(
+            buffer, width, height,
+            Math.Max(contentWidth, Footer.Length),
+            contentHeight,
+            title: "Action Palette",
+            footer: Footer);
+
+        // Row 0: text input with "> " prefix
+        var prefixStyle = new CellStyle(new Color(220, 220, 100), DialogBox.BgColor);
+        var inputStyle = new CellStyle(new Color(200, 200, 200), DialogBox.BgColor);
+        buffer.WriteString(content.Top, content.Left, "> ", prefixStyle);
+        _actionPaletteInput?.Render(buffer, content.Top, content.Left + 2, content.Width - 2, inputStyle);
+
+        // Row 1: separator
+        var separatorStyle = new CellStyle(DialogBox.BorderColor, DialogBox.BgColor, Dim: true);
+        for (int c = 0; c < content.Width; c++)
+        {
+            buffer.Put(content.Top + 1, content.Left + c, '─', separatorStyle);
+        }
+
+        // Rows 2+: filtered items
+        var normalStyle = new CellStyle(new Color(200, 200, 200), DialogBox.BgColor);
+        var selectedStyle = new CellStyle(new Color(20, 20, 35), new Color(200, 200, 200));
+        var shortcutStyle = new CellStyle(new Color(120, 120, 140), DialogBox.BgColor);
+        var shortcutSelectedStyle = new CellStyle(new Color(20, 20, 35), new Color(200, 200, 200));
+
+        int visibleCount = content.Height - 2;
+
+        for (int i = 0; i < visibleCount; i++)
+        {
+            int itemIndex = _actionPaletteScrollOffset + i;
+
+            if (itemIndex >= filtered.Count)
+            {
+                break;
+            }
+
+            var (label, shortcut, _) = filtered[itemIndex];
+            bool selected = itemIndex == _actionPaletteSelectedIndex;
+            int row = content.Top + 2 + i;
+
+            CellStyle labelStyle = selected ? selectedStyle : normalStyle;
+            CellStyle scStyle = selected ? shortcutSelectedStyle : shortcutStyle;
+
+            // Fill entire row with selected background if selected
+            if (selected)
+            {
+                buffer.FillRow(row, content.Left, content.Width, ' ', selectedStyle);
+            }
+
+            buffer.WriteString(row, content.Left + 1, label, labelStyle, content.Width - shortcut.Length - 3);
+
+            int shortcutCol = content.Left + content.Width - shortcut.Length - 1;
+            buffer.WriteString(row, shortcutCol, shortcut, scStyle);
+        }
     }
 
     private void ShowConfigDialog()

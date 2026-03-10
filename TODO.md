@@ -254,58 +254,13 @@ Interop with system clipboard so files copied in wade can be pasted in Explorer/
 
 ---
 
-## Command palette and file finder
+## ~~Action palette~~ ✅
 
-Keyboard shortcuts are getting crowded. Add two searchable palette-style dialogs:
+Implemented: Press `Ctrl+P` to open a searchable action palette. Lists all available actions with their keyboard shortcuts. Type to filter by case-insensitive substring match. Up/Down to navigate, Enter to execute the selected action, Escape to cancel. Context-sensitive: Paste only shown when clipboard is non-empty. Scrolling supported for filtered results.
 
-- **`Ctrl+Shift+P` — Action palette:** Lists all available actions. User types to filter, Up/Down to navigate, Enter to execute.
-- **`Ctrl+P` — File finder:** Lists files in the current directory tree. User types to filter by name, Up/Down to navigate, Enter to open.
+## File finder (`Ctrl+P`)
 
-Both share the same UI pattern: a text input at the top with a filtered list of results below it.
-
-### Shared UI: searchable list dialog
-
-**Layout** (modal overlay via `DialogBox`):
-```
-┌─── Action Palette ──────────────┐
-│  > search text here_             │
-│ ─────────────────────────────── │
-│   ● Open external          o    │  ← highlighted (selected)
-│     Rename                 F2   │
-│     Delete                 Del  │
-│     Copy                   c    │
-│     ...                         │
-│                                 │
-│ [↑↓] Navigate [Enter] Select   │
-└─────────────────────────────────┘
-```
-
-**Behavior:**
-- Text input at top filters the list in real-time (case-insensitive substring match, same pattern as Search mode)
-- Up/Down (or `Ctrl+N`/`Ctrl+P`) move selection in the filtered list
-- Enter executes the selected item; Escape closes the dialog
-- List scrolls if results exceed visible height (track a scroll offset like expanded preview does)
-- Empty filter shows all items
-
-**Implementation — shared component:**
-- New class `UI/SearchableListDialog.cs` (or inline in App.cs following existing patterns)
-- Generic enough to accept a list of `(string Label, string? RightText)` items and return the selected index
-- Uses `TextInput` widget for the search box (already exists, used by Search/GoToPath/Rename)
-- Rendering: `DialogBox.Render()` for chrome, `TextInput` at `content.Top`, separator line, then filtered item rows starting at `content.Top + 2`
-- Selected row highlighted with inverse style (same as Config dialog)
-
-### Action palette (`Ctrl+Shift+P`)
-
-- Add `InputMode.ActionPalette` to enum (`Terminal/InputMode.cs`)
-- Add `AppAction.ShowActionPalette` + key mapping in `InputReader.MapKey()` (`Terminal/InputReader.cs`)
-- State: `_actionPaletteSelectedIndex`, `_actionPaletteTextInput` (TextInput instance), filtered list of actions
-- Item list: array of `(string Label, string Shortcut, AppAction Action)` tuples, built at open time — context-sensitive (e.g. Paste only when clipboard populated)
-- Initial action set:
-  - Open external (`o`), Rename (`F2`), Delete (`Del`), Copy (`c`), Cut (`x`), Paste (`p`), New file (`Shift+N`), New directory (`F7`), Properties (`i`), Toggle hidden files (`.`), Sort mode (`s`), Go to path (`g`), Open terminal here (`Ctrl+T`), Configuration (`,`), Help (`?`), Refresh (`Ctrl+R`)
-- On Enter: set `_inputMode = InputMode.Normal`, then dispatch the selected `AppAction` through the existing action handlers
-- Input handler: `HandleActionPaletteKey()` — typing updates filter and resets selection to 0; Up/Down navigate; Enter dispatches; Escape cancels
-
-### File finder (`Ctrl+P`)
+Searchable file finder dialog. User types to filter files in the current directory tree by name, Up/Down to navigate, Enter to open.
 
 - Add `InputMode.FileFinder` to enum
 - Add `AppAction.ShowFileFinder` + key mapping in `InputReader.MapKey()`
@@ -314,16 +269,7 @@ Both share the same UI pattern: a text input at the top with a filtered list of 
 - Display: relative path from `_currentPath` as label, parent directory as right-aligned hint
 - On Enter: navigate to the selected file's parent directory and select the file (same as GoToPath does for file targets)
 - Consider async enumeration to avoid blocking on large trees — could show "[scanning…]" while building the list, similar to preview loading pattern
-
-### Implementation steps
-
-1. Add `InputMode.ActionPalette` and `InputMode.FileFinder` to enum
-2. Add `AppAction.ShowActionPalette` and `AppAction.ShowFileFinder` + key mappings (`Ctrl+Shift+P`, `Ctrl+P`)
-3. Build the searchable list dialog rendering (shared between both palettes)
-4. Implement `HandleActionPaletteKey()` and `RenderActionPalette()`
-5. Implement `HandleFileFinderKey()` and `RenderFileFinder()` (with async file enumeration)
-6. Update `HelpOverlay.cs` keybindings array
-7. Update Config dialog if adding any new settings
+- Shares the same UI pattern as the action palette (text input at top, filtered list below)
 
 ---
 
