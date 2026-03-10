@@ -258,6 +258,94 @@ Interop with system clipboard so files copied in wade can be pasted in Explorer/
 
 ---
 
+## Command palette and file finder
+
+Keyboard shortcuts are getting crowded. Add two searchable palette-style dialogs:
+
+- **`Ctrl+Shift+P` — Action palette:** Lists all available actions. User types to filter, Up/Down to navigate, Enter to execute.
+- **`Ctrl+P` — File finder:** Lists files in the current directory tree. User types to filter by name, Up/Down to navigate, Enter to open.
+
+Both share the same UI pattern: a text input at the top with a filtered list of results below it.
+
+### Shared UI: searchable list dialog
+
+**Layout** (modal overlay via `DialogBox`):
+```
+┌─── Action Palette ──────────────┐
+│  > search text here_             │
+│ ─────────────────────────────── │
+│   ● Open external          o    │  ← highlighted (selected)
+│     Rename                 F2   │
+│     Delete                 Del  │
+│     Copy                   c    │
+│     ...                         │
+│                                 │
+│ [↑↓] Navigate [Enter] Select   │
+└─────────────────────────────────┘
+```
+
+**Behavior:**
+- Text input at top filters the list in real-time (case-insensitive substring match, same pattern as Search mode)
+- Up/Down (or `Ctrl+N`/`Ctrl+P`) move selection in the filtered list
+- Enter executes the selected item; Escape closes the dialog
+- List scrolls if results exceed visible height (track a scroll offset like expanded preview does)
+- Empty filter shows all items
+
+**Implementation — shared component:**
+- New class `UI/SearchableListDialog.cs` (or inline in App.cs following existing patterns)
+- Generic enough to accept a list of `(string Label, string? RightText)` items and return the selected index
+- Uses `TextInput` widget for the search box (already exists, used by Search/GoToPath/Rename)
+- Rendering: `DialogBox.Render()` for chrome, `TextInput` at `content.Top`, separator line, then filtered item rows starting at `content.Top + 2`
+- Selected row highlighted with inverse style (same as Config dialog)
+
+### Action palette (`Ctrl+Shift+P`)
+
+- Add `InputMode.ActionPalette` to enum (`Terminal/InputMode.cs`)
+- Add `AppAction.ShowActionPalette` + key mapping in `InputReader.MapKey()` (`Terminal/InputReader.cs`)
+- State: `_actionPaletteSelectedIndex`, `_actionPaletteTextInput` (TextInput instance), filtered list of actions
+- Item list: array of `(string Label, string Shortcut, AppAction Action)` tuples, built at open time — context-sensitive (e.g. Paste only when clipboard populated)
+- Initial action set:
+  - Open external (`o`), Rename (`F2`), Delete (`Del`), Copy (`c`), Cut (`x`), Paste (`p`), New file (`Shift+N`), New directory (`F7`), Properties (`i`), Toggle hidden files (`.`), Sort mode (`s`), Go to path (`g`), Open terminal here (`Ctrl+T`), Configuration (`,`), Help (`?`), Refresh (`Ctrl+R`)
+- On Enter: set `_inputMode = InputMode.Normal`, then dispatch the selected `AppAction` through the existing action handlers
+- Input handler: `HandleActionPaletteKey()` — typing updates filter and resets selection to 0; Up/Down navigate; Enter dispatches; Escape cancels
+
+### File finder (`Ctrl+P`)
+
+- Add `InputMode.FileFinder` to enum
+- Add `AppAction.ShowFileFinder` + key mapping in `InputReader.MapKey()`
+- State: `_fileFinderSelectedIndex`, `_fileFinderTextInput`, filtered file list, `_fileFinderEntries` (full list)
+- Item list: recursively enumerate files under `_currentPath` (up to a reasonable depth/count limit to stay responsive — e.g. max 10,000 entries, max depth 8)
+- Display: relative path from `_currentPath` as label, parent directory as right-aligned hint
+- On Enter: navigate to the selected file's parent directory and select the file (same as GoToPath does for file targets)
+- Consider async enumeration to avoid blocking on large trees — could show "[scanning…]" while building the list, similar to preview loading pattern
+
+### Implementation steps
+
+1. Add `InputMode.ActionPalette` and `InputMode.FileFinder` to enum
+2. Add `AppAction.ShowActionPalette` and `AppAction.ShowFileFinder` + key mappings (`Ctrl+Shift+P`, `Ctrl+P`)
+3. Build the searchable list dialog rendering (shared between both palettes)
+4. Implement `HandleActionPaletteKey()` and `RenderActionPalette()`
+5. Implement `HandleFileFinderKey()` and `RenderFileFinder()` (with async file enumeration)
+6. Update `HelpOverlay.cs` keybindings array
+7. Update Config dialog if adding any new settings
+
+---
+
+## Status bar should show file path in expanded preview
+
+When expanded preview is open (Enter on a file), the status bar still shows only the current directory path. It should include the previewed file's name so the user can see which file they're looking at.
+
+**Current behavior:** Status bar shows `_currentPath` (e.g. `D:\source\myproject\src`)
+**Desired behavior:** Status bar shows the full file path (e.g. `D:\source\myproject\src\App.cs`)
+
+**Implementation notes:**
+- `RenderExpandedPreview()` in `App.cs:1471-1472` calls `StatusBar.Render()` with `displayPath` derived from `_currentPath`
+- The previewed file's path is already tracked in `_cachedPreviewPath` (text files) and `_cachedImagePath` (images) — both fields on `App.cs:66-78`
+- Fix: in `RenderExpandedPreview()`, set `displayPath` to `_cachedPreviewPath ?? _cachedImagePath ?? _currentPath` instead of `_currentPath`
+- The status bar left side renders the path in the first half of the bar width (`rect.Width / 2`) with truncation, so long paths are already handled (`StatusBar.cs:38-41`)
+
+---
+
 ## Bugs (open)
 
 ### ~~Refresh file list after file actions~~ ✅
