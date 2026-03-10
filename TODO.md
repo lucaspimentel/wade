@@ -109,7 +109,7 @@ Implemented: Open with default app (`o`), rename (`F2`), delete (`Del`), copy (`
 **Remaining**
 - ~~Recycle Bin support on Windows (use `SHFileOperation` or shell API instead of permanent delete)~~ ✅
 - ~~Overwrite confirmation on paste when destination already exists~~ ✅
-- OS clipboard integration for copy/cut/paste (interop with system clipboard so files copied in wade can be pasted in Explorer/Finder and vice versa)
+- OS file clipboard interop → see **System clipboard** section below
 - Progress indicator for large copy/move operations
 
 ## ~~Show/hide hidden files~~ ✅
@@ -193,6 +193,70 @@ Reformatted help dialog from a single column (29 rows) to 2 columns side by side
 ## ~~Config audit~~ ✅
 
 Reviewed all 5 existing config options — all are actively used and appropriate. Added 3 new options: `confirm_delete_enabled` (skip delete confirmation), `preview_pane_enabled` (hide right preview pane for 2-pane layout), `detail_columns_enabled` (hide size/date columns in center pane). All default to `true`. Config dialog updated to show 8 options.
+
+## System clipboard
+
+Shared infrastructure for all features that interact with the OS clipboard. No system clipboard support exists yet — wade currently uses an internal in-memory clipboard (`_clipboardPaths` list) for file copy/cut/paste.
+
+### Shared foundation: `FileSystem/SystemClipboard.cs`
+
+All clipboard features below share the same P/Invoke surface on Windows (`user32.dll`: `OpenClipboard`, `EmptyClipboard`, `SetClipboardData`, `GetClipboardData`, `CloseClipboard`) and the same external-process approach on Unix/macOS. Build this once, expose format-specific methods:
+
+**Windows (P/Invoke, NativeAOT-safe):**
+- Text: `SetClipboardData(CF_UNICODETEXT, ...)` with `GlobalAlloc`/`GlobalLock` marshalling
+- Files: `SetClipboardData(CF_HDROP, ...)` (DROPFILES struct + null-terminated path list) + `SetClipboardData(RegisterClipboardFormat("Preferred DropEffect"), ...)` for cut vs copy
+- Reading files: `GetClipboardData(CF_HDROP)` → `DragQueryFile` to extract paths, check `Preferred DropEffect` for cut vs copy
+
+**Unix/macOS (external processes):**
+- Text: `xclip -selection clipboard` / `xsel --clipboard --input` / `wl-copy` (Wayland) / `pbcopy` (macOS) — try in order of availability
+- Files: `xclip -selection clipboard -t text/uri-list` with `file://` URI list (works with GNOME/KDE file managers). macOS Finder interop is limited — `pbcopy` doesn't support file references natively.
+- Reading files: `xclip -selection clipboard -t text/uri-list -o` to read URIs, parse `file://` paths
+
+**Methods:**
+- `static bool SetText(string text)` — write plain text
+- `static bool SetFiles(IReadOnlyList<string> paths, bool isCut)` — write file list for OS paste
+- `static (List<string>? Paths, bool IsCut)? GetFiles()` — read file list from OS copy/cut
+- Returns false/null if no clipboard mechanism is available
+
+### Copy path as text
+
+Copy the selected item's path as a plain text string to the OS clipboard (distinct from file copy/cut/paste).
+
+**Copy absolute path:**
+- Keybinding: `Ctrl+Shift+C` (or `Y` — yank, vim convention)
+- Copies `entries[_selectedIndex].FullPath` via `SystemClipboard.SetText()`
+- Show notification: `"Copied path to clipboard"` with `NotificationKind.Info`
+
+**Copy git-relative path:**
+- Keybinding: e.g. `Ctrl+G` or `Shift+Y`
+- If the current directory (or a parent) contains a `.git` folder, copy the path relative to that repo root
+- If not inside a git repo, show error notification: `"Not inside a git repository"`
+- Git root detection: walk up from `_currentPath` using `Directory.GetParent()` looking for a `.git` directory (new helper `FileSystem/GitUtils.FindRepoRoot(string)`)
+- Relative path: `Path.GetRelativePath(repoRoot, entry.FullPath)` — normalize to forward slashes for cross-platform consistency
+
+### OS file clipboard interop
+
+Interop with system clipboard so files copied in wade can be pasted in Explorer/Finder and vice versa.
+
+**Outbound (wade → OS):**
+- On `AppAction.Copy` / `AppAction.Cut`, also call `SystemClipboard.SetFiles(_clipboardPaths, _clipboardIsCut)` alongside the existing internal clipboard
+- Explorer/Finder paste then works automatically
+
+**Inbound (OS → wade):**
+- On `AppAction.Paste`, first check `SystemClipboard.GetFiles()` — if it returns paths (and they differ from the internal clipboard), use those instead
+- Respect the cut/copy flag from the OS clipboard (`Preferred DropEffect`)
+
+### Implementation steps
+
+1. Create `FileSystem/SystemClipboard.cs` with `SetText`, `SetFiles`, `GetFiles`
+2. Create `FileSystem/GitUtils.cs` with `FindRepoRoot(string)`
+3. Add `AppAction.CopyAbsolutePath` and `AppAction.CopyGitRelativePath` to enum
+4. Add key mappings in `InputReader.MapKey()`
+5. Add case handlers in `App.cs` switch block
+6. Wire `SetFiles`/`GetFiles` into existing copy/cut/paste handlers
+7. Update `HelpOverlay.cs` keybindings array
+
+---
 
 ## Bugs (open)
 
