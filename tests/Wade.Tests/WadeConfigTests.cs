@@ -28,7 +28,8 @@ public class WadeConfigTests
         Assert.False(config.ShowHiddenFiles);
         Assert.True(config.ConfirmDeleteEnabled);
         Assert.True(config.PreviewPaneEnabled);
-        Assert.True(config.DetailColumnsEnabled);
+        Assert.True(config.SizeColumnEnabled);
+        Assert.True(config.DateColumnEnabled);
         Assert.Equal(Directory.GetCurrentDirectory(), config.StartPath);
     }
 
@@ -62,8 +63,10 @@ public class WadeConfigTests
     [InlineData("confirm_delete_enabled", false)]
     [InlineData("preview_pane_enabled", true)]
     [InlineData("preview_pane_enabled", false)]
-    [InlineData("detail_columns_enabled", true)]
-    [InlineData("detail_columns_enabled", false)]
+    [InlineData("size_column_enabled", true)]
+    [InlineData("size_column_enabled", false)]
+    [InlineData("date_column_enabled", true)]
+    [InlineData("date_column_enabled", false)]
     public void ConfigFile_ParsesNewBoolSettings(string key, bool value)
     {
         var path = WriteTempConfig($"{key} = {(value ? "true" : "false")}");
@@ -74,7 +77,8 @@ public class WadeConfigTests
             {
                 "confirm_delete_enabled" => config.ConfirmDeleteEnabled,
                 "preview_pane_enabled" => config.PreviewPaneEnabled,
-                "detail_columns_enabled" => config.DetailColumnsEnabled,
+                "size_column_enabled" => config.SizeColumnEnabled,
+                "date_column_enabled" => config.DateColumnEnabled,
                 _ => throw new ArgumentException($"Unknown key: {key}"),
             };
             Assert.Equal(value, actual);
@@ -364,7 +368,8 @@ public class WadeConfigTests
             original.SortAscending = false;
             original.ConfirmDeleteEnabled = false;
             original.PreviewPaneEnabled = false;
-            original.DetailColumnsEnabled = false;
+            original.SizeColumnEnabled = false;
+            original.DateColumnEnabled = false;
             original.Save();
 
             var loaded = WadeConfig.Load([], configFilePath: configPath);
@@ -375,7 +380,8 @@ public class WadeConfigTests
             Assert.False(loaded.SortAscending);
             Assert.False(loaded.ConfirmDeleteEnabled);
             Assert.False(loaded.PreviewPaneEnabled);
-            Assert.False(loaded.DetailColumnsEnabled);
+            Assert.False(loaded.SizeColumnEnabled);
+            Assert.False(loaded.DateColumnEnabled);
         }
         finally
         {
@@ -429,6 +435,26 @@ public class WadeConfigTests
         finally
         {
             File.Delete(configPath);
+        }
+    }
+
+    // ── Backward compat: detail_columns_enabled sets both columns ──────────
+
+    [Theory]
+    [InlineData("true", true)]
+    [InlineData("false", false)]
+    public void ConfigFile_DetailColumnsEnabled_SetsBothColumns(string value, bool expected)
+    {
+        var path = WriteTempConfig($"detail_columns_enabled = {value}");
+        try
+        {
+            var config = WadeConfig.Load([], configFilePath: path);
+            Assert.Equal(expected, config.SizeColumnEnabled);
+            Assert.Equal(expected, config.DateColumnEnabled);
+        }
+        finally
+        {
+            File.Delete(path);
         }
     }
 }

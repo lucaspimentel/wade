@@ -61,7 +61,8 @@ internal sealed class App
     private bool _configSortAscending;
     private bool _configConfirmDelete;
     private bool _configPreviewPane;
-    private bool _configDetailColumns;
+    private bool _configSizeColumn;
+    private bool _configDateColumn;
 
     private string? _cachedPreviewPath;
     private StyledLine[]? _cachedStyledLines;
@@ -959,7 +960,11 @@ internal sealed class App
             : _layout.CenterPane;
 
         // Center pane: current directory
-        PaneRenderer.RenderFileList(buffer, fileListPane, entries, _selectedIndex, _scrollOffset, isActive: true, showIcons: _config.ShowIconsEnabled, showDetails: _config.DetailColumnsEnabled, markedPaths: _markedPaths);
+        PaneRenderer.RenderFileList(
+            buffer, fileListPane, entries, _selectedIndex, _scrollOffset,
+            isActive: true, showIcons: _config.ShowIconsEnabled,
+            showSize: _config.SizeColumnEnabled, showDate: _config.DateColumnEnabled,
+            markedPaths: _markedPaths);
 
         // Search bar at bottom of center pane
         if (showSearchBar)
@@ -1977,7 +1982,8 @@ internal sealed class App
         _configSortAscending = _config.SortAscending;
         _configConfirmDelete = _config.ConfirmDeleteEnabled;
         _configPreviewPane = _config.PreviewPaneEnabled;
-        _configDetailColumns = _config.DetailColumnsEnabled;
+        _configSizeColumn = _config.SizeColumnEnabled;
+        _configDateColumn = _config.DateColumnEnabled;
     }
 
     private void HandleConfigKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer)
@@ -1993,7 +1999,7 @@ internal sealed class App
                 break;
 
             case ConsoleKey.DownArrow or ConsoleKey.J:
-                if (_configSelectedIndex < 7)
+                if (_configSelectedIndex < 8)
                 {
                     _configSelectedIndex++;
                 }
@@ -2047,7 +2053,8 @@ internal sealed class App
                 }
 
                 break;
-            case 7: _configDetailColumns = !_configDetailColumns; break;
+            case 7: _configSizeColumn = !_configSizeColumn; break;
+            case 8: _configDateColumn = !_configDateColumn; break;
         }
     }
 
@@ -2060,7 +2067,8 @@ internal sealed class App
         _config.SortAscending = _configSortAscending;
         _config.ConfirmDeleteEnabled = _configConfirmDelete;
         _config.PreviewPaneEnabled = _configPreviewPane;
-        _config.DetailColumnsEnabled = _configDetailColumns;
+        _config.SizeColumnEnabled = _configSizeColumn;
+        _config.DateColumnEnabled = _configDateColumn;
 
         _directoryContents.ShowHiddenFiles = _config.ShowHiddenFiles;
         _directoryContents.SortMode = _config.SortMode;
@@ -2107,7 +2115,7 @@ internal sealed class App
     private void RenderConfigDialog(ScreenBuffer buffer, int width, int height)
     {
         const int ContentWidth = 40;
-        const int ContentHeight = 8;
+        const int ContentHeight = 9;
         const string Footer = "[Space] Toggle [◄►] Cycle [Enter] Save [Esc] Cancel";
 
         var content = DialogBox.Render(buffer, width, height, Math.Max(ContentWidth, Footer.Length), ContentHeight, title: "Configuration", footer: Footer);
@@ -2127,7 +2135,8 @@ internal sealed class App
             ("Confirm Delete", FormatBool(_configConfirmDelete), true),
             ("Preview Pane", FormatBool(_configPreviewPane), true),
             ("  Image Previews", FormatBool(_configImagePreviews), _configPreviewPane),
-            ("Detail Columns", FormatBool(_configDetailColumns), true),
+            ("Size Column", FormatBool(_configSizeColumn), true),
+            ("Date Column", FormatBool(_configDateColumn), true),
         ];
 
         for (int i = 0; i < items.Length; i++)

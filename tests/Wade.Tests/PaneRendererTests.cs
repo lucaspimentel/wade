@@ -94,7 +94,7 @@ public class PaneRendererTests
         var dt = new DateTime(2025, 3, 6, 14, 30, 0);
         var buf = new ScreenBuffer(50, 10);
         var entries = new List<FileSystemEntry> { MakeFile("test.txt", 1024, dt) };
-        PaneRenderer.RenderFileList(buf, FullPane(50, 10), entries, selectedIndex: 0, scrollOffset: 0, isActive: false, showDetails: true);
+        PaneRenderer.RenderFileList(buf, FullPane(50, 10), entries, selectedIndex: 0, scrollOffset: 0, isActive: false, showSize: true, showDate: true);
         var output = Flush(buf);
         Assert.Contains("1.0 KB", output);
         Assert.Contains("2025-03-06 02:30 PM", output);
@@ -106,7 +106,7 @@ public class PaneRendererTests
         var dt = new DateTime(2025, 3, 6, 14, 30, 0);
         var buf = new ScreenBuffer(50, 10);
         var entries = new List<FileSystemEntry> { MakeDir("src", dt) };
-        PaneRenderer.RenderFileList(buf, FullPane(50, 10), entries, selectedIndex: 0, scrollOffset: 0, isActive: false, showDetails: true);
+        PaneRenderer.RenderFileList(buf, FullPane(50, 10), entries, selectedIndex: 0, scrollOffset: 0, isActive: false, showSize: true, showDate: true);
         var output = Flush(buf);
         // Date should still show
         Assert.Contains("2025-03-06", output);
@@ -121,7 +121,7 @@ public class PaneRendererTests
         var dt = new DateTime(2025, 3, 6, 14, 30, 0);
         var buf = new ScreenBuffer(35, 10);
         var entries = new List<FileSystemEntry> { MakeFile("test.txt", 2048, dt) };
-        PaneRenderer.RenderFileList(buf, FullPane(35, 10), entries, selectedIndex: 0, scrollOffset: 0, isActive: false, showDetails: true);
+        PaneRenderer.RenderFileList(buf, FullPane(35, 10), entries, selectedIndex: 0, scrollOffset: 0, isActive: false, showSize: true, showDate: true);
         var output = Flush(buf);
         Assert.Contains("2.0 KB", output);
         Assert.Contains("2025-03-06", output);
@@ -135,7 +135,7 @@ public class PaneRendererTests
         var dt = new DateTime(2025, 3, 6, 14, 30, 0);
         var buf = new ScreenBuffer(28, 10);
         var entries = new List<FileSystemEntry> { MakeFile("test.txt", 2048, dt) };
-        PaneRenderer.RenderFileList(buf, FullPane(28, 10), entries, selectedIndex: 0, scrollOffset: 0, isActive: false, showDetails: true);
+        PaneRenderer.RenderFileList(buf, FullPane(28, 10), entries, selectedIndex: 0, scrollOffset: 0, isActive: false, showSize: true, showDate: true);
         var output = Flush(buf);
         Assert.Contains("2.0 KB", output);
         Assert.Contains("Mar 06", output);
@@ -148,7 +148,7 @@ public class PaneRendererTests
         var dt = new DateTime(2025, 3, 6, 14, 30, 0);
         var buf = new ScreenBuffer(20, 10);
         var entries = new List<FileSystemEntry> { MakeFile("test.txt", 512, dt) };
-        PaneRenderer.RenderFileList(buf, FullPane(20, 10), entries, selectedIndex: 0, scrollOffset: 0, isActive: false, showDetails: true);
+        PaneRenderer.RenderFileList(buf, FullPane(20, 10), entries, selectedIndex: 0, scrollOffset: 0, isActive: false, showSize: true, showDate: true);
         var output = Flush(buf);
         Assert.Contains("512 B", output);
         Assert.DoesNotContain("2025", output);
@@ -162,7 +162,7 @@ public class PaneRendererTests
         var dt = new DateTime(2025, 3, 6, 14, 30, 0);
         var buf = new ScreenBuffer(16, 10);
         var entries = new List<FileSystemEntry> { MakeFile("test.txt", 512, dt) };
-        PaneRenderer.RenderFileList(buf, FullPane(16, 10), entries, selectedIndex: 0, scrollOffset: 0, isActive: false, showDetails: true);
+        PaneRenderer.RenderFileList(buf, FullPane(16, 10), entries, selectedIndex: 0, scrollOffset: 0, isActive: false, showSize: true, showDate: true);
         var output = Flush(buf);
         Assert.Contains("test.txt", output);
         Assert.DoesNotContain("512", output);
@@ -222,5 +222,35 @@ public class PaneRendererTests
 
         Assert.Contains("a.txt", output);
         Assert.Contains("src", output);
+    }
+
+    // ── Independent column toggles ──────────────────────────────────────────────
+
+    [Fact]
+    public void RenderFileList_SizeOnly_ShowsSizeButNoDate()
+    {
+        var dt = new DateTime(2025, 3, 6, 14, 30, 0);
+        var buf = new ScreenBuffer(50, 10);
+        var entries = new List<FileSystemEntry> { MakeFile("test.txt", 1024, dt) };
+        PaneRenderer.RenderFileList(
+            buf, FullPane(50, 10), entries, selectedIndex: 0, scrollOffset: 0,
+            isActive: false, showSize: true, showDate: false);
+        var output = Flush(buf);
+        Assert.Contains("1.0 KB", output);
+        Assert.DoesNotContain("2025-03-06", output);
+    }
+
+    [Fact]
+    public void RenderFileList_DateOnly_ShowsDateButNoSize()
+    {
+        var dt = new DateTime(2025, 3, 6, 14, 30, 0);
+        var buf = new ScreenBuffer(50, 10);
+        var entries = new List<FileSystemEntry> { MakeFile("test.txt", 1024, dt) };
+        PaneRenderer.RenderFileList(
+            buf, FullPane(50, 10), entries, selectedIndex: 0, scrollOffset: 0,
+            isActive: false, showSize: false, showDate: true);
+        var output = Flush(buf);
+        Assert.Contains("2025-03-06", output);
+        Assert.DoesNotContain("1.0 KB", output);
     }
 }

@@ -11,7 +11,8 @@ internal sealed class WadeConfig
     public bool SortAscending { get; set; } = true;
     public bool ConfirmDeleteEnabled { get; set; } = true;
     public bool PreviewPaneEnabled { get; set; } = true;
-    public bool DetailColumnsEnabled { get; set; } = true;
+    public bool SizeColumnEnabled { get; set; } = true;
+    public bool DateColumnEnabled { get; set; } = true;
     public string StartPath { get; set; } = Directory.GetCurrentDirectory();
     public bool ShowConfig { get; set; } = false;
     public bool ShowHelp { get; set; } = false;
@@ -92,8 +93,17 @@ internal sealed class WadeConfig
                     case "preview_pane_enabled":
                         config.PreviewPaneEnabled = ParseBool(value, config.PreviewPaneEnabled);
                         break;
+                    case "size_column_enabled":
+                        config.SizeColumnEnabled = ParseBool(value, config.SizeColumnEnabled);
+                        break;
+                    case "date_column_enabled":
+                        config.DateColumnEnabled = ParseBool(value, config.DateColumnEnabled);
+                        break;
                     case "detail_columns_enabled":
-                        config.DetailColumnsEnabled = ParseBool(value, config.DetailColumnsEnabled);
+                        // Backward compat: sets both columns
+                        var detailBool = ParseBool(value, true);
+                        config.SizeColumnEnabled = detailBool;
+                        config.DateColumnEnabled = detailBool;
                         break;
                 }
             }
@@ -171,7 +181,8 @@ internal sealed class WadeConfig
             sort_ascending = {(SortAscending ? "true" : "false")}
             confirm_delete_enabled = {(ConfirmDeleteEnabled ? "true" : "false")}
             preview_pane_enabled = {(PreviewPaneEnabled ? "true" : "false")}
-            detail_columns_enabled = {(DetailColumnsEnabled ? "true" : "false")}
+            size_column_enabled = {(SizeColumnEnabled ? "true" : "false")}
+            date_column_enabled = {(DateColumnEnabled ? "true" : "false")}
             """;
 
         File.WriteAllText(ConfigFilePath, content);
@@ -189,7 +200,8 @@ internal sealed class WadeConfig
             $"\"sort_ascending\":{(SortAscending ? "true" : "false")}," +
             $"\"confirm_delete_enabled\":{(ConfirmDeleteEnabled ? "true" : "false")}," +
             $"\"preview_pane_enabled\":{(PreviewPaneEnabled ? "true" : "false")}," +
-            $"\"detail_columns_enabled\":{(DetailColumnsEnabled ? "true" : "false")}," +
+            $"\"size_column_enabled\":{(SizeColumnEnabled ? "true" : "false")}," +
+            $"\"date_column_enabled\":{(DateColumnEnabled ? "true" : "false")}," +
             $"\"start_path\":\"{escapedPath}\"" +
             "}";
     }

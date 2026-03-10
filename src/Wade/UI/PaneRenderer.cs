@@ -54,33 +54,63 @@ internal static class PaneRenderer
         int scrollOffset,
         bool isActive,
         bool showIcons = false,
-        bool showDetails = false,
+        bool showSize = false,
+        bool showDate = false,
         HashSet<string>? markedPaths = null)
     {
         // Determine detail tier based on pane width
         int dateWidth = 0;
         int detailWidth = 0;
 
-        if (showDetails)
+        if (showSize || showDate)
         {
-            if (pane.Width >= Tier1MinWidth)
+            if (showSize && showDate)
             {
-                dateWidth = FullDateWidth;
-                detailWidth = SizeWidth + GapWidth + FullDateWidth + GapWidth;
+                if (pane.Width >= Tier1MinWidth)
+                {
+                    dateWidth = FullDateWidth;
+                    detailWidth = SizeWidth + GapWidth + FullDateWidth + GapWidth;
+                }
+                else if (pane.Width >= Tier2MinWidth)
+                {
+                    dateWidth = DateOnlyWidth;
+                    detailWidth = SizeWidth + GapWidth + DateOnlyWidth + GapWidth;
+                }
+                else if (pane.Width >= Tier3MinWidth)
+                {
+                    dateWidth = ShortDateWidth;
+                    detailWidth = SizeWidth + GapWidth + ShortDateWidth + GapWidth;
+                }
+                else if (pane.Width >= Tier4MinWidth)
+                {
+                    detailWidth = SizeWidth + GapWidth;
+                }
             }
-            else if (pane.Width >= Tier2MinWidth)
+            else if (showDate)
             {
-                dateWidth = DateOnlyWidth;
-                detailWidth = SizeWidth + GapWidth + DateOnlyWidth + GapWidth;
+                // Date only (no size column)
+                if (pane.Width >= Tier1MinWidth)
+                {
+                    dateWidth = FullDateWidth;
+                    detailWidth = FullDateWidth + GapWidth;
+                }
+                else if (pane.Width >= Tier2MinWidth)
+                {
+                    dateWidth = DateOnlyWidth;
+                    detailWidth = DateOnlyWidth + GapWidth;
+                }
+                else if (pane.Width >= Tier3MinWidth)
+                {
+                    dateWidth = ShortDateWidth;
+                    detailWidth = ShortDateWidth + GapWidth;
+                }
             }
-            else if (pane.Width >= Tier3MinWidth)
+            else // showSize only
             {
-                dateWidth = ShortDateWidth;
-                detailWidth = SizeWidth + GapWidth + ShortDateWidth + GapWidth;
-            }
-            else if (pane.Width >= Tier4MinWidth)
-            {
-                detailWidth = SizeWidth + GapWidth;
+                if (pane.Width >= Tier4MinWidth)
+                {
+                    detailWidth = SizeWidth + GapWidth;
+                }
             }
         }
 
@@ -173,18 +203,21 @@ internal static class PaneRenderer
                 }
 
                 // Size column
-                detailCol -= GapWidth + SizeWidth;
-                if (!entry.IsDirectory)
+                if (showSize)
                 {
-                    sizeBuf.Fill(' ');
-                    int sizeLen = FormatHelpers.FormatSize(tempBuf, entry.Size);
-                    // Right-align size in the field
-                    if (sizeLen <= SizeWidth)
+                    detailCol -= GapWidth + SizeWidth;
+                    if (!entry.IsDirectory)
                     {
-                        tempBuf[..sizeLen].CopyTo(sizeBuf[(SizeWidth - sizeLen)..]);
-                    }
+                        sizeBuf.Fill(' ');
+                        int sizeLen = FormatHelpers.FormatSize(tempBuf, entry.Size);
+                        // Right-align size in the field
+                        if (sizeLen <= SizeWidth)
+                        {
+                            tempBuf[..sizeLen].CopyTo(sizeBuf[(SizeWidth - sizeLen)..]);
+                        }
 
-                    buffer.WriteString(screenRow, detailCol + GapWidth, sizeBuf, detailStyle, SizeWidth);
+                        buffer.WriteString(screenRow, detailCol + GapWidth, sizeBuf, detailStyle, SizeWidth);
+                    }
                 }
             }
         }

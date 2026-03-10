@@ -20,7 +20,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Expanded preview** — press Right/Enter on a file to expand the preview to full terminal width; scroll with Up/Down/J/K/PageUp/PageDown/Home/End/mouse wheel; press Left/Escape to collapse back to 3-pane view
 - **Directory preview** — shows contents of the selected directory
 - **Drive navigation** — browse across drives on Windows (Backspace from a drive root)
-- **Detail columns** — file size and modification date in the center pane; columns adapt responsively as the terminal narrows (full date → date only → short date → size only → name only); toggle with `detail_columns_enabled` config
+- **Detail columns** — file size and modification date in the center pane; each column toggleable independently via `size_column_enabled` / `date_column_enabled` config; columns adapt responsively as the terminal narrows (full date → date only → short date → size only → name only)
 - **Status bar** — current path, item count, file type label (language name, "Text", or "Binary"), encoding (UTF-8, UTF-8 BOM, UTF-16 LE/BE), line endings (CRLF, LF, CR, Mixed), file size, and sort indicator
 - **Hidden files toggle** — dotfiles and system-hidden files are hidden by default; press `.` to toggle visibility at runtime, or set `show_hidden_files = true` in config
 - **Sort order** — sort by name (default), modification time, size, or extension; press `s` to cycle modes, `S` to reverse direction; directories always listed first; configurable via `sort_mode` and `sort_ascending` in config; current sort mode shown in status bar
@@ -30,7 +30,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **File actions** — open files with default app, rename, delete (with optional confirmation), copy/cut/paste with internal clipboard; multi-select supported for delete/copy/cut; delete confirmation can be toggled via `confirm_delete_enabled` config
 - **Mouse support** — click to select entries in any pane, scroll wheel to navigate; left/right pane clicks navigate directories
 - **File properties** — press `i` to open a properties overlay showing detailed metadata: name, full path, type, formatted size with raw bytes, created/modified/accessed timestamps, file attributes, and read-only status
-- **In-app configuration** — press `,` to open a config dialog with 8 toggleable options: icons, image previews, hidden files, sort mode, sort direction, delete confirmation, preview pane, and detail columns; changes are saved directly to the config file
+- **In-app configuration** — press `,` to open a config dialog with 9 toggleable options: icons, hidden files, sort mode, sort direction, delete confirmation, preview pane, image previews, size column, and date column; changes are saved directly to the config file
 - **Shell integration** — press `Ctrl+T` to open a new terminal in the current directory; use shell wrapper functions (`wd`) to cd to the final directory on exit (bash, zsh, fish, PowerShell wrappers provided)
 - **Minimal rendering** — raw VT/ANSI escape sequences, double-buffered with dirty-row tracking, cell diff, and style diffing
 
@@ -90,7 +90,8 @@ sort_mode = name                # name, modified, size, extension
 sort_ascending = true
 confirm_delete_enabled = true
 preview_pane_enabled = true
-detail_columns_enabled = true
+size_column_enabled = true
+date_column_enabled = true
 ```
 
 ### CLI flags

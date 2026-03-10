@@ -149,13 +149,9 @@ Compute and display total size of a folder.
 - Display result in properties panel or inline
 - **Depends on:** File details / properties panel
 
-## Column toggles
+## ~~Column toggles~~ ✅
 
-Show/hide additional columns in the file list.
-
-- Available columns: size, modified date, permissions
-- Keybinding to cycle or toggle columns
-- Persist column preferences via config
+Implemented: Size and date columns are now independently toggleable via the config dialog (`,`). Replaced single `detail_columns_enabled` with `size_column_enabled` and `date_column_enabled` config keys (both default `true`). Old `detail_columns_enabled` key still works for backward compatibility (sets both). Config dialog shows "Size Column" and "Date Column" as separate items.
 
 ## ~~Create new file / directory~~ ✅
 
