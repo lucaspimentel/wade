@@ -8,6 +8,8 @@ Pre-built binaries support Windows and Linux. macOS is supported when built from
 
 Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/Canop/broot), and [ranger](https://github.com/ranger/ranger).
 
+![wade screenshot](docs/screenshot.png)
+
 ## Features
 
 - **Miller columns** — three-pane layout: parent / current directory / preview; preview pane can be hidden for a 2-pane layout via `preview_pane_enabled` config
