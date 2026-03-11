@@ -1604,7 +1604,7 @@ internal sealed class App
         FileSystemEntry? selectedEntry = entries.Count > 0 && _selectedIndex < entries.Count
             ? entries[_selectedIndex]
             : null;
-        string displayPath = _cachedPreviewPath ?? _currentPath;
+        string displayPath = _cachedPreviewPath ?? _cachedImagePath ?? _currentPath;
         if (displayPath == DirectoryContents.DrivesPath)
         {
             displayPath = "Drives";

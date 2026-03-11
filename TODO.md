@@ -253,18 +253,9 @@ Searchable file finder dialog. User types to filter files in the current directo
 
 ---
 
-## Status bar should show file path in expanded preview
+## ~~Status bar should show file path in expanded preview~~ ✅
 
-When expanded preview is open (Enter on a file), the status bar still shows only the current directory path. It should include the previewed file's name so the user can see which file they're looking at.
-
-**Current behavior:** Status bar shows `_currentPath` (e.g. `D:\source\myproject\src`)
-**Desired behavior:** Status bar shows the full file path (e.g. `D:\source\myproject\src\App.cs`)
-
-**Implementation notes:**
-- `RenderExpandedPreview()` in `App.cs:1471-1472` calls `StatusBar.Render()` with `displayPath` derived from `_currentPath`
-- The previewed file's path is already tracked in `_cachedPreviewPath` (text files) and `_cachedImagePath` (images) — both fields on `App.cs:66-78`
-- Fix: in `RenderExpandedPreview()`, set `displayPath` to `_cachedPreviewPath ?? _cachedImagePath ?? _currentPath` instead of `_currentPath`
-- The status bar left side renders the path in the first half of the bar width (`rect.Width / 2`) with truncation, so long paths are already handled (`StatusBar.cs:38-41`)
+Fixed: `RenderExpandedPreview()` now uses `_cachedPreviewPath ?? _cachedImagePath ?? _currentPath` for the status bar display path, so the previewed file's full path is shown instead of just the directory.
 
 ---
 
