@@ -23,6 +23,8 @@ internal static class HelpOverlay
         ("s",                   "Cycle sort mode"),
         ("S",                   "Reverse sort direction"),
         ("g",                   "Go to path"),
+        ("b",                   "Bookmarks"),
+        ("B",                   "Toggle bookmark"),
         ("/",                   "Search / filter"),
         ("Esc (in search)",     "Clear filter"),
         ("o",                   "Open with default app"),

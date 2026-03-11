@@ -122,14 +122,9 @@ Implemented: Press `,` to open an in-app config dialog. Displays all 8 settings 
 
 - **Depends on:** Dialog / overlay framework, Modal input mode
 
-## Bookmarks / favorites
+## ~~Bookmarks / favorites~~ ✅
 
-Save frequently used directories for quick access.
-
-- Keybinding to open bookmarks list (e.g. `b`)
-- Add/remove current directory from bookmarks
-- Quick-jump via numbered slots (`1-9`) or selection list
-- Persist bookmarks to a file (e.g. alongside config)
+Implemented: `b` opens a filterable bookmarks dialog, `B` toggles the current directory as a bookmark. Dialog supports `1-9` quick jump, `Enter` to navigate, `d`/`Delete` to remove, `Escape` to close. Bookmarks persist to `~/.config/wade/bookmarks` (one path per line, MRU order). Non-existent bookmarks rendered dimmed.
 
 ## ~~Go-to-path bar~~ ✅
 

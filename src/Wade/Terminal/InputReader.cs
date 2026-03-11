@@ -36,6 +36,8 @@ internal enum AppAction
     ShowActionPalette,
     CopyAbsolutePath,
     CopyGitRelativePath,
+    ShowBookmarks,
+    ToggleBookmark,
 }
 
 internal static class InputReader
@@ -140,6 +142,16 @@ internal static class InputReader
         if (key.KeyChar == 'Y')
         {
             return AppAction.CopyGitRelativePath;
+        }
+
+        if (key.KeyChar == 'b')
+        {
+            return AppAction.ShowBookmarks;
+        }
+
+        if (key.KeyChar == 'B')
+        {
+            return AppAction.ToggleBookmark;
         }
 
         if (key.KeyChar == 'n')

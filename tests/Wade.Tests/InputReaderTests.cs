@@ -206,6 +206,22 @@ public class InputReaderTests
         Assert.Equal(AppAction.ShowActionPalette, InputReader.MapKey(evt));
     }
 
+    // ── Bookmarks ────────────────────────────────────────────────────────
+
+    [Fact]
+    public void MapKey_B_ReturnsShowBookmarks()
+    {
+        var evt = new KeyEvent(ConsoleKey.B, 'b', false, false, false);
+        Assert.Equal(AppAction.ShowBookmarks, InputReader.MapKey(evt));
+    }
+
+    [Fact]
+    public void MapKey_ShiftB_ReturnsToggleBookmark()
+    {
+        var evt = new KeyEvent(ConsoleKey.B, 'B', true, false, false);
+        Assert.Equal(AppAction.ToggleBookmark, InputReader.MapKey(evt));
+    }
+
     // ── Quit variants ─────────────────────────────────────────────────────
 
     [Fact]

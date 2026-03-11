@@ -32,6 +32,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Mouse support** — click to select entries in any pane, scroll wheel to navigate; left/right pane clicks navigate directories
 - **File properties** — press `i` to open a properties overlay showing detailed metadata: name, full path, type, formatted size with raw bytes, created/modified/accessed timestamps, file attributes, and read-only status
 - **In-app configuration** — press `,` to open a config dialog with 9 toggleable options: icons, hidden files, sort mode, sort direction, delete confirmation, preview pane, image previews, size column, and date column; changes are saved directly to the config file
+- **Bookmarks** — press `b` to open a filterable bookmarks dialog; press `B` to toggle the current directory as a bookmark; quick-jump with `1`-`9`, `Enter` to navigate, `d`/`Delete` to remove; bookmarks persist to `~/.config/wade/bookmarks` in MRU order
 - **Action palette** — press `Ctrl+P` to open a searchable action palette listing all available commands; type to filter, Up/Down to navigate, Enter to execute
 - **Shell integration** — press `Ctrl+T` to open a new terminal in the current directory; use shell wrapper functions (`wd`) to cd to the final directory on exit (bash, zsh, fish, PowerShell wrappers provided)
 - **Minimal rendering** — raw VT/ANSI escape sequences, double-buffered with dirty-row tracking, cell diff, and style diffing
@@ -144,6 +145,8 @@ Then use `wd` instead of `wade` to browse. Press `q` to quit and cd to the last 
 | s | Cycle sort (name / time / size / ext) |
 | S | Reverse sort direction |
 | g | Go to path (Esc clears input, Up goes up a directory) |
+| b | Open bookmarks dialog |
+| B | Toggle current directory as bookmark |
 | / | Search / filter |
 | Esc (in search) | Clear filter |
 | Space | Toggle mark (multi-select) |

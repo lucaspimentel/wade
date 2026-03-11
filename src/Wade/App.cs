@@ -58,6 +58,12 @@ internal sealed class App
     private (string Label, string Shortcut, AppAction Action)[]? _actionPaletteItems;
     private int _actionPaletteScrollOffset;
 
+    // Bookmark state
+    private readonly BookmarkStore _bookmarkStore = new();
+    private int _bookmarkSelectedIndex;
+    private TextInput? _bookmarkInput;
+    private int _bookmarkScrollOffset;
+
     // Config dialog state
     private int _configSelectedIndex;
     private bool _configShowIcons;
@@ -114,6 +120,7 @@ internal sealed class App
         _directoryContents.ShowHiddenFiles = _config.ShowHiddenFiles;
         _directoryContents.SortMode = _config.SortMode;
         _directoryContents.SortAscending = _config.SortAscending;
+        _bookmarkStore.Load();
 
         using var terminal = new TerminalSetup();
         using var inputSource = InputPipeline.CreatePlatformSource();
@@ -266,7 +273,7 @@ internal sealed class App
                 }
 
                 // Discard mouse events while a modal dialog is open
-                if (_inputMode is InputMode.Help or InputMode.GoToPath or InputMode.TextInput or InputMode.Confirm or InputMode.Config or InputMode.Properties or InputMode.ActionPalette)
+                if (_inputMode is InputMode.Help or InputMode.GoToPath or InputMode.TextInput or InputMode.Confirm or InputMode.Config or InputMode.Properties or InputMode.ActionPalette or InputMode.Bookmarks)
                 {
                     continue;
                 }
@@ -342,6 +349,10 @@ internal sealed class App
 
                 case InputMode.ActionPalette:
                     HandleActionPaletteKey(keyEvent, previewLoader, buffer);
+                    continue;
+
+                case InputMode.Bookmarks:
+                    HandleBookmarkKey(keyEvent, previewLoader, buffer);
                     continue;
 
                 case InputMode.Normal:
@@ -480,6 +491,17 @@ internal sealed class App
 
                 case AppAction.ShowActionPalette:
                     ShowActionPalette();
+                    break;
+
+                case AppAction.ShowBookmarks:
+                    ShowBookmarks();
+                    break;
+
+                case AppAction.ToggleBookmark:
+                    _bookmarkStore.Toggle(_currentPath);
+                    ShowNotification(
+                        _bookmarkStore.Contains(_currentPath) ? "Bookmarked" : "Bookmark removed",
+                        NotificationKind.Success);
                     break;
 
                 case AppAction.ShowConfig:
@@ -1185,6 +1207,9 @@ internal sealed class App
                 break;
             case InputMode.ActionPalette:
                 RenderActionPalette(buffer, width, height);
+                break;
+            case InputMode.Bookmarks:
+                RenderBookmarks(buffer, width, height);
                 break;
         }
     }
@@ -2137,6 +2162,8 @@ internal sealed class App
         items.Add(("Toggle hidden files", ".", AppAction.ToggleHiddenFiles));
         items.Add(("Cycle sort mode", "s", AppAction.CycleSortMode));
         items.Add(("Reverse sort direction", "S", AppAction.ToggleSortDirection));
+        items.Add(("Bookmarks", "b", AppAction.ShowBookmarks));
+        items.Add(("Toggle bookmark", "B", AppAction.ToggleBookmark));
         items.Add(("Go to path", "g", AppAction.GoToPath));
         items.Add(("Search / filter", "/", AppAction.Search));
         items.Add(("Open terminal here", "Ctrl+T", AppAction.OpenTerminal));
@@ -2699,6 +2726,17 @@ internal sealed class App
                 _inputMode = InputMode.Help;
                 break;
 
+            case AppAction.ShowBookmarks:
+                ShowBookmarks();
+                break;
+
+            case AppAction.ToggleBookmark:
+                _bookmarkStore.Toggle(_currentPath);
+                ShowNotification(
+                    _bookmarkStore.Contains(_currentPath) ? "Bookmarked" : "Bookmark removed",
+                    NotificationKind.Success);
+                break;
+
             case AppAction.Refresh:
                 _notification = null;
                 _markedPaths.Clear();
@@ -2772,6 +2810,283 @@ internal sealed class App
 
             int shortcutCol = content.Left + content.Width - shortcut.Length - 1;
             buffer.WriteString(row, shortcutCol, shortcut, scStyle);
+        }
+    }
+
+    // ── Bookmarks ──────────────────────────────────────────────────────────────
+
+    private void ShowBookmarks()
+    {
+        _inputMode = InputMode.Bookmarks;
+        _bookmarkSelectedIndex = 0;
+        _bookmarkScrollOffset = 0;
+        _bookmarkInput = new TextInput();
+    }
+
+    private List<string> GetFilteredBookmarks()
+    {
+        string filter = _bookmarkInput?.Value ?? "";
+
+        if (string.IsNullOrEmpty(filter))
+        {
+            return [.. _bookmarkStore.Bookmarks];
+        }
+
+        var result = new List<string>();
+
+        foreach (string bookmark in _bookmarkStore.Bookmarks)
+        {
+            if (bookmark.Contains(filter, StringComparison.OrdinalIgnoreCase))
+            {
+                result.Add(bookmark);
+            }
+        }
+
+        return result;
+    }
+
+    private void HandleBookmarkKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer)
+    {
+        var filtered = GetFilteredBookmarks();
+
+        switch (key.Key)
+        {
+            case ConsoleKey.Escape:
+                _inputMode = InputMode.Normal;
+                _bookmarkInput = null;
+                break;
+
+            case ConsoleKey.Enter:
+                if (filtered.Count > 0 && _bookmarkSelectedIndex < filtered.Count)
+                {
+                    string path = filtered[_bookmarkSelectedIndex];
+                    _inputMode = InputMode.Normal;
+                    _bookmarkInput = null;
+                    NavigateToPath(path, previewLoader, buffer);
+                }
+
+                break;
+
+            case ConsoleKey.UpArrow:
+                if (_bookmarkSelectedIndex > 0)
+                {
+                    _bookmarkSelectedIndex--;
+                }
+
+                break;
+
+            case ConsoleKey.DownArrow:
+                if (_bookmarkSelectedIndex < filtered.Count - 1)
+                {
+                    _bookmarkSelectedIndex++;
+                }
+
+                break;
+
+            case ConsoleKey.PageUp:
+            {
+                int visibleCount = Math.Min(18, filtered.Count);
+                _bookmarkSelectedIndex = Math.Max(0, _bookmarkSelectedIndex - visibleCount);
+                break;
+            }
+
+            case ConsoleKey.PageDown:
+            {
+                int visibleCount = Math.Min(18, filtered.Count);
+                _bookmarkSelectedIndex = Math.Min(filtered.Count - 1, _bookmarkSelectedIndex + visibleCount);
+                break;
+            }
+
+            case ConsoleKey.Home:
+                _bookmarkSelectedIndex = 0;
+                break;
+
+            case ConsoleKey.End:
+                _bookmarkSelectedIndex = Math.Max(0, filtered.Count - 1);
+                break;
+
+            case ConsoleKey.Backspace:
+                _bookmarkInput!.DeleteBackward();
+                _bookmarkSelectedIndex = 0;
+                _bookmarkScrollOffset = 0;
+                break;
+
+            case ConsoleKey.Delete:
+                if (filtered.Count > 0 && _bookmarkSelectedIndex < filtered.Count)
+                {
+                    _bookmarkStore.Remove(filtered[_bookmarkSelectedIndex]);
+                }
+
+                break;
+
+            case ConsoleKey.LeftArrow:
+                _bookmarkInput!.MoveCursorLeft();
+                break;
+
+            case ConsoleKey.RightArrow:
+                _bookmarkInput!.MoveCursorRight();
+                break;
+
+            default:
+                if (key.Key == ConsoleKey.K && key.Control)
+                {
+                    if (_bookmarkSelectedIndex > 0)
+                    {
+                        _bookmarkSelectedIndex--;
+                    }
+                }
+                else if (key.Key == ConsoleKey.J && key.Control)
+                {
+                    if (_bookmarkSelectedIndex < filtered.Count - 1)
+                    {
+                        _bookmarkSelectedIndex++;
+                    }
+                }
+                else if (key.KeyChar == 'd')
+                {
+                    // 'd' also removes bookmark
+                    if (filtered.Count > 0 && _bookmarkSelectedIndex < filtered.Count)
+                    {
+                        _bookmarkStore.Remove(filtered[_bookmarkSelectedIndex]);
+                    }
+                }
+                else if (key.KeyChar == 'B')
+                {
+                    // Toggle current directory as bookmark from within dialog
+                    _bookmarkStore.Toggle(_currentPath);
+                }
+                else if (key.KeyChar is >= '1' and <= '9')
+                {
+                    int index = key.KeyChar - '1';
+
+                    if (index < filtered.Count)
+                    {
+                        string path = filtered[index];
+                        _inputMode = InputMode.Normal;
+                        _bookmarkInput = null;
+                        NavigateToPath(path, previewLoader, buffer);
+                        return;
+                    }
+                }
+                else if (key.KeyChar >= ' ')
+                {
+                    _bookmarkInput!.InsertChar(key.KeyChar);
+                    _bookmarkSelectedIndex = 0;
+                    _bookmarkScrollOffset = 0;
+                }
+
+                break;
+        }
+
+        // Adjust scroll offset to keep selection visible
+        filtered = GetFilteredBookmarks();
+
+        if (filtered.Count > 0)
+        {
+            _bookmarkSelectedIndex = Math.Clamp(_bookmarkSelectedIndex, 0, filtered.Count - 1);
+        }
+        else
+        {
+            _bookmarkSelectedIndex = 0;
+        }
+
+        int maxVisible = 18;
+
+        if (_bookmarkSelectedIndex < _bookmarkScrollOffset)
+        {
+            _bookmarkScrollOffset = _bookmarkSelectedIndex;
+        }
+        else if (_bookmarkSelectedIndex >= _bookmarkScrollOffset + maxVisible)
+        {
+            _bookmarkScrollOffset = _bookmarkSelectedIndex - maxVisible + 1;
+        }
+    }
+
+    private void RenderBookmarks(ScreenBuffer buffer, int width, int height)
+    {
+        var filtered = GetFilteredBookmarks();
+        int contentWidth = Math.Min(70, width - 8);
+        int itemRows = Math.Min(filtered.Count, 18);
+        int contentHeight = itemRows + 2; // 1 row for text input + 1 separator + item rows
+        const string Footer = "[↑↓] Navigate [Enter] Open [d] Remove [1-9] Jump  [B] Add/Remove  [Esc] Close";
+
+        var content = DialogBox.Render(
+            buffer, width, height,
+            Math.Max(contentWidth, Footer.Length),
+            Math.Max(contentHeight, 3),
+            title: "Bookmarks",
+            footer: Footer);
+
+        // Row 0: text input with "> " prefix
+        var prefixStyle = new CellStyle(new Color(220, 220, 100), DialogBox.BgColor);
+        var inputStyle = new CellStyle(new Color(200, 200, 200), DialogBox.BgColor);
+        buffer.WriteString(content.Top, content.Left, "> ", prefixStyle);
+        _bookmarkInput?.Render(buffer, content.Top, content.Left + 2, content.Width - 2, inputStyle);
+
+        // Row 1: separator
+        var separatorStyle = new CellStyle(DialogBox.BorderColor, DialogBox.BgColor, Dim: true);
+        for (int c = 0; c < content.Width; c++)
+        {
+            buffer.Put(content.Top + 1, content.Left + c, '─', separatorStyle);
+        }
+
+        if (filtered.Count == 0)
+        {
+            var emptyStyle = new CellStyle(new Color(120, 120, 140), DialogBox.BgColor);
+            buffer.WriteString(content.Top + 2, content.Left + 1, "No bookmarks", emptyStyle);
+            return;
+        }
+
+        // Rows 2+: bookmark items
+        var normalStyle = new CellStyle(new Color(200, 200, 200), DialogBox.BgColor);
+        var selectedStyle = new CellStyle(new Color(20, 20, 35), new Color(200, 200, 200));
+        var numberStyle = new CellStyle(new Color(220, 220, 100), DialogBox.BgColor);
+        var numberSelectedStyle = new CellStyle(new Color(20, 20, 35), new Color(200, 200, 200));
+        var dimStyle = new CellStyle(new Color(120, 120, 140), DialogBox.BgColor);
+        var dimSelectedStyle = new CellStyle(new Color(80, 80, 100), new Color(200, 200, 200));
+
+        int visibleCount = content.Height - 2;
+
+        for (int i = 0; i < visibleCount; i++)
+        {
+            int itemIndex = _bookmarkScrollOffset + i;
+
+            if (itemIndex >= filtered.Count)
+            {
+                break;
+            }
+
+            string path = filtered[itemIndex];
+            bool isSelected = itemIndex == _bookmarkSelectedIndex;
+            bool exists = Directory.Exists(path) || File.Exists(path);
+            int row = content.Top + 2 + i;
+
+            CellStyle labelStyle = isSelected
+                ? (exists ? selectedStyle : dimSelectedStyle)
+                : (exists ? normalStyle : dimStyle);
+
+            CellStyle numStyle = isSelected ? numberSelectedStyle : numberStyle;
+
+            if (isSelected)
+            {
+                buffer.FillRow(row, content.Left, content.Width, ' ', selectedStyle);
+            }
+
+            // Number prefix [1]-[9] for first 9 items
+            int col = content.Left + 1;
+
+            if (itemIndex < 9)
+            {
+                string num = $"[{itemIndex + 1}] ";
+                buffer.WriteString(row, col, num, numStyle);
+                col += num.Length;
+            }
+            else
+            {
+                col += 4; // align with numbered items
+            }
+
+            buffer.WriteString(row, col, path, labelStyle, content.Width - (col - content.Left) - 1);
         }
     }
 

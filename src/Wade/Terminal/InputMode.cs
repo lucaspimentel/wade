@@ -12,4 +12,5 @@ internal enum InputMode
     Config,
     Properties,
     ActionPalette,
+    Bookmarks,
 }
