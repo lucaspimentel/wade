@@ -154,7 +154,42 @@ Implemented: `Shift+N` creates a new empty file, `F7` creates a new directory. B
 
 - **Depends on:** Text input widget, Modal input mode
 
-## Symlink creation
+## Improve symbolic link handling
+
+Wade currently has no symlink awareness — symlinks appear as plain files/directories with no visual distinction, and some operations are unsafe.
+
+### Safety: Fix Windows deletion bug (high priority)
+
+`FileOperations.Delete` calls `Directory.Delete(path, true)` for symlink-to-directory entries on Windows, which **recursively deletes the target's contents** instead of just removing the link. Fix: check `FileAttributes.ReparsePoint` (or `LinkTarget != null`) and use non-recursive delete for symlinks.
+
+### Model: Add symlink fields to `FileSystemEntry`
+
+- Add `bool IsSymlink` and `string? LinkTarget` to `FileSystemEntry`
+- Populate in `DirectoryContents.LoadEntries` via `FileSystemInfo.LinkTarget` (.NET 6+)
+- Detect broken symlinks: `ResolveLinkTarget(returnFinalTarget: true)` returns null or throws
+
+### Display: Visual distinction for symlinks
+
+- **Icon**: Dedicated symlink icon (e.g. Nerd Font `nf-oct-file_symlink_file` / `nf-oct-file_symlink_directory`)
+- **Color**: Cyan text (matches Unix `ls` convention)
+- **Name suffix**: Append ` → <target>` (truncated) or `@` suffix
+- **Broken symlinks**: Red color / broken-link icon when target doesn't exist
+
+### Properties overlay
+
+- Show "Type" as `"Symlink → Directory"` / `"Symlink → File"` / `"Broken Symlink"`
+- Add a "Target" row showing the raw `LinkTarget` path
+- Include `ReparsePoint` in the Windows attributes formatter
+
+### Navigation
+
+- Show error notification when opening a broken symlink-to-directory (instead of silently failing)
+
+### Copy: Preserve symlinks
+
+- In `CopyDirectory`, detect symlinks via `FileSystemInfo.LinkTarget` and recreate them at the destination rather than copying resolved content
+
+### Symlink creation
 
 Create symbolic links from within the file manager.
 
