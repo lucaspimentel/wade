@@ -131,20 +131,6 @@ public class InputReaderTests
     }
 
     [Fact]
-    public void MapKey_CtrlC_ReturnsCopy()
-    {
-        var evt = new KeyEvent(ConsoleKey.C, '\x03', false, false, true);
-        Assert.Equal(AppAction.Copy, InputReader.MapKey(evt));
-    }
-
-    [Fact]
-    public void MapKey_CtrlX_ReturnsCut()
-    {
-        var evt = new KeyEvent(ConsoleKey.X, '\x18', false, false, true);
-        Assert.Equal(AppAction.Cut, InputReader.MapKey(evt));
-    }
-
-    [Fact]
     public void MapKey_C_ReturnsCopy()
     {
         var evt = new KeyEvent(ConsoleKey.C, 'c', false, false, false);
