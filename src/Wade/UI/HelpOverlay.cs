@@ -33,6 +33,8 @@ internal static class HelpOverlay
         ("c / Ctrl+C",          "Copy"),
         ("x / Ctrl+X",          "Cut"),
         ("p / v",               "Paste"),
+        ("y",                   "Copy absolute path"),
+        ("Y",                   "Copy git-relative path"),
         ("Shift+N",             "Create new file"),
         ("F7",                  "Create new directory"),
         ("i",                   "Properties"),

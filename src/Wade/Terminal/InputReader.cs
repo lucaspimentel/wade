@@ -34,6 +34,8 @@ internal enum AppAction
     QuitNoCd,
     ShowProperties,
     ShowActionPalette,
+    CopyAbsolutePath,
+    CopyGitRelativePath,
 }
 
 internal static class InputReader
@@ -128,6 +130,16 @@ internal static class InputReader
         if (key.KeyChar is 'p' or 'v')
         {
             return AppAction.Paste;
+        }
+
+        if (key.KeyChar == 'y')
+        {
+            return AppAction.CopyAbsolutePath;
+        }
+
+        if (key.KeyChar == 'Y')
+        {
+            return AppAction.CopyGitRelativePath;
         }
 
         if (key.KeyChar == 'N')

@@ -172,6 +172,22 @@ public class InputReaderTests
         Assert.Equal(AppAction.Paste, InputReader.MapKey(evt));
     }
 
+    // ── Copy path ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public void MapKey_Y_ReturnsCopyAbsolutePath()
+    {
+        var evt = new KeyEvent(ConsoleKey.Y, 'y', false, false, false);
+        Assert.Equal(AppAction.CopyAbsolutePath, InputReader.MapKey(evt));
+    }
+
+    [Fact]
+    public void MapKey_ShiftY_ReturnsCopyGitRelativePath()
+    {
+        var evt = new KeyEvent(ConsoleKey.Y, 'Y', true, false, false);
+        Assert.Equal(AppAction.CopyGitRelativePath, InputReader.MapKey(evt));
+    }
+
     // ── Open terminal ───────────────────────────────────────────────────────
 
     [Fact]

@@ -696,6 +696,48 @@ internal sealed class App
                     }
                     break;
 
+                case AppAction.CopyAbsolutePath:
+                    if (entries.Count > 0 && _selectedIndex < entries.Count)
+                    {
+                        string pathToCopy = entries[_selectedIndex].FullPath;
+
+                        if (SystemClipboard.SetText(pathToCopy))
+                        {
+                            ShowNotification("Copied path to clipboard", NotificationKind.Info);
+                        }
+                        else
+                        {
+                            ShowNotification("Clipboard not available", NotificationKind.Error);
+                        }
+                    }
+                    break;
+
+                case AppAction.CopyGitRelativePath:
+                    if (entries.Count > 0 && _selectedIndex < entries.Count)
+                    {
+                        string? repoRoot = GitUtils.FindRepoRoot(_currentPath);
+
+                        if (repoRoot is null)
+                        {
+                            ShowNotification("Not inside a git repository", NotificationKind.Error);
+                        }
+                        else
+                        {
+                            string relativePath = Path.GetRelativePath(repoRoot, entries[_selectedIndex].FullPath)
+                                                      .Replace('\\', '/');
+
+                            if (SystemClipboard.SetText(relativePath))
+                            {
+                                ShowNotification("Copied git-relative path to clipboard", NotificationKind.Info);
+                            }
+                            else
+                            {
+                                ShowNotification("Clipboard not available", NotificationKind.Error);
+                            }
+                        }
+                    }
+                    break;
+
                 case AppAction.NewFile:
                     ShowTextInputDialog("New File", "", name =>
                     {
@@ -1438,6 +1480,54 @@ internal sealed class App
                 }
 
                 break;
+
+            default:
+                if (key.KeyChar == 'y')
+                {
+                    string? previewPath = _cachedPreviewPath ?? _cachedImagePath;
+
+                    if (previewPath is not null)
+                    {
+                        if (SystemClipboard.SetText(previewPath))
+                        {
+                            ShowNotification("Copied path to clipboard", NotificationKind.Info);
+                        }
+                        else
+                        {
+                            ShowNotification("Clipboard not available", NotificationKind.Error);
+                        }
+                    }
+                }
+                else if (key.KeyChar == 'Y')
+                {
+                    string? previewPath = _cachedPreviewPath ?? _cachedImagePath;
+
+                    if (previewPath is not null)
+                    {
+                        string? repoRoot = GitUtils.FindRepoRoot(_currentPath);
+
+                        if (repoRoot is null)
+                        {
+                            ShowNotification("Not inside a git repository", NotificationKind.Error);
+                        }
+                        else
+                        {
+                            string relativePath = Path.GetRelativePath(repoRoot, previewPath)
+                                                      .Replace('\\', '/');
+
+                            if (SystemClipboard.SetText(relativePath))
+                            {
+                                ShowNotification("Copied git-relative path to clipboard", NotificationKind.Info);
+                            }
+                            else
+                            {
+                                ShowNotification("Clipboard not available", NotificationKind.Error);
+                            }
+                        }
+                    }
+                }
+
+                break;
         }
     }
 
@@ -2015,6 +2105,8 @@ internal sealed class App
             items.Add(("Paste", "p", AppAction.Paste));
         }
 
+        items.Add(("Copy absolute path", "y", AppAction.CopyAbsolutePath));
+        items.Add(("Copy git-relative path", "Y", AppAction.CopyGitRelativePath));
         items.Add(("New file", "Shift+N", AppAction.NewFile));
         items.Add(("New directory", "F7", AppAction.NewDirectory));
         items.Add(("Properties", "i", AppAction.ShowProperties));
@@ -2356,6 +2448,50 @@ internal sealed class App
                     else
                     {
                         ExecutePaste(overwrite: false);
+                    }
+                }
+
+                break;
+
+            case AppAction.CopyAbsolutePath:
+                if (entries.Count > 0 && _selectedIndex < entries.Count)
+                {
+                    string pathToCopy = entries[_selectedIndex].FullPath;
+
+                    if (SystemClipboard.SetText(pathToCopy))
+                    {
+                        ShowNotification("Copied path to clipboard", NotificationKind.Info);
+                    }
+                    else
+                    {
+                        ShowNotification("Clipboard not available", NotificationKind.Error);
+                    }
+                }
+
+                break;
+
+            case AppAction.CopyGitRelativePath:
+                if (entries.Count > 0 && _selectedIndex < entries.Count)
+                {
+                    string? repoRoot = GitUtils.FindRepoRoot(_currentPath);
+
+                    if (repoRoot is null)
+                    {
+                        ShowNotification("Not inside a git repository", NotificationKind.Error);
+                    }
+                    else
+                    {
+                        string relativePath = Path.GetRelativePath(repoRoot, entries[_selectedIndex].FullPath)
+                                                  .Replace('\\', '/');
+
+                        if (SystemClipboard.SetText(relativePath))
+                        {
+                            ShowNotification("Copied git-relative path to clipboard", NotificationKind.Info);
+                        }
+                        else
+                        {
+                            ShowNotification("Clipboard not available", NotificationKind.Error);
+                        }
                     }
                 }
 

@@ -214,21 +214,9 @@ All clipboard features below share the same P/Invoke surface on Windows (`user32
 - `static (List<string>? Paths, bool IsCut)? GetFiles()` — read file list from OS copy/cut
 - Returns false/null if no clipboard mechanism is available
 
-### Copy path as text
+### ~~Copy path as text~~ ✅
 
-Copy the selected item's path as a plain text string to the OS clipboard (distinct from file copy/cut/paste).
-
-**Copy absolute path:**
-- Keybinding: `Ctrl+Shift+C` (or `Y` — yank, vim convention)
-- Copies `entries[_selectedIndex].FullPath` via `SystemClipboard.SetText()`
-- Show notification: `"Copied path to clipboard"` with `NotificationKind.Info`
-
-**Copy git-relative path:**
-- Keybinding: e.g. `Ctrl+G` or `Shift+Y`
-- If the current directory (or a parent) contains a `.git` folder, copy the path relative to that repo root
-- If not inside a git repo, show error notification: `"Not inside a git repository"`
-- Git root detection: walk up from `_currentPath` using `Directory.GetParent()` looking for a `.git` directory (new helper `FileSystem/GitUtils.FindRepoRoot(string)`)
-- Relative path: `Path.GetRelativePath(repoRoot, entry.FullPath)` — normalize to forward slashes for cross-platform consistency
+Implemented: `y` copies the selected item's absolute path to the OS clipboard via `SystemClipboard.SetText()`. `Y` (Shift+Y) copies the git-relative path (forward-slash normalized). Git root detection via `GitUtils.FindRepoRoot()` walks up looking for `.git`. Error notification shown if not in a git repo or clipboard unavailable. Windows uses P/Invoke (`user32.dll`/`kernel32.dll`); Unix/macOS uses external tools (`pbcopy`, `wl-copy`, `xclip`, `xsel`).
 
 ### OS file clipboard interop
 
