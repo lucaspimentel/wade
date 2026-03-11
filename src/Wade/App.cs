@@ -677,6 +677,12 @@ internal sealed class App
                         _clipboardIsCut = false;
                         ShowNotification($"Copied '{entries[_selectedIndex].Name}'", NotificationKind.Info);
                     }
+
+                    if (OperatingSystem.IsWindows())
+                    {
+                        SystemClipboard.SetFiles(_clipboardPaths, _clipboardIsCut);
+                    }
+
                     break;
 
                 case AppAction.Cut:
@@ -694,6 +700,12 @@ internal sealed class App
                         _clipboardIsCut = true;
                         ShowNotification($"Cut '{entries[_selectedIndex].Name}'", NotificationKind.Info);
                     }
+
+                    if (OperatingSystem.IsWindows())
+                    {
+                        SystemClipboard.SetFiles(_clipboardPaths, _clipboardIsCut);
+                    }
+
                     break;
 
                 case AppAction.CopyAbsolutePath:
@@ -831,6 +843,18 @@ internal sealed class App
                     break;
 
                 case AppAction.Paste:
+                    if (OperatingSystem.IsWindows())
+                    {
+                        var osFiles = SystemClipboard.GetFiles();
+
+                        if (osFiles is not null && osFiles.Value.Paths.Count > 0)
+                        {
+                            _clipboardPaths.Clear();
+                            _clipboardPaths.AddRange(osFiles.Value.Paths);
+                            _clipboardIsCut = osFiles.Value.IsCut;
+                        }
+                    }
+
                     if (_clipboardPaths.Count == 0)
                     {
                         ShowNotification("Clipboard is empty", NotificationKind.Error);
@@ -2412,6 +2436,11 @@ internal sealed class App
                     ShowNotification($"Copied '{entries[_selectedIndex].Name}'", NotificationKind.Info);
                 }
 
+                if (OperatingSystem.IsWindows())
+                {
+                    SystemClipboard.SetFiles(_clipboardPaths, _clipboardIsCut);
+                }
+
                 break;
 
             case AppAction.Cut:
@@ -2430,9 +2459,26 @@ internal sealed class App
                     ShowNotification($"Cut '{entries[_selectedIndex].Name}'", NotificationKind.Info);
                 }
 
+                if (OperatingSystem.IsWindows())
+                {
+                    SystemClipboard.SetFiles(_clipboardPaths, _clipboardIsCut);
+                }
+
                 break;
 
             case AppAction.Paste:
+                if (OperatingSystem.IsWindows())
+                {
+                    var osFiles = SystemClipboard.GetFiles();
+
+                    if (osFiles is not null && osFiles.Value.Paths.Count > 0)
+                    {
+                        _clipboardPaths.Clear();
+                        _clipboardPaths.AddRange(osFiles.Value.Paths);
+                        _clipboardIsCut = osFiles.Value.IsCut;
+                    }
+                }
+
                 if (_clipboardPaths.Count == 0)
                 {
                     ShowNotification("Clipboard is empty", NotificationKind.Error);

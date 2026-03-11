@@ -109,7 +109,7 @@ Implemented: Open with default app (`o`), rename (`F2`), delete (`Del`), copy (`
 **Remaining**
 - ~~Recycle Bin support on Windows (use `SHFileOperation` or shell API instead of permanent delete)~~ ✅
 - ~~Overwrite confirmation on paste when destination already exists~~ ✅
-- OS file clipboard interop → see **System clipboard** section below
+- ~~OS file clipboard interop~~ ✅ (Windows) → see **System clipboard** section below
 - Progress indicator for large copy/move operations
 
 ## ~~Show/hide hidden files~~ ✅
@@ -218,17 +218,9 @@ All clipboard features below share the same P/Invoke surface on Windows (`user32
 
 Implemented: `y` copies the selected item's absolute path to the OS clipboard via `SystemClipboard.SetText()`. `Y` (Shift+Y) copies the git-relative path (forward-slash normalized). Git root detection via `GitUtils.FindRepoRoot()` walks up looking for `.git`. Error notification shown if not in a git repo or clipboard unavailable. Windows uses P/Invoke (`user32.dll`/`kernel32.dll`); Unix/macOS uses external tools (`pbcopy`, `wl-copy`, `xclip`, `xsel`).
 
-### OS file clipboard interop
+### ~~OS file clipboard interop~~ ✅ (Windows)
 
-Interop with system clipboard so files copied in wade can be pasted in Explorer/Finder and vice versa.
-
-**Outbound (wade → OS):**
-- On `AppAction.Copy` / `AppAction.Cut`, also call `SystemClipboard.SetFiles(_clipboardPaths, _clipboardIsCut)` alongside the existing internal clipboard
-- Explorer/Finder paste then works automatically
-
-**Inbound (OS → wade):**
-- On `AppAction.Paste`, first check `SystemClipboard.GetFiles()` — if it returns paths (and they differ from the internal clipboard), use those instead
-- Respect the cut/copy flag from the OS clipboard (`Preferred DropEffect`)
+Implemented: Files copied/cut in wade (`c`/`x`) are placed on the Windows clipboard using `CF_HDROP` + `Preferred DropEffect`, so they can be pasted in Explorer. Files copied/cut in Explorer can be pasted in wade (`p`) — wade reads `CF_HDROP` from the OS clipboard via `DragQueryFileW` and respects the cut/copy drop effect. Unix/macOS interop not yet implemented (returns no-op).
 
 ### Implementation steps
 
