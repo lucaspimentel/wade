@@ -117,12 +117,12 @@ internal static class InputReader
             return AppAction.OpenTerminal;
         }
 
-        if (key.KeyChar == 'c' || (key.Key == ConsoleKey.C && key.Control))
+        if (key.KeyChar == 'c')
         {
             return AppAction.Copy;
         }
 
-        if (key.KeyChar == 'x' || (key.Key == ConsoleKey.X && key.Control))
+        if (key.KeyChar == 'x')
         {
             return AppAction.Cut;
         }
@@ -142,12 +142,12 @@ internal static class InputReader
             return AppAction.CopyGitRelativePath;
         }
 
-        if (key.KeyChar == 'N')
+        if (key.KeyChar == 'n')
         {
             return AppAction.NewFile;
         }
 
-        if (key.Key == ConsoleKey.F7)
+        if (key.KeyChar == 'N')
         {
             return AppAction.NewDirectory;
         }

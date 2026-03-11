@@ -2131,8 +2131,8 @@ internal sealed class App
 
         items.Add(("Copy absolute path", "y", AppAction.CopyAbsolutePath));
         items.Add(("Copy git-relative path", "Y", AppAction.CopyGitRelativePath));
-        items.Add(("New file", "Shift+N", AppAction.NewFile));
-        items.Add(("New directory", "F7", AppAction.NewDirectory));
+        items.Add(("New file", "n", AppAction.NewFile));
+        items.Add(("New directory", "Shift+N", AppAction.NewDirectory));
         items.Add(("Properties", "i", AppAction.ShowProperties));
         items.Add(("Toggle hidden files", ".", AppAction.ToggleHiddenFiles));
         items.Add(("Cycle sort mode", "s", AppAction.CycleSortMode));

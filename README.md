@@ -151,13 +151,13 @@ Then use `wd` instead of `wade` to browse. Press `q` to quit and cd to the last 
 | F2 | Rename |
 | Del | Delete (Recycle Bin on Windows) |
 | Shift+Del | Delete permanently |
-| c / Ctrl+C | Copy |
-| x / Ctrl+X | Cut |
+| c | Copy |
+| x | Cut |
 | p / v | Paste |
 | y | Copy absolute path to clipboard |
 | Y | Copy git-relative path to clipboard |
-| Shift+N | Create new file |
-| F7 | Create new directory |
+| n | Create new file |
+| Shift+N | Create new directory |
 | i | Properties |
 | , | Configuration |
 | Ctrl+P | Action palette |
