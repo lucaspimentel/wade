@@ -75,6 +75,7 @@ internal sealed class App
     private bool _configPreviewPane;
     private bool _configSizeColumn;
     private bool _configDateColumn;
+    private bool _configGlowMarkdownPreview;
 
     private string? _cachedPreviewPath;
     private StyledLine[]? _cachedStyledLines;
@@ -91,6 +92,7 @@ internal sealed class App
     private int _cachedImagePixelWidth;
     private int _cachedImagePixelHeight;
     private bool _isImagePreview;
+    private bool _isRenderedPreview;
     private bool _sixelPending;
 
     // Terminal capability state
@@ -140,7 +142,7 @@ internal sealed class App
         var buffer = new ScreenBuffer(lastWidth, lastHeight);
         _layout.Calculate(lastWidth, lastHeight, _config.PreviewPaneEnabled);
         previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
-            _cellPixelWidth, _cellPixelHeight);
+            _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled);
 
         bool quit = false;
         bool writeCwd = true;
@@ -221,7 +223,7 @@ internal sealed class App
                     _layout.Calculate(lastWidth, lastHeight, _config.PreviewPaneEnabled);
                     var resizePane = _inputMode == InputMode.ExpandedPreview ? _layout.ExpandedPane : _layout.RightPane;
                     previewLoader.Configure(_imagePreviewsEffective, resizePane.Width, resizePane.Height,
-                        _cellPixelWidth, _cellPixelHeight);
+                        _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled);
                     Console.Write(AnsiCodes.ClearScreen);
 
                     // Re-render image at new size
@@ -232,6 +234,13 @@ internal sealed class App
                         _pendingPreviewPath = _cachedImagePath;
                         _previewLoading = true;
                         previewLoader.BeginLoad(_cachedImagePath);
+                    }
+                    else if (_isRenderedPreview && _cachedPreviewPath is not null)
+                    {
+                        _cachedStyledLines = null;
+                        _pendingPreviewPath = _cachedPreviewPath;
+                        _previewLoading = true;
+                        previewLoader.BeginLoad(_cachedPreviewPath);
                     }
                 }
 
@@ -1163,7 +1172,7 @@ internal sealed class App
                 }
                 else if (_cachedStyledLines is not null)
                 {
-                    PaneRenderer.RenderPreview(buffer, _layout.RightPane, _cachedStyledLines);
+                    PaneRenderer.RenderPreview(buffer, _layout.RightPane, _cachedStyledLines, showLineNumbers: !_isRenderedPreview);
                 }
             }
         }
@@ -1240,6 +1249,7 @@ internal sealed class App
         _cachedPreviewLineEnding = evt.LineEnding;
         _previewLoading = false;
         _isImagePreview = false;
+        _isRenderedPreview = evt.IsRendered;
         _cachedSixelData = null;
         _cachedImagePath = null;
     }
@@ -1286,6 +1296,7 @@ internal sealed class App
         _cachedImagePixelWidth = 0;
         _cachedImagePixelHeight = 0;
         _isImagePreview = false;
+        _isRenderedPreview = false;
         _sixelPending = false;
 
         if (wasImage)
@@ -1441,12 +1452,21 @@ internal sealed class App
         if (_isImagePreview && _cachedImagePath is not null)
         {
             previewLoader.Configure(_imagePreviewsEffective, _layout.ExpandedPane.Width, _layout.ExpandedPane.Height,
-                _cellPixelWidth, _cellPixelHeight);
+                _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled);
             _cachedSixelData = null;
             _sixelPending = false;
             _pendingPreviewPath = _cachedImagePath;
             _previewLoading = true;
             previewLoader.BeginLoad(_cachedImagePath);
+        }
+        else if (_isRenderedPreview && _cachedPreviewPath is not null)
+        {
+            previewLoader.Configure(_imagePreviewsEffective, _layout.ExpandedPane.Width, _layout.ExpandedPane.Height,
+                _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled);
+            _cachedStyledLines = null;
+            _pendingPreviewPath = _cachedPreviewPath;
+            _previewLoading = true;
+            previewLoader.BeginLoad(_cachedPreviewPath);
         }
 
         buffer.ForceFullRedraw();
@@ -1458,7 +1478,7 @@ internal sealed class App
         _expandedPreviewScrollOffset = 0;
 
         previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
-            _cellPixelWidth, _cellPixelHeight);
+            _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled);
 
         if (_isImagePreview && _cachedImagePath is not null)
         {
@@ -1467,6 +1487,13 @@ internal sealed class App
             _pendingPreviewPath = _cachedImagePath;
             _previewLoading = true;
             previewLoader.BeginLoad(_cachedImagePath);
+        }
+        else if (_isRenderedPreview && _cachedPreviewPath is not null)
+        {
+            _cachedStyledLines = null;
+            _pendingPreviewPath = _cachedPreviewPath;
+            _previewLoading = true;
+            previewLoader.BeginLoad(_cachedPreviewPath);
         }
 
         Console.Write(AnsiCodes.ClearScreen);
@@ -1621,7 +1648,7 @@ internal sealed class App
         }
         else if (_cachedStyledLines is not null)
         {
-            PaneRenderer.RenderPreview(buffer, pane, _cachedStyledLines, _expandedPreviewScrollOffset);
+            PaneRenderer.RenderPreview(buffer, pane, _cachedStyledLines, _expandedPreviewScrollOffset, showLineNumbers: !_isRenderedPreview);
         }
 
         // Status bar
@@ -2745,6 +2772,7 @@ internal sealed class App
                 ClearPreviewCache(previewLoader, buffer);
                 buffer.ForceFullRedraw();
                 break;
+
         }
     }
 
@@ -3103,6 +3131,7 @@ internal sealed class App
         _configPreviewPane = _config.PreviewPaneEnabled;
         _configSizeColumn = _config.SizeColumnEnabled;
         _configDateColumn = _config.DateColumnEnabled;
+        _configGlowMarkdownPreview = _config.GlowMarkdownPreviewEnabled;
     }
 
     private void HandleConfigKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer)
@@ -3118,7 +3147,7 @@ internal sealed class App
                 break;
 
             case ConsoleKey.DownArrow or ConsoleKey.J:
-                if (_configSelectedIndex < 8)
+                if (_configSelectedIndex < 9)
                 {
                     _configSelectedIndex++;
                 }
@@ -3172,8 +3201,15 @@ internal sealed class App
                 }
 
                 break;
-            case 7: _configSizeColumn = !_configSizeColumn; break;
-            case 8: _configDateColumn = !_configDateColumn; break;
+            case 7:
+                if (_configPreviewPane)
+                {
+                    _configGlowMarkdownPreview = !_configGlowMarkdownPreview;
+                }
+
+                break;
+            case 8: _configSizeColumn = !_configSizeColumn; break;
+            case 9: _configDateColumn = !_configDateColumn; break;
         }
     }
 
@@ -3188,6 +3224,7 @@ internal sealed class App
         _config.PreviewPaneEnabled = _configPreviewPane;
         _config.SizeColumnEnabled = _configSizeColumn;
         _config.DateColumnEnabled = _configDateColumn;
+        _config.GlowMarkdownPreviewEnabled = _configGlowMarkdownPreview;
 
         _directoryContents.ShowHiddenFiles = _config.ShowHiddenFiles;
         _directoryContents.SortMode = _config.SortMode;
@@ -3198,7 +3235,7 @@ internal sealed class App
         ClearPreviewCache(previewLoader, buffer);
         _layout.Calculate(Console.WindowWidth, Console.WindowHeight, _config.PreviewPaneEnabled);
         previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
-            _cellPixelWidth, _cellPixelHeight);
+            _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled);
 
         try
         {
@@ -3234,7 +3271,7 @@ internal sealed class App
     private void RenderConfigDialog(ScreenBuffer buffer, int width, int height)
     {
         const int ContentWidth = 40;
-        const int ContentHeight = 9;
+        const int ContentHeight = 10;
         const string Footer = "[Space] Toggle [◄►] Cycle [Enter] Save [Esc] Cancel";
 
         var content = DialogBox.Render(buffer, width, height, Math.Max(ContentWidth, Footer.Length), ContentHeight, title: "Configuration", footer: Footer);
@@ -3254,6 +3291,7 @@ internal sealed class App
             ("Confirm Delete", FormatBool(_configConfirmDelete), true),
             ("Preview Pane", FormatBool(_configPreviewPane), true),
             ("  Image Previews", FormatBool(_configImagePreviews), _configPreviewPane),
+            ("  Glow Preview", FormatBool(_configGlowMarkdownPreview), _configPreviewPane && GlowRenderer.IsAvailable),
             ("Size Column", FormatBool(_configSizeColumn), true),
             ("Date Column", FormatBool(_configDateColumn), true),
         ];

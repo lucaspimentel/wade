@@ -227,13 +227,15 @@ internal static class PaneRenderer
         ScreenBuffer buffer,
         Rect pane,
         StyledLine[] lines,
-        int scrollOffset = 0)
+        int scrollOffset = 0,
+        bool showLineNumbers = true)
     {
         var defaultStyle = new CellStyle(FileColor, null);
         var lineNumStyle = new CellStyle(DimColor, null);
         Span<char> lineNumBuf = stackalloc char[4];
 
         int contentLineNumber = scrollOffset;
+        int lineNumWidth = showLineNumbers ? 5 : 0;
 
         for (int row = 0; row < pane.Height; row++)
         {
@@ -247,27 +249,34 @@ internal static class PaneRenderer
 
             contentLineNumber++;
 
-            // Line number (4 chars wide, right-aligned)
-            lineNumBuf.Fill(' ');
-            contentLineNumber.TryFormat(lineNumBuf, out int numLen);
-            if (numLen < 4)
+            if (showLineNumbers)
             {
-                lineNumBuf[..numLen].CopyTo(lineNumBuf[(4 - numLen)..]);
-                lineNumBuf[..(4 - numLen)].Fill(' ');
-            }
+                // Line number (4 chars wide, right-aligned)
+                lineNumBuf.Fill(' ');
+                contentLineNumber.TryFormat(lineNumBuf, out int numLen);
+                if (numLen < 4)
+                {
+                    lineNumBuf[..numLen].CopyTo(lineNumBuf[(4 - numLen)..]);
+                    lineNumBuf[..(4 - numLen)].Fill(' ');
+                }
 
-            for (int i = 0; i < 4; i++)
-            {
-                buffer.Put(pane.Top + row, pane.Left + i, lineNumBuf[i], lineNumStyle);
-            }
+                for (int i = 0; i < 4; i++)
+                {
+                    buffer.Put(pane.Top + row, pane.Left + i, lineNumBuf[i], lineNumStyle);
+                }
 
-            buffer.Put(pane.Top + row, pane.Left + 4, ' ', lineNumStyle);
+                buffer.Put(pane.Top + row, pane.Left + 4, ' ', lineNumStyle);
+            }
 
             // Content
-            int contentCol = pane.Left + 5;
-            int contentWidth = pane.Width - 5;
+            int contentCol = pane.Left + lineNumWidth;
+            int contentWidth = pane.Width - lineNumWidth;
 
-            if (styledLine.Spans is { Length: > 0 } spans)
+            if (styledLine.CharStyles is { } charStyles)
+            {
+                RenderPerCharContent(buffer, pane.Top + row, contentCol, contentWidth, styledLine.Text, charStyles, defaultStyle);
+            }
+            else if (styledLine.Spans is { Length: > 0 } spans)
             {
                 RenderStyledContent(buffer, pane.Top + row, contentCol, contentWidth, styledLine.Text, spans, defaultStyle);
             }
@@ -332,6 +341,46 @@ internal static class PaneRenderer
             col += w;
             charsWritten += w;
             pos++;
+        }
+    }
+
+    private static void RenderPerCharContent(
+        ScreenBuffer buffer,
+        int row,
+        int startCol,
+        int maxWidth,
+        string text,
+        CellStyle[] charStyles,
+        CellStyle defaultStyle)
+    {
+        int col = startCol;
+        int charsWritten = 0;
+        int styleIndex = 0;
+
+        int pos = 0;
+        while (pos < text.Length && charsWritten < maxWidth)
+        {
+            var style = styleIndex < charStyles.Length ? charStyles[styleIndex] : defaultStyle;
+
+            var rune = new System.Text.Rune(text[pos]);
+            if (char.IsHighSurrogate(text[pos]) && pos + 1 < text.Length && char.IsLowSurrogate(text[pos + 1]))
+            {
+                rune = new System.Text.Rune(text[pos], text[pos + 1]);
+                pos++;
+                styleIndex++;
+            }
+
+            int w = RuneWidth.GetWidth(rune);
+            if (charsWritten + w > maxWidth)
+            {
+                break;
+            }
+
+            buffer.Put(row, col, rune, style);
+            col += w;
+            charsWritten += w;
+            pos++;
+            styleIndex++;
         }
     }
 

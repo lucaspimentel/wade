@@ -20,7 +20,8 @@ internal sealed record PreviewReadyEvent(
     StyledLine[] StyledLines,
     string? FileTypeLabel,
     string? Encoding,
-    string? LineEnding) : InputEvent;
+    string? LineEnding,
+    bool IsRendered = false) : InputEvent;
 
 internal sealed record ImagePreviewReadyEvent(
     string Path,

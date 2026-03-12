@@ -10,6 +10,7 @@ internal sealed class PreviewLoader
     private readonly InputPipeline _pipeline;
     private CancellationTokenSource? _cts;
     private bool _imagePreviewsEnabled;
+    private bool _glowEnabled;
     private int _paneWidthCells;
     private int _paneHeightCells;
     private int _cellPixelWidth = 8;
@@ -23,9 +24,10 @@ internal sealed class PreviewLoader
     }
 
     public void Configure(bool imagePreviewsEnabled, int paneWidthCells, int paneHeightCells,
-        int cellPixelWidth, int cellPixelHeight)
+        int cellPixelWidth, int cellPixelHeight, bool glowEnabled = false)
     {
         _imagePreviewsEnabled = imagePreviewsEnabled;
+        _glowEnabled = glowEnabled;
         _paneWidthCells = paneWidthCells;
         _paneHeightCells = paneHeightCells;
         _cellPixelWidth = cellPixelWidth;
@@ -40,12 +42,13 @@ internal sealed class PreviewLoader
         var token = _cts.Token;
 
         bool imageEnabled = _imagePreviewsEnabled;
+        bool glowEnabled = _glowEnabled;
         int paneW = _paneWidthCells;
         int paneH = _paneHeightCells;
         int cellW = _cellPixelWidth;
         int cellH = _cellPixelHeight;
 
-        Task.Run(() => LoadPreview(path, imageEnabled, paneW, paneH, cellW, cellH, token), token);
+        Task.Run(() => LoadPreview(path, imageEnabled, glowEnabled, paneW, paneH, cellW, cellH, token), token);
     }
 
     public void Cancel()
@@ -55,7 +58,7 @@ internal sealed class PreviewLoader
         _cts = null;
     }
 
-    private void LoadPreview(string path, bool imageEnabled, int paneW, int paneH,
+    private void LoadPreview(string path, bool imageEnabled, bool glowEnabled, int paneW, int paneH,
         int cellW, int cellH, CancellationToken ct)
     {
         try
@@ -80,6 +83,28 @@ internal sealed class PreviewLoader
                     return;
                 }
                 // Fall through to text/binary preview on failure
+            }
+
+            // Try glow for markdown files
+            var ext = Path.GetExtension(path);
+            if (ext.Equals(".md", StringComparison.OrdinalIgnoreCase) ||
+                ext.Equals(".markdown", StringComparison.OrdinalIgnoreCase))
+            {
+                if (glowEnabled && GlowRenderer.IsAvailable)
+                {
+                    var glowLines = GlowRenderer.Render(path, paneW - 2, ct);
+                    if (glowLines is not null)
+                    {
+                        if (ct.IsCancellationRequested)
+                        {
+                            return;
+                        }
+
+                        string glowLabel = FilePreview.GetFileTypeLabel(path) ?? "Markdown";
+                        _pipeline.Inject(new PreviewReadyEvent(path, glowLines, glowLabel, null, null, IsRendered: true));
+                        return;
+                    }
+                }
             }
 
             var rawLines = FilePreview.GetPreviewLines(path, out var metadata);

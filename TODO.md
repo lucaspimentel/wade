@@ -118,7 +118,7 @@ Implemented: Hidden files (dotfiles on all platforms, `Hidden` attribute on Wind
 
 ## ~~Config dialog~~ ✅
 
-Implemented: Press `,` to open an in-app config dialog. Displays all 8 settings (show icons, show hidden files, sort mode, sort ascending, confirm delete, preview pane, image previews, detail columns) with toggle/cycle controls. Up/Down to navigate, Space to toggle booleans, Left/Right to cycle sort mode, Enter to save, Escape to cancel. Changes are applied immediately to runtime state and written to the config file on save. Image previews is nested under preview pane (indented label) and only toggleable when preview pane is enabled.
+Implemented: Press `,` to open an in-app config dialog. Displays all 10 settings (show icons, show hidden files, sort mode, sort ascending, confirm delete, preview pane, image previews, glow preview, size column, date column) with toggle/cycle controls. Up/Down to navigate, Space to toggle booleans, Left/Right to cycle sort mode, Enter to save, Escape to cancel. Changes are applied immediately to runtime state and written to the config file on save. Image previews is nested under preview pane (indented label) and only toggleable when preview pane is enabled.
 
 - **Depends on:** Dialog / overlay framework, Modal input mode
 
@@ -218,7 +218,7 @@ Reformatted help dialog from a single column (29 rows) to 2 columns side by side
 
 ## ~~Config audit~~ ✅
 
-Reviewed all 5 existing config options — all are actively used and appropriate. Added 3 new options: `confirm_delete_enabled` (skip delete confirmation), `preview_pane_enabled` (hide right preview pane for 2-pane layout), `detail_columns_enabled` (hide size/date columns in center pane). All default to `true`. Config dialog updated to show 8 options.
+Reviewed all 5 existing config options — all are actively used and appropriate. Added 3 new options: `confirm_delete_enabled` (skip delete confirmation), `preview_pane_enabled` (hide right preview pane for 2-pane layout), `detail_columns_enabled` (hide size/date columns in center pane). All default to `true`. Config dialog updated to show 10 options.
 
 ## System clipboard
 

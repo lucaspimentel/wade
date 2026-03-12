@@ -175,4 +175,19 @@ public class ScreenBufferTests
         // After resize, front is empty so "NEW" must appear in flush output
         Assert.Contains("NEW", Flush(buf));
     }
+
+    // ── Underline style ──────────────────────────────────────────────────────
+
+    [Fact]
+    public void Flush_UnderlineStyle_EmitsSgr4()
+    {
+        var buf = new ScreenBuffer(10, 1);
+        var style = new CellStyle(null, null, Underline: true);
+        buf.Put(0, 0, 'U', style);
+
+        var sb = new StringBuilder();
+        buf.Flush(sb);
+        var raw = sb.ToString();
+        Assert.Contains("\x1b[4m", raw);
+    }
 }

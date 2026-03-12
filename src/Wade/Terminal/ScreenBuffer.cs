@@ -284,6 +284,7 @@ internal sealed class ScreenBuffer
             || (oldStyle.Bold && !newStyle.Bold)
             || (oldStyle.Dim && !newStyle.Dim)
             || (oldStyle.Inverse && !newStyle.Inverse)
+            || (oldStyle.Underline && !newStyle.Underline)
             || oldStyle.Bg != newStyle.Bg;
 
         if (needsReset)
@@ -312,6 +313,11 @@ internal sealed class ScreenBuffer
             if (newStyle.Inverse)
             {
                 sb.Append("\x1b[7m");
+            }
+
+            if (newStyle.Underline)
+            {
+                sb.Append("\x1b[4m");
             }
 
             return;
@@ -344,12 +350,17 @@ internal sealed class ScreenBuffer
         {
             sb.Append("\x1b[7m");
         }
+
+        if (!oldStyle.Underline && newStyle.Underline)
+        {
+            sb.Append("\x1b[4m");
+        }
     }
 }
 
 internal readonly record struct Color(byte R, byte G, byte B);
 
-internal readonly record struct CellStyle(Color? Fg, Color? Bg, bool Bold = false, bool Dim = false, bool Inverse = false)
+internal readonly record struct CellStyle(Color? Fg, Color? Bg, bool Bold = false, bool Dim = false, bool Inverse = false, bool Underline = false)
 {
     public static readonly CellStyle Default = new(null, null);
 }

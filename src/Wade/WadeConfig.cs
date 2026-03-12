@@ -6,6 +6,7 @@ internal sealed class WadeConfig
 {
     public bool ShowIconsEnabled { get; set; } = true;
     public bool ImagePreviewsEnabled { get; set; } = true;
+    public bool GlowMarkdownPreviewEnabled { get; set; } = false;
     public bool ShowHiddenFiles { get; set; } = false;
     public SortMode SortMode { get; set; } = SortMode.Name;
     public bool SortAscending { get; set; } = true;
@@ -73,6 +74,9 @@ internal sealed class WadeConfig
                         break;
                     case "image_previews_enabled":
                         config.ImagePreviewsEnabled = ParseBool(value, config.ImagePreviewsEnabled);
+                        break;
+                    case "glow_markdown_preview_enabled":
+                        config.GlowMarkdownPreviewEnabled = ParseBool(value, config.GlowMarkdownPreviewEnabled);
                         break;
                     case "show_hidden_files":
                         config.ShowHiddenFiles = ParseBool(value, config.ShowHiddenFiles);
@@ -176,6 +180,7 @@ internal sealed class WadeConfig
         var content = $"""
             show_icons_enabled = {(ShowIconsEnabled ? "true" : "false")}
             image_previews_enabled = {(ImagePreviewsEnabled ? "true" : "false")}
+            glow_markdown_preview_enabled = {(GlowMarkdownPreviewEnabled ? "true" : "false")}
             show_hidden_files = {(ShowHiddenFiles ? "true" : "false")}
             sort_mode = {sortModeStr}
             sort_ascending = {(SortAscending ? "true" : "false")}
@@ -195,6 +200,7 @@ internal sealed class WadeConfig
         return "{" +
             $"\"show_icons_enabled\":{(ShowIconsEnabled ? "true" : "false")}," +
             $"\"image_previews_enabled\":{(ImagePreviewsEnabled ? "true" : "false")}," +
+            $"\"glow_markdown_preview_enabled\":{(GlowMarkdownPreviewEnabled ? "true" : "false")}," +
             $"\"show_hidden_files\":{(ShowHiddenFiles ? "true" : "false")}," +
             $"\"sort_mode\":\"{sortModeStr}\"," +
             $"\"sort_ascending\":{(SortAscending ? "true" : "false")}," +

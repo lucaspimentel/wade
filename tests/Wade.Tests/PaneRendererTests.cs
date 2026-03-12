@@ -253,4 +253,36 @@ public class PaneRendererTests
         Assert.Contains("2025-03-06", output);
         Assert.DoesNotContain("1.0 KB", output);
     }
+
+    // ── Preview rendering ────────────────────────────────────────────────────
+
+    [Fact]
+    public void RenderPreview_ShowLineNumbersFalse_SkipsLineNumbers()
+    {
+        var buf = new ScreenBuffer(40, 5);
+        Wade.Highlighting.StyledLine[] lines = [new("hello", null)];
+        PaneRenderer.RenderPreview(buf, FullPane(40, 5), lines, showLineNumbers: false);
+        var output = Flush(buf);
+        Assert.Contains("hello", output);
+        // With line numbers enabled, "   1 " would precede content. Without, it should not.
+        Assert.DoesNotContain("   1", output);
+    }
+
+    [Fact]
+    public void RenderPreview_CharStyles_UsesPerCharStyles()
+    {
+        var buf = new ScreenBuffer(40, 5);
+        var style = new CellStyle(new Color(255, 0, 0), null);
+        CellStyle[] charStyles = [style, style, style];
+        Wade.Highlighting.StyledLine[] lines = [new("abc", null, charStyles)];
+        PaneRenderer.RenderPreview(buf, FullPane(40, 5), lines, showLineNumbers: false);
+
+        // Flush with ANSI — should contain red color escape
+        var sb = new StringBuilder();
+        buf.Flush(sb);
+        var raw = sb.ToString();
+        Assert.Contains("abc", StripAnsi(raw));
+        // Should contain ANSI sequences for the red FG color
+        Assert.Contains("\x1b[", raw);
+    }
 }
