@@ -10,13 +10,13 @@ namespace Wade.Benchmarks;
 public class RenderBenchmarks
 {
     private static readonly FileSystemEntry CsFile =
-        new("Program.cs", @"C:\src\Program.cs", IsDirectory: false, Size: 1024, LastModified: default);
+        new("Program.cs", @"C:\src\Program.cs", IsDirectory: false, Size: 1024, LastModified: default, LinkTarget: null, IsDrive: false);
 
     private static readonly FileSystemEntry UnknownFile =
-        new("binary.dat", @"C:\src\binary.dat", IsDirectory: false, Size: 512, LastModified: default);
+        new("binary.dat", @"C:\src\binary.dat", IsDirectory: false, Size: 512, LastModified: default, LinkTarget: null, IsDrive: false);
 
     private static readonly FileSystemEntry Directory =
-        new("src", @"C:\src", IsDirectory: true, Size: 0, LastModified: default);
+        new("src", @"C:\src", IsDirectory: true, Size: 0, LastModified: default, LinkTarget: null, IsDrive: false);
 
     private ScreenBuffer _buffer = null!;
     private StringBuilder _sb = null!;

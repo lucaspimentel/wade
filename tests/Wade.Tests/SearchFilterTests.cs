@@ -23,7 +23,7 @@ public class SearchFilterTests
         public SearchHarness(IEnumerable<string> fileNames)
         {
             _allEntries = fileNames
-                .Select(n => new FileSystemEntry(n, @"C:\" + n, false, 0, DateTime.MinValue))
+                .Select(n => new FileSystemEntry(n, @"C:\" + n, false, 0, DateTime.MinValue, LinkTarget: null, IsDrive: false))
                 .ToList();
         }
 

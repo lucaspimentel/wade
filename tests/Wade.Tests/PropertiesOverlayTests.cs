@@ -23,7 +23,7 @@ public class PropertiesOverlayTests
     {
         var buf = new ScreenBuffer(100, 30);
         var entry = new FileSystemEntry(
-            "test.txt", "/tmp/test.txt", false, 1536, DateTime.Now);
+            "test.txt", "/tmp/test.txt", false, 1536, DateTime.Now, LinkTarget: null, IsDrive: false);
 
         PropertiesOverlay.Render(buf, 100, 30, entry);
 
@@ -46,7 +46,7 @@ public class PropertiesOverlayTests
     {
         var buf = new ScreenBuffer(100, 30);
         var entry = new FileSystemEntry(
-            "readme.md", "/tmp/readme.md", false, 2048, DateTime.Now);
+            "readme.md", "/tmp/readme.md", false, 2048, DateTime.Now, LinkTarget: null, IsDrive: false);
 
         PropertiesOverlay.Render(buf, 100, 30, entry);
 
@@ -60,7 +60,7 @@ public class PropertiesOverlayTests
     {
         var buf = new ScreenBuffer(100, 30);
         var entry = new FileSystemEntry(
-            "docs", "/tmp/docs", true, 0, DateTime.Now);
+            "docs", "/tmp/docs", true, 0, DateTime.Now, LinkTarget: null, IsDrive: false);
 
         PropertiesOverlay.Render(buf, 100, 30, entry);
 
@@ -74,7 +74,7 @@ public class PropertiesOverlayTests
     {
         var buf = new ScreenBuffer(100, 30);
         var entry = new FileSystemEntry(
-            "C:\\", "C:\\", true, 0, DateTime.Now, IsDrive: true);
+            "C:\\", "C:\\", true, 0, DateTime.Now, LinkTarget: null, IsDrive: true);
 
         PropertiesOverlay.Render(buf, 100, 30, entry);
 
@@ -90,7 +90,7 @@ public class PropertiesOverlayTests
     {
         var buf = new ScreenBuffer(120, 30);
         var entry = new FileSystemEntry(
-            "file.dat", "/tmp/file.dat", false, bytes, DateTime.Now);
+            "file.dat", "/tmp/file.dat", false, bytes, DateTime.Now, LinkTarget: null, IsDrive: false);
 
         PropertiesOverlay.Render(buf, 120, 30, entry);
 

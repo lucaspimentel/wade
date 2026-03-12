@@ -55,6 +55,7 @@ internal sealed class DirectoryContents
                 IsDirectory: true,
                 Size: 0,
                 LastModified: default,
+                LinkTarget: null,
                 IsDrive: true));
         }
 
@@ -100,7 +101,8 @@ internal sealed class DirectoryContents
                     IsDirectory: true,
                     Size: 0,
                     LastModified: dir.LastWriteTime,
-                    LinkTarget: dir.LinkTarget));
+                    LinkTarget: dir.LinkTarget,
+                    IsDrive: false));
             }
 
             foreach (var file in dirInfo.EnumerateFiles())
@@ -124,7 +126,8 @@ internal sealed class DirectoryContents
                     IsDirectory: false,
                     Size: file.Length,
                     LastModified: file.LastWriteTime,
-                    LinkTarget: file.LinkTarget));
+                    LinkTarget: file.LinkTarget,
+                    IsDrive: false));
             }
         }
         catch (UnauthorizedAccessException)
@@ -177,5 +180,5 @@ internal sealed record FileSystemEntry(
     bool IsDirectory,
     long Size,
     DateTime LastModified,
-    bool IsDrive = false,
-    string? LinkTarget = null);
+    string? LinkTarget,
+    bool IsDrive);
