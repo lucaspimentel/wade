@@ -99,7 +99,8 @@ internal sealed class DirectoryContents
                     dir.FullName,
                     IsDirectory: true,
                     Size: 0,
-                    LastModified: dir.LastWriteTime));
+                    LastModified: dir.LastWriteTime,
+                    LinkTarget: dir.LinkTarget));
             }
 
             foreach (var file in dirInfo.EnumerateFiles())
@@ -122,7 +123,8 @@ internal sealed class DirectoryContents
                     file.FullName,
                     IsDirectory: false,
                     Size: file.Length,
-                    LastModified: file.LastWriteTime));
+                    LastModified: file.LastWriteTime,
+                    LinkTarget: file.LinkTarget));
             }
         }
         catch (UnauthorizedAccessException)
@@ -175,4 +177,5 @@ internal sealed record FileSystemEntry(
     bool IsDirectory,
     long Size,
     DateTime LastModified,
-    bool IsDrive = false);
+    bool IsDrive = false,
+    string? LinkTarget = null);

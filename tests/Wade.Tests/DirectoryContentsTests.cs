@@ -183,6 +183,82 @@ public class DirectoryContentsTests
         finally { CleanupDir(dir); }
     }
 
+    // ── Symlink support ────────────────────────────────────────────────────
+
+    [Fact]
+    public void FileSystemEntry_LinkTarget_DefaultsToNull()
+    {
+        var entry = new FileSystemEntry("test.txt", "/tmp/test.txt", false, 100, DateTime.Now);
+        Assert.Null(entry.LinkTarget);
+    }
+
+    [Fact]
+    public void FileSystemEntry_LinkTarget_CanBeSet()
+    {
+        var entry = new FileSystemEntry("link.txt", "/tmp/link.txt", false, 0, DateTime.Now, LinkTarget: "/tmp/target.txt");
+        Assert.Equal("/tmp/target.txt", entry.LinkTarget);
+    }
+
+    [Fact]
+    public void LoadEntries_DetectsSymlinks()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return; // Creating symlinks on Windows requires elevated privileges
+        }
+
+        string dir = CreateSortTestDir();
+        try
+        {
+            // Create a real file and a symlink to it
+            string targetPath = Path.Combine(dir, "target.txt");
+            File.WriteAllText(targetPath, "hello");
+
+            string linkPath = Path.Combine(dir, "link.txt");
+            File.CreateSymbolicLink(linkPath, targetPath);
+
+            var dc = new DirectoryContents();
+            var entries = dc.LoadEntries(dir);
+
+            var targetEntry = entries.Single(e => e.Name == "target.txt");
+            var linkEntry = entries.Single(e => e.Name == "link.txt");
+
+            Assert.Null(targetEntry.LinkTarget);
+            Assert.NotNull(linkEntry.LinkTarget);
+        }
+        finally { CleanupDir(dir); }
+    }
+
+    [Fact]
+    public void LoadEntries_DetectsDirectorySymlinks()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return; // Creating symlinks on Windows requires elevated privileges
+        }
+
+        string dir = CreateSortTestDir();
+        try
+        {
+            string targetDir = Path.Combine(dir, "realdir");
+            Directory.CreateDirectory(targetDir);
+
+            string linkDir = Path.Combine(dir, "linkdir");
+            Directory.CreateSymbolicLink(linkDir, targetDir);
+
+            var dc = new DirectoryContents();
+            var entries = dc.LoadEntries(dir);
+
+            var targetEntry = entries.Single(e => e.Name == "realdir");
+            var linkEntry = entries.Single(e => e.Name == "linkdir");
+
+            Assert.Null(targetEntry.LinkTarget);
+            Assert.NotNull(linkEntry.LinkTarget);
+            Assert.True(linkEntry.IsDirectory);
+        }
+        finally { CleanupDir(dir); }
+    }
+
     // ── System+Hidden filtering (Windows only) ─────────────────────────────
 
     [Fact]
