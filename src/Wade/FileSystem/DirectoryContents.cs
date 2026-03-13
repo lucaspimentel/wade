@@ -181,4 +181,24 @@ internal sealed record FileSystemEntry(
     long Size,
     DateTime LastModified,
     string? LinkTarget,
-    bool IsDrive);
+    bool IsDrive)
+{
+    public bool IsSymlink => LinkTarget != null;
+
+    public bool IsBrokenSymlink
+    {
+        get
+        {
+            if (LinkTarget == null)
+            {
+                return false;
+            }
+
+            string resolvedTarget = Path.IsPathFullyQualified(LinkTarget)
+                ? LinkTarget
+                : Path.GetFullPath(LinkTarget, Path.GetDirectoryName(FullPath)!);
+
+            return !Path.Exists(resolvedTarget);
+        }
+    }
+}

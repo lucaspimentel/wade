@@ -159,6 +159,89 @@ public class FileActionsTests : IDisposable
         }
     }
 
+    // ── Symlink properties ─────────────────────────────────────────────────────
+
+    [Fact]
+    public void FileSystemEntry_RegularFile_IsNotSymlink()
+    {
+        var entry = new FileSystemEntry("test.txt", Path.Combine(_tempDir, "test.txt"), false, 100, DateTime.Now, LinkTarget: null, IsDrive: false);
+
+        Assert.False(entry.IsSymlink);
+        Assert.False(entry.IsBrokenSymlink);
+    }
+
+    [Theory]
+    [InlineData(false)] // symlink to file
+    [InlineData(true)]  // symlink to directory
+    public void FileSystemEntry_ValidSymlink_IsSymlinkButNotBroken(bool targetIsDirectory)
+    {
+        string target;
+        if (targetIsDirectory)
+        {
+            target = Path.Combine(_tempDir, "link_target_dir");
+            Directory.CreateDirectory(target);
+        }
+        else
+        {
+            target = Path.Combine(_tempDir, "link_target.txt");
+            File.WriteAllText(target, "content");
+        }
+
+        string link = Path.Combine(_tempDir, "valid_link");
+        try
+        {
+            if (targetIsDirectory)
+            {
+                Directory.CreateSymbolicLink(link, target);
+            }
+            else
+            {
+                File.CreateSymbolicLink(link, target);
+            }
+        }
+        catch (IOException)
+        {
+            // Symlink creation may require elevated privileges on Windows
+            return;
+        }
+
+        var entry = new FileSystemEntry("valid_link", link, targetIsDirectory, 0, DateTime.Now, LinkTarget: target, IsDrive: false);
+
+        Assert.True(entry.IsSymlink);
+        Assert.False(entry.IsBrokenSymlink);
+    }
+
+    [Theory]
+    [InlineData(false)] // broken file symlink
+    [InlineData(true)]  // broken directory symlink
+    public void FileSystemEntry_BrokenSymlink_IsSymlinkAndBroken(bool targetIsDirectory)
+    {
+        string target = Path.Combine(_tempDir, "nonexistent_target");
+        string link = Path.Combine(_tempDir, "broken_link");
+
+        try
+        {
+            if (targetIsDirectory)
+            {
+                Directory.CreateSymbolicLink(link, target);
+            }
+            else
+            {
+                File.CreateSymbolicLink(link, target);
+            }
+        }
+        catch (IOException)
+        {
+            // Symlink creation may require elevated privileges on Windows
+            return;
+        }
+
+        var entry = new FileSystemEntry("broken_link", link, targetIsDirectory, 0, DateTime.Now, LinkTarget: target, IsDrive: false);
+
+        Assert.True(entry.IsSymlink);
+        Assert.True(entry.IsBrokenSymlink);
+    }
+
     // ── Copy + Paste ──────────────────────────────────────────────────────────
 
     [Fact]

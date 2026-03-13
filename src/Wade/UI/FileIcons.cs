@@ -6,9 +6,11 @@ namespace Wade.UI;
 
 internal static class FileIcons
 {
-    private static readonly Rune FolderIcon  = new(0xF114);  // nf-fa-folder
-    private static readonly Rune DriveIcon   = new(0xF0A0);  // nf-fa-hdd_o
-    private static readonly Rune FileIcon    = new(0xF15B);  // nf-fa-file
+    private static readonly Rune FolderIcon      = new(0xF114);  // nf-fa-folder
+    private static readonly Rune DriveIcon       = new(0xF0A0);  // nf-fa-hdd_o
+    private static readonly Rune FileIcon        = new(0xF15B);  // nf-fa-file
+    private static readonly Rune SymlinkDirIcon  = new(0xF482);  // nf-oct-file_symlink_directory
+    private static readonly Rune SymlinkFileIcon = new(0xF481);  // nf-oct-file_symlink_file
 
     private static readonly FrozenDictionary<string, Rune> ExtensionIcons =
         new Dictionary<string, Rune>(StringComparer.OrdinalIgnoreCase)
@@ -115,6 +117,11 @@ internal static class FileIcons
         if (entry.IsDrive)
         {
             return DriveIcon;
+        }
+
+        if (entry.IsSymlink)
+        {
+            return entry.IsDirectory ? SymlinkDirIcon : SymlinkFileIcon;
         }
 
         if (entry.IsDirectory)

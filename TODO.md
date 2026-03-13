@@ -34,12 +34,12 @@ Wade currently has no symlink awareness — symlinks appear as plain files/direc
 - ~~Populate in `DirectoryContents.LoadEntries` via `FileSystemInfo.LinkTarget`~~ — done
 - Detect broken symlinks: `ResolveLinkTarget(returnFinalTarget: true)` returns null or throws
 
-#### Display: Visual distinction for symlinks
+#### Display: Visual distinction for symlinks ✅
 
-- **Icon**: Dedicated symlink icon (e.g. Nerd Font `nf-oct-file_symlink_file` / `nf-oct-file_symlink_directory`)
-- **Color**: Cyan text (matches Unix `ls` convention)
-- **Name suffix**: Append ` → <target>` (truncated) or `@` suffix
-- **Broken symlinks**: Red color / broken-link icon when target doesn't exist
+~~- **Icon**: Dedicated symlink icon (e.g. Nerd Font `nf-oct-file_symlink_file` / `nf-oct-file_symlink_directory`)~~
+~~- **Color**: Cyan text (matches Unix `ls` convention)~~
+~~- **Name suffix**: Append ` → <target>` (truncated) or `@` suffix~~
+~~- **Broken symlinks**: Red color / broken-link icon when target doesn't exist~~
 
 #### Properties overlay
 

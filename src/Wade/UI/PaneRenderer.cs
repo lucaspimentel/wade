@@ -16,17 +16,23 @@ internal static class PaneRenderer
     private static readonly Color BorderColor = new(60, 60, 60);
 
     private static readonly Color DetailColor = new(110, 110, 110);
+    private static readonly Color SymlinkColor = new(0, 200, 200);
+    private static readonly Color BrokenSymlinkColor = new(200, 60, 60);
 
     private static readonly CellStyle ActiveSelectionStyle = new(SelectionFg, SelectionBg, Bold: true);
     private static readonly CellStyle InactiveSelectionStyle = new(SelectionFg, new Color(60, 60, 80), Bold: true);
     private static readonly CellStyle DirStyle = new(DirColor, null, Bold: true);
     private static readonly CellStyle FileStyle = new(FileColor, null);
     private static readonly CellStyle DetailStyle = new(DetailColor, null);
+    private static readonly CellStyle SymlinkStyle = new(SymlinkColor, null);
+    private static readonly CellStyle BrokenSymlinkStyle = new(BrokenSymlinkColor, null);
 
     private static readonly Color MarkedBg = new(60, 60, 0);
     private static readonly CellStyle MarkedStyle = new(FileColor, MarkedBg);
     private static readonly CellStyle MarkedDirStyle = new(DirColor, MarkedBg, Bold: true);
     private static readonly CellStyle MarkedSelectedStyle = new(SelectionFg, new Color(180, 180, 60), Bold: true);
+    private static readonly CellStyle MarkedSymlinkStyle = new(SymlinkColor, MarkedBg);
+    private static readonly CellStyle MarkedBrokenSymlinkStyle = new(BrokenSymlinkColor, MarkedBg);
 
     // Column widths
     private const int SizeWidth = 8;
@@ -147,6 +153,14 @@ internal static class PaneRenderer
             {
                 style = InactiveSelectionStyle;
             }
+            else if (isMarked && entry.IsBrokenSymlink)
+            {
+                style = MarkedBrokenSymlinkStyle;
+            }
+            else if (isMarked && entry.IsSymlink)
+            {
+                style = MarkedSymlinkStyle;
+            }
             else if (isMarked && entry.IsDirectory)
             {
                 style = MarkedDirStyle;
@@ -154,6 +168,14 @@ internal static class PaneRenderer
             else if (isMarked)
             {
                 style = MarkedStyle;
+            }
+            else if (entry.IsBrokenSymlink)
+            {
+                style = BrokenSymlinkStyle;
+            }
+            else if (entry.IsSymlink)
+            {
+                style = SymlinkStyle;
             }
             else if (entry.IsDirectory)
             {
@@ -176,17 +198,42 @@ internal static class PaneRenderer
             int entryCol = pane.Left;
 
             // Render name
+            int nameCharsUsed;
             if (showIcons)
             {
                 buffer.Put(screenRow, entryCol, FileIcons.GetIcon(entry), style);
                 buffer.Put(screenRow, entryCol + 1, ' ', style);
-                buffer.WriteString(screenRow, entryCol + 2, entry.Name, style, nameWidth - 2);
+                int maxName = nameWidth - 2;
+                int nameLen = Math.Min(entry.Name.Length, maxName);
+                buffer.WriteString(screenRow, entryCol + 2, entry.Name, style, maxName);
+                nameCharsUsed = 2 + nameLen;
             }
             else
             {
                 char prefix = entry.IsDirectory && !entry.IsDrive ? DirSeparatorChar : ' ';
                 buffer.Put(screenRow, entryCol, prefix, style);
-                buffer.WriteString(screenRow, entryCol + 1, entry.Name, style, nameWidth - 1);
+                int maxName = nameWidth - 1;
+                int nameLen = Math.Min(entry.Name.Length, maxName);
+                buffer.WriteString(screenRow, entryCol + 1, entry.Name, style, maxName);
+                nameCharsUsed = 1 + nameLen;
+            }
+
+            // Append " → target" suffix for symlinks
+            if (entry.IsSymlink && entry.LinkTarget is { } linkTarget)
+            {
+                int remaining = nameWidth - nameCharsUsed;
+                if (remaining > 4) // need room for at least " → X"
+                {
+                    CellStyle suffixStyle = isSelected ? style : (entry.IsBrokenSymlink ? BrokenSymlinkStyle : DetailStyle);
+                    string arrow = " → ";
+                    int suffixCol = entryCol + nameCharsUsed;
+                    buffer.WriteString(screenRow, suffixCol, arrow, suffixStyle, remaining);
+                    remaining -= arrow.Length;
+                    if (remaining > 0)
+                    {
+                        buffer.WriteString(screenRow, suffixCol + arrow.Length, linkTarget, suffixStyle, remaining);
+                    }
+                }
             }
 
             // Render detail columns (right-aligned from pane edge)
