@@ -15,7 +15,7 @@ internal static class FilePreview
             // Documents
             ".pdf",
             // Archives
-            ".zip", ".tar", ".gz", ".7z", ".rar", ".nupkg",
+            ".zip", ".tar", ".gz", ".7z", ".rar", ".nupkg", ".jar", ".war", ".ear",
             // Binaries
             ".exe", ".dll", ".so", ".dylib", ".pdb", ".wasm",
         }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
@@ -110,6 +110,9 @@ internal static class FilePreview
             [".7z"] = "Archive",
             [".rar"] = "Archive",
             [".nupkg"] = "Archive",
+            [".jar"] = "Archive",
+            [".war"] = "Archive",
+            [".ear"] = "Archive",
             // Binaries
             [".exe"] = "Executable",
             [".dll"] = "Library",

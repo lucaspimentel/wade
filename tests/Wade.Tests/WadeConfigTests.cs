@@ -32,6 +32,7 @@ public class WadeConfigTests
         Assert.True(config.SizeColumnEnabled);
         Assert.True(config.DateColumnEnabled);
         Assert.True(config.CopySymlinksAsLinksEnabled);
+        Assert.True(config.ZipPreviewEnabled);
         Assert.Equal(Directory.GetCurrentDirectory(), config.StartPath);
     }
 
@@ -73,6 +74,8 @@ public class WadeConfigTests
     [InlineData("show_system_files", false)]
     [InlineData("copy_symlinks_as_links_enabled", true)]
     [InlineData("copy_symlinks_as_links_enabled", false)]
+    [InlineData("zip_preview_enabled", true)]
+    [InlineData("zip_preview_enabled", false)]
     public void ConfigFile_ParsesNewBoolSettings(string key, bool value)
     {
         var path = WriteTempConfig($"{key} = {(value ? "true" : "false")}");
@@ -87,6 +90,7 @@ public class WadeConfigTests
                 "size_column_enabled" => config.SizeColumnEnabled,
                 "date_column_enabled" => config.DateColumnEnabled,
                 "copy_symlinks_as_links_enabled" => config.CopySymlinksAsLinksEnabled,
+                "zip_preview_enabled" => config.ZipPreviewEnabled,
                 _ => throw new ArgumentException($"Unknown key: {key}"),
             };
             Assert.Equal(value, actual);
@@ -380,6 +384,7 @@ public class WadeConfigTests
             original.SizeColumnEnabled = false;
             original.DateColumnEnabled = false;
             original.CopySymlinksAsLinksEnabled = false;
+            original.ZipPreviewEnabled = false;
             original.Save();
 
             var loaded = WadeConfig.Load([], configFilePath: configPath);
@@ -394,6 +399,7 @@ public class WadeConfigTests
             Assert.False(loaded.SizeColumnEnabled);
             Assert.False(loaded.DateColumnEnabled);
             Assert.False(loaded.CopySymlinksAsLinksEnabled);
+            Assert.False(loaded.ZipPreviewEnabled);
         }
         finally
         {

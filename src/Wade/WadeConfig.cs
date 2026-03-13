@@ -16,6 +16,7 @@ internal sealed class WadeConfig
     public bool SizeColumnEnabled { get; set; } = true;
     public bool DateColumnEnabled { get; set; } = true;
     public bool CopySymlinksAsLinksEnabled { get; set; } = true;
+    public bool ZipPreviewEnabled { get; set; } = true;
     public string StartPath { get; set; } = Directory.GetCurrentDirectory();
     public bool ShowConfig { get; set; } = false;
     public bool ShowHelp { get; set; } = false;
@@ -111,6 +112,9 @@ internal sealed class WadeConfig
                     case "copy_symlinks_as_links_enabled":
                         config.CopySymlinksAsLinksEnabled = ParseBool(value, config.CopySymlinksAsLinksEnabled);
                         break;
+                    case "zip_preview_enabled":
+                        config.ZipPreviewEnabled = ParseBool(value, config.ZipPreviewEnabled);
+                        break;
                     case "detail_columns_enabled":
                         // Backward compat: sets both columns
                         var detailBool = ParseBool(value, true);
@@ -198,6 +202,7 @@ internal sealed class WadeConfig
             size_column_enabled = {(SizeColumnEnabled ? "true" : "false")}
             date_column_enabled = {(DateColumnEnabled ? "true" : "false")}
             copy_symlinks_as_links_enabled = {(CopySymlinksAsLinksEnabled ? "true" : "false")}
+            zip_preview_enabled = {(ZipPreviewEnabled ? "true" : "false")}
             """;
 
         File.WriteAllText(ConfigFilePath, content);
@@ -220,6 +225,7 @@ internal sealed class WadeConfig
             $"\"size_column_enabled\":{(SizeColumnEnabled ? "true" : "false")}," +
             $"\"date_column_enabled\":{(DateColumnEnabled ? "true" : "false")}," +
             $"\"copy_symlinks_as_links_enabled\":{(CopySymlinksAsLinksEnabled ? "true" : "false")}," +
+            $"\"zip_preview_enabled\":{(ZipPreviewEnabled ? "true" : "false")}," +
             $"\"start_path\":\"{escapedPath}\"" +
             "}";
     }

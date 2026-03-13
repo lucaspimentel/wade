@@ -109,14 +109,14 @@ Detect whether a drive is SSD, HDD, or network. Some features (like directory si
   - Show directory size for network drives (default false)
 - Must be NativeAOT-compatible (no reflection-heavy WMI wrappers)
 
-### Zip file preview
+### Zip file preview ✅
 
-Show zip/archive contents in the file preview pane (like a directory listing).
+~~Show zip/archive contents in the file preview pane (like a directory listing).~~
 
-- Use `System.IO.Compression.ZipFile` (built-in, NativeAOT-safe) to read the entry list
-- Render as a list of paths/sizes in the preview pane, similar to directory preview
-- Add a `zip_preview_enabled` config setting (default: true)
-- Preview loading should go through `PreviewLoader` async pattern to avoid blocking
+- ~~Use `System.IO.Compression.ZipFile` (built-in, NativeAOT-safe) to read the entry list~~
+- ~~Render as a list of paths/sizes in the preview pane, similar to directory preview~~
+- ~~Add a `zip_preview_enabled` config setting (default: true)~~
+- ~~Preview loading should go through `PreviewLoader` async pattern to avoid blocking~~
 - Consider supporting other archive formats (`.tar`, `.gz`, `.tar.gz`) later
 
 ### Remote/cloud file handling (OneDrive, etc.)

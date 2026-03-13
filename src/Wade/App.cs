@@ -77,6 +77,7 @@ internal sealed class App
     private bool _configSizeColumn;
     private bool _configDateColumn;
     private bool _configGlowMarkdownPreview;
+    private bool _configZipPreview;
     private bool _configCopySymlinksAsLinks;
 
     // Directory size calculation state
@@ -151,7 +152,8 @@ internal sealed class App
         var buffer = new ScreenBuffer(lastWidth, lastHeight);
         _layout.Calculate(lastWidth, lastHeight, _config.PreviewPaneEnabled);
         previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
-            _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled);
+            _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
+            zipPreviewEnabled: _config.ZipPreviewEnabled);
 
         bool quit = false;
         bool writeCwd = true;
@@ -236,7 +238,8 @@ internal sealed class App
                     _layout.Calculate(lastWidth, lastHeight, _config.PreviewPaneEnabled);
                     var resizePane = _inputMode == InputMode.ExpandedPreview ? _layout.ExpandedPane : _layout.RightPane;
                     previewLoader.Configure(_imagePreviewsEffective, resizePane.Width, resizePane.Height,
-                        _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled);
+                        _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
+            zipPreviewEnabled: _config.ZipPreviewEnabled);
                     Console.Write(AnsiCodes.ClearScreen);
 
                     // Re-render image at new size
@@ -1611,7 +1614,8 @@ internal sealed class App
         if (_isImagePreview && _cachedImagePath is not null)
         {
             previewLoader.Configure(_imagePreviewsEffective, _layout.ExpandedPane.Width, _layout.ExpandedPane.Height,
-                _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled);
+                _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
+            zipPreviewEnabled: _config.ZipPreviewEnabled);
             _cachedSixelData = null;
             _sixelPending = false;
             _pendingPreviewPath = _cachedImagePath;
@@ -1621,7 +1625,8 @@ internal sealed class App
         else if (_isRenderedPreview && _cachedPreviewPath is not null)
         {
             previewLoader.Configure(_imagePreviewsEffective, _layout.ExpandedPane.Width, _layout.ExpandedPane.Height,
-                _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled);
+                _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
+            zipPreviewEnabled: _config.ZipPreviewEnabled);
             _cachedStyledLines = null;
             _pendingPreviewPath = _cachedPreviewPath;
             _previewLoading = true;
@@ -1637,7 +1642,8 @@ internal sealed class App
         _expandedPreviewScrollOffset = 0;
 
         previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
-            _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled);
+            _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
+            zipPreviewEnabled: _config.ZipPreviewEnabled);
 
         if (_isImagePreview && _cachedImagePath is not null)
         {
@@ -3373,6 +3379,7 @@ internal sealed class App
         _configSizeColumn = _config.SizeColumnEnabled;
         _configDateColumn = _config.DateColumnEnabled;
         _configGlowMarkdownPreview = _config.GlowMarkdownPreviewEnabled;
+        _configZipPreview = _config.ZipPreviewEnabled;
         _configCopySymlinksAsLinks = _config.CopySymlinksAsLinksEnabled;
     }
 
@@ -3389,7 +3396,7 @@ internal sealed class App
                 break;
 
             case ConsoleKey.DownArrow or ConsoleKey.J:
-                int maxIndex = OperatingSystem.IsWindows() ? 11 : 10;
+                int maxIndex = OperatingSystem.IsWindows() ? 12 : 11;
                 if (_configSelectedIndex < maxIndex)
                 {
                     _configSelectedIndex++;
@@ -3473,9 +3480,16 @@ internal sealed class App
                 }
 
                 break;
-            case 8: _configSizeColumn = !_configSizeColumn; break;
-            case 9: _configDateColumn = !_configDateColumn; break;
-            case 10: _configCopySymlinksAsLinks = !_configCopySymlinksAsLinks; break;
+            case 8:
+                if (_configPreviewPane)
+                {
+                    _configZipPreview = !_configZipPreview;
+                }
+
+                break;
+            case 9: _configSizeColumn = !_configSizeColumn; break;
+            case 10: _configDateColumn = !_configDateColumn; break;
+            case 11: _configCopySymlinksAsLinks = !_configCopySymlinksAsLinks; break;
         }
     }
 
@@ -3493,6 +3507,7 @@ internal sealed class App
         _config.SizeColumnEnabled = _configSizeColumn;
         _config.DateColumnEnabled = _configDateColumn;
         _config.GlowMarkdownPreviewEnabled = _configGlowMarkdownPreview;
+        _config.ZipPreviewEnabled = _configZipPreview;
         _config.CopySymlinksAsLinksEnabled = _configCopySymlinksAsLinks;
 
         _directoryContents.ShowHiddenFiles = _config.ShowHiddenFiles;
@@ -3505,7 +3520,8 @@ internal sealed class App
         ClearPreviewCache(previewLoader, buffer);
         _layout.Calculate(Console.WindowWidth, Console.WindowHeight, _config.PreviewPaneEnabled);
         previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
-            _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled);
+            _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
+            zipPreviewEnabled: _config.ZipPreviewEnabled);
 
         try
         {
@@ -3541,7 +3557,7 @@ internal sealed class App
     private void RenderConfigDialog(ScreenBuffer buffer, int width, int height)
     {
         const int ContentWidth = 40;
-        int contentHeight = OperatingSystem.IsWindows() ? 12 : 11;
+        int contentHeight = OperatingSystem.IsWindows() ? 13 : 12;
         const string Footer = "[Space] Toggle [◄►] Cycle [Enter] Save [Esc] Cancel";
 
         var content = DialogBox.Render(buffer, width, height, Math.Max(ContentWidth, Footer.Length), contentHeight, title: "Configuration", footer: Footer);
@@ -3569,6 +3585,7 @@ internal sealed class App
         itemList.Add(("Preview Pane", FormatBool(_configPreviewPane), true));
         itemList.Add(("  Image Previews", FormatBool(_configImagePreviews), _configPreviewPane));
         itemList.Add(("  Glow Preview", FormatBool(_configGlowMarkdownPreview), _configPreviewPane && GlowRenderer.IsAvailable));
+        itemList.Add(("  Zip Preview", FormatBool(_configZipPreview), _configPreviewPane));
         itemList.Add(("Size Column", FormatBool(_configSizeColumn), true));
         itemList.Add(("Date Column", FormatBool(_configDateColumn), true));
         itemList.Add(("Copy Symlinks As Links", FormatBool(_configCopySymlinksAsLinks), true));

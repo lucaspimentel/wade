@@ -11,6 +11,7 @@ internal sealed class PreviewLoader
     private CancellationTokenSource? _cts;
     private bool _imagePreviewsEnabled;
     private bool _glowEnabled;
+    private bool _zipPreviewEnabled;
     private int _paneWidthCells;
     private int _paneHeightCells;
     private int _cellPixelWidth = 8;
@@ -24,10 +25,11 @@ internal sealed class PreviewLoader
     }
 
     public void Configure(bool imagePreviewsEnabled, int paneWidthCells, int paneHeightCells,
-        int cellPixelWidth, int cellPixelHeight, bool glowEnabled = false)
+        int cellPixelWidth, int cellPixelHeight, bool glowEnabled, bool zipPreviewEnabled)
     {
         _imagePreviewsEnabled = imagePreviewsEnabled;
         _glowEnabled = glowEnabled;
+        _zipPreviewEnabled = zipPreviewEnabled;
         _paneWidthCells = paneWidthCells;
         _paneHeightCells = paneHeightCells;
         _cellPixelWidth = cellPixelWidth;
@@ -43,12 +45,13 @@ internal sealed class PreviewLoader
 
         bool imageEnabled = _imagePreviewsEnabled;
         bool glowEnabled = _glowEnabled;
+        bool zipEnabled = _zipPreviewEnabled;
         int paneW = _paneWidthCells;
         int paneH = _paneHeightCells;
         int cellW = _cellPixelWidth;
         int cellH = _cellPixelHeight;
 
-        Task.Run(() => LoadPreview(path, imageEnabled, glowEnabled, paneW, paneH, cellW, cellH, token), token);
+        Task.Run(() => LoadPreview(path, imageEnabled, glowEnabled, zipEnabled, paneW, paneH, cellW, cellH, token), token);
     }
 
     public void Cancel()
@@ -58,7 +61,7 @@ internal sealed class PreviewLoader
         _cts = null;
     }
 
-    private void LoadPreview(string path, bool imageEnabled, bool glowEnabled, int paneW, int paneH,
+    private void LoadPreview(string path, bool imageEnabled, bool glowEnabled, bool zipEnabled, int paneW, int paneH,
         int cellW, int cellH, CancellationToken ct)
     {
         try
@@ -104,6 +107,23 @@ internal sealed class PreviewLoader
                         _pipeline.Inject(new PreviewReadyEvent(path, glowLines, glowLabel, null, null, IsRendered: true));
                         return;
                     }
+                }
+            }
+
+            // Try zip preview
+            if (zipEnabled && ZipPreview.IsZipFile(path))
+            {
+                var zipLines = ZipPreview.GetPreviewLines(path, ct);
+                if (zipLines is not null)
+                {
+                    if (ct.IsCancellationRequested)
+                    {
+                        return;
+                    }
+                    string label = FilePreview.GetFileTypeLabel(path) ?? "Archive";
+                    var zipStyled = zipLines.Select(l => new StyledLine(l, null)).ToArray();
+                    _pipeline.Inject(new PreviewReadyEvent(path, zipStyled, label, null, null, IsRendered: true));
+                    return;
                 }
             }
 
