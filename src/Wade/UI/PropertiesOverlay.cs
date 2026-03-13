@@ -15,6 +15,7 @@ internal static class PropertiesOverlay
         "Name",
         "Path",
         "Type",
+        "Target",
         "Size",
         "Created",
         "Modified",
@@ -70,7 +71,17 @@ internal static class PropertiesOverlay
 
     private static string[] BuildValues(FileSystemEntry entry)
     {
-        string type = entry.IsDrive ? "Drive" : entry.IsDirectory ? "Directory" : "File";
+        string type = entry.IsDrive
+            ? "Drive"
+            : entry.IsBrokenSymlink
+                ? "Broken Symlink"
+                : entry.IsSymlink
+                    ? (entry.IsDirectory ? "Symlink \u2192 Directory" : "Symlink \u2192 File")
+                    : entry.IsDirectory
+                        ? "Directory"
+                        : "File";
+
+        string target = entry.LinkTarget ?? "\u2014";
 
         string size;
         if (entry.IsDirectory || entry.IsDrive)
@@ -132,6 +143,7 @@ internal static class PropertiesOverlay
             entry.Name,
             entry.FullPath,
             type,
+            target,
             size,
             created,
             modified,
@@ -162,6 +174,7 @@ internal static class PropertiesOverlay
         AppendFlag(ref pos, buf, attrs, FileAttributes.ReadOnly, "ReadOnly");
         AppendFlag(ref pos, buf, attrs, FileAttributes.Hidden, "Hidden");
         AppendFlag(ref pos, buf, attrs, FileAttributes.System, "System");
+        AppendFlag(ref pos, buf, attrs, FileAttributes.ReparsePoint, "ReparsePoint");
         AppendFlag(ref pos, buf, attrs, FileAttributes.Archive, "Archive");
         AppendFlag(ref pos, buf, attrs, FileAttributes.Compressed, "Compressed");
         AppendFlag(ref pos, buf, attrs, FileAttributes.Encrypted, "Encrypted");

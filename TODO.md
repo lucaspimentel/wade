@@ -41,11 +41,11 @@ Wade currently has no symlink awareness — symlinks appear as plain files/direc
 ~~- **Name suffix**: Append ` → <target>` (truncated) or `@` suffix~~
 ~~- **Broken symlinks**: Red color / broken-link icon when target doesn't exist~~
 
-#### Properties overlay
+#### Properties overlay ✅
 
-- Show "Type" as `"Symlink → Directory"` / `"Symlink → File"` / `"Broken Symlink"`
-- Add a "Target" row showing the raw `LinkTarget` path
-- Include `ReparsePoint` in the Windows attributes formatter
+~~- Show "Type" as `"Symlink → Directory"` / `"Symlink → File"` / `"Broken Symlink"`~~
+~~- Add a "Target" row showing the raw `LinkTarget` path~~
+~~- Include `ReparsePoint` in the Windows attributes formatter~~
 
 #### Navigation
 
