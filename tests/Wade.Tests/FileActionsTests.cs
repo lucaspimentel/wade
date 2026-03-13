@@ -104,6 +104,61 @@ public class FileActionsTests : IDisposable
         Assert.True(errors > 0);
     }
 
+    // ── Delete symlinks ───────────────────────────────────────────────────────
+
+    [Theory]
+    [InlineData(false)] // symlink to file
+    [InlineData(true)]  // symlink to directory
+    public void Delete_Symlink_RemovesLinkButNotTarget(bool targetIsDirectory)
+    {
+        string target;
+        if (targetIsDirectory)
+        {
+            target = Path.Combine(_tempDir, "target_dir");
+            Directory.CreateDirectory(target);
+            File.WriteAllText(Path.Combine(target, "child.txt"), "preserved");
+        }
+        else
+        {
+            target = Path.Combine(_tempDir, "target_file.txt");
+            File.WriteAllText(target, "preserved");
+        }
+
+        string link = Path.Combine(_tempDir, "my_symlink");
+        try
+        {
+            if (targetIsDirectory)
+            {
+                Directory.CreateSymbolicLink(link, target);
+            }
+            else
+            {
+                File.CreateSymbolicLink(link, target);
+            }
+        }
+        catch (IOException)
+        {
+            // Symlink creation may require elevated privileges on Windows
+            return;
+        }
+
+        int errors = FileOperations.Delete([link], permanent: true);
+
+        Assert.Equal(0, errors);
+        Assert.False(Path.Exists(link), "Symlink should be removed");
+
+        if (targetIsDirectory)
+        {
+            Assert.True(Directory.Exists(target), "Target directory should still exist");
+            Assert.True(File.Exists(Path.Combine(target, "child.txt")), "Target contents should be intact");
+        }
+        else
+        {
+            Assert.True(File.Exists(target), "Target file should still exist");
+            Assert.Equal("preserved", File.ReadAllText(target));
+        }
+    }
+
     // ── Copy + Paste ──────────────────────────────────────────────────────────
 
     [Fact]

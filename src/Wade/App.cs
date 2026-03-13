@@ -979,7 +979,20 @@ internal sealed class App
 
                 try
                 {
-                    if (Directory.Exists(destPath))
+                    // Check symlink FIRST — Directory.Exists follows the link on Windows
+                    var destInfo = new FileInfo(destPath);
+                    if (destInfo.LinkTarget != null)
+                    {
+                        if (Directory.Exists(destPath))
+                        {
+                            Directory.Delete(destPath, false);
+                        }
+                        else
+                        {
+                            File.Delete(destPath);
+                        }
+                    }
+                    else if (Directory.Exists(destPath))
                     {
                         Directory.Delete(destPath, true);
                     }

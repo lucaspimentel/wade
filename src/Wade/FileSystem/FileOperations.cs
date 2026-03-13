@@ -26,7 +26,20 @@ internal static class FileOperations
         {
             try
             {
-                if (Directory.Exists(path))
+                // Check symlink FIRST — Directory.Exists follows the link on Windows
+                var fileInfo = new FileInfo(path);
+                if (fileInfo.LinkTarget != null)
+                {
+                    if (Directory.Exists(path))
+                    {
+                        Directory.Delete(path, false);
+                    }
+                    else
+                    {
+                        File.Delete(path);
+                    }
+                }
+                else if (Directory.Exists(path))
                 {
                     Directory.Delete(path, true);
                 }

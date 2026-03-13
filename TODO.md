@@ -24,9 +24,9 @@ Compute and display total size of a folder.
 
 Wade currently has no symlink awareness — symlinks appear as plain files/directories with no visual distinction, and some operations are unsafe.
 
-#### Safety: Fix Windows deletion bug (high priority)
+#### Safety: Fix Windows deletion bug ✅
 
-`FileOperations.Delete` calls `Directory.Delete(path, true)` for symlink-to-directory entries on Windows, which **recursively deletes the target's contents** instead of just removing the link. Fix: check `FileAttributes.ReparsePoint` (or `LinkTarget != null`) and use non-recursive delete for symlinks.
+~~`FileOperations.Delete` calls `Directory.Delete(path, true)` for symlink-to-directory entries on Windows, which **recursively deletes the target's contents** instead of just removing the link.~~ Fixed: symlinks are now detected via `FileInfo.LinkTarget` and deleted with non-recursive `Directory.Delete` / `File.Delete` before the `Directory.Exists` branch.
 
 #### Model: Symlink fields ✅ (partial)
 
