@@ -26,9 +26,10 @@ internal static class PropertiesOverlay
 
     private const int LabelWidth = 12;
 
-    public static void Render(ScreenBuffer buffer, int screenWidth, int screenHeight, FileSystemEntry entry)
+    public static void Render(ScreenBuffer buffer, int screenWidth, int screenHeight,
+        FileSystemEntry entry, string? directorySizeText)
     {
-        string[] values = BuildValues(entry);
+        string[] values = BuildValues(entry, directorySizeText);
 
         int maxValueLen = 0;
         for (int i = 0; i < values.Length; i++)
@@ -69,7 +70,7 @@ internal static class PropertiesOverlay
         }
     }
 
-    private static string[] BuildValues(FileSystemEntry entry)
+    private static string[] BuildValues(FileSystemEntry entry, string? directorySizeText)
     {
         string type = entry.IsDrive
             ? "Drive"
@@ -86,7 +87,7 @@ internal static class PropertiesOverlay
         string size;
         if (entry.IsDirectory || entry.IsDrive)
         {
-            size = "\u2014"; // em dash
+            size = directorySizeText ?? "\u2014";
         }
         else
         {

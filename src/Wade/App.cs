@@ -78,6 +78,11 @@ internal sealed class App
     private bool _configGlowMarkdownPreview;
     private bool _configCopySymlinksAsLinks;
 
+    // Directory size calculation state
+    private DirectorySizeLoader? _dirSizeLoader;
+    private string? _propertiesDirSizePath;
+    private string? _propertiesDirSizeText;
+
     private string? _cachedPreviewPath;
     private StyledLine[]? _cachedStyledLines;
     private string? _cachedPreviewFileTypeLabel;
@@ -129,6 +134,7 @@ internal sealed class App
         using var inputSource = InputPipeline.CreatePlatformSource();
         using var pipeline = new InputPipeline(inputSource);
         _previewLoader = new PreviewLoader(pipeline);
+        _dirSizeLoader = new DirectorySizeLoader(pipeline);
         var previewLoader = _previewLoader;
 
         var caps = terminal.Capabilities;
@@ -203,6 +209,10 @@ internal sealed class App
                         buffer.ForceFullRedraw();
                     }
                 }
+                else if (extra is DirectorySizeReadyEvent dirSizeExtra)
+                {
+                    HandleDirectorySizeReady(dirSizeExtra);
+                }
                 else if (extra is ResizeEvent)
                 {
                     inputEvent = extra;
@@ -273,6 +283,12 @@ internal sealed class App
                 continue;
             }
 
+            if (inputEvent is DirectorySizeReadyEvent dirSizeEvt)
+            {
+                HandleDirectorySizeReady(dirSizeEvt);
+                continue;
+            }
+
             // Handle mouse events
             if (inputEvent is MouseEvent mouseEvent)
             {
@@ -316,10 +332,18 @@ internal sealed class App
             switch (_inputMode)
             {
                 case InputMode.Help:
+                    if (!keyEvent.IsModifierOnly)
+                    {
+                        _inputMode = InputMode.Normal;
+                    }
+                    continue;
                 case InputMode.Properties:
                     if (!keyEvent.IsModifierOnly)
                     {
                         _inputMode = InputMode.Normal;
+                        _dirSizeLoader?.Cancel();
+                        _propertiesDirSizePath = null;
+                        _propertiesDirSizeText = null;
                     }
                     continue;
                 case InputMode.Search:
@@ -502,6 +526,18 @@ internal sealed class App
                     if (entries.Count > 0 && _selectedIndex < entries.Count)
                     {
                         _inputMode = InputMode.Properties;
+                        var propsEntry = entries[_selectedIndex];
+                        if (propsEntry.IsDirectory && !propsEntry.IsDrive)
+                        {
+                            _propertiesDirSizePath = propsEntry.FullPath;
+                            _propertiesDirSizeText = "Calculating\u2026";
+                            _dirSizeLoader!.BeginCalculation(propsEntry.FullPath);
+                        }
+                        else
+                        {
+                            _propertiesDirSizePath = null;
+                            _propertiesDirSizeText = null;
+                        }
                     }
                     break;
 
@@ -1319,7 +1355,7 @@ internal sealed class App
             case InputMode.Properties:
                 if (selectedEntry is not null)
                 {
-                    PropertiesOverlay.Render(buffer, width, height, selectedEntry);
+                    PropertiesOverlay.Render(buffer, width, height, selectedEntry, _propertiesDirSizeText);
                 }
                 break;
             case InputMode.ActionPalette:
@@ -1380,6 +1416,19 @@ internal sealed class App
         _cachedStyledLines = null;
         _isImagePreview = true;
         _previewLoading = false;
+    }
+
+    private void HandleDirectorySizeReady(DirectorySizeReadyEvent evt)
+    {
+        if (evt.Path != _propertiesDirSizePath)
+        {
+            return;
+        }
+
+        Span<char> sizeBuf = stackalloc char[32];
+        int n = UI.FormatHelpers.FormatSize(sizeBuf, evt.TotalBytes);
+        string formatted = sizeBuf[..n].ToString();
+        _propertiesDirSizeText = $"{formatted} ({evt.TotalBytes:N0} bytes)";
     }
 
     private void ClearPreviewCache(PreviewLoader loader, ScreenBuffer? buffer = null)
@@ -2870,6 +2919,18 @@ internal sealed class App
                 if (entries.Count > 0 && _selectedIndex < entries.Count)
                 {
                     _inputMode = InputMode.Properties;
+                    var propsEntry2 = entries[_selectedIndex];
+                    if (propsEntry2.IsDirectory && !propsEntry2.IsDrive)
+                    {
+                        _propertiesDirSizePath = propsEntry2.FullPath;
+                        _propertiesDirSizeText = "Calculating\u2026";
+                        _dirSizeLoader!.BeginCalculation(propsEntry2.FullPath);
+                    }
+                    else
+                    {
+                        _propertiesDirSizePath = null;
+                        _propertiesDirSizeText = null;
+                    }
                 }
 
                 break;

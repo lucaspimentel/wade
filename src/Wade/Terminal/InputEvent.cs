@@ -30,6 +30,8 @@ internal sealed record ImagePreviewReadyEvent(
     int PixelHeight,
     string FileTypeLabel) : InputEvent;
 
+internal sealed record DirectorySizeReadyEvent(string Path, long TotalBytes) : InputEvent;
+
 internal enum MouseButton
 {
     Left,

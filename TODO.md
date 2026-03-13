@@ -12,13 +12,13 @@
 
 Progress indicator for large copy/move operations.
 
-### Directory size calculation
+### Directory size calculation ✅
 
-Compute and display total size of a folder.
+~~Compute and display total size of a folder.~~
 
-- Async calculation (can be slow for large trees)
-- Show progress/spinner while calculating
-- Display result in properties panel or inline
+- ~~Async calculation (can be slow for large trees)~~
+- ~~Show progress/spinner while calculating~~
+- ~~Display result in properties panel or inline~~
 
 ### Improve symbolic link handling
 

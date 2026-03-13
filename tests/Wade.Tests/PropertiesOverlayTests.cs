@@ -25,7 +25,7 @@ public class PropertiesOverlayTests
         var entry = new FileSystemEntry(
             "test.txt", "/tmp/test.txt", false, 1536, DateTime.Now, LinkTarget: null, IsDrive: false);
 
-        PropertiesOverlay.Render(buf, 100, 30, entry);
+        PropertiesOverlay.Render(buf, 100, 30, entry, null);
 
         var output = Flush(buf);
         Assert.Contains("Properties", output);
@@ -49,7 +49,7 @@ public class PropertiesOverlayTests
         var entry = new FileSystemEntry(
             "readme.md", "/tmp/readme.md", false, 2048, DateTime.Now, LinkTarget: null, IsDrive: false);
 
-        PropertiesOverlay.Render(buf, 100, 30, entry);
+        PropertiesOverlay.Render(buf, 100, 30, entry, null);
 
         var output = Flush(buf);
         Assert.Contains("File", output);
@@ -63,7 +63,7 @@ public class PropertiesOverlayTests
         var entry = new FileSystemEntry(
             "docs", "/tmp/docs", true, 0, DateTime.Now, LinkTarget: null, IsDrive: false);
 
-        PropertiesOverlay.Render(buf, 100, 30, entry);
+        PropertiesOverlay.Render(buf, 100, 30, entry, null);
 
         var output = Flush(buf);
         Assert.Contains("Directory", output);
@@ -77,7 +77,7 @@ public class PropertiesOverlayTests
         var entry = new FileSystemEntry(
             "C:\\", "C:\\", true, 0, DateTime.Now, LinkTarget: null, IsDrive: true);
 
-        PropertiesOverlay.Render(buf, 100, 30, entry);
+        PropertiesOverlay.Render(buf, 100, 30, entry, null);
 
         var output = Flush(buf);
         Assert.Contains("Drive", output);
@@ -93,7 +93,7 @@ public class PropertiesOverlayTests
         var entry = new FileSystemEntry(
             "file.dat", "/tmp/file.dat", false, bytes, DateTime.Now, LinkTarget: null, IsDrive: false);
 
-        PropertiesOverlay.Render(buf, 120, 30, entry);
+        PropertiesOverlay.Render(buf, 120, 30, entry, null);
 
         var output = Flush(buf);
         Assert.Contains(expected, output);
@@ -114,7 +114,7 @@ public class PropertiesOverlayTests
             var entry = new FileSystemEntry(
                 "link.txt", linkPath, false, 100, DateTime.Now, LinkTarget: targetPath, IsDrive: false);
 
-            PropertiesOverlay.Render(buf, 120, 30, entry);
+            PropertiesOverlay.Render(buf, 120, 30, entry, null);
 
             var output = Flush(buf);
             Assert.Contains("Symlink \u2192 File", output);
@@ -140,7 +140,7 @@ public class PropertiesOverlayTests
             var entry = new FileSystemEntry(
                 "link-dir", linkPath, true, 0, DateTime.Now, LinkTarget: targetPath, IsDrive: false);
 
-            PropertiesOverlay.Render(buf, 120, 30, entry);
+            PropertiesOverlay.Render(buf, 120, 30, entry, null);
 
             var output = Flush(buf);
             Assert.Contains("Symlink \u2192 Directory", output);
@@ -162,7 +162,7 @@ public class PropertiesOverlayTests
         var entry = new FileSystemEntry(
             "broken", linkPath, false, 0, DateTime.Now, LinkTarget: targetPath, IsDrive: false);
 
-        PropertiesOverlay.Render(buf, 120, 30, entry);
+        PropertiesOverlay.Render(buf, 120, 30, entry, null);
 
         var output = Flush(buf);
         Assert.Contains("Broken Symlink", output);
@@ -177,7 +177,7 @@ public class PropertiesOverlayTests
         var entry = new FileSystemEntry(
             "normal.txt", filePath, false, 512, DateTime.Now, LinkTarget: null, IsDrive: false);
 
-        PropertiesOverlay.Render(buf, 120, 30, entry);
+        PropertiesOverlay.Render(buf, 120, 30, entry, null);
 
         var output = Flush(buf);
         Assert.Contains("File", output);
