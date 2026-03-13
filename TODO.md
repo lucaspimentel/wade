@@ -97,6 +97,38 @@ Show git status in the file browser and eventually support git actions.
 - Diff preview for modified files
 - Keybindings for common actions (e.g. action palette entries)
 
+### Drive type detection
+
+Detect whether a drive is SSD, HDD, or network. Some features (like directory size in the file browser) should behave differently based on drive speed.
+
+- On Windows, use WMI or `DeviceIoControl` / `IOCTL_STORAGE_QUERY_PROPERTY` to distinguish SSD vs HDD; `DriveInfo.DriveType == Network` for network drives
+- `DriveInfo` is already used in `DirectoryContents.GetDriveEntries()` and `PropertiesOverlay`
+- If feasible, add per-drive-type settings for showing directory size inline in the file list:
+  - Show directory size for SSD (default true)
+  - Show directory size for HDD (default false)
+  - Show directory size for network drives (default false)
+- Must be NativeAOT-compatible (no reflection-heavy WMI wrappers)
+
+### Zip file preview
+
+Show zip/archive contents in the file preview pane (like a directory listing).
+
+- Use `System.IO.Compression.ZipFile` (built-in, NativeAOT-safe) to read the entry list
+- Render as a list of paths/sizes in the preview pane, similar to directory preview
+- Add a `zip_preview_enabled` config setting (default: true)
+- Preview loading should go through `PreviewLoader` async pattern to avoid blocking
+- Consider supporting other archive formats (`.tar`, `.gz`, `.tar.gz`) later
+
+### Remote/cloud file handling (OneDrive, etc.)
+
+OneDrive and similar cloud sync tools use placeholder files that aren't fully downloaded locally. Wade should detect and handle these gracefully.
+
+- Detect cloud placeholder status via `FileAttributes.Offline` / `FileAttributes.ReparsePoint` with `IO_REPARSE_TAG_CLOUD` reparse tags (Windows-specific)
+- Display placeholder status visually (e.g. icon overlay or status indicator)
+- Handle file size correctly — local size vs cloud size may differ for placeholders
+- Don't attempt to read placeholder-only files: skip image previews, skip text preview, show a "[cloud file — not downloaded]" message instead
+- Preview loading in `PreviewLoader.LoadPreview()` should check placeholder status before reading
+
 ### File finder
 
 Searchable file finder dialog. User types to filter files in the current directory tree by name, Up/Down to navigate, Enter to open.
