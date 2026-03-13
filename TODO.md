@@ -47,9 +47,9 @@ Wade currently has no symlink awareness — symlinks appear as plain files/direc
 ~~- Add a "Target" row showing the raw `LinkTarget` path~~
 ~~- Include `ReparsePoint` in the Windows attributes formatter~~
 
-#### Navigation
+#### Navigation ✅
 
-- Show error notification when opening a broken symlink-to-directory (instead of silently failing)
+- ~~Show error notification when opening a broken symlink-to-directory (instead of silently failing)~~
 
 #### Copy: Preserve symlinks
 

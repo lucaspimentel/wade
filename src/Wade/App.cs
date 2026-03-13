@@ -393,6 +393,12 @@ internal sealed class App
                 case AppAction.Open:
                     if (entries.Count > 0 && entries[_selectedIndex].IsDirectory)
                     {
+                        if (entries[_selectedIndex].IsBrokenSymlink)
+                        {
+                            ShowNotification("Cannot open: broken symlink", NotificationKind.Error);
+                            break;
+                        }
+
                         _selectedIndexPerDir[_currentPath] = _selectedIndex;
                         _currentPath = PathCompletion.CapitalizeDriveLetter(entries[_selectedIndex].FullPath);
                         _selectedIndex = _selectedIndexPerDir.GetValueOrDefault(_currentPath, 0);
