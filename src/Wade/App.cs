@@ -76,6 +76,7 @@ internal sealed class App
     private bool _configSizeColumn;
     private bool _configDateColumn;
     private bool _configGlowMarkdownPreview;
+    private bool _configCopySymlinksAsLinks;
 
     private string? _cachedPreviewPath;
     private StyledLine[]? _cachedStyledLines;
@@ -1031,9 +1032,29 @@ internal sealed class App
                 }
                 else
                 {
+                    var sourceInfo = new FileInfo(sourcePath);
+                    if (_config.CopySymlinksAsLinksEnabled && sourceInfo.LinkTarget != null)
+                    {
+                        try
+                        {
+                            if (Directory.Exists(sourcePath))
+                            {
+                                Directory.CreateSymbolicLink(destPath, sourceInfo.LinkTarget);
+                            }
+                            else
+                            {
+                                File.CreateSymbolicLink(destPath, sourceInfo.LinkTarget);
+                            }
+
+                            success++;
+                            continue;
+                        }
+                        catch (UnauthorizedAccessException) { }
+                    }
+
                     if (Directory.Exists(sourcePath))
                     {
-                        FileOperations.CopyDirectory(sourcePath, destPath);
+                        FileOperations.CopyDirectory(sourcePath, destPath, _config.CopySymlinksAsLinksEnabled);
                     }
                     else
                     {
@@ -3151,6 +3172,7 @@ internal sealed class App
         _configSizeColumn = _config.SizeColumnEnabled;
         _configDateColumn = _config.DateColumnEnabled;
         _configGlowMarkdownPreview = _config.GlowMarkdownPreviewEnabled;
+        _configCopySymlinksAsLinks = _config.CopySymlinksAsLinksEnabled;
     }
 
     private void HandleConfigKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer)
@@ -3166,7 +3188,7 @@ internal sealed class App
                 break;
 
             case ConsoleKey.DownArrow or ConsoleKey.J:
-                if (_configSelectedIndex < 9)
+                if (_configSelectedIndex < 10)
                 {
                     _configSelectedIndex++;
                 }
@@ -3229,6 +3251,7 @@ internal sealed class App
                 break;
             case 8: _configSizeColumn = !_configSizeColumn; break;
             case 9: _configDateColumn = !_configDateColumn; break;
+            case 10: _configCopySymlinksAsLinks = !_configCopySymlinksAsLinks; break;
         }
     }
 
@@ -3244,6 +3267,7 @@ internal sealed class App
         _config.SizeColumnEnabled = _configSizeColumn;
         _config.DateColumnEnabled = _configDateColumn;
         _config.GlowMarkdownPreviewEnabled = _configGlowMarkdownPreview;
+        _config.CopySymlinksAsLinksEnabled = _configCopySymlinksAsLinks;
 
         _directoryContents.ShowHiddenFiles = _config.ShowHiddenFiles;
         _directoryContents.SortMode = _config.SortMode;
@@ -3290,7 +3314,7 @@ internal sealed class App
     private void RenderConfigDialog(ScreenBuffer buffer, int width, int height)
     {
         const int ContentWidth = 40;
-        const int ContentHeight = 10;
+        const int ContentHeight = 11;
         const string Footer = "[Space] Toggle [◄►] Cycle [Enter] Save [Esc] Cancel";
 
         var content = DialogBox.Render(buffer, width, height, Math.Max(ContentWidth, Footer.Length), ContentHeight, title: "Configuration", footer: Footer);
@@ -3313,6 +3337,7 @@ internal sealed class App
             ("  Glow Preview", FormatBool(_configGlowMarkdownPreview), _configPreviewPane && GlowRenderer.IsAvailable),
             ("Size Column", FormatBool(_configSizeColumn), true),
             ("Date Column", FormatBool(_configDateColumn), true),
+            ("Copy Symlinks As Links", FormatBool(_configCopySymlinksAsLinks), true),
         ];
 
         for (int i = 0; i < items.Length; i++)

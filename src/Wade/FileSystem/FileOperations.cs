@@ -61,20 +61,48 @@ internal static class FileOperations
         return errors;
     }
 
-    public static void CopyDirectory(string source, string destination)
+    public static void CopyDirectory(string source, string destination, bool preserveSymlinks = true)
     {
         Directory.CreateDirectory(destination);
 
         foreach (string file in Directory.GetFiles(source))
         {
             string destFile = Path.Combine(destination, Path.GetFileName(file));
+            if (preserveSymlinks)
+            {
+                var info = new FileInfo(file);
+                if (info.LinkTarget != null)
+                {
+                    try
+                    {
+                        File.CreateSymbolicLink(destFile, info.LinkTarget);
+                        continue;
+                    }
+                    catch (UnauthorizedAccessException) { }
+                }
+            }
+
             File.Copy(file, destFile);
         }
 
         foreach (string dir in Directory.GetDirectories(source))
         {
             string destDir = Path.Combine(destination, Path.GetFileName(dir));
-            CopyDirectory(dir, destDir);
+            if (preserveSymlinks)
+            {
+                var info = new DirectoryInfo(dir);
+                if (info.LinkTarget != null)
+                {
+                    try
+                    {
+                        Directory.CreateSymbolicLink(destDir, info.LinkTarget);
+                        continue;
+                    }
+                    catch (UnauthorizedAccessException) { }
+                }
+            }
+
+            CopyDirectory(dir, destDir, preserveSymlinks);
         }
     }
 }

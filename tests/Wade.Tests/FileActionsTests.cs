@@ -335,6 +335,118 @@ public class FileActionsTests : IDisposable
         Assert.True(Directory.Exists(path));
     }
 
+    // ── CopyDirectory symlinks ─────────────────────────────────────────────────
+
+    [Fact]
+    public void CopyDirectory_PreservesFileSymlink()
+    {
+        string srcDir = Path.Combine(_tempDir, "src_fsym");
+        Directory.CreateDirectory(srcDir);
+        string target = Path.Combine(_tempDir, "target_file.txt");
+        File.WriteAllText(target, "content");
+        string link = Path.Combine(srcDir, "link.txt");
+
+        try
+        {
+            File.CreateSymbolicLink(link, target);
+        }
+        catch (IOException)
+        {
+            return;
+        }
+
+        string destDir = Path.Combine(_tempDir, "dest_fsym");
+        FileOperations.CopyDirectory(srcDir, destDir);
+
+        string copiedLink = Path.Combine(destDir, "link.txt");
+        var info = new FileInfo(copiedLink);
+        Assert.NotNull(info.LinkTarget);
+        Assert.Equal(target, info.LinkTarget);
+    }
+
+    [Fact]
+    public void CopyDirectory_PreservesDirectorySymlink()
+    {
+        string srcDir = Path.Combine(_tempDir, "src_dsym");
+        Directory.CreateDirectory(srcDir);
+        string targetDir = Path.Combine(_tempDir, "target_dir");
+        Directory.CreateDirectory(targetDir);
+        File.WriteAllText(Path.Combine(targetDir, "child.txt"), "data");
+        string link = Path.Combine(srcDir, "link_dir");
+
+        try
+        {
+            Directory.CreateSymbolicLink(link, targetDir);
+        }
+        catch (IOException)
+        {
+            return;
+        }
+
+        string destDir = Path.Combine(_tempDir, "dest_dsym");
+        FileOperations.CopyDirectory(srcDir, destDir);
+
+        string copiedLink = Path.Combine(destDir, "link_dir");
+        var info = new DirectoryInfo(copiedLink);
+        Assert.NotNull(info.LinkTarget);
+        Assert.Equal(targetDir, info.LinkTarget);
+        // Verify we did NOT recurse into the target — no child.txt copied alongside the link
+        Assert.False(File.Exists(Path.Combine(destDir, "link_dir", "child.txt").Replace(Path.DirectorySeparatorChar, '_')));
+    }
+
+    [Fact]
+    public void CopyDirectory_WithPreserveSymlinksFalse_CopiesContent()
+    {
+        string srcDir = Path.Combine(_tempDir, "src_nosym");
+        Directory.CreateDirectory(srcDir);
+        string target = Path.Combine(_tempDir, "target_content.txt");
+        File.WriteAllText(target, "resolved content");
+        string link = Path.Combine(srcDir, "link.txt");
+
+        try
+        {
+            File.CreateSymbolicLink(link, target);
+        }
+        catch (IOException)
+        {
+            return;
+        }
+
+        string destDir = Path.Combine(_tempDir, "dest_nosym");
+        FileOperations.CopyDirectory(srcDir, destDir, preserveSymlinks: false);
+
+        string copiedFile = Path.Combine(destDir, "link.txt");
+        var info = new FileInfo(copiedFile);
+        Assert.Null(info.LinkTarget);
+        Assert.Equal("resolved content", File.ReadAllText(copiedFile));
+    }
+
+    [Fact]
+    public void CopyDirectory_PreservesBrokenSymlink()
+    {
+        string srcDir = Path.Combine(_tempDir, "src_bsym");
+        Directory.CreateDirectory(srcDir);
+        string nonexistent = Path.Combine(_tempDir, "no_such_target");
+        string link = Path.Combine(srcDir, "broken_link");
+
+        try
+        {
+            File.CreateSymbolicLink(link, nonexistent);
+        }
+        catch (IOException)
+        {
+            return;
+        }
+
+        string destDir = Path.Combine(_tempDir, "dest_bsym");
+        FileOperations.CopyDirectory(srcDir, destDir);
+
+        string copiedLink = Path.Combine(destDir, "broken_link");
+        var info = new FileInfo(copiedLink);
+        Assert.NotNull(info.LinkTarget);
+        Assert.Equal(nonexistent, info.LinkTarget);
+    }
+
     // ── CopyDirectory ─────────────────────────────────────────────────────────
 
     [Fact]

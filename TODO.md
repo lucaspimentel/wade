@@ -51,9 +51,9 @@ Wade currently has no symlink awareness — symlinks appear as plain files/direc
 
 - ~~Show error notification when opening a broken symlink-to-directory (instead of silently failing)~~
 
-#### Copy: Preserve symlinks
+#### Copy: Preserve symlinks ✅
 
-- In `CopyDirectory`, detect symlinks via `FileSystemInfo.LinkTarget` and recreate them at the destination rather than copying resolved content
+~~In `CopyDirectory`, detect symlinks via `FileSystemInfo.LinkTarget` and recreate them at the destination rather than copying resolved content~~ Fixed: `CopyDirectory` and `ExecutePaste` now detect symlinks via `FileSystemInfo.LinkTarget` and recreate them with `File.CreateSymbolicLink`/`Directory.CreateSymbolicLink` instead of copying resolved content. Configurable via `copy_symlinks_as_links_enabled` (default: true); when disabled, resolved content is always copied.
 
 #### Symlink creation
 

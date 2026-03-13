@@ -33,7 +33,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Mouse support** — click to select entries in any pane, scroll wheel to navigate; left/right pane clicks navigate directories
 - **File properties** — press `i` to open a properties overlay showing detailed metadata: name, full path, type (with symlink-aware labels like "Symlink → File"), link target, formatted size with raw bytes, created/modified/accessed timestamps, file attributes, and read-only status
 - **Glow markdown preview** — renders markdown files using the [glow](https://github.com/charmbracelet/glow) CLI for rich preview with styled headings, lists, code blocks, etc. (requires `glow` on PATH; disabled by default; enable with `glow_markdown_preview_enabled = true` in config or toggle in config dialog)
-- **In-app configuration** — press `,` to open a config dialog with 10 toggleable options: icons, hidden files, sort mode, sort direction, delete confirmation, preview pane, image previews, glow preview, size column, and date column; changes are saved directly to the config file
+- **In-app configuration** — press `,` to open a config dialog with 11 toggleable options: icons, hidden files, sort mode, sort direction, delete confirmation, preview pane, image previews, glow preview, size column, date column, and copy-symlinks-as-links; changes are saved directly to the config file
 - **Bookmarks** — press `b` to open a filterable bookmarks dialog; press `B` to toggle the current directory as a bookmark; quick-jump with `1`-`9`, `Enter` to navigate, `d`/`Delete` to remove; bookmarks persist to `~/.config/wade/bookmarks` in MRU order
 - **Action palette** — press `Ctrl+P` to open a searchable action palette listing all available commands; type to filter, Up/Down to navigate, Enter to execute
 - **Shell integration** — press `Ctrl+T` to open a new terminal in the current directory; use shell wrapper functions (`wd`) to cd to the final directory on exit (bash, zsh, fish, PowerShell wrappers provided)
@@ -98,6 +98,7 @@ confirm_delete_enabled = true
 preview_pane_enabled = true
 size_column_enabled = true
 date_column_enabled = true
+copy_symlinks_as_links_enabled = true
 ```
 
 ### CLI flags
