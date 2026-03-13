@@ -335,6 +335,50 @@ public class FileActionsTests : IDisposable
         Assert.True(Directory.Exists(path));
     }
 
+    // ── Create symlink ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public void CreateSymlink_ToFile_CreatesFileSymlink()
+    {
+        string target = Path.Combine(_tempDir, "target_file.txt");
+        File.WriteAllText(target, "content");
+        string linkPath = Path.Combine(_tempDir, "file_link");
+
+        try
+        {
+            File.CreateSymbolicLink(linkPath, target);
+        }
+        catch (IOException)
+        {
+            // Symlink creation may require elevated privileges on Windows
+            return;
+        }
+
+        var info = new FileInfo(linkPath);
+        Assert.Equal(target, info.LinkTarget);
+    }
+
+    [Fact]
+    public void CreateSymlink_ToDirectory_CreatesDirectorySymlink()
+    {
+        string target = Path.Combine(_tempDir, "target_dir");
+        Directory.CreateDirectory(target);
+        string linkPath = Path.Combine(_tempDir, "dir_link");
+
+        try
+        {
+            Directory.CreateSymbolicLink(linkPath, target);
+        }
+        catch (IOException)
+        {
+            // Symlink creation may require elevated privileges on Windows
+            return;
+        }
+
+        var info = new DirectoryInfo(linkPath);
+        Assert.Equal(target, info.LinkTarget);
+    }
+
     // ── CopyDirectory symlinks ─────────────────────────────────────────────────
 
     [Fact]

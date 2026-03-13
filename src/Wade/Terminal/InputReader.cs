@@ -38,6 +38,7 @@ internal enum AppAction
     CopyGitRelativePath,
     ShowBookmarks,
     ToggleBookmark,
+    CreateSymlink,
 }
 
 internal static class InputReader
@@ -117,6 +118,11 @@ internal static class InputReader
         if (key.Key == ConsoleKey.T && key.Control)
         {
             return AppAction.OpenTerminal;
+        }
+
+        if (key.Key == ConsoleKey.L && key.Control && !key.Shift)
+        {
+            return AppAction.CreateSymlink;
         }
 
         if (key.KeyChar == 'c')

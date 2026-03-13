@@ -880,6 +880,74 @@ internal sealed class App
                     });
                     break;
 
+                case AppAction.CreateSymlink:
+                {
+                    if (entries.Count == 0 || _selectedIndex >= entries.Count)
+                    {
+                        break;
+                    }
+
+                    var selectedEntry = entries[_selectedIndex];
+                    string target = selectedEntry.FullPath;
+
+                    ShowTextInputDialog("Create Symlink", selectedEntry.Name + "_link", linkName =>
+                    {
+                        if (string.IsNullOrWhiteSpace(linkName))
+                        {
+                            return;
+                        }
+
+                        if (linkName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+                        {
+                            ShowNotification("Invalid link name", NotificationKind.Error);
+                            return;
+                        }
+
+                        string linkPath = Path.Combine(_currentPath, linkName);
+
+                        if (Path.Exists(linkPath))
+                        {
+                            ShowNotification($"'{linkName}' already exists", NotificationKind.Error);
+                            return;
+                        }
+
+                        try
+                        {
+                            if (selectedEntry.IsDirectory)
+                            {
+                                Directory.CreateSymbolicLink(linkPath, target);
+                            }
+                            else
+                            {
+                                File.CreateSymbolicLink(linkPath, target);
+                            }
+
+                            _directoryContents.Invalidate(_currentPath);
+                            InvalidateFilteredEntries();
+                            ShowNotification($"Created symlink '{linkName}'", NotificationKind.Success);
+
+                            var updatedEntries = GetVisibleEntries();
+                            for (int i = 0; i < updatedEntries.Count; i++)
+                            {
+                                if (updatedEntries[i].Name.Equals(linkName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    _selectedIndex = i;
+                                    break;
+                                }
+                            }
+                        }
+                        catch (UnauthorizedAccessException)
+                        {
+                            ShowNotification("Insufficient privileges to create symlink", NotificationKind.Error);
+                        }
+                        catch (Exception ex)
+                        {
+                            ShowNotification($"Create symlink failed: {ex.Message}", NotificationKind.Error);
+                        }
+                    });
+                    break;
+                }
+
                 case AppAction.Paste:
                     if (OperatingSystem.IsWindows())
                     {
@@ -2225,6 +2293,7 @@ internal sealed class App
         items.Add(("Copy git-relative path", "Y", AppAction.CopyGitRelativePath));
         items.Add(("New file", "n", AppAction.NewFile));
         items.Add(("New directory", "Shift+N", AppAction.NewDirectory));
+        items.Add(("Create symlink", "Ctrl+L", AppAction.CreateSymlink));
         items.Add(("Properties", "i", AppAction.ShowProperties));
         items.Add(("Toggle hidden files", ".", AppAction.ToggleHiddenFiles));
         items.Add(("Cycle sort mode", "s", AppAction.CycleSortMode));
@@ -2728,6 +2797,74 @@ internal sealed class App
                     }
                 });
                 break;
+
+            case AppAction.CreateSymlink:
+            {
+                if (entries.Count == 0 || _selectedIndex >= entries.Count)
+                {
+                    break;
+                }
+
+                var selectedEntry = entries[_selectedIndex];
+                string target = selectedEntry.FullPath;
+
+                ShowTextInputDialog("Create Symlink", selectedEntry.Name + "_link", linkName =>
+                {
+                    if (string.IsNullOrWhiteSpace(linkName))
+                    {
+                        return;
+                    }
+
+                    if (linkName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+                    {
+                        ShowNotification("Invalid link name", NotificationKind.Error);
+                        return;
+                    }
+
+                    string linkPath = Path.Combine(_currentPath, linkName);
+
+                    if (Path.Exists(linkPath))
+                    {
+                        ShowNotification($"'{linkName}' already exists", NotificationKind.Error);
+                        return;
+                    }
+
+                    try
+                    {
+                        if (selectedEntry.IsDirectory)
+                        {
+                            Directory.CreateSymbolicLink(linkPath, target);
+                        }
+                        else
+                        {
+                            File.CreateSymbolicLink(linkPath, target);
+                        }
+
+                        _directoryContents.Invalidate(_currentPath);
+                        InvalidateFilteredEntries();
+                        ShowNotification($"Created symlink '{linkName}'", NotificationKind.Success);
+
+                        var updatedEntries = GetVisibleEntries();
+                        for (int i = 0; i < updatedEntries.Count; i++)
+                        {
+                            if (updatedEntries[i].Name.Equals(linkName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                _selectedIndex = i;
+                                break;
+                            }
+                        }
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        ShowNotification("Insufficient privileges to create symlink", NotificationKind.Error);
+                    }
+                    catch (Exception ex)
+                    {
+                        ShowNotification($"Create symlink failed: {ex.Message}", NotificationKind.Error);
+                    }
+                });
+                break;
+            }
 
             case AppAction.ShowProperties:
                 if (entries.Count > 0 && _selectedIndex < entries.Count)

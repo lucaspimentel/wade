@@ -28,6 +28,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Search / filter** — press `/` to type a query that narrows visible entries in real-time; Enter persists the filter, Escape clears it; filter auto-clears on directory change
 - **Multi-select** — press Space to mark/unmark entries for future bulk operations; marks are path-based and survive scrolling and filtering; marked entries highlighted with a distinct background; mark count shown in status bar
 - **Symlink awareness** — symlinks shown with dedicated icons, cyan text, and ` → target` suffix; broken symlinks highlighted in red
+- **Symlink creation** — press `Ctrl+L` to create a symbolic link to the selected item; prompts for the link name
 - **File actions** — open files with default app, rename, delete (with optional confirmation), copy/cut/paste with OS clipboard interop (files copied in wade can be pasted in Explorer and vice versa; Windows only); multi-select supported for delete/copy/cut; delete confirmation can be toggled via `confirm_delete_enabled` config
 - **Copy path to clipboard** — press `y` to copy the selected item's absolute path to the OS clipboard; press `Y` to copy the path relative to the git repo root (shows an error if not inside a git repo); works in both normal view and expanded preview mode
 - **Mouse support** — click to select entries in any pane, scroll wheel to navigate; left/right pane clicks navigate directories
@@ -165,6 +166,7 @@ Then use `wd` instead of `wade` to browse. Press `q` to quit and cd to the last 
 | Y | Copy git-relative path to clipboard |
 | n | Create new file |
 | Shift+N | Create new directory |
+| Ctrl+L | Create symlink to selected item |
 | i | Properties |
 | , | Configuration |
 | Ctrl+P | Action palette |

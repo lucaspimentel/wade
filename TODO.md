@@ -55,12 +55,12 @@ Wade currently has no symlink awareness — symlinks appear as plain files/direc
 
 ~~In `CopyDirectory`, detect symlinks via `FileSystemInfo.LinkTarget` and recreate them at the destination rather than copying resolved content~~ Fixed: `CopyDirectory` and `ExecutePaste` now detect symlinks via `FileSystemInfo.LinkTarget` and recreate them with `File.CreateSymbolicLink`/`Directory.CreateSymbolicLink` instead of copying resolved content. Configurable via `copy_symlinks_as_links_enabled` (default: true); when disabled, resolved content is always copied.
 
-#### Symlink creation
+#### Symlink creation ✅
 
-Create symbolic links from within the file manager.
+~~Create symbolic links from within the file manager.~~
 
-- Keybinding (e.g. `Ctrl+L`) to create a symlink to the selected item
-- Uses input dialog for the link name/destination
+- ~~Keybinding (`Ctrl+L`) to create a symlink to the selected item~~
+- ~~Uses input dialog for the link name/destination~~
 
 ### Right-click context menu
 
