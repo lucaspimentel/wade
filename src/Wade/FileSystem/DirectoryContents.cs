@@ -57,6 +57,7 @@ internal sealed class DirectoryContents
                 Size: 0,
                 LastModified: default,
                 LinkTarget: null,
+                IsBrokenSymlink: false,
                 IsDrive: true));
         }
 
@@ -103,6 +104,7 @@ internal sealed class DirectoryContents
                     Size: 0,
                     LastModified: dir.LastWriteTime,
                     LinkTarget: dir.LinkTarget,
+                    IsBrokenSymlink: CheckBrokenSymlink(dir),
                     IsDrive: false));
             }
 
@@ -128,6 +130,7 @@ internal sealed class DirectoryContents
                     Size: file.Length,
                     LastModified: file.LastWriteTime,
                     LinkTarget: file.LinkTarget,
+                    IsBrokenSymlink: CheckBrokenSymlink(file),
                     IsDrive: false));
             }
         }
@@ -173,6 +176,23 @@ internal sealed class DirectoryContents
             StringComparison.OrdinalIgnoreCase);
         return cmp != 0 ? cmp : string.Compare(nameA, nameB, StringComparison.OrdinalIgnoreCase);
     }
+
+    private static bool CheckBrokenSymlink(FileSystemInfo info)
+    {
+        if (info.LinkTarget == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            return info.ResolveLinkTarget(returnFinalTarget: true) == null;
+        }
+        catch
+        {
+            return true;
+        }
+    }
 }
 
 internal sealed record FileSystemEntry(
@@ -182,24 +202,8 @@ internal sealed record FileSystemEntry(
     long Size,
     DateTime LastModified,
     string? LinkTarget,
+    bool IsBrokenSymlink,
     bool IsDrive)
 {
     public bool IsSymlink => LinkTarget != null;
-
-    public bool IsBrokenSymlink
-    {
-        get
-        {
-            if (LinkTarget == null)
-            {
-                return false;
-            }
-
-            string resolvedTarget = Path.IsPathFullyQualified(LinkTarget)
-                ? LinkTarget
-                : Path.GetFullPath(LinkTarget, Path.GetDirectoryName(FullPath)!);
-
-            return !Path.Exists(resolvedTarget);
-        }
-    }
 }

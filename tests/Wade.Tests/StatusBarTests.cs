@@ -37,7 +37,7 @@ public class StatusBarTests
     {
         var buf = new ScreenBuffer(80, 1);
         var notification = new Notification("Done", NotificationKind.Info, 0);
-        var entry = new FileSystemEntry("test.txt", "/home/test.txt", false, 1234, DateTime.Now, LinkTarget: null, IsDrive: false);
+        var entry = new FileSystemEntry("test.txt", "/home/test.txt", false, 1234, DateTime.Now, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
 
         StatusBar.Render(buf, StatusBarRect(80), "/home", 5, 2, entry, notification: notification);
 

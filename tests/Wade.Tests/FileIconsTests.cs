@@ -7,13 +7,13 @@ namespace Wade.Tests;
 public class FileIconsTests
 {
     private static FileSystemEntry Dir(string name) =>
-        new(name, $@"C:\{name}", IsDirectory: true, Size: 0, LastModified: default, LinkTarget: null, IsDrive: false);
+        new(name, $@"C:\{name}", IsDirectory: true, Size: 0, LastModified: default, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
 
     private static FileSystemEntry Drive(string name) =>
-        new(name, $@"{name}\", IsDirectory: true, Size: 0, LastModified: default, LinkTarget: null, IsDrive: true);
+        new(name, $@"{name}\", IsDirectory: true, Size: 0, LastModified: default, LinkTarget: null, IsBrokenSymlink: false, IsDrive: true);
 
     private static FileSystemEntry File(string name) =>
-        new(name, $@"C:\{name}", IsDirectory: false, Size: 0, LastModified: default, LinkTarget: null, IsDrive: false);
+        new(name, $@"C:\{name}", IsDirectory: false, Size: 0, LastModified: default, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
 
     [Fact]
     public void Directory_ReturnsFolderIcon()

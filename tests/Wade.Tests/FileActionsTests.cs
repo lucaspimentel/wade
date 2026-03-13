@@ -164,7 +164,7 @@ public class FileActionsTests : IDisposable
     [Fact]
     public void FileSystemEntry_RegularFile_IsNotSymlink()
     {
-        var entry = new FileSystemEntry("test.txt", Path.Combine(_tempDir, "test.txt"), false, 100, DateTime.Now, LinkTarget: null, IsDrive: false);
+        var entry = new FileSystemEntry("test.txt", Path.Combine(_tempDir, "test.txt"), false, 100, DateTime.Now, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
 
         Assert.False(entry.IsSymlink);
         Assert.False(entry.IsBrokenSymlink);
@@ -205,7 +205,7 @@ public class FileActionsTests : IDisposable
             return;
         }
 
-        var entry = new FileSystemEntry("valid_link", link, targetIsDirectory, 0, DateTime.Now, LinkTarget: target, IsDrive: false);
+        var entry = new FileSystemEntry("valid_link", link, targetIsDirectory, 0, DateTime.Now, LinkTarget: target, IsBrokenSymlink: false, IsDrive: false);
 
         Assert.True(entry.IsSymlink);
         Assert.False(entry.IsBrokenSymlink);
@@ -236,7 +236,7 @@ public class FileActionsTests : IDisposable
             return;
         }
 
-        var entry = new FileSystemEntry("broken_link", link, targetIsDirectory, 0, DateTime.Now, LinkTarget: target, IsDrive: false);
+        var entry = new FileSystemEntry("broken_link", link, targetIsDirectory, 0, DateTime.Now, LinkTarget: target, IsBrokenSymlink: true, IsDrive: false);
 
         Assert.True(entry.IsSymlink);
         Assert.True(entry.IsBrokenSymlink);

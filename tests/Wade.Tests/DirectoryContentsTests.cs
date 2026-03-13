@@ -188,14 +188,14 @@ public class DirectoryContentsTests
     [Fact]
     public void FileSystemEntry_LinkTarget_DefaultsToNull()
     {
-        var entry = new FileSystemEntry("test.txt", "/tmp/test.txt", false, 100, DateTime.Now, LinkTarget: null, IsDrive: false);
+        var entry = new FileSystemEntry("test.txt", "/tmp/test.txt", false, 100, DateTime.Now, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
         Assert.Null(entry.LinkTarget);
     }
 
     [Fact]
     public void FileSystemEntry_LinkTarget_CanBeSet()
     {
-        var entry = new FileSystemEntry("link.txt", "/tmp/link.txt", false, 0, DateTime.Now, LinkTarget: "/tmp/target.txt", IsDrive: false);
+        var entry = new FileSystemEntry("link.txt", "/tmp/link.txt", false, 0, DateTime.Now, LinkTarget: "/tmp/target.txt", IsBrokenSymlink: false, IsDrive: false);
         Assert.Equal("/tmp/target.txt", entry.LinkTarget);
     }
 

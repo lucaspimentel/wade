@@ -28,11 +28,11 @@ Wade currently has no symlink awareness — symlinks appear as plain files/direc
 
 ~~`FileOperations.Delete` calls `Directory.Delete(path, true)` for symlink-to-directory entries on Windows, which **recursively deletes the target's contents** instead of just removing the link.~~ Fixed: symlinks are now detected via `FileInfo.LinkTarget` and deleted with non-recursive `Directory.Delete` / `File.Delete` before the `Directory.Exists` branch.
 
-#### Model: Symlink fields ✅ (partial)
+#### Model: Symlink fields ✅
 
 - ~~Add `string? LinkTarget` to `FileSystemEntry`~~ — done
 - ~~Populate in `DirectoryContents.LoadEntries` via `FileSystemInfo.LinkTarget`~~ — done
-- Detect broken symlinks: `ResolveLinkTarget(returnFinalTarget: true)` returns null or throws
+- ~~Detect broken symlinks: `ResolveLinkTarget(returnFinalTarget: true)` returns null or throws~~ — done (load-time field via `CheckBrokenSymlink`)
 
 #### Display: Visual distinction for symlinks ✅
 

@@ -23,7 +23,7 @@ public class PropertiesOverlayTests
     {
         var buf = new ScreenBuffer(100, 30);
         var entry = new FileSystemEntry(
-            "test.txt", "/tmp/test.txt", false, 1536, DateTime.Now, LinkTarget: null, IsDrive: false);
+            "test.txt", "/tmp/test.txt", false, 1536, DateTime.Now, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
 
         PropertiesOverlay.Render(buf, 100, 30, entry, null);
 
@@ -47,7 +47,7 @@ public class PropertiesOverlayTests
     {
         var buf = new ScreenBuffer(100, 30);
         var entry = new FileSystemEntry(
-            "readme.md", "/tmp/readme.md", false, 2048, DateTime.Now, LinkTarget: null, IsDrive: false);
+            "readme.md", "/tmp/readme.md", false, 2048, DateTime.Now, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
 
         PropertiesOverlay.Render(buf, 100, 30, entry, null);
 
@@ -61,7 +61,7 @@ public class PropertiesOverlayTests
     {
         var buf = new ScreenBuffer(100, 30);
         var entry = new FileSystemEntry(
-            "docs", "/tmp/docs", true, 0, DateTime.Now, LinkTarget: null, IsDrive: false);
+            "docs", "/tmp/docs", true, 0, DateTime.Now, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
 
         PropertiesOverlay.Render(buf, 100, 30, entry, null);
 
@@ -75,7 +75,7 @@ public class PropertiesOverlayTests
     {
         var buf = new ScreenBuffer(100, 30);
         var entry = new FileSystemEntry(
-            "C:\\", "C:\\", true, 0, DateTime.Now, LinkTarget: null, IsDrive: true);
+            "C:\\", "C:\\", true, 0, DateTime.Now, LinkTarget: null, IsBrokenSymlink: false, IsDrive: true);
 
         PropertiesOverlay.Render(buf, 100, 30, entry, null);
 
@@ -91,7 +91,7 @@ public class PropertiesOverlayTests
     {
         var buf = new ScreenBuffer(120, 30);
         var entry = new FileSystemEntry(
-            "file.dat", "/tmp/file.dat", false, bytes, DateTime.Now, LinkTarget: null, IsDrive: false);
+            "file.dat", "/tmp/file.dat", false, bytes, DateTime.Now, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
 
         PropertiesOverlay.Render(buf, 120, 30, entry, null);
 
@@ -112,7 +112,7 @@ public class PropertiesOverlayTests
         {
             string linkPath = Path.Combine(dir, "link.txt");
             var entry = new FileSystemEntry(
-                "link.txt", linkPath, false, 100, DateTime.Now, LinkTarget: targetPath, IsDrive: false);
+                "link.txt", linkPath, false, 100, DateTime.Now, LinkTarget: targetPath, IsBrokenSymlink: false, IsDrive: false);
 
             PropertiesOverlay.Render(buf, 120, 30, entry, null);
 
@@ -138,7 +138,7 @@ public class PropertiesOverlayTests
         {
             string linkPath = Path.Combine(dir, "link-dir");
             var entry = new FileSystemEntry(
-                "link-dir", linkPath, true, 0, DateTime.Now, LinkTarget: targetPath, IsDrive: false);
+                "link-dir", linkPath, true, 0, DateTime.Now, LinkTarget: targetPath, IsBrokenSymlink: false, IsDrive: false);
 
             PropertiesOverlay.Render(buf, 120, 30, entry, null);
 
@@ -160,7 +160,7 @@ public class PropertiesOverlayTests
         string linkPath = Path.Combine(dir, "broken");
         string targetPath = Path.Combine(dir, "nonexistent_target_xyz");
         var entry = new FileSystemEntry(
-            "broken", linkPath, false, 0, DateTime.Now, LinkTarget: targetPath, IsDrive: false);
+            "broken", linkPath, false, 0, DateTime.Now, LinkTarget: targetPath, IsBrokenSymlink: true, IsDrive: false);
 
         PropertiesOverlay.Render(buf, 120, 30, entry, null);
 
@@ -175,7 +175,7 @@ public class PropertiesOverlayTests
         var buf = new ScreenBuffer(120, 30);
         string filePath = Path.Combine(Path.GetTempPath(), "normal.txt");
         var entry = new FileSystemEntry(
-            "normal.txt", filePath, false, 512, DateTime.Now, LinkTarget: null, IsDrive: false);
+            "normal.txt", filePath, false, 512, DateTime.Now, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
 
         PropertiesOverlay.Render(buf, 120, 30, entry, null);
 

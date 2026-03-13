@@ -19,10 +19,10 @@ public class PaneRendererTests
     }
 
     private static FileSystemEntry MakeFile(string name, long size = 0, DateTime lastModified = default) =>
-        new(name, $@"C:\{name}", IsDirectory: false, Size: size, LastModified: lastModified, LinkTarget: null, IsDrive: false);
+        new(name, $@"C:\{name}", IsDirectory: false, Size: size, LastModified: lastModified, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
 
     private static FileSystemEntry MakeDir(string name, DateTime lastModified = default) =>
-        new(name, $@"C:\{name}", IsDirectory: true, Size: 0, LastModified: lastModified, LinkTarget: null, IsDrive: false);
+        new(name, $@"C:\{name}", IsDirectory: true, Size: 0, LastModified: lastModified, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
 
     private static Rect FullPane(int width = 40, int height = 10) => new(0, 0, width, height);
 
