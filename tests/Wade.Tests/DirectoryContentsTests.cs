@@ -262,7 +262,7 @@ public class DirectoryContentsTests
     // ── System+Hidden filtering (Windows only) ─────────────────────────────
 
     [Fact]
-    public void LoadEntries_WindowsSystemHiddenEntries_AlwaysExcluded()
+    public void LoadEntries_WindowsSystemHiddenEntries_ExcludedByDefault()
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -284,12 +284,96 @@ public class DirectoryContentsTests
             // Also create a normal entry to ensure it's still returned
             File.WriteAllText(Path.Combine(dir, "normal.txt"), "test");
 
-            // Even with ShowHiddenFiles = true, system+hidden entries should be excluded
-            var dc = new DirectoryContents { ShowHiddenFiles = true };
+            // With ShowHiddenFiles = true but ShowSystemFiles = false, system+hidden entries should be excluded
+            var dc = new DirectoryContents { ShowHiddenFiles = true, ShowSystemFiles = false };
             var entries = dc.LoadEntries(dir);
 
             Assert.DoesNotContain(entries, e => e.Name == "SystemHiddenDir");
             Assert.DoesNotContain(entries, e => e.Name == "systemhidden.txt");
+            Assert.Contains(entries, e => e.Name == "normal.txt");
+        }
+        finally { CleanupDir(dir); }
+    }
+
+    [Fact]
+    public void LoadEntries_WindowsSystemHiddenEntries_ShownWhenEnabled()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return; // FileAttributes.System is Windows-only
+        }
+
+        string dir = CreateSortTestDir();
+        try
+        {
+            string subDir = Path.Combine(dir, "SystemHiddenDir");
+            Directory.CreateDirectory(subDir);
+            File.SetAttributes(subDir, FileAttributes.Directory | FileAttributes.System | FileAttributes.Hidden);
+
+            string filePath = Path.Combine(dir, "systemhidden.txt");
+            File.WriteAllText(filePath, "test");
+            File.SetAttributes(filePath, FileAttributes.System | FileAttributes.Hidden);
+
+            File.WriteAllText(Path.Combine(dir, "normal.txt"), "test");
+
+            // With both ShowHiddenFiles and ShowSystemFiles = true, system+hidden entries should be visible
+            var dc = new DirectoryContents { ShowHiddenFiles = true, ShowSystemFiles = true };
+            var entries = dc.LoadEntries(dir);
+
+            Assert.Contains(entries, e => e.Name == "SystemHiddenDir");
+            Assert.Contains(entries, e => e.Name == "systemhidden.txt");
+            Assert.Contains(entries, e => e.Name == "normal.txt");
+        }
+        finally { CleanupDir(dir); }
+    }
+
+    [Fact]
+    public void LoadEntries_WindowsSystemOnlyEntries_ExcludedByDefault()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return; // FileAttributes.System is Windows-only
+        }
+
+        string dir = CreateSortTestDir();
+        try
+        {
+            string filePath = Path.Combine(dir, "systemonly.txt");
+            File.WriteAllText(filePath, "test");
+            File.SetAttributes(filePath, FileAttributes.System);
+
+            File.WriteAllText(Path.Combine(dir, "normal.txt"), "test");
+
+            var dc = new DirectoryContents { ShowHiddenFiles = true, ShowSystemFiles = false };
+            var entries = dc.LoadEntries(dir);
+
+            Assert.DoesNotContain(entries, e => e.Name == "systemonly.txt");
+            Assert.Contains(entries, e => e.Name == "normal.txt");
+        }
+        finally { CleanupDir(dir); }
+    }
+
+    [Fact]
+    public void LoadEntries_WindowsSystemOnlyEntries_ShownWhenEnabled()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return; // FileAttributes.System is Windows-only
+        }
+
+        string dir = CreateSortTestDir();
+        try
+        {
+            string filePath = Path.Combine(dir, "systemonly.txt");
+            File.WriteAllText(filePath, "test");
+            File.SetAttributes(filePath, FileAttributes.System);
+
+            File.WriteAllText(Path.Combine(dir, "normal.txt"), "test");
+
+            var dc = new DirectoryContents { ShowHiddenFiles = true, ShowSystemFiles = true };
+            var entries = dc.LoadEntries(dir);
+
+            Assert.Contains(entries, e => e.Name == "systemonly.txt");
             Assert.Contains(entries, e => e.Name == "normal.txt");
         }
         finally { CleanupDir(dir); }

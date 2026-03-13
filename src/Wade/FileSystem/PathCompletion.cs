@@ -50,8 +50,10 @@ internal static class PathCompletion
     /// When <paramref name="showHidden"/> is false, hidden entries (dot-prefixed or
     /// <see cref="FileAttributes.Hidden"/>) are excluded unless the user is already
     /// typing a dot-prefixed name.
+    /// When <paramref name="showSystemFiles"/> is false on Windows, entries with
+    /// <see cref="FileAttributes.System"/> are excluded.
     /// </summary>
-    public static string? GetSuggestion(string input, bool showHidden = true)
+    public static string? GetSuggestion(string input, bool showHidden, bool showSystemFiles)
     {
         if (string.IsNullOrEmpty(input))
         {
@@ -66,7 +68,7 @@ internal static class PathCompletion
             {
                 if (Directory.Exists(input))
                 {
-                    return FirstEntry(input, showHidden);
+                    return FirstEntry(input, showHidden, showSystemFiles);
                 }
 
                 return null;
@@ -88,10 +90,17 @@ internal static class PathCompletion
             // If the user is typing a dot-prefixed name, don't filter hidden entries
             bool skipHidden = !showHidden && !partial.StartsWith('.');
 
+            bool skipSystem = !showSystemFiles && OperatingSystem.IsWindows();
+
             // Find first matching entry
             foreach (var entry in new DirectoryInfo(parentDir).EnumerateFileSystemInfos())
             {
                 if (skipHidden && IsHidden(entry))
+                {
+                    continue;
+                }
+
+                if (skipSystem && (entry.Attributes & FileAttributes.System) != 0)
                 {
                     continue;
                 }
@@ -110,13 +119,20 @@ internal static class PathCompletion
         return null;
     }
 
-    private static string? FirstEntry(string dirPath, bool showHidden)
+    private static string? FirstEntry(string dirPath, bool showHidden, bool showSystemFiles)
     {
+        bool skipSystem = !showSystemFiles && OperatingSystem.IsWindows();
+
         try
         {
             foreach (var entry in new DirectoryInfo(dirPath).EnumerateFileSystemInfos())
             {
                 if (!showHidden && IsHidden(entry))
+                {
+                    continue;
+                }
+
+                if (skipSystem && (entry.Attributes & FileAttributes.System) != 0)
                 {
                     continue;
                 }

@@ -69,6 +69,7 @@ internal sealed class App
     private bool _configShowIcons;
     private bool _configImagePreviews;
     private bool _configShowHidden;
+    private bool _configShowSystem;
     private SortMode _configSortMode;
     private bool _configSortAscending;
     private bool _configConfirmDelete;
@@ -126,6 +127,7 @@ internal sealed class App
     {
         _currentPath = PathCompletion.CapitalizeDriveLetter(Path.GetFullPath(_config.StartPath));
         _directoryContents.ShowHiddenFiles = _config.ShowHiddenFiles;
+        _directoryContents.ShowSystemFiles = _config.ShowSystemFiles;
         _directoryContents.SortMode = _config.SortMode;
         _directoryContents.SortAscending = _config.SortAscending;
         _bookmarkStore.Load();
@@ -2065,7 +2067,7 @@ internal sealed class App
     }
 
     private string? GetPathSuggestion(string input) =>
-        PathCompletion.GetSuggestion(input, _directoryContents.ShowHiddenFiles);
+        PathCompletion.GetSuggestion(input, _directoryContents.ShowHiddenFiles, _directoryContents.ShowSystemFiles);
 
     private void RenderGoToPathDialog(ScreenBuffer buffer, int width, int height)
     {
@@ -3363,6 +3365,7 @@ internal sealed class App
         _configShowIcons = _config.ShowIconsEnabled;
         _configImagePreviews = _config.ImagePreviewsEnabled;
         _configShowHidden = _config.ShowHiddenFiles;
+        _configShowSystem = _config.ShowSystemFiles;
         _configSortMode = _config.SortMode;
         _configSortAscending = _config.SortAscending;
         _configConfirmDelete = _config.ConfirmDeleteEnabled;
@@ -3386,7 +3389,8 @@ internal sealed class App
                 break;
 
             case ConsoleKey.DownArrow or ConsoleKey.J:
-                if (_configSelectedIndex < 10)
+                int maxIndex = OperatingSystem.IsWindows() ? 11 : 10;
+                if (_configSelectedIndex < maxIndex)
                 {
                     _configSelectedIndex++;
                 }
@@ -3406,29 +3410,51 @@ internal sealed class App
                 break;
 
             case ConsoleKey.LeftArrow or ConsoleKey.H:
-                if (_configSelectedIndex == 2) // SortMode
+            {
+                int sortModeIndex = OperatingSystem.IsWindows() ? 3 : 2;
+                if (_configSelectedIndex == sortModeIndex)
                 {
                     _configSortMode = CycleSortModePrev(_configSortMode);
                 }
 
                 break;
+            }
 
             case ConsoleKey.RightArrow or ConsoleKey.L:
-                if (_configSelectedIndex == 2) // SortMode
+            {
+                int sortModeIndex = OperatingSystem.IsWindows() ? 3 : 2;
+                if (_configSelectedIndex == sortModeIndex)
                 {
                     _configSortMode = CycleSortModeNext(_configSortMode);
                 }
 
                 break;
+            }
         }
     }
 
     private void ToggleConfigOption()
     {
-        switch (_configSelectedIndex)
+        // On Windows, "Show System Files" is inserted at index 2, shifting everything after by 1
+        int idx = _configSelectedIndex;
+
+        switch (idx)
         {
-            case 0: _configShowIcons = !_configShowIcons; break;
-            case 1: _configShowHidden = !_configShowHidden; break;
+            case 0: _configShowIcons = !_configShowIcons; return;
+            case 1: _configShowHidden = !_configShowHidden; return;
+            case 2 when OperatingSystem.IsWindows():
+                if (_configShowHidden)
+                {
+                    _configShowSystem = !_configShowSystem;
+                }
+
+                return;
+        }
+
+        // Items after the Windows-only row use an offset on non-Windows
+        int adjusted = idx + (OperatingSystem.IsWindows() ? 0 : -1);
+        switch (adjusted)
+        {
             case 2: _configSortMode = CycleSortModeNext(_configSortMode); break;
             case 3: _configSortAscending = !_configSortAscending; break;
             case 4: _configConfirmDelete = !_configConfirmDelete; break;
@@ -3458,6 +3484,8 @@ internal sealed class App
         _config.ShowIconsEnabled = _configShowIcons;
         _config.ImagePreviewsEnabled = _configImagePreviews;
         _config.ShowHiddenFiles = _configShowHidden;
+        _config.ShowSystemFiles = _configShowHidden && _configShowSystem;
+        _configShowSystem = _config.ShowSystemFiles;
         _config.SortMode = _configSortMode;
         _config.SortAscending = _configSortAscending;
         _config.ConfirmDeleteEnabled = _configConfirmDelete;
@@ -3468,6 +3496,7 @@ internal sealed class App
         _config.CopySymlinksAsLinksEnabled = _configCopySymlinksAsLinks;
 
         _directoryContents.ShowHiddenFiles = _config.ShowHiddenFiles;
+        _directoryContents.ShowSystemFiles = _config.ShowSystemFiles;
         _directoryContents.SortMode = _config.SortMode;
         _directoryContents.SortAscending = _config.SortAscending;
         _imagePreviewsEffective = _config.ImagePreviewsEnabled && _sixelSupported;
@@ -3512,10 +3541,10 @@ internal sealed class App
     private void RenderConfigDialog(ScreenBuffer buffer, int width, int height)
     {
         const int ContentWidth = 40;
-        const int ContentHeight = 11;
+        int contentHeight = OperatingSystem.IsWindows() ? 12 : 11;
         const string Footer = "[Space] Toggle [◄►] Cycle [Enter] Save [Esc] Cancel";
 
-        var content = DialogBox.Render(buffer, width, height, Math.Max(ContentWidth, Footer.Length), ContentHeight, title: "Configuration", footer: Footer);
+        var content = DialogBox.Render(buffer, width, height, Math.Max(ContentWidth, Footer.Length), contentHeight, title: "Configuration", footer: Footer);
 
         var normalStyle = new CellStyle(new Color(200, 200, 200), DialogBox.BgColor);
         var selectedStyle = new CellStyle(new Color(20, 20, 35), new Color(200, 200, 200));
@@ -3523,25 +3552,31 @@ internal sealed class App
         var valueSelectedStyle = new CellStyle(new Color(20, 20, 35), new Color(200, 200, 200));
         var disabledStyle = new CellStyle(new Color(80, 80, 80), DialogBox.BgColor);
 
-        (string label, string value, bool enabled)[] items =
-        [
+        var itemList = new List<(string label, string value, bool enabled)>
+        {
             ("Show Icons", FormatBool(_configShowIcons), true),
             ("Show Hidden Files", FormatBool(_configShowHidden), true),
-            ("Sort Mode", $"\u25c4 {_configSortMode.ToString().ToLowerInvariant()} \u25ba", true),
-            ("Sort Ascending", FormatBool(_configSortAscending), true),
-            ("Confirm Delete", FormatBool(_configConfirmDelete), true),
-            ("Preview Pane", FormatBool(_configPreviewPane), true),
-            ("  Image Previews", FormatBool(_configImagePreviews), _configPreviewPane),
-            ("  Glow Preview", FormatBool(_configGlowMarkdownPreview), _configPreviewPane && GlowRenderer.IsAvailable),
-            ("Size Column", FormatBool(_configSizeColumn), true),
-            ("Date Column", FormatBool(_configDateColumn), true),
-            ("Copy Symlinks As Links", FormatBool(_configCopySymlinksAsLinks), true),
-        ];
+        };
 
-        for (int i = 0; i < items.Length; i++)
+        if (OperatingSystem.IsWindows())
+        {
+            itemList.Add(("  Show System Files", FormatBool(_configShowSystem), _configShowHidden));
+        }
+
+        itemList.Add(("Sort Mode", $"\u25c4 {_configSortMode.ToString().ToLowerInvariant()} \u25ba", true));
+        itemList.Add(("Sort Ascending", FormatBool(_configSortAscending), true));
+        itemList.Add(("Confirm Delete", FormatBool(_configConfirmDelete), true));
+        itemList.Add(("Preview Pane", FormatBool(_configPreviewPane), true));
+        itemList.Add(("  Image Previews", FormatBool(_configImagePreviews), _configPreviewPane));
+        itemList.Add(("  Glow Preview", FormatBool(_configGlowMarkdownPreview), _configPreviewPane && GlowRenderer.IsAvailable));
+        itemList.Add(("Size Column", FormatBool(_configSizeColumn), true));
+        itemList.Add(("Date Column", FormatBool(_configDateColumn), true));
+        itemList.Add(("Copy Symlinks As Links", FormatBool(_configCopySymlinksAsLinks), true));
+
+        for (int i = 0; i < itemList.Count; i++)
         {
             bool selected = i == _configSelectedIndex;
-            var (label, value, enabled) = items[i];
+            var (label, value, enabled) = itemList[i];
             CellStyle style, vStyle;
 
             if (!enabled)

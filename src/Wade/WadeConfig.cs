@@ -8,6 +8,7 @@ internal sealed class WadeConfig
     public bool ImagePreviewsEnabled { get; set; } = true;
     public bool GlowMarkdownPreviewEnabled { get; set; } = false;
     public bool ShowHiddenFiles { get; set; } = false;
+    public bool ShowSystemFiles { get; set; } = false;
     public SortMode SortMode { get; set; } = SortMode.Name;
     public bool SortAscending { get; set; } = true;
     public bool ConfirmDeleteEnabled { get; set; } = true;
@@ -81,6 +82,9 @@ internal sealed class WadeConfig
                         break;
                     case "show_hidden_files":
                         config.ShowHiddenFiles = ParseBool(value, config.ShowHiddenFiles);
+                        break;
+                    case "show_system_files":
+                        config.ShowSystemFiles = ParseBool(value, config.ShowSystemFiles);
                         break;
                     case "sort_mode":
                         if (Enum.TryParse<SortMode>(value, ignoreCase: true, out var sortMode))
@@ -186,6 +190,7 @@ internal sealed class WadeConfig
             image_previews_enabled = {(ImagePreviewsEnabled ? "true" : "false")}
             glow_markdown_preview_enabled = {(GlowMarkdownPreviewEnabled ? "true" : "false")}
             show_hidden_files = {(ShowHiddenFiles ? "true" : "false")}
+            show_system_files = {(ShowSystemFiles ? "true" : "false")}
             sort_mode = {sortModeStr}
             sort_ascending = {(SortAscending ? "true" : "false")}
             confirm_delete_enabled = {(ConfirmDeleteEnabled ? "true" : "false")}
@@ -207,6 +212,7 @@ internal sealed class WadeConfig
             $"\"image_previews_enabled\":{(ImagePreviewsEnabled ? "true" : "false")}," +
             $"\"glow_markdown_preview_enabled\":{(GlowMarkdownPreviewEnabled ? "true" : "false")}," +
             $"\"show_hidden_files\":{(ShowHiddenFiles ? "true" : "false")}," +
+            $"\"show_system_files\":{(ShowSystemFiles ? "true" : "false")}," +
             $"\"sort_mode\":\"{sortModeStr}\"," +
             $"\"sort_ascending\":{(SortAscending ? "true" : "false")}," +
             $"\"confirm_delete_enabled\":{(ConfirmDeleteEnabled ? "true" : "false")}," +

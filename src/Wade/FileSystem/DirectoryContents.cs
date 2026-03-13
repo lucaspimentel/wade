@@ -12,6 +12,7 @@ internal sealed class DirectoryContents
     private readonly Dictionary<string, List<FileSystemEntry>> _cache = new(StringComparer.OrdinalIgnoreCase);
 
     public bool ShowHiddenFiles { get; set; }
+    public bool ShowSystemFiles { get; set; }
     public SortMode SortMode { get; set; } = SortMode.Name;
     public bool SortAscending { get; set; } = true;
 
@@ -82,9 +83,9 @@ internal sealed class DirectoryContents
 
             foreach (var dir in dirInfo.EnumerateDirectories())
             {
-                // Always hide system+hidden entries on Windows (e.g. $Recycle.Bin)
-                if (OperatingSystem.IsWindows() &&
-                    (dir.Attributes & (FileAttributes.System | FileAttributes.Hidden)) == (FileAttributes.System | FileAttributes.Hidden))
+                // Hide system entries on Windows (e.g. $Recycle.Bin) unless ShowSystemFiles is enabled
+                if (OperatingSystem.IsWindows() && !ShowSystemFiles &&
+                    (dir.Attributes & FileAttributes.System) != 0)
                 {
                     continue;
                 }
@@ -107,9 +108,9 @@ internal sealed class DirectoryContents
 
             foreach (var file in dirInfo.EnumerateFiles())
             {
-                // Always hide system+hidden entries on Windows (e.g. $Recycle.Bin)
-                if (OperatingSystem.IsWindows() &&
-                    (file.Attributes & (FileAttributes.System | FileAttributes.Hidden)) == (FileAttributes.System | FileAttributes.Hidden))
+                // Hide system entries on Windows (e.g. $Recycle.Bin) unless ShowSystemFiles is enabled
+                if (OperatingSystem.IsWindows() && !ShowSystemFiles &&
+                    (file.Attributes & FileAttributes.System) != 0)
                 {
                     continue;
                 }

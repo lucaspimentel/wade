@@ -25,7 +25,7 @@ public class PathCompletionTests
             Directory.CreateDirectory(Path.Combine(dir, "alpha"));
             Directory.CreateDirectory(Path.Combine(dir, "beta"));
 
-            string? suggestion = PathCompletion.GetSuggestion(Path.Combine(dir, "alp"));
+            string? suggestion = PathCompletion.GetSuggestion(Path.Combine(dir, "alp"), true, false);
 
             Assert.NotNull(suggestion);
             Assert.Equal(Path.Combine(dir, "alpha"), suggestion);
@@ -41,7 +41,7 @@ public class PathCompletionTests
         {
             File.WriteAllText(Path.Combine(dir, "file.txt"), "");
 
-            string? suggestion = PathCompletion.GetSuggestion(dir + Path.DirectorySeparatorChar);
+            string? suggestion = PathCompletion.GetSuggestion(dir + Path.DirectorySeparatorChar, true, false);
 
             Assert.NotNull(suggestion);
             Assert.StartsWith(dir, suggestion);
@@ -57,7 +57,7 @@ public class PathCompletionTests
         {
             File.WriteAllText(Path.Combine(dir, "file.txt"), "");
 
-            string? suggestion = PathCompletion.GetSuggestion(Path.Combine(dir, "zzz"));
+            string? suggestion = PathCompletion.GetSuggestion(Path.Combine(dir, "zzz"), true, false);
 
             Assert.Null(suggestion);
         }
@@ -67,8 +67,8 @@ public class PathCompletionTests
     [Fact]
     public void Suggest_EmptyInput_ReturnsNull()
     {
-        Assert.Null(PathCompletion.GetSuggestion(""));
-        Assert.Null(PathCompletion.GetSuggestion(null!));
+        Assert.Null(PathCompletion.GetSuggestion("", true, false));
+        Assert.Null(PathCompletion.GetSuggestion(null!, true, false));
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public class PathCompletionTests
     {
         string fakePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "abc");
 
-        Assert.Null(PathCompletion.GetSuggestion(fakePath));
+        Assert.Null(PathCompletion.GetSuggestion(fakePath, true, false));
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public class PathCompletionTests
         {
             Directory.CreateDirectory(Path.Combine(dir, "Alpha"));
 
-            string? suggestion = PathCompletion.GetSuggestion(Path.Combine(dir, "alp"));
+            string? suggestion = PathCompletion.GetSuggestion(Path.Combine(dir, "alp"), true, false);
 
             Assert.NotNull(suggestion);
             Assert.EndsWith("Alpha", suggestion);
@@ -101,7 +101,7 @@ public class PathCompletionTests
         string dir = CreateTestDir();
         try
         {
-            string? suggestion = PathCompletion.GetSuggestion(dir + Path.DirectorySeparatorChar);
+            string? suggestion = PathCompletion.GetSuggestion(dir + Path.DirectorySeparatorChar, true, false);
 
             Assert.Null(suggestion);
         }
@@ -135,7 +135,7 @@ public class PathCompletionTests
     [Fact]
     public void Suggest_TildeWithSeparator_SuggestsHomeChild()
     {
-        string? suggestion = PathCompletion.GetSuggestion("~" + Path.DirectorySeparatorChar);
+        string? suggestion = PathCompletion.GetSuggestion("~" + Path.DirectorySeparatorChar, true, false);
 
         // Home directory should have at least one entry
         Assert.NotNull(suggestion);
@@ -173,7 +173,7 @@ public class PathCompletionTests
 
             // Use forward slashes in the input
             string input = dir.Replace('\\', '/') + "/alp";
-            string? suggestion = PathCompletion.GetSuggestion(input);
+            string? suggestion = PathCompletion.GetSuggestion(input, true, false);
 
             Assert.NotNull(suggestion);
             Assert.EndsWith("alpha", suggestion);

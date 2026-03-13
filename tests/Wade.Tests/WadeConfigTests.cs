@@ -26,6 +26,7 @@ public class WadeConfigTests
         Assert.False(config.ShowConfig);
         Assert.False(config.ShowHelp);
         Assert.False(config.ShowHiddenFiles);
+        Assert.False(config.ShowSystemFiles);
         Assert.True(config.ConfirmDeleteEnabled);
         Assert.True(config.PreviewPaneEnabled);
         Assert.True(config.SizeColumnEnabled);
@@ -68,6 +69,8 @@ public class WadeConfigTests
     [InlineData("size_column_enabled", false)]
     [InlineData("date_column_enabled", true)]
     [InlineData("date_column_enabled", false)]
+    [InlineData("show_system_files", true)]
+    [InlineData("show_system_files", false)]
     [InlineData("copy_symlinks_as_links_enabled", true)]
     [InlineData("copy_symlinks_as_links_enabled", false)]
     public void ConfigFile_ParsesNewBoolSettings(string key, bool value)
@@ -78,6 +81,7 @@ public class WadeConfigTests
             var config = WadeConfig.Load([], configFilePath: path);
             bool actual = key switch
             {
+                "show_system_files" => config.ShowSystemFiles,
                 "confirm_delete_enabled" => config.ConfirmDeleteEnabled,
                 "preview_pane_enabled" => config.PreviewPaneEnabled,
                 "size_column_enabled" => config.SizeColumnEnabled,
@@ -368,6 +372,7 @@ public class WadeConfigTests
             original.ShowIconsEnabled = false;
             original.ImagePreviewsEnabled = false;
             original.ShowHiddenFiles = true;
+            original.ShowSystemFiles = true;
             original.SortMode = SortMode.Extension;
             original.SortAscending = false;
             original.ConfirmDeleteEnabled = false;
@@ -381,6 +386,7 @@ public class WadeConfigTests
             Assert.False(loaded.ShowIconsEnabled);
             Assert.False(loaded.ImagePreviewsEnabled);
             Assert.True(loaded.ShowHiddenFiles);
+            Assert.True(loaded.ShowSystemFiles);
             Assert.Equal(SortMode.Extension, loaded.SortMode);
             Assert.False(loaded.SortAscending);
             Assert.False(loaded.ConfirmDeleteEnabled);
