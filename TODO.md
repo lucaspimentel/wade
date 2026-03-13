@@ -75,6 +75,28 @@ Popup menu at click position with contextual actions.
 
 Windows file clipboard interop is implemented. Remaining: Unix/macOS file clipboard interop via `xclip`/`xsel`/`wl-copy`/`pbcopy` with `text/uri-list` MIME type.
 
+### Git integration
+
+Show git status in the file browser and eventually support git actions.
+
+#### Phase 1: Readonly status display
+
+- Extend `GitUtils` (`src/Wade/FileSystem/GitUtils.cs`) — currently only has `FindRepoRoot()`; add file-level status querying (modified, untracked, staged, ignored, etc.)
+- Add git status fields to `FileSystemEntry` record (`src/Wade/FileSystem/DirectoryContents.cs:177`)
+- Add git-specific colors/styles in `PaneRenderer` (`src/Wade/UI/PaneRenderer.cs:11-29`) — e.g. modified=yellow, untracked=green, staged=cyan (common git UI conventions)
+- Update style selection logic in `PaneRenderer.RenderFileList()` (~line 137) to use git status
+- Consider: shell out to `git status --porcelain` or use a library like `LibGit2Sharp` (note: must be NativeAOT-compatible)
+- Show git branch name in status bar
+- Directory-level aggregate status (show modified if any child is modified)
+
+#### Phase 2: Git actions
+
+- Stage/unstage files (equivalent to `git add` / `git restore --staged`)
+- Commit with message (input dialog)
+- Push/pull
+- Diff preview for modified files
+- Keybindings for common actions (e.g. action palette entries)
+
 ### File finder
 
 Searchable file finder dialog. User types to filter files in the current directory tree by name, Up/Down to navigate, Enter to open.
