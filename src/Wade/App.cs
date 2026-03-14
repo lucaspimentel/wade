@@ -3620,15 +3620,15 @@ internal sealed class App
         itemList.Add(("Sort Mode", $"\u25c4 {_configSortMode.ToString().ToLowerInvariant()} \u25ba", true));
         itemList.Add(("Sort Ascending", FormatBool(_configSortAscending), true));
         itemList.Add(("Confirm Delete", FormatBool(_configConfirmDelete), true));
-        itemList.Add(("Preview Pane", FormatBool(_configPreviewPane), true));
+        itemList.Add(("Show Preview Pane", FormatBool(_configPreviewPane), true));
         itemList.Add(("  Image Previews", FormatBool(_configImagePreviews), _configPreviewPane));
         itemList.Add(("  Glow Preview", FormatBool(_configGlowMarkdownPreview), _configPreviewPane && GlowRenderer.IsAvailable));
         itemList.Add(("  Zip Preview", FormatBool(_configZipPreview), _configPreviewPane));
         itemList.Add(("  Hex Preview", FormatBool(_configHexPreview), _configPreviewPane));
-        itemList.Add(("Size Column", FormatBool(_configSizeColumn), true));
-        itemList.Add(("Date Column", FormatBool(_configDateColumn), true));
+        itemList.Add(("Show Size Column", FormatBool(_configSizeColumn), true));
+        itemList.Add(("Show Date Column", FormatBool(_configDateColumn), true));
         itemList.Add(("Copy Symlinks As Links", FormatBool(_configCopySymlinksAsLinks), true));
-        itemList.Add(("Terminal Title", FormatBool(_configTerminalTitle), true));
+        itemList.Add(("Change Terminal Title", FormatBool(_configTerminalTitle), true));
 
         for (int i = 0; i < itemList.Count; i++)
         {
