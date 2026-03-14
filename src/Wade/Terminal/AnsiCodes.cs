@@ -28,6 +28,14 @@ internal static class AnsiCodes
 
     public static string MoveCursor(int row, int col) => $"{Csi}{row + 1};{col + 1}H";
 
+    // Terminal title (OSC)
+    public static string SetTitle(string title) => $"\x1b]0;{title}\x07";
+    public const string ClearTitle = "\x1b]0;\x07";
+
+    // Terminal title stack (xterm)
+    public const string SaveTitle = Csi + "22;0t";
+    public const string RestoreTitle = Csi + "23;0t";
+
     public static string SetFg(byte r, byte g, byte b) => $"{Csi}38;2;{r};{g};{b}m";
 
     public static string SetBg(byte r, byte g, byte b) => $"{Csi}48;2;{r};{g};{b}m";

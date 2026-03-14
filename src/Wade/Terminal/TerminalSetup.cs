@@ -72,6 +72,7 @@ internal sealed class TerminalSetup : IDisposable
             Capabilities = DetectCapabilitiesUnix(_ttyFd);
         }
 
+        Console.Write(AnsiCodes.SaveTitle);
         Console.Write(AnsiCodes.EnterAlternateScreen);
         Console.Write(AnsiCodes.HideCursor);
         Console.Write(AnsiCodes.ClearScreen);
@@ -105,6 +106,7 @@ internal sealed class TerminalSetup : IDisposable
 
         Console.Write(AnsiCodes.ResetAttributes);
         Console.Write(AnsiCodes.ShowCursor);
+        Console.Write(AnsiCodes.RestoreTitle);
         Console.Write(AnsiCodes.LeaveAlternateScreen);
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))

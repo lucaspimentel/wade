@@ -79,6 +79,7 @@ internal sealed class App
     private bool _configGlowMarkdownPreview;
     private bool _configZipPreview;
     private bool _configCopySymlinksAsLinks;
+    private bool _configTerminalTitle;
 
     // Directory size calculation state
     private DirectorySizeLoader? _dirSizeLoader;
@@ -124,6 +125,18 @@ internal sealed class App
         _config = config;
     }
 
+    private void UpdateTerminalTitle()
+    {
+        if (_config.TerminalTitleEnabled)
+        {
+            Console.Write(AnsiCodes.SetTitle($"wade - {_currentPath}"));
+        }
+        else
+        {
+            Console.Write(AnsiCodes.ClearTitle);
+        }
+    }
+
     public string? Run()
     {
         _currentPath = PathCompletion.CapitalizeDriveLetter(Path.GetFullPath(_config.StartPath));
@@ -154,6 +167,8 @@ internal sealed class App
         previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
             _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
             zipPreviewEnabled: _config.ZipPreviewEnabled);
+
+        UpdateTerminalTitle();
 
         bool quit = false;
         bool writeCwd = true;
@@ -437,6 +452,7 @@ internal sealed class App
                         _markedPaths.Clear();
                         ClearSearchFilter();
                         ClearPreviewCache(previewLoader, buffer);
+                        UpdateTerminalTitle();
                     }
                     else if (entries.Count > 0 && !entries[_selectedIndex].IsDirectory)
                     {
@@ -461,6 +477,7 @@ internal sealed class App
                     {
                         // Go up to the drives list
                         _currentPath = DirectoryContents.DrivesPath;
+                        UpdateTerminalTitle();
                         var driveEntries = _directoryContents.GetEntries(_currentPath);
                         string root = Path.GetPathRoot(oldPath)!.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                         int idx = driveEntries.FindIndex(e => e.Name.Equals(root, StringComparison.OrdinalIgnoreCase));
@@ -472,6 +489,7 @@ internal sealed class App
                         if (parent is not null)
                         {
                             _currentPath = PathCompletion.CapitalizeDriveLetter(parent.FullName);
+                            UpdateTerminalTitle();
                             var parentEntries = _directoryContents.GetEntries(_currentPath);
                             string oldName = Path.GetFileName(oldPath);
                             int idx = parentEntries.FindIndex(e => e.Name.Equals(oldName, StringComparison.OrdinalIgnoreCase));
@@ -1525,6 +1543,7 @@ internal sealed class App
                     _markedPaths.Clear();
                     ClearSearchFilter();
                     ClearPreviewCache(previewLoader, buffer);
+                    UpdateTerminalTitle();
                 }
                 else
                 {
@@ -1534,6 +1553,7 @@ internal sealed class App
                     if (parentDir is not null)
                     {
                         _currentPath = PathCompletion.CapitalizeDriveLetter(parentDir.FullName);
+                        UpdateTerminalTitle();
                         var parentEntries = _directoryContents.GetEntries(_currentPath);
                         int idx = parentEntries.FindIndex(e => e.Name.Equals(clicked.Name, StringComparison.OrdinalIgnoreCase));
                         _selectedIndex = idx >= 0 ? idx : 0;
@@ -1567,12 +1587,14 @@ internal sealed class App
                             _markedPaths.Clear();
                             ClearSearchFilter();
                             ClearPreviewCache(previewLoader, buffer);
+                            UpdateTerminalTitle();
                         }
                         else
                         {
                             // File in previewed directory — navigate there, select the file
                             _selectedIndexPerDir[_currentPath] = _selectedIndex;
                             _currentPath = PathCompletion.CapitalizeDriveLetter(selected.FullPath);
+                            UpdateTerminalTitle();
                             var dirEntries = _directoryContents.GetEntries(_currentPath);
                             int idx = dirEntries.FindIndex(e => e.Name.Equals(clicked.Name, StringComparison.OrdinalIgnoreCase));
                             _selectedIndex = idx >= 0 ? idx : 0;
@@ -2048,6 +2070,7 @@ internal sealed class App
             _markedPaths.Clear();
             ClearSearchFilter();
             ClearPreviewCache(previewLoader, buffer);
+            UpdateTerminalTitle();
         }
         else if (File.Exists(path))
         {
@@ -2056,6 +2079,7 @@ internal sealed class App
             {
                 _selectedIndexPerDir[_currentPath] = _selectedIndex;
                 _currentPath = PathCompletion.CapitalizeDriveLetter(parent);
+                UpdateTerminalTitle();
                 var entries = _directoryContents.GetEntries(_currentPath);
                 string fileName = Path.GetFileName(path);
                 int idx = entries.FindIndex(e => e.Name.Equals(fileName, StringComparison.OrdinalIgnoreCase));
@@ -3381,6 +3405,7 @@ internal sealed class App
         _configGlowMarkdownPreview = _config.GlowMarkdownPreviewEnabled;
         _configZipPreview = _config.ZipPreviewEnabled;
         _configCopySymlinksAsLinks = _config.CopySymlinksAsLinksEnabled;
+        _configTerminalTitle = _config.TerminalTitleEnabled;
     }
 
     private void HandleConfigKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer)
@@ -3396,7 +3421,7 @@ internal sealed class App
                 break;
 
             case ConsoleKey.DownArrow or ConsoleKey.J:
-                int maxIndex = OperatingSystem.IsWindows() ? 12 : 11;
+                int maxIndex = OperatingSystem.IsWindows() ? 13 : 12;
                 if (_configSelectedIndex < maxIndex)
                 {
                     _configSelectedIndex++;
@@ -3490,6 +3515,7 @@ internal sealed class App
             case 9: _configSizeColumn = !_configSizeColumn; break;
             case 10: _configDateColumn = !_configDateColumn; break;
             case 11: _configCopySymlinksAsLinks = !_configCopySymlinksAsLinks; break;
+            case 12: _configTerminalTitle = !_configTerminalTitle; break;
         }
     }
 
@@ -3509,6 +3535,7 @@ internal sealed class App
         _config.GlowMarkdownPreviewEnabled = _configGlowMarkdownPreview;
         _config.ZipPreviewEnabled = _configZipPreview;
         _config.CopySymlinksAsLinksEnabled = _configCopySymlinksAsLinks;
+        _config.TerminalTitleEnabled = _configTerminalTitle;
 
         _directoryContents.ShowHiddenFiles = _config.ShowHiddenFiles;
         _directoryContents.ShowSystemFiles = _config.ShowSystemFiles;
@@ -3522,6 +3549,7 @@ internal sealed class App
         previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
             _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
             zipPreviewEnabled: _config.ZipPreviewEnabled);
+        UpdateTerminalTitle();
 
         try
         {
@@ -3557,7 +3585,7 @@ internal sealed class App
     private void RenderConfigDialog(ScreenBuffer buffer, int width, int height)
     {
         const int ContentWidth = 40;
-        int contentHeight = OperatingSystem.IsWindows() ? 13 : 12;
+        int contentHeight = OperatingSystem.IsWindows() ? 14 : 13;
         const string Footer = "[Space] Toggle [◄►] Cycle [Enter] Save [Esc] Cancel";
 
         var content = DialogBox.Render(buffer, width, height, Math.Max(ContentWidth, Footer.Length), contentHeight, title: "Configuration", footer: Footer);
@@ -3589,6 +3617,7 @@ internal sealed class App
         itemList.Add(("Size Column", FormatBool(_configSizeColumn), true));
         itemList.Add(("Date Column", FormatBool(_configDateColumn), true));
         itemList.Add(("Copy Symlinks As Links", FormatBool(_configCopySymlinksAsLinks), true));
+        itemList.Add(("Terminal Title", FormatBool(_configTerminalTitle), true));
 
         for (int i = 0; i < itemList.Count; i++)
         {
