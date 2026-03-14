@@ -24,6 +24,9 @@ public class PaneRendererTests
     private static FileSystemEntry MakeDir(string name, DateTime lastModified = default) =>
         new(name, $@"C:\{name}", IsDirectory: true, Size: 0, LastModified: lastModified, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
 
+    private static FileSystemEntry MakeSymlink(string name, string target, bool broken = false) =>
+        new(name, $@"C:\{name}", IsDirectory: false, Size: 0, LastModified: default, LinkTarget: target, IsBrokenSymlink: broken, IsDrive: false);
+
     private static Rect FullPane(int width = 40, int height = 10) => new(0, 0, width, height);
 
     [Fact]
@@ -252,6 +255,58 @@ public class PaneRendererTests
         var output = Flush(buf);
         Assert.Contains("2025-03-06", output);
         Assert.DoesNotContain("1.0 KB", output);
+    }
+
+    // ── Ellipsis for truncated names ──────────────────────────────────────────
+
+    [Fact]
+    public void RenderFileList_NameFits_NoEllipsis()
+    {
+        var buf = new ScreenBuffer(40, 10);
+        var entries = new List<FileSystemEntry> { MakeFile("short.txt") };
+        PaneRenderer.RenderFileList(buf, FullPane(), entries, selectedIndex: 0, scrollOffset: 0, isActive: false, showIcons: false);
+        var output = Flush(buf);
+        Assert.Contains("short.txt", output);
+        Assert.DoesNotContain("\u2026", output);
+    }
+
+    [Fact]
+    public void RenderFileList_NameTruncated_NoIcons_EndsWithEllipsis()
+    {
+        // Width 15, no icons: prefix=' '(1) leaves 14 chars for name
+        string longName = new string('A', 20) + ".txt"; // 24 chars, won't fit in 14
+        var buf = new ScreenBuffer(15, 10);
+        var entries = new List<FileSystemEntry> { MakeFile(longName) };
+        PaneRenderer.RenderFileList(buf, FullPane(15, 10), entries, selectedIndex: 0, scrollOffset: 0, isActive: false, showIcons: false);
+        var output = Flush(buf);
+        // Should show 13 chars of the name + ellipsis
+        Assert.Contains(longName[..13] + "\u2026", output);
+    }
+
+    [Fact]
+    public void RenderFileList_NameTruncated_WithIcons_EndsWithEllipsis()
+    {
+        // Width 15, icons: icon(1)+space(1) leaves 13 chars for name
+        string longName = new string('B', 20) + ".txt"; // 24 chars, won't fit in 13
+        var buf = new ScreenBuffer(15, 10);
+        var entries = new List<FileSystemEntry> { MakeFile(longName) };
+        PaneRenderer.RenderFileList(buf, FullPane(15, 10), entries, selectedIndex: 0, scrollOffset: 0, isActive: false, showIcons: true);
+        var output = Flush(buf);
+        Assert.Contains(longName[..12] + "\u2026", output);
+    }
+
+    [Fact]
+    public void RenderFileList_SymlinkTargetTruncated_EndsWithEllipsis()
+    {
+        // Short name so symlink target gets space, but target is very long
+        string longTarget = @"C:\very\long\path\" + new string('Z', 30);
+        var buf = new ScreenBuffer(30, 10);
+        var entries = new List<FileSystemEntry> { MakeSymlink("link", longTarget) };
+        PaneRenderer.RenderFileList(buf, FullPane(30, 10), entries, selectedIndex: 0, scrollOffset: 0, isActive: false, showIcons: false);
+        var output = Flush(buf);
+        Assert.Contains("\u2026", output);
+        // The arrow should still be present
+        Assert.Contains("→", output);
     }
 
     // ── Preview rendering ────────────────────────────────────────────────────

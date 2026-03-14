@@ -205,7 +205,16 @@ internal static class PaneRenderer
                 buffer.Put(screenRow, entryCol + 1, ' ', style);
                 int maxName = nameWidth - 2;
                 int nameLen = Math.Min(entry.Name.Length, maxName);
-                buffer.WriteString(screenRow, entryCol + 2, entry.Name, style, maxName);
+                if (entry.Name.Length > maxName && maxName >= 2)
+                {
+                    buffer.WriteString(screenRow, entryCol + 2, entry.Name, style, maxName - 1);
+                    buffer.Put(screenRow, entryCol + 2 + maxName - 1, '\u2026', style);
+                }
+                else
+                {
+                    buffer.WriteString(screenRow, entryCol + 2, entry.Name, style, maxName);
+                }
+
                 nameCharsUsed = 2 + nameLen;
             }
             else
@@ -214,7 +223,16 @@ internal static class PaneRenderer
                 buffer.Put(screenRow, entryCol, prefix, style);
                 int maxName = nameWidth - 1;
                 int nameLen = Math.Min(entry.Name.Length, maxName);
-                buffer.WriteString(screenRow, entryCol + 1, entry.Name, style, maxName);
+                if (entry.Name.Length > maxName && maxName >= 2)
+                {
+                    buffer.WriteString(screenRow, entryCol + 1, entry.Name, style, maxName - 1);
+                    buffer.Put(screenRow, entryCol + 1 + maxName - 1, '\u2026', style);
+                }
+                else
+                {
+                    buffer.WriteString(screenRow, entryCol + 1, entry.Name, style, maxName);
+                }
+
                 nameCharsUsed = 1 + nameLen;
             }
 
@@ -231,7 +249,15 @@ internal static class PaneRenderer
                     remaining -= arrow.Length;
                     if (remaining > 0)
                     {
-                        buffer.WriteString(screenRow, suffixCol + arrow.Length, linkTarget, suffixStyle, remaining);
+                        if (linkTarget.Length > remaining && remaining >= 2)
+                        {
+                            buffer.WriteString(screenRow, suffixCol + arrow.Length, linkTarget, suffixStyle, remaining - 1);
+                            buffer.Put(screenRow, suffixCol + arrow.Length + remaining - 1, '\u2026', suffixStyle);
+                        }
+                        else
+                        {
+                            buffer.WriteString(screenRow, suffixCol + arrow.Length, linkTarget, suffixStyle, remaining);
+                        }
                     }
                 }
             }
