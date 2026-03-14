@@ -129,17 +129,18 @@ OneDrive and similar cloud sync tools use placeholder files that aren't fully do
 - Don't attempt to read placeholder-only files: skip image previews, skip text preview, show a "[cloud file — not downloaded]" message instead
 - Preview loading in `PreviewLoader.LoadPreview()` should check placeholder status before reading
 
-### Hex preview for binary files
+### Hex preview for binary files ✅
 
-Read-only hex editor view for binary files, accessible via the action palette.
+~~Read-only hex editor view for binary files, accessible via the action palette.~~
 
-- Add an action palette entry (e.g. "Hex Preview") that appears when a binary file is selected
-- Display hex dump format: offset column, hex bytes, ASCII representation (like `xxd` or HxD)
-- `FilePreview.IsBinary()` already detects binary files (`src/Wade/FileSystem/FilePreview.cs`)
-- Could render in the preview pane or as a full-screen overlay (like properties overlay)
-- Read-only — no editing, just viewing
-- Limit displayed size (e.g. first 4 KB–64 KB) to keep rendering fast
-- Consider scrolling support for viewing deeper into the file
+- ~~Display hex dump format: offset column, hex bytes, ASCII representation (like `xxd` or HxD)~~
+- ~~`FilePreview.IsBinary()` already detects binary files (`src/Wade/FileSystem/FilePreview.cs`)~~
+- ~~Renders in the preview pane and expandable to full screen~~
+- ~~Read-only — no editing, just viewing~~
+- ~~Limit displayed size (first 64 KB) to keep rendering fast~~
+- ~~Scrolling support via existing preview pane scrolling~~
+- ~~Per-character styling: dim blue-gray offset, light gray hex, dimmer null bytes, green ASCII, dim non-printable dots~~
+- ~~`hex_preview_enabled` config setting (default: true)~~
 
 ### Ellipsis for truncated filenames ✅
 

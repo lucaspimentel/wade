@@ -12,6 +12,7 @@ internal sealed class PreviewLoader
     private bool _imagePreviewsEnabled;
     private bool _glowEnabled;
     private bool _zipPreviewEnabled;
+    private bool _hexPreviewEnabled;
     private int _paneWidthCells;
     private int _paneHeightCells;
     private int _cellPixelWidth = 8;
@@ -25,11 +26,12 @@ internal sealed class PreviewLoader
     }
 
     public void Configure(bool imagePreviewsEnabled, int paneWidthCells, int paneHeightCells,
-        int cellPixelWidth, int cellPixelHeight, bool glowEnabled, bool zipPreviewEnabled)
+        int cellPixelWidth, int cellPixelHeight, bool glowEnabled, bool zipPreviewEnabled, bool hexPreviewEnabled)
     {
         _imagePreviewsEnabled = imagePreviewsEnabled;
         _glowEnabled = glowEnabled;
         _zipPreviewEnabled = zipPreviewEnabled;
+        _hexPreviewEnabled = hexPreviewEnabled;
         _paneWidthCells = paneWidthCells;
         _paneHeightCells = paneHeightCells;
         _cellPixelWidth = cellPixelWidth;
@@ -46,12 +48,13 @@ internal sealed class PreviewLoader
         bool imageEnabled = _imagePreviewsEnabled;
         bool glowEnabled = _glowEnabled;
         bool zipEnabled = _zipPreviewEnabled;
+        bool hexEnabled = _hexPreviewEnabled;
         int paneW = _paneWidthCells;
         int paneH = _paneHeightCells;
         int cellW = _cellPixelWidth;
         int cellH = _cellPixelHeight;
 
-        Task.Run(() => LoadPreview(path, imageEnabled, glowEnabled, zipEnabled, paneW, paneH, cellW, cellH, token), token);
+        Task.Run(() => LoadPreview(path, imageEnabled, glowEnabled, zipEnabled, hexEnabled, paneW, paneH, cellW, cellH, token), token);
     }
 
     public void Cancel()
@@ -61,7 +64,7 @@ internal sealed class PreviewLoader
         _cts = null;
     }
 
-    private void LoadPreview(string path, bool imageEnabled, bool glowEnabled, bool zipEnabled, int paneW, int paneH,
+    private void LoadPreview(string path, bool imageEnabled, bool glowEnabled, bool zipEnabled, bool hexEnabled, int paneW, int paneH,
         int cellW, int cellH, CancellationToken ct)
     {
         try
@@ -123,6 +126,23 @@ internal sealed class PreviewLoader
                     string label = FilePreview.GetFileTypeLabel(path) ?? "Archive";
                     var zipStyled = zipLines.Select(l => new StyledLine(l, null)).ToArray();
                     _pipeline.Inject(new PreviewReadyEvent(path, zipStyled, label, null, null, IsRendered: true));
+                    return;
+                }
+            }
+
+            // Try hex preview for binary files
+            if (hexEnabled && FilePreview.IsBinary(path))
+            {
+                var hexLines = HexPreview.GetPreviewLines(path, ct);
+                if (hexLines is not null)
+                {
+                    if (ct.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
+                    string hexLabel = FilePreview.GetFileTypeLabel(path) ?? "Binary";
+                    _pipeline.Inject(new PreviewReadyEvent(path, hexLines, hexLabel, null, null, IsRendered: true));
                     return;
                 }
             }

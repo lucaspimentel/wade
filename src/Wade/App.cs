@@ -78,6 +78,7 @@ internal sealed class App
     private bool _configDateColumn;
     private bool _configGlowMarkdownPreview;
     private bool _configZipPreview;
+    private bool _configHexPreview;
     private bool _configCopySymlinksAsLinks;
     private bool _configTerminalTitle;
 
@@ -166,7 +167,7 @@ internal sealed class App
         _layout.Calculate(lastWidth, lastHeight, _config.PreviewPaneEnabled);
         previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
             _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
-            zipPreviewEnabled: _config.ZipPreviewEnabled);
+            zipPreviewEnabled: _config.ZipPreviewEnabled, hexPreviewEnabled: _config.HexPreviewEnabled);
 
         UpdateTerminalTitle();
 
@@ -254,7 +255,7 @@ internal sealed class App
                     var resizePane = _inputMode == InputMode.ExpandedPreview ? _layout.ExpandedPane : _layout.RightPane;
                     previewLoader.Configure(_imagePreviewsEffective, resizePane.Width, resizePane.Height,
                         _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
-            zipPreviewEnabled: _config.ZipPreviewEnabled);
+            zipPreviewEnabled: _config.ZipPreviewEnabled, hexPreviewEnabled: _config.HexPreviewEnabled);
                     Console.Write(AnsiCodes.ClearScreen);
 
                     // Re-render image at new size
@@ -1637,7 +1638,7 @@ internal sealed class App
         {
             previewLoader.Configure(_imagePreviewsEffective, _layout.ExpandedPane.Width, _layout.ExpandedPane.Height,
                 _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
-            zipPreviewEnabled: _config.ZipPreviewEnabled);
+            zipPreviewEnabled: _config.ZipPreviewEnabled, hexPreviewEnabled: _config.HexPreviewEnabled);
             _cachedSixelData = null;
             _sixelPending = false;
             _pendingPreviewPath = _cachedImagePath;
@@ -1648,7 +1649,7 @@ internal sealed class App
         {
             previewLoader.Configure(_imagePreviewsEffective, _layout.ExpandedPane.Width, _layout.ExpandedPane.Height,
                 _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
-            zipPreviewEnabled: _config.ZipPreviewEnabled);
+            zipPreviewEnabled: _config.ZipPreviewEnabled, hexPreviewEnabled: _config.HexPreviewEnabled);
             _cachedStyledLines = null;
             _pendingPreviewPath = _cachedPreviewPath;
             _previewLoading = true;
@@ -1665,7 +1666,7 @@ internal sealed class App
 
         previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
             _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
-            zipPreviewEnabled: _config.ZipPreviewEnabled);
+            zipPreviewEnabled: _config.ZipPreviewEnabled, hexPreviewEnabled: _config.HexPreviewEnabled);
 
         if (_isImagePreview && _cachedImagePath is not null)
         {
@@ -3404,6 +3405,7 @@ internal sealed class App
         _configDateColumn = _config.DateColumnEnabled;
         _configGlowMarkdownPreview = _config.GlowMarkdownPreviewEnabled;
         _configZipPreview = _config.ZipPreviewEnabled;
+        _configHexPreview = _config.HexPreviewEnabled;
         _configCopySymlinksAsLinks = _config.CopySymlinksAsLinksEnabled;
         _configTerminalTitle = _config.TerminalTitleEnabled;
     }
@@ -3512,10 +3514,17 @@ internal sealed class App
                 }
 
                 break;
-            case 9: _configSizeColumn = !_configSizeColumn; break;
-            case 10: _configDateColumn = !_configDateColumn; break;
-            case 11: _configCopySymlinksAsLinks = !_configCopySymlinksAsLinks; break;
-            case 12: _configTerminalTitle = !_configTerminalTitle; break;
+            case 9:
+                if (_configPreviewPane)
+                {
+                    _configHexPreview = !_configHexPreview;
+                }
+
+                break;
+            case 10: _configSizeColumn = !_configSizeColumn; break;
+            case 11: _configDateColumn = !_configDateColumn; break;
+            case 12: _configCopySymlinksAsLinks = !_configCopySymlinksAsLinks; break;
+            case 13: _configTerminalTitle = !_configTerminalTitle; break;
         }
     }
 
@@ -3534,6 +3543,7 @@ internal sealed class App
         _config.DateColumnEnabled = _configDateColumn;
         _config.GlowMarkdownPreviewEnabled = _configGlowMarkdownPreview;
         _config.ZipPreviewEnabled = _configZipPreview;
+        _config.HexPreviewEnabled = _configHexPreview;
         _config.CopySymlinksAsLinksEnabled = _configCopySymlinksAsLinks;
         _config.TerminalTitleEnabled = _configTerminalTitle;
 
@@ -3548,7 +3558,7 @@ internal sealed class App
         _layout.Calculate(Console.WindowWidth, Console.WindowHeight, _config.PreviewPaneEnabled);
         previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
             _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
-            zipPreviewEnabled: _config.ZipPreviewEnabled);
+            zipPreviewEnabled: _config.ZipPreviewEnabled, hexPreviewEnabled: _config.HexPreviewEnabled);
         UpdateTerminalTitle();
 
         try
@@ -3614,6 +3624,7 @@ internal sealed class App
         itemList.Add(("  Image Previews", FormatBool(_configImagePreviews), _configPreviewPane));
         itemList.Add(("  Glow Preview", FormatBool(_configGlowMarkdownPreview), _configPreviewPane && GlowRenderer.IsAvailable));
         itemList.Add(("  Zip Preview", FormatBool(_configZipPreview), _configPreviewPane));
+        itemList.Add(("  Hex Preview", FormatBool(_configHexPreview), _configPreviewPane));
         itemList.Add(("Size Column", FormatBool(_configSizeColumn), true));
         itemList.Add(("Date Column", FormatBool(_configDateColumn), true));
         itemList.Add(("Copy Symlinks As Links", FormatBool(_configCopySymlinksAsLinks), true));

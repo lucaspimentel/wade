@@ -15,7 +15,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Miller columns** — three-pane layout: parent / current directory / preview; preview pane can be hidden for a 2-pane layout via `preview_pane_enabled` config
 - **File-type icons** — Nerd Fonts v3 glyphs per file extension (enabled by default; requires a Nerd Font)
 - **Syntax highlighting** — per-token coloring for common languages using a hand-rolled tokenizer; VS Code Dark+ inspired palette
-- **File preview** — displays first 100 lines of text files; shows `[binary file]` for binary files; zip-format archives (`.zip`, `.nupkg`, `.jar`, `.war`, `.ear`) show a content listing with entry names and sizes (toggle with `zip_preview_enabled` config, default: on)
+- **File preview** — displays first 100 lines of text files; binary files show an xxd-style hex dump with colored offset, hex bytes, and ASCII columns (toggle with `hex_preview_enabled` config, default: on); zip-format archives (`.zip`, `.nupkg`, `.jar`, `.war`, `.ear`) show a content listing with entry names and sizes (toggle with `zip_preview_enabled` config, default: on)
 - **Image preview** — renders image thumbnails in the preview pane using Sixel graphics (auto-detects Sixel support; works with Windows Terminal v1.22+, kitty, WezTerm, and other Sixel-capable terminals; enabled by default; disable with `image_previews_enabled = false` in config)
 - **Expanded preview** — press Right/Enter on a file to expand the preview to full terminal width; scroll with Up/Down/J/K/PageUp/PageDown/Home/End/mouse wheel; press Left/Escape to collapse back to 3-pane view
 - **Directory preview** — shows contents of the selected directory
@@ -34,10 +34,11 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Mouse support** — click to select entries in any pane, scroll wheel to navigate; left/right pane clicks navigate directories
 - **File properties** — press `i` to open a properties overlay showing detailed metadata: name, full path, type (with symlink-aware labels like "Symlink → File"), link target, formatted size with raw bytes (directories calculate size asynchronously), created/modified/accessed timestamps, file attributes, and read-only status
 - **Glow markdown preview** — renders markdown files using the [glow](https://github.com/charmbracelet/glow) CLI for rich preview with styled headings, lists, code blocks, etc. (requires `glow` on PATH; disabled by default; enable with `glow_markdown_preview_enabled = true` in config or toggle in config dialog)
-- **In-app configuration** — press `,` to open a config dialog with toggleable options: icons, hidden files, system files (Windows), sort mode, sort direction, delete confirmation, preview pane, image previews, glow preview, zip preview, size column, date column, and copy-symlinks-as-links; changes are saved directly to the config file
+- **In-app configuration** — press `,` to open a config dialog with toggleable options: icons, hidden files, system files (Windows), sort mode, sort direction, delete confirmation, preview pane, image previews, glow preview, zip preview, hex preview, size column, date column, copy-symlinks-as-links, and terminal title; changes are saved directly to the config file
 - **Bookmarks** — press `b` to open a filterable bookmarks dialog; press `B` to toggle the current directory as a bookmark; quick-jump with `1`-`9`, `Enter` to navigate, `d`/`Delete` to remove; bookmarks persist to `~/.config/wade/bookmarks` in MRU order
 - **Action palette** — press `Ctrl+P` to open a searchable action palette listing all available commands; type to filter, Up/Down to navigate, Enter to execute
 - **Shell integration** — press `Ctrl+T` to open a new terminal in the current directory; use shell wrapper functions (`wd`) to cd to the final directory on exit (bash, zsh, fish, PowerShell wrappers provided)
+- **Terminal title** — sets the terminal tab title to the current directory; uses xterm title stack to restore the original title on exit (toggle with `terminal_title_enabled` config, default: on)
 - **Minimal rendering** — raw VT/ANSI escape sequences, double-buffered with dirty-row tracking, cell diff, and style diffing
 
 ## Requirements
@@ -102,6 +103,8 @@ size_column_enabled = true
 date_column_enabled = true
 copy_symlinks_as_links_enabled = true
 zip_preview_enabled = true
+hex_preview_enabled = true
+terminal_title_enabled = true
 ```
 
 ### CLI flags
