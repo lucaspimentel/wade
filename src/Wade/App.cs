@@ -3665,7 +3665,7 @@ internal sealed class App
         itemList.Add(("Confirm Delete", FormatBool(_configConfirmDelete), true));
         itemList.Add(("Show Preview Pane", FormatBool(_configPreviewPane), true));
         itemList.Add(("  Image Previews", FormatBool(_configImagePreviews), _configPreviewPane));
-        itemList.Add(("  Glow Preview", FormatBool(_configGlowMarkdownPreview), _configPreviewPane && GlowRenderer.IsAvailable));
+        itemList.Add(("  Use Glow for Markdown Previews", FormatBool(_configGlowMarkdownPreview), _configPreviewPane && GlowRenderer.IsAvailable));
         itemList.Add(("  Zip Preview", FormatBool(_configZipPreview), _configPreviewPane));
         itemList.Add(("  Hex Preview", FormatBool(_configHexPreview), _configPreviewPane));
         itemList.Add(("Show Size Column", FormatBool(_configSizeColumn), true));
