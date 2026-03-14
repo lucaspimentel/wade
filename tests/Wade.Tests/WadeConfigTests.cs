@@ -33,6 +33,8 @@ public class WadeConfigTests
         Assert.True(config.DateColumnEnabled);
         Assert.True(config.CopySymlinksAsLinksEnabled);
         Assert.True(config.ZipPreviewEnabled);
+        Assert.True(config.HexPreviewEnabled);
+        Assert.True(config.TerminalTitleEnabled);
         Assert.Equal(Directory.GetCurrentDirectory(), config.StartPath);
     }
 
@@ -76,6 +78,10 @@ public class WadeConfigTests
     [InlineData("copy_symlinks_as_links_enabled", false)]
     [InlineData("zip_preview_enabled", true)]
     [InlineData("zip_preview_enabled", false)]
+    [InlineData("hex_preview_enabled", true)]
+    [InlineData("hex_preview_enabled", false)]
+    [InlineData("terminal_title_enabled", true)]
+    [InlineData("terminal_title_enabled", false)]
     public void ConfigFile_ParsesNewBoolSettings(string key, bool value)
     {
         var path = WriteTempConfig($"{key} = {(value ? "true" : "false")}");
@@ -91,6 +97,8 @@ public class WadeConfigTests
                 "date_column_enabled" => config.DateColumnEnabled,
                 "copy_symlinks_as_links_enabled" => config.CopySymlinksAsLinksEnabled,
                 "zip_preview_enabled" => config.ZipPreviewEnabled,
+                "hex_preview_enabled" => config.HexPreviewEnabled,
+                "terminal_title_enabled" => config.TerminalTitleEnabled,
                 _ => throw new ArgumentException($"Unknown key: {key}"),
             };
             Assert.Equal(value, actual);
@@ -385,6 +393,8 @@ public class WadeConfigTests
             original.DateColumnEnabled = false;
             original.CopySymlinksAsLinksEnabled = false;
             original.ZipPreviewEnabled = false;
+            original.HexPreviewEnabled = false;
+            original.TerminalTitleEnabled = false;
             original.Save();
 
             var loaded = WadeConfig.Load([], configFilePath: configPath);
@@ -400,6 +410,8 @@ public class WadeConfigTests
             Assert.False(loaded.DateColumnEnabled);
             Assert.False(loaded.CopySymlinksAsLinksEnabled);
             Assert.False(loaded.ZipPreviewEnabled);
+            Assert.False(loaded.HexPreviewEnabled);
+            Assert.False(loaded.TerminalTitleEnabled);
         }
         finally
         {

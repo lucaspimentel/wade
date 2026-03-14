@@ -3423,7 +3423,7 @@ internal sealed class App
                 break;
 
             case ConsoleKey.DownArrow or ConsoleKey.J:
-                int maxIndex = OperatingSystem.IsWindows() ? 13 : 12;
+                int maxIndex = OperatingSystem.IsWindows() ? 14 : 13;
                 if (_configSelectedIndex < maxIndex)
                 {
                     _configSelectedIndex++;
@@ -3485,8 +3485,8 @@ internal sealed class App
                 return;
         }
 
-        // Items after the Windows-only row use an offset on non-Windows
-        int adjusted = idx + (OperatingSystem.IsWindows() ? 0 : -1);
+        // Items after the Windows-only row: on Windows the extra row shifts indices up by 1
+        int adjusted = idx + (OperatingSystem.IsWindows() ? -1 : 0);
         switch (adjusted)
         {
             case 2: _configSortMode = CycleSortModeNext(_configSortMode); break;
@@ -3595,7 +3595,7 @@ internal sealed class App
     private void RenderConfigDialog(ScreenBuffer buffer, int width, int height)
     {
         const int ContentWidth = 40;
-        int contentHeight = OperatingSystem.IsWindows() ? 14 : 13;
+        int contentHeight = OperatingSystem.IsWindows() ? 16 : 15;
         const string Footer = "[Space] Toggle [◄►] Cycle [Enter] Save [Esc] Cancel";
 
         var content = DialogBox.Render(buffer, width, height, Math.Max(ContentWidth, Footer.Length), contentHeight, title: "Configuration", footer: Footer);
