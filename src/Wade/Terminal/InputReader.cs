@@ -39,6 +39,7 @@ internal enum AppAction
     ShowBookmarks,
     ToggleBookmark,
     CreateSymlink,
+    ShowFileFinder,
 }
 
 internal static class InputReader
@@ -123,6 +124,11 @@ internal static class InputReader
         if (key.Key == ConsoleKey.L && key.Control && !key.Shift)
         {
             return AppAction.CreateSymlink;
+        }
+
+        if (key.Key == ConsoleKey.F && key.Control && !key.Shift)
+        {
+            return AppAction.ShowFileFinder;
         }
 
         if (key.KeyChar == 'c')

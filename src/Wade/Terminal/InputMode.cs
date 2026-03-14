@@ -13,4 +13,5 @@ internal enum InputMode
     Properties,
     ActionPalette,
     Bookmarks,
+    FileFinder,
 }

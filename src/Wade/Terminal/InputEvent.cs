@@ -1,3 +1,4 @@
+using Wade.FileSystem;
 using Wade.Highlighting;
 
 namespace Wade.Terminal;
@@ -31,6 +32,8 @@ internal sealed record ImagePreviewReadyEvent(
     string FileTypeLabel) : InputEvent;
 
 internal sealed record DirectorySizeReadyEvent(string Path, long TotalBytes) : InputEvent;
+
+internal sealed record FileFinderScanCompleteEvent(string BasePath, List<FileSystemEntry> Entries) : InputEvent;
 
 internal enum MouseButton
 {

@@ -170,15 +170,15 @@ Preview PDF files using Sixel image rendering, similar to existing image preview
 ~~- Restore original title on exit via xterm title stack (`ESC [22;0t` / `ESC [23;0t`)~~
 ~~- Add a `terminal_title_enabled` config setting (default: true)~~
 
-### File finder
+### File finder ✅
 
-Searchable file finder dialog. User types to filter files in the current directory tree by name, Up/Down to navigate, Enter to open.
+~~Searchable file finder dialog. User types to filter files in the current directory tree by name, Up/Down to navigate, Enter to open.~~
 
-- Add `InputMode.FileFinder` to enum
-- Add `AppAction.ShowFileFinder` + key mapping in `InputReader.MapKey()`
-- State: `_fileFinderSelectedIndex`, `_fileFinderTextInput`, filtered file list, `_fileFinderEntries` (full list)
-- Item list: recursively enumerate files under `_currentPath` (up to a reasonable depth/count limit to stay responsive — e.g. max 10,000 entries, max depth 8)
-- Display: relative path from `_currentPath` as label, parent directory as right-aligned hint
-- On Enter: navigate to the selected file's parent directory and select the file (same as GoToPath does for file targets)
-- Consider async enumeration to avoid blocking on large trees — could show "[scanning...]" while building the list, similar to preview loading pattern
-- Shares the same UI pattern as the action palette (text input at top, filtered list below)
+- ~~Add `InputMode.FileFinder` to enum~~
+- ~~Add `AppAction.ShowFileFinder` + key mapping in `InputReader.MapKey()`~~
+- ~~State: `_fileFinderSelectedIndex`, `_fileFinderTextInput`, filtered file list, `_fileFinderEntries` (full list)~~
+- ~~Item list: recursively enumerate files under `_currentPath` (up to a reasonable depth/count limit to stay responsive — e.g. max 10,000 entries, max depth 8)~~
+- ~~Display: relative path from `_currentPath` as label, parent directory as right-aligned hint~~
+- ~~On Enter: navigate to the selected file's parent directory and select the file (same as GoToPath does for file targets)~~
+- ~~Async enumeration with "[scanning...]" indicator while building the list~~
+- ~~Shares the same UI pattern as the action palette (text input at top, filtered list below)~~

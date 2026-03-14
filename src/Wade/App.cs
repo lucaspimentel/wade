@@ -64,6 +64,14 @@ internal sealed class App
     private TextInput? _bookmarkInput;
     private int _bookmarkScrollOffset;
 
+    // File finder state
+    private int _fileFinderSelectedIndex;
+    private TextInput? _fileFinderInput;
+    private int _fileFinderScrollOffset;
+    private List<FileSystemEntry>? _fileFinderAllEntries;
+    private bool _fileFinderScanning;
+    private CancellationTokenSource? _fileFinderCts;
+
     // Config dialog state
     private int _configSelectedIndex;
     private bool _configShowIcons;
@@ -233,6 +241,14 @@ internal sealed class App
                 {
                     HandleDirectorySizeReady(dirSizeExtra);
                 }
+                else if (extra is FileFinderScanCompleteEvent scanExtra)
+                {
+                    if (_inputMode == InputMode.FileFinder && scanExtra.BasePath == _currentPath)
+                    {
+                        _fileFinderAllEntries = scanExtra.Entries;
+                        _fileFinderScanning = false;
+                    }
+                }
                 else if (extra is ResizeEvent)
                 {
                     inputEvent = extra;
@@ -310,6 +326,17 @@ internal sealed class App
                 continue;
             }
 
+            if (inputEvent is FileFinderScanCompleteEvent scanEvt)
+            {
+                if (_inputMode == InputMode.FileFinder && scanEvt.BasePath == _currentPath)
+                {
+                    _fileFinderAllEntries = scanEvt.Entries;
+                    _fileFinderScanning = false;
+                }
+
+                continue;
+            }
+
             // Handle mouse events
             if (inputEvent is MouseEvent mouseEvent)
             {
@@ -320,7 +347,7 @@ internal sealed class App
                 }
 
                 // Discard mouse events while a modal dialog is open
-                if (_inputMode is InputMode.Help or InputMode.GoToPath or InputMode.TextInput or InputMode.Confirm or InputMode.Config or InputMode.Properties or InputMode.ActionPalette or InputMode.Bookmarks)
+                if (_inputMode is InputMode.Help or InputMode.GoToPath or InputMode.TextInput or InputMode.Confirm or InputMode.Config or InputMode.Properties or InputMode.ActionPalette or InputMode.Bookmarks or InputMode.FileFinder)
                 {
                     continue;
                 }
@@ -403,11 +430,15 @@ internal sealed class App
                     continue;
 
                 case InputMode.ActionPalette:
-                    HandleActionPaletteKey(keyEvent, previewLoader, buffer);
+                    HandleActionPaletteKey(keyEvent, previewLoader, buffer, pipeline);
                     continue;
 
                 case InputMode.Bookmarks:
                     HandleBookmarkKey(keyEvent, previewLoader, buffer);
+                    continue;
+
+                case InputMode.FileFinder:
+                    HandleFileFinderKey(keyEvent, previewLoader, buffer);
                     continue;
 
                 case InputMode.Normal:
@@ -571,6 +602,10 @@ internal sealed class App
 
                 case AppAction.ShowBookmarks:
                     ShowBookmarks();
+                    break;
+
+                case AppAction.ShowFileFinder:
+                    ShowFileFinder(pipeline);
                     break;
 
                 case AppAction.ToggleBookmark:
@@ -1387,6 +1422,9 @@ internal sealed class App
                 break;
             case InputMode.Bookmarks:
                 RenderBookmarks(buffer, width, height);
+                break;
+            case InputMode.FileFinder:
+                RenderFileFinder(buffer, width, height);
                 break;
         }
     }
@@ -2383,6 +2421,7 @@ internal sealed class App
         items.Add(("Bookmarks", "b", AppAction.ShowBookmarks));
         items.Add(("Toggle bookmark", "B", AppAction.ToggleBookmark));
         items.Add(("Go to path", "g", AppAction.GoToPath));
+        items.Add(("Find file", "Ctrl+F", AppAction.ShowFileFinder));
         items.Add(("Search / filter", "/", AppAction.Search));
         items.Add(("Open terminal here", "Ctrl+T", AppAction.OpenTerminal));
         items.Add(("Configuration", ",", AppAction.ShowConfig));
@@ -2419,7 +2458,7 @@ internal sealed class App
         return result;
     }
 
-    private void HandleActionPaletteKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer)
+    private void HandleActionPaletteKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer, InputPipeline pipeline)
     {
         var filtered = GetFilteredActionPaletteItems();
 
@@ -2438,7 +2477,7 @@ internal sealed class App
                     _inputMode = InputMode.Normal;
                     _actionPaletteInput = null;
                     _actionPaletteItems = null;
-                    DispatchActionPaletteAction(selectedAction, previewLoader, buffer);
+                    DispatchActionPaletteAction(selectedAction, previewLoader, buffer, pipeline);
                 }
 
                 break;
@@ -2550,7 +2589,7 @@ internal sealed class App
         }
     }
 
-    private void DispatchActionPaletteAction(AppAction action, PreviewLoader previewLoader, ScreenBuffer buffer)
+    private void DispatchActionPaletteAction(AppAction action, PreviewLoader previewLoader, ScreenBuffer buffer, InputPipeline pipeline)
     {
         var entries = GetVisibleEntries();
 
@@ -3033,6 +3072,10 @@ internal sealed class App
                 ShowNotification(
                     _bookmarkStore.Contains(_currentPath) ? "Bookmarked" : "Bookmark removed",
                     NotificationKind.Success);
+                break;
+
+            case AppAction.ShowFileFinder:
+                ShowFileFinder(pipeline);
                 break;
 
             case AppAction.Refresh:
@@ -3677,6 +3720,348 @@ internal sealed class App
         {
             var textStyle = new CellStyle(new Color(200, 200, 200), null);
             buffer.WriteString(row, inputCol, _searchFilter, textStyle, inputWidth);
+        }
+    }
+
+    // ── File finder ───────────────────────────────────────────────────────────
+
+    private void ShowFileFinder(InputPipeline pipeline)
+    {
+        _inputMode = InputMode.FileFinder;
+        _fileFinderSelectedIndex = 0;
+        _fileFinderScrollOffset = 0;
+        _fileFinderInput = new TextInput();
+        _fileFinderAllEntries = null;
+        _fileFinderScanning = true;
+        _fileFinderCts?.Cancel();
+        _fileFinderCts = new CancellationTokenSource();
+
+        string basePath = _currentPath;
+        bool showHidden = _directoryContents.ShowHiddenFiles;
+        bool showSystem = _directoryContents.ShowSystemFiles;
+        var ct = _fileFinderCts.Token;
+
+        Task.Run(() => ScanFilesForFinder(basePath, showHidden, showSystem, pipeline, ct), ct);
+    }
+
+    private void CloseFileFinder()
+    {
+        _fileFinderCts?.Cancel();
+        _fileFinderCts = null;
+        _inputMode = InputMode.Normal;
+        _fileFinderInput = null;
+        _fileFinderAllEntries = null;
+        _fileFinderScanning = false;
+    }
+
+    internal static void ScanFilesForFinder(
+        string basePath,
+        bool showHidden,
+        bool showSystem,
+        InputPipeline pipeline,
+        CancellationToken ct)
+    {
+        const int maxEntries = 10_000;
+        var entries = new List<FileSystemEntry>();
+
+        try
+        {
+            var options = new EnumerationOptions
+            {
+                RecurseSubdirectories = true,
+                MaxRecursionDepth = 8,
+                IgnoreInaccessible = true,
+                AttributesToSkip = FileAttributes.Device,
+            };
+
+            foreach (string filePath in Directory.EnumerateFiles(basePath, "*", options))
+            {
+                if (ct.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                try
+                {
+                    var fileInfo = new FileInfo(filePath);
+
+                    if (!showSystem && OperatingSystem.IsWindows() &&
+                        (fileInfo.Attributes & FileAttributes.System) != 0)
+                    {
+                        continue;
+                    }
+
+                    if (!showHidden &&
+                        ((fileInfo.Attributes & FileAttributes.Hidden) != 0 || fileInfo.Name.StartsWith('.')))
+                    {
+                        continue;
+                    }
+
+                    entries.Add(new FileSystemEntry(
+                        fileInfo.Name,
+                        fileInfo.FullName,
+                        IsDirectory: false,
+                        Size: fileInfo.Length,
+                        LastModified: fileInfo.LastWriteTime,
+                        LinkTarget: fileInfo.LinkTarget,
+                        IsBrokenSymlink: false,
+                        IsDrive: false));
+
+                    if (entries.Count >= maxEntries)
+                    {
+                        break;
+                    }
+                }
+                catch
+                {
+                    // Skip files we can't access
+                }
+            }
+        }
+        catch
+        {
+            // Skip if enumeration fails entirely
+        }
+
+        if (!ct.IsCancellationRequested)
+        {
+            pipeline.Inject(new FileFinderScanCompleteEvent(basePath, entries));
+        }
+    }
+
+    internal static List<FileSystemEntry> GetFilteredFileFinderEntries(
+        List<FileSystemEntry>? allEntries, string filter, string basePath)
+    {
+        if (allEntries is null)
+        {
+            return [];
+        }
+
+        if (string.IsNullOrEmpty(filter))
+        {
+            return allEntries;
+        }
+
+        var result = new List<FileSystemEntry>();
+
+        foreach (FileSystemEntry entry in allEntries)
+        {
+            string relativePath = Path.GetRelativePath(basePath, entry.FullPath);
+
+            if (relativePath.Contains(filter, StringComparison.OrdinalIgnoreCase))
+            {
+                result.Add(entry);
+            }
+        }
+
+        return result;
+    }
+
+    private void HandleFileFinderKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer)
+    {
+        var filtered = GetFilteredFileFinderEntries(
+            _fileFinderAllEntries, _fileFinderInput?.Value ?? "", _currentPath);
+
+        switch (key.Key)
+        {
+            case ConsoleKey.Escape:
+                CloseFileFinder();
+                break;
+
+            case ConsoleKey.Enter:
+                if (filtered.Count > 0 && _fileFinderSelectedIndex < filtered.Count)
+                {
+                    string filePath = filtered[_fileFinderSelectedIndex].FullPath;
+                    CloseFileFinder();
+                    NavigateToPath(filePath, previewLoader, buffer);
+                }
+
+                break;
+
+            case ConsoleKey.UpArrow:
+                if (_fileFinderSelectedIndex > 0)
+                {
+                    _fileFinderSelectedIndex--;
+                }
+
+                break;
+
+            case ConsoleKey.DownArrow:
+                if (_fileFinderSelectedIndex < filtered.Count - 1)
+                {
+                    _fileFinderSelectedIndex++;
+                }
+
+                break;
+
+            case ConsoleKey.PageUp:
+            {
+                int visibleCount = Math.Min(18, filtered.Count);
+                _fileFinderSelectedIndex = Math.Max(0, _fileFinderSelectedIndex - visibleCount);
+                break;
+            }
+
+            case ConsoleKey.PageDown:
+            {
+                int visibleCount = Math.Min(18, filtered.Count);
+                _fileFinderSelectedIndex = Math.Min(filtered.Count - 1, _fileFinderSelectedIndex + visibleCount);
+                break;
+            }
+
+            case ConsoleKey.Home:
+                _fileFinderSelectedIndex = 0;
+                break;
+
+            case ConsoleKey.End:
+                _fileFinderSelectedIndex = Math.Max(0, filtered.Count - 1);
+                break;
+
+            case ConsoleKey.Backspace:
+                _fileFinderInput!.DeleteBackward();
+                _fileFinderSelectedIndex = 0;
+                _fileFinderScrollOffset = 0;
+                break;
+
+            case ConsoleKey.Delete:
+                _fileFinderInput!.DeleteForward();
+                _fileFinderSelectedIndex = 0;
+                _fileFinderScrollOffset = 0;
+                break;
+
+            case ConsoleKey.LeftArrow:
+                _fileFinderInput!.MoveCursorLeft();
+                break;
+
+            case ConsoleKey.RightArrow:
+                _fileFinderInput!.MoveCursorRight();
+                break;
+
+            default:
+                if (key.Key == ConsoleKey.K && key.Control)
+                {
+                    if (_fileFinderSelectedIndex > 0)
+                    {
+                        _fileFinderSelectedIndex--;
+                    }
+                }
+                else if (key.Key == ConsoleKey.J && key.Control)
+                {
+                    if (_fileFinderSelectedIndex < filtered.Count - 1)
+                    {
+                        _fileFinderSelectedIndex++;
+                    }
+                }
+                else if (key.KeyChar >= ' ')
+                {
+                    _fileFinderInput!.InsertChar(key.KeyChar);
+                    _fileFinderSelectedIndex = 0;
+                    _fileFinderScrollOffset = 0;
+                }
+
+                break;
+        }
+
+        // Adjust scroll offset to keep selection visible
+        filtered = GetFilteredFileFinderEntries(
+            _fileFinderAllEntries, _fileFinderInput?.Value ?? "", _currentPath);
+
+        if (filtered.Count > 0)
+        {
+            _fileFinderSelectedIndex = Math.Clamp(_fileFinderSelectedIndex, 0, filtered.Count - 1);
+        }
+        else
+        {
+            _fileFinderSelectedIndex = 0;
+        }
+
+        int maxVisible = 18;
+
+        if (_fileFinderSelectedIndex < _fileFinderScrollOffset)
+        {
+            _fileFinderScrollOffset = _fileFinderSelectedIndex;
+        }
+        else if (_fileFinderSelectedIndex >= _fileFinderScrollOffset + maxVisible)
+        {
+            _fileFinderScrollOffset = _fileFinderSelectedIndex - maxVisible + 1;
+        }
+    }
+
+    private void RenderFileFinder(ScreenBuffer buffer, int width, int height)
+    {
+        var filtered = GetFilteredFileFinderEntries(
+            _fileFinderAllEntries, _fileFinderInput?.Value ?? "", _currentPath);
+        int contentWidth = Math.Min(70, width - 8);
+        int itemRows = Math.Min(filtered.Count, 18);
+        int contentHeight = itemRows + 2; // 1 row for text input + 1 separator + item rows
+        const string Footer = "[↑↓] Navigate  [Enter] Open  [Esc] Cancel";
+        string title = _fileFinderScanning ? "Find File [scanning...]" : "Find File";
+
+        var content = DialogBox.Render(
+            buffer, width, height,
+            Math.Max(contentWidth, Footer.Length),
+            Math.Max(contentHeight, 3),
+            title: title,
+            footer: Footer);
+
+        // Row 0: text input with "> " prefix
+        var prefixStyle = new CellStyle(new Color(220, 220, 100), DialogBox.BgColor);
+        var inputStyle = new CellStyle(new Color(200, 200, 200), DialogBox.BgColor);
+        buffer.WriteString(content.Top, content.Left, "> ", prefixStyle);
+        _fileFinderInput?.Render(buffer, content.Top, content.Left + 2, content.Width - 2, inputStyle);
+
+        // Row 1: separator
+        var separatorStyle = new CellStyle(DialogBox.BorderColor, DialogBox.BgColor, Dim: true);
+        for (int c = 0; c < content.Width; c++)
+        {
+            buffer.Put(content.Top + 1, content.Left + c, '─', separatorStyle);
+        }
+
+        if (filtered.Count == 0)
+        {
+            var emptyStyle = new CellStyle(new Color(120, 120, 140), DialogBox.BgColor);
+            string emptyText = _fileFinderScanning ? "Scanning..." : "No matching files";
+            buffer.WriteString(content.Top + 2, content.Left + 1, emptyText, emptyStyle);
+            return;
+        }
+
+        // Rows 2+: filtered items
+        var normalStyle = new CellStyle(new Color(200, 200, 200), DialogBox.BgColor);
+        var selectedStyle = new CellStyle(new Color(20, 20, 35), new Color(200, 200, 200));
+        var dimStyle = new CellStyle(new Color(120, 120, 140), DialogBox.BgColor);
+        var dimSelectedStyle = new CellStyle(new Color(80, 80, 100), new Color(200, 200, 200));
+
+        int visibleCount = content.Height - 2;
+
+        for (int i = 0; i < visibleCount; i++)
+        {
+            int itemIndex = _fileFinderScrollOffset + i;
+
+            if (itemIndex >= filtered.Count)
+            {
+                break;
+            }
+
+            FileSystemEntry entry = filtered[itemIndex];
+            bool selected = itemIndex == _fileFinderSelectedIndex;
+            int row = content.Top + 2 + i;
+
+            CellStyle nameStyle = selected ? selectedStyle : normalStyle;
+            CellStyle pathStyle = selected ? dimSelectedStyle : dimStyle;
+
+            if (selected)
+            {
+                buffer.FillRow(row, content.Left, content.Width, ' ', selectedStyle);
+            }
+
+            // Left: filename
+            buffer.WriteString(row, content.Left + 1, entry.Name, nameStyle, content.Width / 2 - 1);
+
+            // Right: relative parent path (dim hint)
+            string? parentDir = Path.GetDirectoryName(Path.GetRelativePath(_currentPath, entry.FullPath));
+            string parentHint = string.IsNullOrEmpty(parentDir) ? "." : parentDir + Path.DirectorySeparatorChar;
+            int hintMaxLen = content.Width / 2 - 1;
+            int hintCol = content.Left + content.Width - Math.Min(parentHint.Length, hintMaxLen) - 1;
+            buffer.WriteString(row, hintCol, parentHint, pathStyle, hintMaxLen);
         }
     }
 }

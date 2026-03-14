@@ -31,6 +31,7 @@ internal static class HelpOverlay
         ("c",                   "Copy"),
         ("x",                   "Cut"),
         ("p / v",               "Paste"),
+        ("Ctrl+F",             "Find file"),
         ("Ctrl+P",             "Action palette"),
         ("?",                   "Show help"),
         ("q / Escape",          "Quit"),
