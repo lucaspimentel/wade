@@ -129,6 +129,47 @@ OneDrive and similar cloud sync tools use placeholder files that aren't fully do
 - Don't attempt to read placeholder-only files: skip image previews, skip text preview, show a "[cloud file — not downloaded]" message instead
 - Preview loading in `PreviewLoader.LoadPreview()` should check placeholder status before reading
 
+### Hex preview for binary files
+
+Read-only hex editor view for binary files, accessible via the action palette.
+
+- Add an action palette entry (e.g. "Hex Preview") that appears when a binary file is selected
+- Display hex dump format: offset column, hex bytes, ASCII representation (like `xxd` or HxD)
+- `FilePreview.IsBinary()` already detects binary files (`src/Wade/FileSystem/FilePreview.cs`)
+- Could render in the preview pane or as a full-screen overlay (like properties overlay)
+- Read-only — no editing, just viewing
+- Limit displayed size (e.g. first 4 KB–64 KB) to keep rendering fast
+- Consider scrolling support for viewing deeper into the file
+
+### Ellipsis for truncated filenames
+
+When a filename is too long to fit in the name column, show `…` (or `...`) at the end instead of silently cutting off.
+
+- Truncation happens in `PaneRenderer.RenderFileList()` (`src/Wade/UI/PaneRenderer.cs:206-218`) via `buffer.WriteString` with a `maxName` limit
+- When `entry.Name.Length > maxName`, write `maxName - 1` chars + `…` instead of `maxName` chars
+- Apply to both icon and non-icon code paths
+- Also consider the symlink suffix path (~line 224) where the target can be truncated
+
+### PDF preview
+
+Preview PDF files using Sixel image rendering, similar to existing image previews.
+
+- Consider shelling out to a PDF-to-image CLI tool (e.g. `mutool draw`, `pdftoppm` from poppler, or `magick` from ImageMagick) to convert the first page to a temporary PNG, then feed it through the existing `ImagePreview.Load()` pipeline
+- Existing image preview flow: `PreviewLoader.cs:75-85` checks `ImagePreview.IsImageFile()`, calls `ImagePreview.Load()`, emits `ImagePreviewReadyEvent`
+- Add a `pdf_previews_enabled` config setting (default: true), following the same pattern as `image_previews_enabled` in `WadeConfig.cs:8`
+- Gated by Sixel capability detection (same as image previews) plus availability of the conversion tool on PATH
+- `.pdf` is already in `FilePreview.s_binaryExtensions` (`src/Wade/FileSystem/FilePreview.cs:17`) — PDF preview should be checked before the binary fallback
+
+### Set terminal title
+
+Set the terminal window/tab title to reflect the current directory (e.g. `wade — D:\Projects`).
+
+- Use OSC escape sequence `ESC ]0;<title> BEL` (or `ESC ]2;`) — widely supported across terminals
+- Update title on directory navigation
+- Restore original title on exit
+- Add a `terminal_title_enabled` config setting (default: true)
+- No terminal title handling exists in the codebase yet
+
 ### File finder
 
 Searchable file finder dialog. User types to filter files in the current directory tree by name, Up/Down to navigate, Enter to open.
