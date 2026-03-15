@@ -46,6 +46,7 @@ internal enum AppAction
     UnstageFile,
     StageAll,
     UnstageAll,
+    GitCommit,
 }
 
 internal static class InputReader

@@ -35,6 +35,11 @@ internal sealed class GitActionRunner
         StartAction(ct => GitUtils.UnstageAll(repoRoot, ct));
     }
 
+    public void RunCommit(string repoRoot, string message)
+    {
+        StartAction(ct => GitUtils.Commit(repoRoot, message, ct));
+    }
+
     public void Cancel()
     {
         _cts?.Cancel();

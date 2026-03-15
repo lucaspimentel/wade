@@ -45,13 +45,9 @@ Implemented stage/unstage via action palette entries ("Git: Stage", "Git: Unstag
 
 Added "Git: Unstage all" action palette entry via `git reset HEAD`. Mirrors "Git: Stage all changes" pattern.
 
-#### Phase 2b: Commit
+#### ~~Phase 2b: Commit~~ ✅
 
-- Commit staged changes with message via input dialog (action palette entry)
-- Reuses existing `TextInput` / `InputMode.TextInput` / `RenderTextInputDialog` machinery (same as Rename)
-- Single-line commit message (multi-line deferred)
-- Only available when staged changes exist
-- Key files: `GitUtils.cs` (`Commit` method), `App.cs`
+Implemented "Git: Commit" action palette entry. Uses existing TextInput dialog for commit message input. Only shown when staged changes exist. Async via GitActionRunner, status auto-refreshes after commit.
 
 #### Phase 2c: Push / Pull
 
@@ -67,6 +63,7 @@ Added "Git: Unstage all" action palette entry via `git reset HEAD`. Mirrors "Git
 - Diff preview for modified files ✅
 - Git action menu (`Ctrl+G`) ✅
 - Phase 2a: Stage / Unstage ✅
+- Phase 2b: Commit ✅
 
 ### Drive type detection
 
@@ -104,7 +101,7 @@ Git actions are integrated into the global action palette (`Ctrl+P`), prefixed w
 
 - Diff preview toggle ✅
 - Stage / Unstage (Phase 2a) ✅
-- Commit with message (Phase 2b)
+- Commit with message (Phase 2b) ✅
 - Push / Pull (Phase 2c)
 
 #### Completed
@@ -112,3 +109,4 @@ Git actions are integrated into the global action palette (`Ctrl+P`), prefixed w
 - Moved git actions from dedicated `Ctrl+G` menu into global action palette ✅
 - Diff preview toggle as "Git: Toggle diff preview" (only shown for modified/staged files) ✅
 - Stage / Unstage via "Git: Stage", "Git: Unstage", "Git: Stage all changes" ✅
+- Commit via "Git: Commit" with TextInput message dialog ✅

@@ -672,6 +672,88 @@ public class GitUtilsTests
     }
 
     [Fact]
+    public void Commit_WithStagedChanges_Succeeds()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            RunGit(tempDir, "init");
+            RunGit(tempDir, "config user.email test@test.com");
+            RunGit(tempDir, "config user.name Test");
+
+            string filePath = Path.Combine(tempDir, "test.txt");
+            File.WriteAllText(filePath, "content\n");
+            RunGit(tempDir, "add test.txt");
+
+            var result = GitUtils.Commit(tempDir, "Initial commit", CancellationToken.None);
+            Assert.True(result.Success);
+
+            // After commit, file should no longer appear in status
+            var statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Assert.DoesNotContain(statuses, kv => kv.Key == filePath);
+        }
+        finally
+        {
+            ForceDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void Commit_MessageWithQuotes_Succeeds()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            RunGit(tempDir, "init");
+            RunGit(tempDir, "config user.email test@test.com");
+            RunGit(tempDir, "config user.name Test");
+
+            string filePath = Path.Combine(tempDir, "test.txt");
+            File.WriteAllText(filePath, "content\n");
+            RunGit(tempDir, "add test.txt");
+
+            var result = GitUtils.Commit(tempDir, "Fix \"broken\" thing", CancellationToken.None);
+            Assert.True(result.Success);
+        }
+        finally
+        {
+            ForceDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void Commit_NothingStaged_Fails()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            RunGit(tempDir, "init");
+            RunGit(tempDir, "config user.email test@test.com");
+            RunGit(tempDir, "config user.name Test");
+
+            // Initial commit so repo is valid
+            string filePath = Path.Combine(tempDir, "test.txt");
+            File.WriteAllText(filePath, "content\n");
+            RunGit(tempDir, "add test.txt");
+            RunGit(tempDir, "commit -m initial");
+
+            // Nothing staged — commit should fail
+            var result = GitUtils.Commit(tempDir, "Empty commit", CancellationToken.None);
+            Assert.False(result.Success);
+        }
+        finally
+        {
+            ForceDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
     public void RunGitCommand_InvalidCommand_ReturnsFailure()
     {
         string? repoRoot = GitUtils.FindRepoRoot(AppContext.BaseDirectory);

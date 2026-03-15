@@ -196,6 +196,15 @@ internal static class GitUtils
     public static (bool Success, string? Error) UnstageAll(string repoRoot, CancellationToken ct) =>
         RunGitCommand(repoRoot, "reset HEAD", ct);
 
+    /// <summary>
+    /// Commits staged changes with the given message via <c>git commit -m</c>.
+    /// </summary>
+    public static (bool Success, string? Error) Commit(string repoRoot, string message, CancellationToken ct) =>
+        RunGitCommand(repoRoot, $"commit -m \"{EscapeCommitMessage(message)}\"", ct);
+
+    private static string EscapeCommitMessage(string message) =>
+        message.Replace("\\", "\\\\").Replace("\"", "\\\"");
+
     private static string BuildPathArgs(string command, string repoRoot, IReadOnlyList<string> paths)
     {
         var sb = new System.Text.StringBuilder(command);

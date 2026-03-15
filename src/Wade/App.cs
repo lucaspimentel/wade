@@ -2359,6 +2359,7 @@ internal sealed class App
                 if (hasAnyStagedChanges)
                 {
                     items.Add(("Git: Unstage all", "", AppAction.UnstageAll));
+                    items.Add(("Git: Commit", "", AppAction.GitCommit));
                 }
             }
         }
@@ -3092,6 +3093,25 @@ internal sealed class App
                 if (_currentRepoRoot is not null)
                 {
                     _gitActionRunner?.RunUnstageAll(_currentRepoRoot);
+                }
+
+                break;
+
+            case AppAction.GitCommit:
+                if (_currentRepoRoot is not null)
+                {
+                    ShowTextInputDialog("Commit message", "", message =>
+                    {
+                        string trimmed = message.Trim();
+
+                        if (string.IsNullOrEmpty(trimmed))
+                        {
+                            ShowNotification("Commit message cannot be empty", NotificationKind.Error);
+                            return;
+                        }
+
+                        _gitActionRunner?.RunCommit(_currentRepoRoot, trimmed);
+                    });
                 }
 
                 break;
