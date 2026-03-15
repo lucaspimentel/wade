@@ -67,9 +67,9 @@ internal static class PaneRenderer
     private const int Tier3Detail = SizeWidth + GapWidth + ShortDateWidth + GapWidth;  // 18
     private const int Tier4Detail = SizeWidth + GapWidth;                              // 10
 
-    private const int Tier1MinWidth = FullDateWidth + Tier1Detail;  // 50 — name >= FullDate(19)
-    private const int Tier2MinWidth = DateOnlyWidth + Tier2Detail;  // 32 — name >= DateOnly(10)
-    private const int Tier3MinWidth = SizeWidth + Tier3Detail;      // 26 — name >= Size(8)
+    private const int Tier1MinWidth = 30 + Tier1Detail;  // 61 — name >= 30
+    private const int Tier2MinWidth = 22 + Tier2Detail;  // 44 — name >= 22
+    private const int Tier3MinWidth = 14 + Tier3Detail;  // 32 — name >= 14
     private const int Tier4MinWidth = SizeWidth + Tier4Detail;      // 18 — name >= Size(8)
 
     public static void RenderFileList(
