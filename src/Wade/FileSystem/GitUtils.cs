@@ -98,6 +98,61 @@ internal static class GitUtils
     }
 
     /// <summary>
+    /// Runs <c>git diff</c> for a single file and returns the output lines.
+    /// Returns null on error, cancellation, or empty diff.
+    /// </summary>
+    public static string[]? GetDiff(string repoRoot, string filePath, bool staged, CancellationToken ct)
+    {
+        try
+        {
+            string relativePath = Path.GetRelativePath(repoRoot, filePath).Replace('\\', '/');
+            string arguments = staged
+                ? $"diff --staged -- \"{relativePath}\""
+                : $"diff -- \"{relativePath}\"";
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = "git",
+                Arguments = arguments,
+                WorkingDirectory = repoRoot,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+
+            using var process = Process.Start(psi);
+            if (process is null)
+            {
+                return null;
+            }
+
+            string output = process.StandardOutput.ReadToEnd();
+
+            if (!process.WaitForExit(10_000))
+            {
+                process.Kill();
+                return null;
+            }
+
+            if (ct.IsCancellationRequested)
+            {
+                return null;
+            }
+
+            if (process.ExitCode != 0 || string.IsNullOrEmpty(output))
+            {
+                return null;
+            }
+
+            return output.Split('\n');
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Queries git status for the repository at <paramref name="repoRoot"/>.
     /// Returns a dictionary of full paths to their git status, including aggregated directory statuses.
     /// Returns null on error or cancellation.

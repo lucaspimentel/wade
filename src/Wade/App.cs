@@ -119,6 +119,7 @@ internal sealed class App
     private int _cachedImagePixelHeight;
     private bool _isImagePreview;
     private bool _isRenderedPreview;
+    private bool _diffPreviewActive;
     private bool _sixelPending;
 
     // Terminal capability state
@@ -667,6 +668,10 @@ internal sealed class App
                             _selectedIndex++;
                         }
                     }
+                    break;
+
+                case AppAction.ToggleDiffPreview:
+                    HandleToggleDiffPreview(entries, previewLoader);
                     break;
 
                 case AppAction.ToggleHiddenFiles:
@@ -1382,6 +1387,7 @@ internal sealed class App
             {
                 if (selected.FullPath != _cachedPreviewPath && selected.FullPath != _pendingPreviewPath)
                 {
+                    _diffPreviewActive = false;
                     _pendingPreviewPath = selected.FullPath;
                     _previewLoading = true;
                     _previewLoader!.BeginLoad(selected.FullPath);
@@ -1532,6 +1538,58 @@ internal sealed class App
         _gitStatuses = evt.Statuses;
     }
 
+    private void HandleToggleDiffPreview(List<FileSystemEntry> entries, PreviewLoader previewLoader)
+    {
+        if (entries.Count == 0 || _selectedIndex >= entries.Count)
+        {
+            return;
+        }
+
+        var selected = entries[_selectedIndex];
+        if (selected.IsDirectory)
+        {
+            return;
+        }
+
+        // Toggle off: reload normal preview
+        if (_diffPreviewActive)
+        {
+            _diffPreviewActive = false;
+            _pendingPreviewPath = selected.FullPath;
+            _previewLoading = true;
+            previewLoader.BeginLoad(selected.FullPath);
+            return;
+        }
+
+        // Check git status for this file
+        GitFileStatus status = GitFileStatus.None;
+        if (_gitStatuses is not null)
+        {
+            _gitStatuses.TryGetValue(selected.FullPath, out status);
+        }
+
+        bool hasModified = status.HasFlag(GitFileStatus.Modified);
+        bool hasStaged = status.HasFlag(GitFileStatus.Staged);
+
+        if (!hasModified && !hasStaged)
+        {
+            ShowNotification("No changes to diff", NotificationKind.Info);
+            return;
+        }
+
+        if (_currentRepoRoot is null)
+        {
+            ShowNotification("No changes to diff", NotificationKind.Info);
+            return;
+        }
+
+        _diffPreviewActive = true;
+        _pendingPreviewPath = selected.FullPath;
+        _previewLoading = true;
+        // Prefer unstaged diff when both modified and staged; show staged if only staged
+        previewLoader.BeginLoadDiff(selected.FullPath, _currentRepoRoot, staged: !hasModified && hasStaged);
+    }
+
     private void ClearPreviewCache(PreviewLoader loader, ScreenBuffer? buffer = null)
     {
         bool wasImage = _isImagePreview;
@@ -1555,6 +1613,7 @@ internal sealed class App
         _cachedImagePixelHeight = 0;
         _isImagePreview = false;
         _isRenderedPreview = false;
+        _diffPreviewActive = false;
         _sixelPending = false;
 
         if (wasImage)
@@ -1727,6 +1786,17 @@ internal sealed class App
             _previewLoading = true;
             previewLoader.BeginLoad(_cachedImagePath);
         }
+        else if (_diffPreviewActive && _cachedPreviewPath is not null && _currentRepoRoot is not null)
+        {
+            _cachedStyledLines = null;
+            _pendingPreviewPath = _cachedPreviewPath;
+            _previewLoading = true;
+
+            GitFileStatus status = GitFileStatus.None;
+            _gitStatuses?.TryGetValue(_cachedPreviewPath, out status);
+            bool staged = !status.HasFlag(GitFileStatus.Modified) && status.HasFlag(GitFileStatus.Staged);
+            previewLoader.BeginLoadDiff(_cachedPreviewPath, _currentRepoRoot, staged);
+        }
         else if (_isRenderedPreview && _cachedPreviewPath is not null)
         {
             previewLoader.Configure(_imagePreviewsEffective, _layout.ExpandedPane.Width, _layout.ExpandedPane.Height,
@@ -1830,7 +1900,14 @@ internal sealed class App
                 break;
 
             default:
-                if (key.KeyChar == 'y')
+                if (key.KeyChar == 'd')
+                {
+                    HandleToggleDiffPreview(GetVisibleEntries(), previewLoader);
+                    _expandedPreviewScrollOffset = 0;
+                    Console.Write(AnsiCodes.ClearScreen);
+                    buffer.ForceFullRedraw();
+                }
+                else if (key.KeyChar == 'y')
                 {
                     string? previewPath = _cachedPreviewPath ?? _cachedImagePath;
 
@@ -2489,6 +2566,7 @@ internal sealed class App
         items.Add(("New directory", "Shift+N", AppAction.NewDirectory));
         items.Add(("Create symlink", "Ctrl+L", AppAction.CreateSymlink));
         items.Add(("Properties", "i", AppAction.ShowProperties));
+        items.Add(("Toggle git diff preview", "d", AppAction.ToggleDiffPreview));
         items.Add(("Toggle hidden files", ".", AppAction.ToggleHiddenFiles));
         items.Add(("Cycle sort mode", "s", AppAction.CycleSortMode));
         items.Add(("Reverse sort direction", "S", AppAction.ToggleSortDirection));
@@ -3079,6 +3157,10 @@ internal sealed class App
                     }
                 }
 
+                break;
+
+            case AppAction.ToggleDiffPreview:
+                HandleToggleDiffPreview(GetVisibleEntries(), previewLoader);
                 break;
 
             case AppAction.ToggleHiddenFiles:

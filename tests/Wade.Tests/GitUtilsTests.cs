@@ -255,4 +255,147 @@ public class GitUtilsTests
         string expectedPath = Path.Combine(repoRoot, "src", "special file.txt");
         Assert.True(statuses.ContainsKey(expectedPath), $"Expected key '{expectedPath}' for quoted path");
     }
+
+    [Fact]
+    public void GetDiff_ModifiedFile_ReturnsDiffLines()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            // Initialize a git repo, add a file, commit, then modify it
+            RunGit(tempDir, "init");
+            RunGit(tempDir, "config user.email test@test.com");
+            RunGit(tempDir, "config user.name Test");
+
+            string filePath = Path.Combine(tempDir, "test.txt");
+            File.WriteAllText(filePath, "line1\nline2\n");
+            RunGit(tempDir, "add test.txt");
+            RunGit(tempDir, "commit -m initial");
+
+            File.WriteAllText(filePath, "line1\nmodified\n");
+
+            string[]? diff = GitUtils.GetDiff(tempDir, filePath, staged: false, CancellationToken.None);
+
+            Assert.NotNull(diff);
+            Assert.True(diff.Length > 0);
+            Assert.Contains(diff, l => l.StartsWith("-line2"));
+            Assert.Contains(diff, l => l.StartsWith("+modified"));
+        }
+        finally
+        {
+            ForceDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void GetDiff_StagedFile_ReturnsDiffLines()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            RunGit(tempDir, "init");
+            RunGit(tempDir, "config user.email test@test.com");
+            RunGit(tempDir, "config user.name Test");
+
+            string filePath = Path.Combine(tempDir, "test.txt");
+            File.WriteAllText(filePath, "original\n");
+            RunGit(tempDir, "add test.txt");
+            RunGit(tempDir, "commit -m initial");
+
+            File.WriteAllText(filePath, "staged change\n");
+            RunGit(tempDir, "add test.txt");
+
+            string[]? diff = GitUtils.GetDiff(tempDir, filePath, staged: true, CancellationToken.None);
+
+            Assert.NotNull(diff);
+            Assert.True(diff.Length > 0);
+            Assert.Contains(diff, l => l.StartsWith("-original"));
+            Assert.Contains(diff, l => l.StartsWith("+staged change"));
+        }
+        finally
+        {
+            ForceDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void GetDiff_CleanFile_ReturnsNull()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            RunGit(tempDir, "init");
+            RunGit(tempDir, "config user.email test@test.com");
+            RunGit(tempDir, "config user.name Test");
+
+            string filePath = Path.Combine(tempDir, "test.txt");
+            File.WriteAllText(filePath, "clean\n");
+            RunGit(tempDir, "add test.txt");
+            RunGit(tempDir, "commit -m initial");
+
+            string[]? diff = GitUtils.GetDiff(tempDir, filePath, staged: false, CancellationToken.None);
+
+            Assert.Null(diff);
+        }
+        finally
+        {
+            ForceDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void GetDiff_Cancellation_ReturnsNull()
+    {
+        string? repoRoot = GitUtils.FindRepoRoot(AppContext.BaseDirectory);
+        Assert.NotNull(repoRoot);
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        // Use any file path — cancellation should take effect before or after git runs
+        string filePath = Path.Combine(repoRoot, "CLAUDE.md");
+        string[]? diff = GitUtils.GetDiff(repoRoot, filePath, staged: false, cts.Token);
+
+        Assert.Null(diff);
+    }
+
+    private static void RunGit(string workDir, string arguments)
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "git",
+            Arguments = arguments,
+            WorkingDirectory = workDir,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+
+        using var process = System.Diagnostics.Process.Start(psi)!;
+        process.WaitForExit(10_000);
+
+        if (process.ExitCode != 0)
+        {
+            string stderr = process.StandardError.ReadToEnd();
+            throw new InvalidOperationException($"git {arguments} failed: {stderr}");
+        }
+    }
+
+    private static void ForceDeleteDirectory(string path)
+    {
+        // Git creates read-only files in .git/objects; clear the attribute before deleting
+        foreach (string file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
+        {
+            File.SetAttributes(file, FileAttributes.Normal);
+        }
+
+        Directory.Delete(path, true);
+    }
 }

@@ -40,6 +40,7 @@ internal enum AppAction
     ToggleBookmark,
     CreateSymlink,
     ShowFileFinder,
+    ToggleDiffPreview,
 }
 
 internal static class InputReader
@@ -154,6 +155,11 @@ internal static class InputReader
         if (key.KeyChar == 'Y')
         {
             return AppAction.CopyGitRelativePath;
+        }
+
+        if (key.KeyChar == 'd')
+        {
+            return AppAction.ToggleDiffPreview;
         }
 
         if (key.KeyChar == 'b')

@@ -97,7 +97,7 @@ Show git status in the file browser and eventually support git actions.
 - Stage/unstage files (equivalent to `git add` / `git restore --staged`)
 - Commit with message (input dialog)
 - Push/pull
-- Diff preview for modified files
+- Diff preview for modified files ✅
 - Keybindings for common actions (e.g. action palette entries)
 
 ### Drive type detection

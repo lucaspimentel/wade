@@ -61,6 +61,16 @@ internal sealed class PreviewLoader
         Task.Run(() => LoadPreview(path, imageEnabled, glowEnabled, zipEnabled, hexEnabled, pdfEnabled, paneW, paneH, cellW, cellH, token), token);
     }
 
+    public void BeginLoadDiff(string path, string repoRoot, bool staged)
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+        var token = _cts.Token;
+
+        Task.Run(() => LoadDiff(path, repoRoot, staged, token), token);
+    }
+
     public void Cancel()
     {
         _cts?.Cancel();
@@ -208,6 +218,46 @@ internal sealed class PreviewLoader
             }
 
             _pipeline.Inject(new PreviewReadyEvent(path, styledLines, fileTypeLabel, encoding, lineEnding));
+        }
+        catch (OperationCanceledException)
+        {
+            // Normal cancellation
+        }
+        catch (InvalidOperationException)
+        {
+            // Pipeline disposed / completed adding
+        }
+    }
+
+    private void LoadDiff(string path, string repoRoot, bool staged, CancellationToken ct)
+    {
+        try
+        {
+            if (ct.IsCancellationRequested)
+            {
+                return;
+            }
+
+            var diffLines = GitUtils.GetDiff(repoRoot, path, staged, ct);
+            if (diffLines is null || diffLines.Length == 0 || ct.IsCancellationRequested)
+            {
+                return;
+            }
+
+            var lang = new Highlighting.Languages.DiffLanguage();
+            byte state = 0;
+            var styledLines = new Highlighting.StyledLine[diffLines.Length];
+            for (int i = 0; i < diffLines.Length; i++)
+            {
+                styledLines[i] = lang.TokenizeLine(diffLines[i], ref state);
+            }
+
+            if (ct.IsCancellationRequested)
+            {
+                return;
+            }
+
+            _pipeline.Inject(new PreviewReadyEvent(path, styledLines, "Diff", null, null, IsRendered: true));
         }
         catch (OperationCanceledException)
         {
