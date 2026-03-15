@@ -58,7 +58,7 @@ internal static class InputReader
 {
     public static AppAction MapKey(KeyEvent key)
     {
-        if (key.Key == ConsoleKey.P && key.Control && !key.Shift)
+        if ((key.Key == ConsoleKey.P || key.Key == ConsoleKey.K) && key.Control && !key.Shift)
         {
             return AppAction.ShowActionPalette;
         }

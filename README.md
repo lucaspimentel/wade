@@ -40,7 +40,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **In-app configuration** — press `,` to open a config dialog with toggleable options: icons, hidden files, system files (Windows), sort mode, sort direction, delete confirmation, preview pane, image previews, PDF preview, glow markdown preview, zip preview, size column, date column, copy-symlinks-as-links, terminal title, and git status; changes are saved directly to the config file
 - **Bookmarks** — press `b` to open a filterable bookmarks dialog; press `B` to toggle the current directory as a bookmark; quick-jump with `1`-`9`, `Enter` to navigate, `d`/`Delete` to remove; bookmarks persist to `~/.config/wade/bookmarks` in MRU order
 - **File finder** — press `Ctrl+F` to recursively search for files by name in the current directory tree; type to filter, Up/Down to navigate, Enter to open the file. Automatically skips `.git` directories and respects hidden/system file visibility settings
-- **Action palette** — press `Ctrl+P` to open a searchable action palette listing all available commands; type to filter, Up/Down to navigate, Enter to execute
+- **Action palette** — press `Ctrl+P` or `Ctrl+K` to open a searchable action palette listing all available commands; type to filter, Up/Down to navigate, Enter to execute
 - **Shell integration** — press `Ctrl+T` to open a new terminal in the current directory; use shell wrapper functions (`wd`) to cd to the final directory on exit (bash, zsh, fish, PowerShell wrappers provided)
 - **Terminal title** — sets the terminal tab title to the current directory; uses xterm title stack to restore the original title on exit (toggle with `terminal_title_enabled` config, default: on)
 - **Minimal rendering** — raw VT/ANSI escape sequences, double-buffered with dirty-row tracking, cell diff, and style diffing
@@ -180,7 +180,7 @@ Then use `wd` instead of `wade` to browse. Press `q` to quit and cd to the last 
 | i | Properties |
 | , | Configuration |
 | Ctrl+F | Search / Find file |
-| Ctrl+P | Action palette |
+| Ctrl+P / Ctrl+K | Action palette |
 | ? | Show help |
 | q / Escape | Quit |
 | Q | Quit without cd |
