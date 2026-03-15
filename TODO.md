@@ -86,3 +86,14 @@ OneDrive and similar cloud sync tools use placeholder files that aren't fully do
 ### Zip — other archive formats
 
 Support additional archive formats in the preview pane (`.tar`, `.gz`, `.tar.gz`). Zip preview is already implemented via `System.IO.Compression.ZipFile`.
+
+### Git action menu (`Ctrl+G`)
+
+Instead of binding `Ctrl+G` directly to commit, open a dedicated git action menu (similar to the action palette but filtered to git actions only). Consolidate all git operations into this menu:
+
+- Diff preview toggle (move from current `d` key binding into this menu, freeing the `d` key)
+- Stage / Unstage (Phase 2a)
+- Commit with message (Phase 2b)
+- Push / Pull (Phase 2c)
+
+This replaces the per-phase keybinding approach — `Ctrl+G` becomes the single entry point for all git actions. Menu entries are context-sensitive (e.g. "Stage" only shown for modified/untracked files, "Commit" only when staged changes exist).
