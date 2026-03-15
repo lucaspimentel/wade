@@ -86,12 +86,9 @@ Detect whether a drive is SSD, HDD, or network. Some features (like directory si
 - Renamed `/` from "Search / filter" to "Filter" everywhere
 - Renamed `Ctrl+F` from "Find file" to "Search / Find file" everywhere
 
-### File finder: ignore .git folders
+### ~~File finder: ignore .git folders~~ ✅
 
-When using `Ctrl+F` file finder, skip `.git` directories during recursive scan.
-
-- `App.cs:3781` (`ScanFilesForFinder`) — after the cancellation check, add a path segment check to skip entries whose path contains `/.git/` or `\.git\`
-- Note: `EnumerationOptions` doesn't support directory-name exclusion natively; must filter in the loop or switch to a manual recursive approach
+Switched `ScanFilesForFinder` to manual recursive directory walk. `.git` directories are always skipped (even with hidden files enabled). Dot-prefixed and hidden/system directories are also skipped when their respective settings are off.
 
 ### Show git status in properties dialog
 

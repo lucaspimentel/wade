@@ -3791,65 +3791,140 @@ internal sealed class App
         CancellationToken ct)
     {
         const int maxEntries = 10_000;
+        const int maxDepth = 8;
         var entries = new List<FileSystemEntry>();
 
-        try
+        var fileOptions = new EnumerationOptions
         {
-            var options = new EnumerationOptions
-            {
-                RecurseSubdirectories = true,
-                MaxRecursionDepth = 8,
-                IgnoreInaccessible = true,
-                AttributesToSkip = FileAttributes.Device,
-            };
+            RecurseSubdirectories = false,
+            IgnoreInaccessible = true,
+            AttributesToSkip = FileAttributes.Device,
+        };
 
-            foreach (string filePath in Directory.EnumerateFiles(basePath, "*", options))
+        var dirOptions = new EnumerationOptions
+        {
+            RecurseSubdirectories = false,
+            IgnoreInaccessible = true,
+            AttributesToSkip = FileAttributes.Device,
+        };
+
+        // Manual recursive walk so we can skip directories before descending
+        var stack = new Stack<(string Path, int Depth)>();
+        stack.Push((basePath, 0));
+
+        while (stack.Count > 0 && entries.Count < maxEntries)
+        {
+            if (ct.IsCancellationRequested)
             {
-                if (ct.IsCancellationRequested)
+                return;
+            }
+
+            (string currentDir, int depth) = stack.Pop();
+
+            // Enumerate files in the current directory
+            try
+            {
+                foreach (string filePath in Directory.EnumerateFiles(currentDir, "*", fileOptions))
                 {
-                    return;
-                }
+                    if (ct.IsCancellationRequested)
+                    {
+                        return;
+                    }
 
+                    try
+                    {
+                        var fileInfo = new FileInfo(filePath);
+
+                        if (!showSystem && OperatingSystem.IsWindows() &&
+                            (fileInfo.Attributes & FileAttributes.System) != 0)
+                        {
+                            continue;
+                        }
+
+                        if (!showHidden &&
+                            ((fileInfo.Attributes & FileAttributes.Hidden) != 0 || fileInfo.Name.StartsWith('.')))
+                        {
+                            continue;
+                        }
+
+                        entries.Add(new FileSystemEntry(
+                            fileInfo.Name,
+                            fileInfo.FullName,
+                            IsDirectory: false,
+                            Size: fileInfo.Length,
+                            LastModified: fileInfo.LastWriteTime,
+                            LinkTarget: fileInfo.LinkTarget,
+                            IsBrokenSymlink: false,
+                            IsDrive: false));
+
+                        if (entries.Count >= maxEntries)
+                        {
+                            break;
+                        }
+                    }
+                    catch
+                    {
+                        // Skip files we can't access
+                    }
+                }
+            }
+            catch
+            {
+                // Skip if directory enumeration fails
+            }
+
+            // Push child directories onto the stack (if within depth limit)
+            if (depth < maxDepth && entries.Count < maxEntries)
+            {
                 try
                 {
-                    var fileInfo = new FileInfo(filePath);
-
-                    if (!showSystem && OperatingSystem.IsWindows() &&
-                        (fileInfo.Attributes & FileAttributes.System) != 0)
+                    foreach (string subDir in Directory.EnumerateDirectories(currentDir, "*", dirOptions))
                     {
-                        continue;
-                    }
+                        string dirName = Path.GetFileName(subDir);
 
-                    if (!showHidden &&
-                        ((fileInfo.Attributes & FileAttributes.Hidden) != 0 || fileInfo.Name.StartsWith('.')))
-                    {
-                        continue;
-                    }
+                        // Always skip .git directories
+                        if (dirName.Equals(".git", StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
 
-                    entries.Add(new FileSystemEntry(
-                        fileInfo.Name,
-                        fileInfo.FullName,
-                        IsDirectory: false,
-                        Size: fileInfo.Length,
-                        LastModified: fileInfo.LastWriteTime,
-                        LinkTarget: fileInfo.LinkTarget,
-                        IsBrokenSymlink: false,
-                        IsDrive: false));
+                        // Skip dot-prefixed directories when hidden files are not shown
+                        if (!showHidden && dirName.StartsWith('.'))
+                        {
+                            continue;
+                        }
 
-                    if (entries.Count >= maxEntries)
-                    {
-                        break;
+                        // Skip system directories on Windows when system files are not shown
+                        if (!showSystem && OperatingSystem.IsWindows())
+                        {
+                            try
+                            {
+                                var dirInfo = new DirectoryInfo(subDir);
+
+                                if ((dirInfo.Attributes & FileAttributes.Hidden) != 0)
+                                {
+                                    continue;
+                                }
+
+                                if ((dirInfo.Attributes & FileAttributes.System) != 0)
+                                {
+                                    continue;
+                                }
+                            }
+                            catch
+                            {
+                                continue;
+                            }
+                        }
+
+                        stack.Push((subDir, depth + 1));
                     }
                 }
                 catch
                 {
-                    // Skip files we can't access
+                    // Skip if directory enumeration fails
                 }
             }
-        }
-        catch
-        {
-            // Skip if enumeration fails entirely
         }
 
         if (!ct.IsCancellationRequested)

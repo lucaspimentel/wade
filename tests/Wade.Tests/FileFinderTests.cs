@@ -148,6 +148,81 @@ public class FileFinderTests : IDisposable
     }
 
     [Fact]
+    public void Scan_SkipsGitDirectory()
+    {
+        string gitDir = Path.Combine(_tempDir, ".git", "objects");
+        Directory.CreateDirectory(gitDir);
+        File.WriteAllText(Path.Combine(gitDir, "abc123"), "");
+        File.WriteAllText(Path.Combine(_tempDir, "readme.md"), "");
+
+        using var pipeline = CreateTestPipeline();
+        App.ScanFilesForFinder(_tempDir, showHidden: true, showSystem: true, pipeline, CancellationToken.None);
+
+        InputEvent? evt = DrainPipeline(pipeline);
+        Assert.NotNull(evt);
+        var scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
+        Assert.DoesNotContain(scanEvt.Entries, e => e.FullPath.Contains(".git"));
+        Assert.Contains(scanEvt.Entries, e => e.Name == "readme.md");
+    }
+
+    [Fact]
+    public void Scan_SkipsHiddenDotDirectories_WhenHiddenDisabled()
+    {
+        string hiddenDir = Path.Combine(_tempDir, ".hidden");
+        Directory.CreateDirectory(hiddenDir);
+        File.WriteAllText(Path.Combine(hiddenDir, "secret.txt"), "");
+        File.WriteAllText(Path.Combine(_tempDir, "visible.txt"), "");
+
+        using var pipeline = CreateTestPipeline();
+        App.ScanFilesForFinder(_tempDir, showHidden: false, showSystem: true, pipeline, CancellationToken.None);
+
+        InputEvent? evt = DrainPipeline(pipeline);
+        Assert.NotNull(evt);
+        var scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
+        Assert.DoesNotContain(scanEvt.Entries, e => e.Name == "secret.txt");
+        Assert.Contains(scanEvt.Entries, e => e.Name == "visible.txt");
+    }
+
+    [Fact]
+    public void Scan_IncludesHiddenDotDirectories_WhenHiddenEnabled()
+    {
+        string hiddenDir = Path.Combine(_tempDir, ".hidden");
+        Directory.CreateDirectory(hiddenDir);
+        File.WriteAllText(Path.Combine(hiddenDir, "secret.txt"), "");
+        File.WriteAllText(Path.Combine(_tempDir, "visible.txt"), "");
+
+        using var pipeline = CreateTestPipeline();
+        App.ScanFilesForFinder(_tempDir, showHidden: true, showSystem: true, pipeline, CancellationToken.None);
+
+        InputEvent? evt = DrainPipeline(pipeline);
+        Assert.NotNull(evt);
+        var scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
+        Assert.Contains(scanEvt.Entries, e => e.Name == "secret.txt");
+        Assert.Contains(scanEvt.Entries, e => e.Name == "visible.txt");
+    }
+
+    [Fact]
+    public void Scan_AlwaysSkipsGit_EvenWhenHiddenEnabled()
+    {
+        string gitDir = Path.Combine(_tempDir, ".git", "refs");
+        Directory.CreateDirectory(gitDir);
+        File.WriteAllText(Path.Combine(gitDir, "HEAD"), "");
+
+        string hiddenDir = Path.Combine(_tempDir, ".config");
+        Directory.CreateDirectory(hiddenDir);
+        File.WriteAllText(Path.Combine(hiddenDir, "settings.json"), "");
+
+        using var pipeline = CreateTestPipeline();
+        App.ScanFilesForFinder(_tempDir, showHidden: true, showSystem: true, pipeline, CancellationToken.None);
+
+        InputEvent? evt = DrainPipeline(pipeline);
+        Assert.NotNull(evt);
+        var scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
+        Assert.DoesNotContain(scanEvt.Entries, e => e.FullPath.Contains(".git"));
+        Assert.Contains(scanEvt.Entries, e => e.Name == "settings.json");
+    }
+
+    [Fact]
     public void Scan_RespectsCancel()
     {
         File.WriteAllText(Path.Combine(_tempDir, "file.txt"), "");
