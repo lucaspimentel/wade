@@ -6,6 +6,14 @@
 
 ---
 
+## Refactoring
+
+### Deduplicate action dispatch
+
+`DispatchActionPaletteAction` and the main key handler switch in `App.Run()` both contain identical logic for `NewFile`, `NewDirectory`, `CreateSymlink`, `Rename`, `Delete`, `Copy`, `Cut`, `Paste`, `CopyAbsolutePath`, `CopyGitRelativePath`, and others. Consolidate into a single dispatch method to avoid keeping two copies in sync.
+
+---
+
 ## Features
 
 ### File action progress indicator
