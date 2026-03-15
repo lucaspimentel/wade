@@ -36,29 +36,7 @@ static void PrintHelp()
           --config-file=<path>            Use a custom config file
 
         Keybindings:
-          Up / k                          Move selection up
-          Down / j                        Move selection down
-          Right / l / Enter               Open directory
-          Left / h / Backspace            Go to parent directory
-          Page Up / Page Down             Scroll by page
-          Home / End                      Jump to first / last item
-          Left Click                      Select / Open
-          Scroll                          Navigate up/down
-          Ctrl+R                          Refresh
-          Ctrl+T                          Open terminal here
-          .                               Toggle hidden files
-          s                               Cycle sort (name / time / size / ext)
-          S                               Reverse sort direction
-          g                               Go to path
-          o                               Open with default app
-          F2                              Rename
-          Del                             Delete
-          c / Ctrl+C                      Copy
-          x / Ctrl+X                      Cut
-          v                               Paste
-          ?                               Show help overlay
-          q / Escape                      Quit
-          Q                               Quit without cd
+          ?                               Show keybindings in-app
 
         Config file: ~/.config/wade/config.toml
 
