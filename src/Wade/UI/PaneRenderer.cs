@@ -56,6 +56,7 @@ internal static class PaneRenderer
     // Column widths
     private const int SizeWidth = 8;
     private const int GapWidth = 2;
+    private const int StatusColWidth = 2;
     private const int FullDateWidth = 19;
     private const int DateOnlyWidth = 10;
     private const int ShortDateWidth = 6;
@@ -140,7 +141,8 @@ internal static class PaneRenderer
             }
         }
 
-        int nameWidth = pane.Width - detailWidth;
+        int statusColWidth = gitStatuses is not null ? StatusColWidth : 0;
+        int nameWidth = pane.Width - detailWidth - statusColWidth;
 
         Span<char> sizeBuf = stackalloc char[SizeWidth];
         Span<char> tempBuf = stackalloc char[32];
@@ -216,22 +218,9 @@ internal static class PaneRenderer
             if (showIcons)
             {
                 buffer.Put(screenRow, entryCol, FileIcons.GetIcon(entry), style);
+                buffer.Put(screenRow, entryCol + 1, ' ', style);
 
-                // Git status icon (between file icon and name)
-                var gitIcon = gitStatus != GitFileStatus.None ? FileIcons.GetGitStatusIcon(gitStatus) : default;
-                int gitIconWidth = gitIcon != default ? 2 : 0; // icon + space
-                if (gitIconWidth > 0)
-                {
-                    var gitIconStyle = isSelected ? style : GetGitIconStyle(gitStatus, isMarked);
-                    buffer.Put(screenRow, entryCol + 1, gitIcon, gitIconStyle);
-                    buffer.Put(screenRow, entryCol + 2, ' ', style);
-                }
-                else
-                {
-                    buffer.Put(screenRow, entryCol + 1, ' ', style);
-                }
-
-                int nameStart = 2 + gitIconWidth;
+                int nameStart = 2;
                 int maxName = nameWidth - nameStart;
                 int nameLen = Math.Min(entry.Name.Length, maxName);
                 if (entry.Name.Length > maxName && maxName >= 2)
@@ -289,6 +278,13 @@ internal static class PaneRenderer
                         }
                     }
                 }
+            }
+
+            // Status column (git status icon between name and size)
+            if (statusColWidth > 0 && gitStatus != GitFileStatus.None)
+            {
+                var gitIconStyle = isSelected ? style : GetGitIconStyle(gitStatus, isMarked);
+                buffer.Put(screenRow, entryCol + nameWidth, FileIcons.GetGitStatusIcon(gitStatus), gitIconStyle);
             }
 
             // Render detail columns (right-aligned from pane edge)

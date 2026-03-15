@@ -1,3 +1,4 @@
+using System.Text;
 using Wade.FileSystem;
 using Wade.Terminal;
 
@@ -45,23 +46,21 @@ internal static class StatusBar
         int infoCol = rect.Left + 1 + Math.Min(currentPath.Length, pathMaxWidth);
         int infoMaxWidth = pathMaxWidth - Math.Min(currentPath.Length, pathMaxWidth);
 
-        if (branchName is not null && infoMaxWidth > 0)
+        if (branchName is not null && infoMaxWidth > 4)
         {
             var branchStyle = new CellStyle(new Color(180, 140, 220), StatusBg);
-            Span<char> branchBuf = stackalloc char[64];
-            int branchLen = 0;
-            branchBuf[branchLen++] = ' ';
-            branchBuf[branchLen++] = ' ';
-
-            int maxBranch = Math.Min(branchName.Length, branchBuf.Length - branchLen);
-            maxBranch = Math.Min(maxBranch, infoMaxWidth - 2);
+            // "  <branch-icon> <name>"
+            buffer.Put(rect.Top, infoCol,     ' ',               branchStyle);
+            buffer.Put(rect.Top, infoCol + 1, ' ',               branchStyle);
+            buffer.Put(rect.Top, infoCol + 2, new Rune(0xE0A0),  branchStyle);  // nf-pl-branch
+            buffer.Put(rect.Top, infoCol + 3, ' ',               branchStyle);
+            int maxBranch = Math.Min(branchName.Length, infoMaxWidth - 4);
             if (maxBranch > 0)
             {
-                branchName.AsSpan(0, maxBranch).CopyTo(branchBuf[branchLen..]);
-                branchLen += maxBranch;
-                buffer.WriteString(rect.Top, infoCol, branchBuf[..branchLen], branchStyle, infoMaxWidth);
-                infoCol += branchLen;
-                infoMaxWidth -= branchLen;
+                buffer.WriteString(rect.Top, infoCol + 4, branchName, branchStyle, maxBranch);
+                int total = 4 + maxBranch;
+                infoCol += total;
+                infoMaxWidth -= total;
             }
         }
 
