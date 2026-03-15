@@ -41,6 +41,7 @@ internal enum AppAction
     CreateSymlink,
     ShowFileFinder,
     SelectPreviewProvider,
+    ShowPreviewMenu,
     StageFile,
     UnstageFile,
     StageAll,
@@ -115,6 +116,11 @@ internal static class InputReader
         if (key.KeyChar == 'o')
         {
             return AppAction.OpenExternal;
+        }
+
+        if (key.KeyChar == 'p')
+        {
+            return AppAction.ShowPreviewMenu;
         }
 
         if (key.Key == ConsoleKey.Spacebar)

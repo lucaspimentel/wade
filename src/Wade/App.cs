@@ -647,6 +647,10 @@ internal sealed class App
                     ShowActionPalette();
                     break;
 
+                case AppAction.ShowPreviewMenu:
+                    ShowPreviewMenu();
+                    break;
+
                 case AppAction.ShowBookmarks:
                     ShowBookmarks();
                     break;
@@ -2281,6 +2285,36 @@ internal sealed class App
         _actionMenuStack.Push(new ActionMenuLevel("Action Palette", BuildActionPaletteItems()));
     }
 
+    private void ShowPreviewMenu()
+    {
+        ActionMenuItem[]? previewItems = BuildPreviewMenuItems();
+        if (previewItems is null)
+        {
+            return;
+        }
+
+        _inputMode = InputMode.ActionPalette;
+        _actionMenuStack.Clear();
+        _actionMenuStack.Push(new ActionMenuLevel("Change preview", previewItems));
+    }
+
+    private ActionMenuItem[]? BuildPreviewMenuItems()
+    {
+        if (_applicableProviders is null || _applicableProviders.Count <= 1)
+        {
+            return null;
+        }
+
+        var items = new ActionMenuItem[_applicableProviders.Count];
+        for (int i = 0; i < _applicableProviders.Count; i++)
+        {
+            string prefix = i == _activeProviderIndex ? "\u25cf " : "  ";
+            items[i] = new() { Label = prefix + _applicableProviders[i].Label, Action = AppAction.SelectPreviewProvider, Data = i };
+        }
+
+        return items;
+    }
+
     private ActionMenuItem[] BuildActionPaletteItems()
     {
         var items = new List<ActionMenuItem>
@@ -2304,16 +2338,10 @@ internal sealed class App
         items.Add(new() { Label = "Properties", Shortcut = "i", Action = AppAction.ShowProperties });
 
         // Preview provider submenu — shown when multiple providers are available
-        if (_applicableProviders is not null && _applicableProviders.Count > 1)
+        ActionMenuItem[]? previewSubItems = BuildPreviewMenuItems();
+        if (previewSubItems is not null)
         {
-            var previewSubItems = new ActionMenuItem[_applicableProviders.Count];
-            for (int i = 0; i < _applicableProviders.Count; i++)
-            {
-                string prefix = i == _activeProviderIndex ? "\u25cf " : "  ";
-                previewSubItems[i] = new() { Label = prefix + _applicableProviders[i].Label, Action = AppAction.SelectPreviewProvider, Data = i };
-            }
-
-            items.Add(new() { Label = "Change preview", SubItems = previewSubItems });
+            items.Add(new() { Label = "Change preview", Shortcut = "p", SubItems = previewSubItems });
         }
 
         items.Add(new() { Label = "Toggle hidden files", Shortcut = ".", Action = AppAction.ToggleHiddenFiles });

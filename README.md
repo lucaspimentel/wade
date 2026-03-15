@@ -15,7 +15,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Miller columns** — three-pane layout: parent / current directory / preview; preview pane can be hidden for a 2-pane layout via `preview_pane_enabled` config
 - **File-type icons** — Nerd Fonts v3 glyphs per file extension (enabled by default; requires a Nerd Font)
 - **Syntax highlighting** — per-token coloring for common languages using a hand-rolled tokenizer; VS Code Dark+ inspired palette
-- **File preview** — displays first 100 lines of text files; multiple preview modes per file type (source, hex dump, git diff, archive contents, image, NuGet metadata, etc.) switchable via the "Change preview" submenu in the action palette (`Ctrl+P`); NuGet packages (`.nupkg`, `.snupkg`) show extracted metadata (Id, Version, Authors, Description, Tags, License, Dependencies) as the default preview, with archive contents as a secondary option; zip-format archives (`.zip`, `.jar`, `.war`, `.ear`, `.docx`, `.xlsx`, `.pptx`, `.odt`, `.ods`, `.odp`, `.apk`, `.vsix`, `.whl`, `.epub`) show a content listing with entry names and sizes (toggle with `zip_preview_enabled` config, default: on); PDF files render the first page as a Sixel image (requires `pdftopng` from xpdf on PATH; toggle with `pdf_preview_enabled` config, default: on)
+- **File preview** — displays first 100 lines of text files; multiple preview modes per file type (source, hex dump, git diff, archive contents, image, NuGet metadata, etc.) switchable via `p` or the "Change preview" submenu in the action palette (`Ctrl+P`); NuGet packages (`.nupkg`, `.snupkg`) show extracted metadata (Id, Version, Authors, Description, Tags, License, Dependencies) as the default preview, with archive contents as a secondary option; zip-format archives (`.zip`, `.jar`, `.war`, `.ear`, `.docx`, `.xlsx`, `.pptx`, `.odt`, `.ods`, `.odp`, `.apk`, `.vsix`, `.whl`, `.epub`) show a content listing with entry names and sizes (toggle with `zip_preview_enabled` config, default: on); PDF files render the first page as a Sixel image (requires `pdftopng` from xpdf on PATH; toggle with `pdf_preview_enabled` config, default: on)
 - **Image preview** — renders image thumbnails in the preview pane using Sixel graphics (auto-detects Sixel support; works with Windows Terminal v1.22+, kitty, WezTerm, and other Sixel-capable terminals; enabled by default; disable with `image_previews_enabled = false` in config)
 - **Expanded preview** — press Right/Enter on a file to expand the preview to full terminal width; scroll with Up/Down/J/K/PageUp/PageDown/Home/End/mouse wheel; press Left/Escape to collapse back to 3-pane view
 - **Directory preview** — shows contents of the selected directory
@@ -177,6 +177,7 @@ Then use `wd` instead of `wade` to browse. Press `q` to quit and cd to the last 
 | n | Create new file |
 | Shift+N | Create new directory |
 | Ctrl+L | Create symlink to selected item |
+| p | Change preview (when multiple preview modes available) |
 | i | Properties |
 | , | Configuration |
 | Ctrl+F | Search / Find file |
