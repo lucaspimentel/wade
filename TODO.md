@@ -37,16 +37,13 @@ Windows file clipboard interop is implemented. Remaining: Unix/macOS file clipbo
 
 Show git status in the file browser and eventually support git actions.
 
-#### Phase 2a: Stage / Unstage
+#### ~~Phase 2a: Stage / Unstage~~ ✅
 
-- Stage file(s) via `git add` — action palette entry, context-sensitive (visible when selection has Modified/Untracked status)
-- Unstage file(s) via `git restore --staged` — action palette entry (visible when selection has Staged status)
-- Stage all changes — action palette entry (visible when any Modified/Untracked exist)
-- Multi-select support: operate on `_markedPaths` when non-empty, otherwise focused entry
-- Async via new `GitActionRunner` class (same pattern as `GitStatusLoader` / `DirectorySizeLoader`)
-- Add `RunGitCommand` private helper to `GitUtils.cs` to reduce boilerplate
-- Add `GitActionCompleteEvent` to `InputEvent.cs`
-- Key files: `GitUtils.cs`, `GitActionRunner.cs` (new), `InputEvent.cs`, `InputReader.cs` (new `AppAction` values), `App.cs` (palette entries + dispatch)
+Implemented stage/unstage via action palette entries ("Git: Stage", "Git: Unstage", "Git: Stage all changes"). Async via `GitActionRunner`, multi-select supported, status auto-refreshes after each action.
+
+#### ~~Unstage all~~ ✅
+
+Added "Git: Unstage all" action palette entry via `git reset HEAD`. Mirrors "Git: Stage all changes" pattern.
 
 #### Phase 2b: Commit
 
@@ -69,6 +66,7 @@ Show git status in the file browser and eventually support git actions.
 - Phase 1: Readonly status display ✅
 - Diff preview for modified files ✅
 - Git action menu (`Ctrl+G`) ✅
+- Phase 2a: Stage / Unstage ✅
 
 ### Drive type detection
 
@@ -82,6 +80,33 @@ Detect whether a drive is SSD, HDD, or network. Some features (like directory si
   - Show directory size for network drives (default false)
 - Must be NativeAOT-compatible (no reflection-heavy WMI wrappers)
 
+### Keybinding and naming cleanup
+
+- Remove `'p'` as a keyboard shortcut for paste, keep only `'v'`
+  - `InputReader.cs:149` — change `key.KeyChar is 'p' or 'v'` to `key.KeyChar is 'v'`
+  - Update action palette shortcut label in `App.cs` from `"p"` to `"v"` (if shown)
+- Rename `/` action from "Search / filter" to "Filter"
+  - `App.cs:2293` — `("Search / filter", "/", ...)` → `("Filter", "/", ...)`
+- Add "Search" to name of `Ctrl+F` find action (e.g. "Search / Find file")
+  - `App.cs:2292` — `("Find file", "Ctrl+F", ...)` → `("Search / Find file", "Ctrl+F", ...)`
+
+### File finder: ignore .git folders
+
+When using `Ctrl+F` file finder, skip `.git` directories during recursive scan.
+
+- `App.cs:3781` (`ScanFilesForFinder`) — after the cancellation check, add a path segment check to skip entries whose path contains `/.git/` or `\.git\`
+- Note: `EnumerationOptions` doesn't support directory-name exclusion natively; must filter in the loop or switch to a manual recursive approach
+
+### Show git status in properties dialog
+
+Display the file's git status (e.g. "Modified", "Staged", "Untracked") in the properties overlay (`i` key).
+
+- Add a "Git status" label/value row to `PropertiesOverlay.cs` (`Labels` array at line 13, `BuildValues` at line 73)
+- `Render` signature (`PropertiesOverlay.cs:29`) needs a `GitFileStatus?` parameter (or the status string)
+- Caller in `App.cs` (the `ShowProperties` / `InputMode.Properties` handler) already has access to `_gitStatuses` — look up the entry's path and pass the status
+- Format flags as comma-separated labels (e.g. "Modified, Staged") or show "Clean" / empty when no status
+- Color the value to match the existing git status colors (yellow=modified, cyan=staged, green=untracked, red=conflict)
+
 ### Zip — other archive formats
 
 Support additional archive formats in the preview pane (`.tar`, `.gz`, `.tar.gz`). Zip preview is already implemented via `System.IO.Compression.ZipFile`.
@@ -91,7 +116,7 @@ Support additional archive formats in the preview pane (`.tar`, `.gz`, `.tar.gz`
 Git actions are integrated into the global action palette (`Ctrl+P`), prefixed with "Git:" and shown only when actionable. No dedicated git menu or keybinding.
 
 - Diff preview toggle ✅
-- Stage / Unstage (Phase 2a)
+- Stage / Unstage (Phase 2a) ✅
 - Commit with message (Phase 2b)
 - Push / Pull (Phase 2c)
 
@@ -99,3 +124,4 @@ Git actions are integrated into the global action palette (`Ctrl+P`), prefixed w
 
 - Moved git actions from dedicated `Ctrl+G` menu into global action palette ✅
 - Diff preview toggle as "Git: Toggle diff preview" (only shown for modified/staged files) ✅
+- Stage / Unstage via "Git: Stage", "Git: Unstage", "Git: Stage all changes" ✅
