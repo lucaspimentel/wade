@@ -9,6 +9,10 @@ internal static class PropertiesOverlay
 {
     private static readonly Color LabelColor = new(120, 120, 140);
     private static readonly Color ValueColor = new(200, 200, 200);
+    private static readonly Color GitModifiedColor = new(220, 180, 50);
+    private static readonly Color GitStagedColor = new(80, 200, 200);
+    private static readonly Color GitUntrackedColor = new(80, 200, 80);
+    private static readonly Color GitConflictColor = new(220, 80, 80);
 
     private static readonly string[] Labels =
     [
@@ -22,14 +26,15 @@ internal static class PropertiesOverlay
         "Accessed",
         "Attributes",
         "Read-only",
+        "Git status",
     ];
 
     private const int LabelWidth = 12;
 
     public static void Render(ScreenBuffer buffer, int screenWidth, int screenHeight,
-        FileSystemEntry entry, string? directorySizeText)
+        FileSystemEntry entry, string? directorySizeText, GitFileStatus? gitStatus = null)
     {
-        string[] values = BuildValues(entry, directorySizeText);
+        string[] values = BuildValues(entry, directorySizeText, gitStatus);
 
         int maxValueLen = 0;
         for (int i = 0; i < values.Length; i++)
@@ -68,9 +73,19 @@ internal static class PropertiesOverlay
             buffer.WriteString(y, content.Left, Labels[i], labelStyle, LabelWidth);
             buffer.WriteString(y, content.Left + LabelWidth, values[i], valueStyle, valueMaxWidth);
         }
+
+        // Overwrite git status row with colored value if applicable
+        if (gitStatus is { } s && s != GitFileStatus.None)
+        {
+            int gitRowIndex = Labels.Length - 1; // last row
+            int gitY = content.Top + gitRowIndex;
+            Color gitColor = GetGitStatusColor(s);
+            var gitValueStyle = new CellStyle(gitColor, DialogBox.BgColor);
+            buffer.WriteString(gitY, content.Left + LabelWidth, values[gitRowIndex], gitValueStyle, valueMaxWidth);
+        }
     }
 
-    private static string[] BuildValues(FileSystemEntry entry, string? directorySizeText)
+    private static string[] BuildValues(FileSystemEntry entry, string? directorySizeText, GitFileStatus? gitStatus)
     {
         string type = entry.IsDrive
             ? "Drive"
@@ -158,7 +173,74 @@ internal static class PropertiesOverlay
             accessed,
             attributes,
             readOnly ? "Yes" : "No",
+            FormatGitStatus(gitStatus),
         ];
+    }
+
+    internal static string FormatGitStatus(GitFileStatus? status)
+    {
+        if (status is null or GitFileStatus.None)
+        {
+            return "\u2014";
+        }
+
+        GitFileStatus s = status.Value;
+        Span<char> buf = stackalloc char[64];
+        int pos = 0;
+
+        if (s.HasFlag(GitFileStatus.Conflict))
+        {
+            AppendLabel(ref pos, buf, "Conflict");
+        }
+
+        if (s.HasFlag(GitFileStatus.Staged))
+        {
+            AppendLabel(ref pos, buf, "Staged");
+        }
+
+        if (s.HasFlag(GitFileStatus.Modified))
+        {
+            AppendLabel(ref pos, buf, "Modified");
+        }
+
+        if (s.HasFlag(GitFileStatus.Untracked))
+        {
+            AppendLabel(ref pos, buf, "Untracked");
+        }
+
+        return pos > 0 ? buf[..pos].ToString() : "\u2014";
+    }
+
+    private static Color GetGitStatusColor(GitFileStatus status)
+    {
+        if (status.HasFlag(GitFileStatus.Conflict))
+        {
+            return GitConflictColor;
+        }
+
+        if (status.HasFlag(GitFileStatus.Staged))
+        {
+            return GitStagedColor;
+        }
+
+        if (status.HasFlag(GitFileStatus.Modified))
+        {
+            return GitModifiedColor;
+        }
+
+        return GitUntrackedColor;
+    }
+
+    private static void AppendLabel(ref int pos, Span<char> buf, string label)
+    {
+        if (pos > 0)
+        {
+            ", ".AsSpan().CopyTo(buf[pos..]);
+            pos += 2;
+        }
+
+        label.AsSpan().CopyTo(buf[pos..]);
+        pos += label.Length;
     }
 
     private static string FormatDateTime(DateTime dt) =>

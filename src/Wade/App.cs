@@ -1084,7 +1084,8 @@ internal sealed class App
             case InputMode.Properties:
                 if (selectedEntry is not null)
                 {
-                    PropertiesOverlay.Render(buffer, width, height, selectedEntry, _propertiesDirSizeText);
+                    GitFileStatus? propGitStatus = _gitStatuses?.TryGetValue(selectedEntry.FullPath, out var gs) == true ? gs : null;
+                    PropertiesOverlay.Render(buffer, width, height, selectedEntry, _propertiesDirSizeText, propGitStatus);
                 }
                 break;
             case InputMode.ActionPalette:

@@ -187,4 +187,57 @@ public class PropertiesOverlayTests
         Assert.Contains("File", output);
         Assert.Contains("\u2014", output); // em dash for target
     }
+
+    [Fact]
+    public void Render_ShowsGitStatusModified()
+    {
+        var buf = new ScreenBuffer(120, 30);
+        var entry = new FileSystemEntry(
+            "file.cs", "/tmp/file.cs", false, 100, DateTime.Now, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
+
+        PropertiesOverlay.Render(buf, 120, 30, entry, null, GitFileStatus.Modified);
+
+        var output = Flush(buf);
+        Assert.Contains("Git status", output);
+        Assert.Contains("Modified", output);
+    }
+
+    [Fact]
+    public void Render_ShowsGitStatusStaged()
+    {
+        var buf = new ScreenBuffer(120, 30);
+        var entry = new FileSystemEntry(
+            "file.cs", "/tmp/file.cs", false, 100, DateTime.Now, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
+
+        PropertiesOverlay.Render(buf, 120, 30, entry, null, GitFileStatus.Staged);
+
+        var output = Flush(buf);
+        Assert.Contains("Git status", output);
+        Assert.Contains("Staged", output);
+    }
+
+    [Fact]
+    public void Render_GitStatusCombinedFlags_ShowsCommaSeparated()
+    {
+        var buf = new ScreenBuffer(120, 30);
+        var entry = new FileSystemEntry(
+            "file.cs", "/tmp/file.cs", false, 100, DateTime.Now, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
+
+        PropertiesOverlay.Render(buf, 120, 30, entry, null, GitFileStatus.Modified | GitFileStatus.Staged);
+
+        var output = Flush(buf);
+        Assert.Contains("Staged, Modified", output);
+    }
+
+    [Fact]
+    public void FormatGitStatus_None_ReturnsEmDash()
+    {
+        Assert.Equal("\u2014", PropertiesOverlay.FormatGitStatus(GitFileStatus.None));
+    }
+
+    [Fact]
+    public void FormatGitStatus_Null_ReturnsEmDash()
+    {
+        Assert.Equal("\u2014", PropertiesOverlay.FormatGitStatus(null));
+    }
 }

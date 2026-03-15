@@ -90,15 +90,9 @@ Detect whether a drive is SSD, HDD, or network. Some features (like directory si
 
 Switched `ScanFilesForFinder` to manual recursive directory walk. `.git` directories are always skipped (even with hidden files enabled). Dot-prefixed and hidden/system directories are also skipped when their respective settings are off.
 
-### Show git status in properties dialog
+### ~~Show git status in properties dialog~~ ✅
 
-Display the file's git status (e.g. "Modified", "Staged", "Untracked") in the properties overlay (`i` key).
-
-- Add a "Git status" label/value row to `PropertiesOverlay.cs` (`Labels` array at line 13, `BuildValues` at line 73)
-- `Render` signature (`PropertiesOverlay.cs:29`) needs a `GitFileStatus?` parameter (or the status string)
-- Caller in `App.cs` (the `ShowProperties` / `InputMode.Properties` handler) already has access to `_gitStatuses` — look up the entry's path and pass the status
-- Format flags as comma-separated labels (e.g. "Modified, Staged") or show "Clean" / empty when no status
-- Color the value to match the existing git status colors (yellow=modified, cyan=staged, green=untracked, red=conflict)
+Added "Git status" row to properties overlay. Shows comma-separated flag labels (Modified, Staged, Untracked, Conflict) with matching colors (yellow, cyan, green, red). Shows em-dash for clean/untracked files.
 
 ### Zip — other archive formats
 
