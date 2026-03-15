@@ -105,9 +105,19 @@ See plan: `.claude/plans/buzzing-gathering-rain.md`
 
 #### Future: Format-specific preview providers
 
-Add primary preview providers for specific formats (e.g., NuGet metadata for `.nupkg`, document properties for `.docx`). Each is an `IPreviewProvider` implementation registered in the provider list. They automatically become the default for their file types and the existing zip/text previews become secondary options.
+Add primary preview providers for specific formats. Each is an `IPreviewProvider` implementation registered in the provider list. They automatically become the default for their file types and the existing zip/text previews become secondary options. Consider delegating to CLI tools (like `mediainfo`) where pure .NET parsing would be too complex.
 
-Depends on: Tasks 1-7 complete
+##### Completed
+
+- NuGet metadata (`.nupkg`, `.snupkg`) — extracts from embedded `.nuspec` XML ✅
+- Executable metadata (`.exe`, `.dll`) — PE headers, .NET assembly info, Win32 version info ✅
+
+##### Backlog
+
+- **PDF metadata** — title, author, page count, producer, creation date. Extract from PDF header/trailer without rendering. Could use a lightweight parser or CLI tool.
+- **MS Office documents** (`.docx`, `.xlsx`, `.pptx`) — title, author, created/modified dates, page/sheet/slide count. Extract from OPC core properties XML (`docProps/core.xml`, `docProps/app.xml`) inside the zip archive.
+- **Font files** (`.ttf`, `.otf`, `.woff2`) — font family, style, weight, glyph count. Parse OpenType/TrueType `name` and `head` tables.
+- **Media files** (`.mp3`, `.mp4`, `.flac`, `.mkv`, `.avi`, `.wav`, `.ogg`, etc.) — duration, codec, bitrate, resolution, sample rate. Delegate to `mediainfo` CLI (JSON output) if available on PATH.
 
 ### Zip — other archive formats
 
