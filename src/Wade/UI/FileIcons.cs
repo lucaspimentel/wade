@@ -150,4 +150,34 @@ internal static class FileIcons
 
         return FileIcon;
     }
+
+    private static readonly Rune GitModifiedIcon  = new(0xF06D7);  // nf-oct-diff_modified
+    private static readonly Rune GitStagedIcon    = new(0xF06D3);  // nf-oct-diff_added
+    private static readonly Rune GitUntrackedIcon = new(0xEB90);   // nf-cod-question
+    private static readonly Rune GitConflictIcon  = new(0xF0026);  // nf-md-alert
+
+    public static Rune GetGitStatusIcon(GitFileStatus status)
+    {
+        if (status.HasFlag(GitFileStatus.Conflict))
+        {
+            return GitConflictIcon;
+        }
+
+        if (status.HasFlag(GitFileStatus.Staged))
+        {
+            return GitStagedIcon;
+        }
+
+        if (status.HasFlag(GitFileStatus.Modified))
+        {
+            return GitModifiedIcon;
+        }
+
+        if (status.HasFlag(GitFileStatus.Untracked))
+        {
+            return GitUntrackedIcon;
+        }
+
+        return default;
+    }
 }

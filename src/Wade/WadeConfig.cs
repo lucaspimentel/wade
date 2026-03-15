@@ -20,6 +20,7 @@ internal sealed class WadeConfig
     public bool HexPreviewEnabled { get; set; } = true;
     public bool PdfPreviewEnabled { get; set; } = true;
     public bool TerminalTitleEnabled { get; set; } = true;
+    public bool GitStatusEnabled { get; set; } = true;
     public string StartPath { get; set; } = Directory.GetCurrentDirectory();
     public bool ShowConfig { get; set; } = false;
     public bool ShowHelp { get; set; } = false;
@@ -127,6 +128,9 @@ internal sealed class WadeConfig
                     case "terminal_title_enabled":
                         config.TerminalTitleEnabled = ParseBool(value, config.TerminalTitleEnabled);
                         break;
+                    case "git_status_enabled":
+                        config.GitStatusEnabled = ParseBool(value, config.GitStatusEnabled);
+                        break;
                     case "detail_columns_enabled":
                         // Backward compat: sets both columns
                         var detailBool = ParseBool(value, true);
@@ -218,6 +222,7 @@ internal sealed class WadeConfig
             hex_preview_enabled = {(HexPreviewEnabled ? "true" : "false")}
             pdf_preview_enabled = {(PdfPreviewEnabled ? "true" : "false")}
             terminal_title_enabled = {(TerminalTitleEnabled ? "true" : "false")}
+            git_status_enabled = {(GitStatusEnabled ? "true" : "false")}
             """;
 
         File.WriteAllText(ConfigFilePath, content);
@@ -244,6 +249,7 @@ internal sealed class WadeConfig
             $"\"hex_preview_enabled\":{(HexPreviewEnabled ? "true" : "false")}," +
             $"\"pdf_preview_enabled\":{(PdfPreviewEnabled ? "true" : "false")}," +
             $"\"terminal_title_enabled\":{(TerminalTitleEnabled ? "true" : "false")}," +
+            $"\"git_status_enabled\":{(GitStatusEnabled ? "true" : "false")}," +
             $"\"start_path\":\"{escapedPath}\"" +
             "}";
     }

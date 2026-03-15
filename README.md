@@ -21,7 +21,8 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Directory preview** — shows contents of the selected directory
 - **Drive navigation** — browse across drives on Windows (Backspace from a drive root)
 - **Detail columns** — file size and modification date in the center pane; each column toggleable independently via `size_column_enabled` / `date_column_enabled` config; columns adapt responsively as the terminal narrows (full date → date only → short date → size only → name only)
-- **Status bar** — current path, item count, file type label (language name, "Text", or "Binary"), encoding (UTF-8, UTF-8 BOM, UTF-16 LE/BE), line endings (CRLF, LF, CR, Mixed), file size, and sort indicator
+- **Git status** — files and directories colored by git status (modified=yellow, staged=cyan, untracked=green, conflict=red) with Nerd Font status icons; directory-level aggregate status; branch name shown in status bar; async loading for large repos (toggle with `git_status_enabled` config, default: on)
+- **Status bar** — current path, git branch name, item count, file type label (language name, "Text", or "Binary"), encoding (UTF-8, UTF-8 BOM, UTF-16 LE/BE), line endings (CRLF, LF, CR, Mixed), file size, and sort indicator
 - **Hidden files toggle** — dotfiles and system-hidden files are hidden by default; press `.` to toggle visibility at runtime, or set `show_hidden_files = true` in config; on Windows, system files (e.g. `$Recycle.Bin`) can be shown separately via `show_system_files = true` in config
 - **Sort order** — sort by name (default), modification time, size, or extension; press `s` to cycle modes, `S` to reverse direction; directories always listed first; configurable via `sort_mode` and `sort_ascending` in config; current sort mode shown in status bar
 - **Go-to-path bar** — press `g` to type an arbitrary path and jump to it; Tab auto-completes from the filesystem; navigates to directories or selects files
@@ -34,7 +35,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Mouse support** — click to select entries in any pane, scroll wheel to navigate; left/right pane clicks navigate directories
 - **File properties** — press `i` to open a properties overlay showing detailed metadata: name, full path, type (with symlink-aware labels like "Symlink → File"), link target, formatted size with raw bytes (directories calculate size asynchronously), created/modified/accessed timestamps, file attributes, and read-only status
 - **Glow markdown preview** — renders markdown files using the [glow](https://github.com/charmbracelet/glow) CLI for rich preview with styled headings, lists, code blocks, etc. (requires `glow` on PATH; disabled by default; enable with `glow_markdown_preview_enabled = true` in config or toggle in config dialog)
-- **In-app configuration** — press `,` to open a config dialog with toggleable options: icons, hidden files, system files (Windows), sort mode, sort direction, delete confirmation, preview pane, image previews, PDF preview, glow markdown preview, zip preview, hex binary preview, size column, date column, copy-symlinks-as-links, and terminal title; changes are saved directly to the config file
+- **In-app configuration** — press `,` to open a config dialog with toggleable options: icons, hidden files, system files (Windows), sort mode, sort direction, delete confirmation, preview pane, image previews, PDF preview, glow markdown preview, zip preview, hex binary preview, size column, date column, copy-symlinks-as-links, terminal title, and git status; changes are saved directly to the config file
 - **Bookmarks** — press `b` to open a filterable bookmarks dialog; press `B` to toggle the current directory as a bookmark; quick-jump with `1`-`9`, `Enter` to navigate, `d`/`Delete` to remove; bookmarks persist to `~/.config/wade/bookmarks` in MRU order
 - **File finder** — press `Ctrl+F` to recursively search for files by name in the current directory tree; type to filter, Up/Down to navigate, Enter to open the file
 - **Action palette** — press `Ctrl+P` to open a searchable action palette listing all available commands; type to filter, Up/Down to navigate, Enter to execute
@@ -107,6 +108,7 @@ zip_preview_enabled = true
 hex_preview_enabled = true
 pdf_preview_enabled = true
 terminal_title_enabled = true
+git_status_enabled = true
 ```
 
 ### CLI flags

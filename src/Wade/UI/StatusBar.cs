@@ -26,7 +26,8 @@ internal static class StatusBar
         SortMode sortMode = SortMode.Name,
         bool sortAscending = true,
         int clipboardCount = 0,
-        bool clipboardIsCut = false)
+        bool clipboardIsCut = false,
+        string? branchName = null)
     {
         // Fill background
         var bgStyle = new CellStyle(StatusFg, StatusBg);
@@ -40,9 +41,31 @@ internal static class StatusBar
         int pathMaxWidth = rect.Width / 2;
         buffer.WriteString(rect.Top, rect.Left + 1, currentPath, pathStyle, pathMaxWidth);
 
-        // Mark count and clipboard indicator (after path)
+        // Branch name (after path)
         int infoCol = rect.Left + 1 + Math.Min(currentPath.Length, pathMaxWidth);
         int infoMaxWidth = pathMaxWidth - Math.Min(currentPath.Length, pathMaxWidth);
+
+        if (branchName is not null && infoMaxWidth > 0)
+        {
+            var branchStyle = new CellStyle(new Color(180, 140, 220), StatusBg);
+            Span<char> branchBuf = stackalloc char[64];
+            int branchLen = 0;
+            branchBuf[branchLen++] = ' ';
+            branchBuf[branchLen++] = ' ';
+
+            int maxBranch = Math.Min(branchName.Length, branchBuf.Length - branchLen);
+            maxBranch = Math.Min(maxBranch, infoMaxWidth - 2);
+            if (maxBranch > 0)
+            {
+                branchName.AsSpan(0, maxBranch).CopyTo(branchBuf[branchLen..]);
+                branchLen += maxBranch;
+                buffer.WriteString(rect.Top, infoCol, branchBuf[..branchLen], branchStyle, infoMaxWidth);
+                infoCol += branchLen;
+                infoMaxWidth -= branchLen;
+            }
+        }
+
+        // Mark count and clipboard indicator
 
         if (markedCount > 0)
         {

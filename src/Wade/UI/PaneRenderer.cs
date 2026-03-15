@@ -19,6 +19,11 @@ internal static class PaneRenderer
     private static readonly Color SymlinkColor = new(0, 200, 200);
     private static readonly Color BrokenSymlinkColor = new(200, 60, 60);
 
+    private static readonly Color GitModifiedColor = new(220, 180, 50);
+    private static readonly Color GitStagedColor = new(80, 200, 200);
+    private static readonly Color GitUntrackedColor = new(80, 200, 80);
+    private static readonly Color GitConflictColor = new(220, 80, 80);
+
     private static readonly CellStyle ActiveSelectionStyle = new(SelectionFg, SelectionBg, Bold: true);
     private static readonly CellStyle InactiveSelectionStyle = new(SelectionFg, new Color(60, 60, 80), Bold: true);
     private static readonly CellStyle DirStyle = new(DirColor, null, Bold: true);
@@ -33,6 +38,20 @@ internal static class PaneRenderer
     private static readonly CellStyle MarkedSelectedStyle = new(SelectionFg, new Color(180, 180, 60), Bold: true);
     private static readonly CellStyle MarkedSymlinkStyle = new(SymlinkColor, MarkedBg);
     private static readonly CellStyle MarkedBrokenSymlinkStyle = new(BrokenSymlinkColor, MarkedBg);
+
+    private static readonly CellStyle GitModifiedFileStyle = new(GitModifiedColor, null);
+    private static readonly CellStyle GitModifiedDirStyle = new(GitModifiedColor, null, Bold: true);
+    private static readonly CellStyle GitStagedFileStyle = new(GitStagedColor, null);
+    private static readonly CellStyle GitStagedDirStyle = new(GitStagedColor, null, Bold: true);
+    private static readonly CellStyle GitUntrackedFileStyle = new(GitUntrackedColor, null);
+    private static readonly CellStyle GitUntrackedDirStyle = new(GitUntrackedColor, null, Bold: true);
+    private static readonly CellStyle GitConflictFileStyle = new(GitConflictColor, null);
+    private static readonly CellStyle GitConflictDirStyle = new(GitConflictColor, null, Bold: true);
+
+    private static readonly CellStyle MarkedGitModifiedStyle = new(GitModifiedColor, MarkedBg);
+    private static readonly CellStyle MarkedGitStagedStyle = new(GitStagedColor, MarkedBg);
+    private static readonly CellStyle MarkedGitUntrackedStyle = new(GitUntrackedColor, MarkedBg);
+    private static readonly CellStyle MarkedGitConflictStyle = new(GitConflictColor, MarkedBg);
 
     // Column widths
     private const int SizeWidth = 8;
@@ -62,7 +81,8 @@ internal static class PaneRenderer
         bool showIcons = false,
         bool showSize = false,
         bool showDate = false,
-        HashSet<string>? markedPaths = null)
+        HashSet<string>? markedPaths = null,
+        Dictionary<string, GitFileStatus>? gitStatuses = null)
     {
         // Determine detail tier based on pane width
         int dateWidth = 0;
@@ -140,6 +160,8 @@ internal static class PaneRenderer
             bool isSelected = entryIndex == selectedIndex;
             bool isMarked = markedPaths?.Contains(entry.FullPath) == true;
 
+            var gitStatus = GetGitStatus(entry.FullPath, gitStatuses);
+
             CellStyle style;
             if (isSelected && isMarked && isActive)
             {
@@ -161,13 +183,9 @@ internal static class PaneRenderer
             {
                 style = MarkedSymlinkStyle;
             }
-            else if (isMarked && entry.IsDirectory)
-            {
-                style = MarkedDirStyle;
-            }
             else if (isMarked)
             {
-                style = MarkedStyle;
+                style = GetMarkedGitStyle(gitStatus, entry.IsDirectory) ?? (entry.IsDirectory ? MarkedDirStyle : MarkedStyle);
             }
             else if (entry.IsBrokenSymlink)
             {
@@ -177,13 +195,9 @@ internal static class PaneRenderer
             {
                 style = SymlinkStyle;
             }
-            else if (entry.IsDirectory)
-            {
-                style = DirStyle;
-            }
             else
             {
-                style = FileStyle;
+                style = GetGitStyle(gitStatus, entry.IsDirectory) ?? (entry.IsDirectory ? DirStyle : FileStyle);
             }
 
             CellStyle detailStyle = isSelected || isMarked ? style : DetailStyle;
@@ -202,20 +216,35 @@ internal static class PaneRenderer
             if (showIcons)
             {
                 buffer.Put(screenRow, entryCol, FileIcons.GetIcon(entry), style);
-                buffer.Put(screenRow, entryCol + 1, ' ', style);
-                int maxName = nameWidth - 2;
-                int nameLen = Math.Min(entry.Name.Length, maxName);
-                if (entry.Name.Length > maxName && maxName >= 2)
+
+                // Git status icon (between file icon and name)
+                var gitIcon = gitStatus != GitFileStatus.None ? FileIcons.GetGitStatusIcon(gitStatus) : default;
+                int gitIconWidth = gitIcon != default ? 2 : 0; // icon + space
+                if (gitIconWidth > 0)
                 {
-                    buffer.WriteString(screenRow, entryCol + 2, entry.Name, style, maxName - 1);
-                    buffer.Put(screenRow, entryCol + 2 + maxName - 1, '\u2026', style);
+                    var gitIconStyle = isSelected ? style : GetGitIconStyle(gitStatus, isMarked);
+                    buffer.Put(screenRow, entryCol + 1, gitIcon, gitIconStyle);
+                    buffer.Put(screenRow, entryCol + 2, ' ', style);
                 }
                 else
                 {
-                    buffer.WriteString(screenRow, entryCol + 2, entry.Name, style, maxName);
+                    buffer.Put(screenRow, entryCol + 1, ' ', style);
                 }
 
-                nameCharsUsed = 2 + nameLen;
+                int nameStart = 2 + gitIconWidth;
+                int maxName = nameWidth - nameStart;
+                int nameLen = Math.Min(entry.Name.Length, maxName);
+                if (entry.Name.Length > maxName && maxName >= 2)
+                {
+                    buffer.WriteString(screenRow, entryCol + nameStart, entry.Name, style, maxName - 1);
+                    buffer.Put(screenRow, entryCol + nameStart + maxName - 1, '\u2026', style);
+                }
+                else
+                {
+                    buffer.WriteString(screenRow, entryCol + nameStart, entry.Name, style, maxName);
+                }
+
+                nameCharsUsed = nameStart + nameLen;
             }
             else
             {
@@ -464,6 +493,86 @@ internal static class PaneRenderer
     {
         var style = new CellStyle(DimColor, null);
         buffer.WriteString(pane.Top, pane.Left + 1, message, style, pane.Width - 1);
+    }
+
+    private static GitFileStatus GetGitStatus(string path, Dictionary<string, GitFileStatus>? statuses)
+        => statuses is not null && statuses.TryGetValue(path, out var s) ? s : GitFileStatus.None;
+
+    private static CellStyle? GetGitStyle(GitFileStatus status, bool isDirectory)
+    {
+        if (status.HasFlag(GitFileStatus.Conflict))
+        {
+            return isDirectory ? GitConflictDirStyle : GitConflictFileStyle;
+        }
+
+        if (status.HasFlag(GitFileStatus.Staged))
+        {
+            return isDirectory ? GitStagedDirStyle : GitStagedFileStyle;
+        }
+
+        if (status.HasFlag(GitFileStatus.Modified))
+        {
+            return isDirectory ? GitModifiedDirStyle : GitModifiedFileStyle;
+        }
+
+        if (status.HasFlag(GitFileStatus.Untracked))
+        {
+            return isDirectory ? GitUntrackedDirStyle : GitUntrackedFileStyle;
+        }
+
+        return null;
+    }
+
+    private static CellStyle? GetMarkedGitStyle(GitFileStatus status, bool isDirectory)
+    {
+        _ = isDirectory; // unused but kept for API symmetry with GetGitStyle
+        if (status.HasFlag(GitFileStatus.Conflict))
+        {
+            return MarkedGitConflictStyle;
+        }
+
+        if (status.HasFlag(GitFileStatus.Staged))
+        {
+            return MarkedGitStagedStyle;
+        }
+
+        if (status.HasFlag(GitFileStatus.Modified))
+        {
+            return MarkedGitModifiedStyle;
+        }
+
+        if (status.HasFlag(GitFileStatus.Untracked))
+        {
+            return MarkedGitUntrackedStyle;
+        }
+
+        return null;
+    }
+
+    private static CellStyle GetGitIconStyle(GitFileStatus status, bool isMarked)
+    {
+        Color? bg = isMarked ? MarkedBg : null;
+        if (status.HasFlag(GitFileStatus.Conflict))
+        {
+            return new CellStyle(GitConflictColor, bg);
+        }
+
+        if (status.HasFlag(GitFileStatus.Staged))
+        {
+            return new CellStyle(GitStagedColor, bg);
+        }
+
+        if (status.HasFlag(GitFileStatus.Modified))
+        {
+            return new CellStyle(GitModifiedColor, bg);
+        }
+
+        if (status.HasFlag(GitFileStatus.Untracked))
+        {
+            return new CellStyle(GitUntrackedColor, bg);
+        }
+
+        return new CellStyle(FileColor, bg);
     }
 
     public static void RenderBorders(ScreenBuffer buffer, Layout layout, int terminalHeight, bool previewPaneEnabled = true)

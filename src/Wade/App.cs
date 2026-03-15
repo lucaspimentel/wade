@@ -90,6 +90,13 @@ internal sealed class App
     private bool _configPdfPreview;
     private bool _configCopySymlinksAsLinks;
     private bool _configTerminalTitle;
+    private bool _configGitStatus;
+
+    // Git status state
+    private GitStatusLoader? _gitStatusLoader;
+    private string? _currentRepoRoot;
+    private string? _currentBranchName;
+    private Dictionary<string, GitFileStatus>? _gitStatuses;
 
     // Directory size calculation state
     private DirectorySizeLoader? _dirSizeLoader;
@@ -161,6 +168,7 @@ internal sealed class App
         using var pipeline = new InputPipeline(inputSource);
         _previewLoader = new PreviewLoader(pipeline);
         _dirSizeLoader = new DirectorySizeLoader(pipeline);
+        _gitStatusLoader = new GitStatusLoader(pipeline);
         var previewLoader = _previewLoader;
 
         var caps = terminal.Capabilities;
@@ -180,6 +188,7 @@ internal sealed class App
             pdfPreviewEnabled: _config.PdfPreviewEnabled);
 
         UpdateTerminalTitle();
+        RefreshGitStatus();
 
         bool quit = false;
         bool writeCwd = true;
@@ -242,6 +251,10 @@ internal sealed class App
                 else if (extra is DirectorySizeReadyEvent dirSizeExtra)
                 {
                     HandleDirectorySizeReady(dirSizeExtra);
+                }
+                else if (extra is GitStatusReadyEvent gitExtra)
+                {
+                    HandleGitStatusReady(gitExtra);
                 }
                 else if (extra is FileFinderScanCompleteEvent scanExtra)
                 {
@@ -326,6 +339,12 @@ internal sealed class App
             if (inputEvent is DirectorySizeReadyEvent dirSizeEvt)
             {
                 HandleDirectorySizeReady(dirSizeEvt);
+                continue;
+            }
+
+            if (inputEvent is GitStatusReadyEvent gitEvt)
+            {
+                HandleGitStatusReady(gitEvt);
                 continue;
             }
 
@@ -488,6 +507,7 @@ internal sealed class App
                         ClearSearchFilter();
                         ClearPreviewCache(previewLoader, buffer);
                         UpdateTerminalTitle();
+                        RefreshGitStatus();
                     }
                     else if (entries.Count > 0 && !entries[_selectedIndex].IsDirectory)
                     {
@@ -513,6 +533,7 @@ internal sealed class App
                         // Go up to the drives list
                         _currentPath = DirectoryContents.DrivesPath;
                         UpdateTerminalTitle();
+                        RefreshGitStatus();
                         var driveEntries = _directoryContents.GetEntries(_currentPath);
                         string root = Path.GetPathRoot(oldPath)!.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                         int idx = driveEntries.FindIndex(e => e.Name.Equals(root, StringComparison.OrdinalIgnoreCase));
@@ -525,6 +546,7 @@ internal sealed class App
                         {
                             _currentPath = PathCompletion.CapitalizeDriveLetter(parent.FullName);
                             UpdateTerminalTitle();
+                            RefreshGitStatus();
                             var parentEntries = _directoryContents.GetEntries(_currentPath);
                             string oldName = Path.GetFileName(oldPath);
                             int idx = parentEntries.FindIndex(e => e.Name.Equals(oldName, StringComparison.OrdinalIgnoreCase));
@@ -738,6 +760,7 @@ internal sealed class App
 
                                 _directoryContents.Invalidate(_currentPath);
                                 InvalidateFilteredEntries();
+                                RefreshGitStatus();
                                 ShowNotification($"Renamed to '{newName}'", NotificationKind.Success);
 
                                 // Re-select the renamed entry
@@ -1248,6 +1271,8 @@ internal sealed class App
             _clipboardPaths.Clear();
         }
 
+        RefreshGitStatus();
+
         if (errors > 0)
         {
             ShowNotification($"Pasted {success}, {errors} failed", NotificationKind.Error);
@@ -1281,7 +1306,7 @@ internal sealed class App
             buffer, fileListPane, entries, _selectedIndex, _scrollOffset,
             isActive: true, showIcons: _config.ShowIconsEnabled,
             showSize: _config.SizeColumnEnabled, showDate: _config.DateColumnEnabled,
-            markedPaths: _markedPaths);
+            markedPaths: _markedPaths, gitStatuses: _gitStatuses);
 
         // Search bar at bottom of center pane
         if (showSearchBar)
@@ -1391,7 +1416,7 @@ internal sealed class App
             ? entries[_selectedIndex]
             : null;
         string displayPath = _currentPath == DirectoryContents.DrivesPath ? "Drives" : _currentPath;
-        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count, _directoryContents.SortMode, _directoryContents.SortAscending, _clipboardPaths.Count, _clipboardIsCut);
+        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count, _directoryContents.SortMode, _directoryContents.SortAscending, _clipboardPaths.Count, _clipboardIsCut, _currentBranchName);
 
         // Help overlay
         if (_inputMode == InputMode.Help)
@@ -1496,6 +1521,17 @@ internal sealed class App
         _propertiesDirSizeText = $"{formatted} ({evt.TotalBytes:N0} bytes)";
     }
 
+    private void HandleGitStatusReady(GitStatusReadyEvent evt)
+    {
+        if (evt.RepoRoot != _currentRepoRoot)
+        {
+            return;
+        }
+
+        _currentBranchName = evt.BranchName;
+        _gitStatuses = evt.Statuses;
+    }
+
     private void ClearPreviewCache(PreviewLoader loader, ScreenBuffer? buffer = null)
     {
         bool wasImage = _isImagePreview;
@@ -1586,6 +1622,7 @@ internal sealed class App
                     ClearSearchFilter();
                     ClearPreviewCache(previewLoader, buffer);
                     UpdateTerminalTitle();
+                    RefreshGitStatus();
                 }
                 else
                 {
@@ -1596,6 +1633,7 @@ internal sealed class App
                     {
                         _currentPath = PathCompletion.CapitalizeDriveLetter(parentDir.FullName);
                         UpdateTerminalTitle();
+                        RefreshGitStatus();
                         var parentEntries = _directoryContents.GetEntries(_currentPath);
                         int idx = parentEntries.FindIndex(e => e.Name.Equals(clicked.Name, StringComparison.OrdinalIgnoreCase));
                         _selectedIndex = idx >= 0 ? idx : 0;
@@ -1630,6 +1668,7 @@ internal sealed class App
                             ClearSearchFilter();
                             ClearPreviewCache(previewLoader, buffer);
                             UpdateTerminalTitle();
+                            RefreshGitStatus();
                         }
                         else
                         {
@@ -1637,6 +1676,7 @@ internal sealed class App
                             _selectedIndexPerDir[_currentPath] = _selectedIndex;
                             _currentPath = PathCompletion.CapitalizeDriveLetter(selected.FullPath);
                             UpdateTerminalTitle();
+                            RefreshGitStatus();
                             var dirEntries = _directoryContents.GetEntries(_currentPath);
                             int idx = dirEntries.FindIndex(e => e.Name.Equals(clicked.Name, StringComparison.OrdinalIgnoreCase));
                             _selectedIndex = idx >= 0 ? idx : 0;
@@ -1894,7 +1934,7 @@ internal sealed class App
             displayPath = "Drives";
         }
 
-        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count, _directoryContents.SortMode, _directoryContents.SortAscending, _clipboardPaths.Count, _clipboardIsCut);
+        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count, _directoryContents.SortMode, _directoryContents.SortAscending, _clipboardPaths.Count, _clipboardIsCut, _currentBranchName);
     }
 
     // ── Modal input handlers ────────────────────────────────────────────────
@@ -2116,6 +2156,7 @@ internal sealed class App
             ClearSearchFilter();
             ClearPreviewCache(previewLoader, buffer);
             UpdateTerminalTitle();
+            RefreshGitStatus();
         }
         else if (File.Exists(path))
         {
@@ -2125,6 +2166,7 @@ internal sealed class App
                 _selectedIndexPerDir[_currentPath] = _selectedIndex;
                 _currentPath = PathCompletion.CapitalizeDriveLetter(parent);
                 UpdateTerminalTitle();
+                RefreshGitStatus();
                 var entries = _directoryContents.GetEntries(_currentPath);
                 string fileName = Path.GetFileName(path);
                 int idx = entries.FindIndex(e => e.Name.Equals(fileName, StringComparison.OrdinalIgnoreCase));
@@ -2138,6 +2180,31 @@ internal sealed class App
         else
         {
             ShowNotification("Path not found", NotificationKind.Error);
+        }
+    }
+
+    private void RefreshGitStatus()
+    {
+        if (!_config.GitStatusEnabled)
+        {
+            _currentRepoRoot = null;
+            _currentBranchName = null;
+            _gitStatuses = null;
+            _gitStatusLoader?.Cancel();
+            return;
+        }
+
+        var repoRoot = GitUtils.FindRepoRoot(_currentPath);
+        _currentRepoRoot = repoRoot;
+
+        if (repoRoot is not null)
+        {
+            _gitStatusLoader?.BeginLoad(repoRoot);
+        }
+        else
+        {
+            _currentBranchName = null;
+            _gitStatuses = null;
         }
     }
 
@@ -2191,6 +2258,7 @@ internal sealed class App
         _directoryContents.Invalidate(_currentPath);
         InvalidateFilteredEntries();
         _markedPaths.Clear();
+        RefreshGitStatus();
 
         if (errors > 0)
         {
@@ -3458,6 +3526,7 @@ internal sealed class App
         _configPdfPreview = _config.PdfPreviewEnabled;
         _configCopySymlinksAsLinks = _config.CopySymlinksAsLinksEnabled;
         _configTerminalTitle = _config.TerminalTitleEnabled;
+        _configGitStatus = _config.GitStatusEnabled;
     }
 
     private void HandleConfigKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer)
@@ -3582,6 +3651,7 @@ internal sealed class App
             case 12: _configDateColumn = !_configDateColumn; break;
             case 13: _configCopySymlinksAsLinks = !_configCopySymlinksAsLinks; break;
             case 14: _configTerminalTitle = !_configTerminalTitle; break;
+            case 15: _configGitStatus = !_configGitStatus; break;
         }
     }
 
@@ -3604,6 +3674,7 @@ internal sealed class App
         _config.PdfPreviewEnabled = _configPdfPreview;
         _config.CopySymlinksAsLinksEnabled = _configCopySymlinksAsLinks;
         _config.TerminalTitleEnabled = _configTerminalTitle;
+        _config.GitStatusEnabled = _configGitStatus;
 
         _directoryContents.ShowHiddenFiles = _config.ShowHiddenFiles;
         _directoryContents.ShowSystemFiles = _config.ShowSystemFiles;
@@ -3619,6 +3690,7 @@ internal sealed class App
             zipPreviewEnabled: _config.ZipPreviewEnabled, hexPreviewEnabled: _config.HexPreviewEnabled,
             pdfPreviewEnabled: _config.PdfPreviewEnabled);
         UpdateTerminalTitle();
+        RefreshGitStatus();
 
         try
         {
@@ -3689,6 +3761,7 @@ internal sealed class App
         itemList.Add(("Show Date Column", FormatBool(_configDateColumn), true));
         itemList.Add(("Copy Symlinks as Link", FormatBool(_configCopySymlinksAsLinks), true));
         itemList.Add(("Change Terminal Title", FormatBool(_configTerminalTitle), true));
+        itemList.Add(("Show Git Status", FormatBool(_configGitStatus), true));
 
         for (int i = 0; i < itemList.Count; i++)
         {

@@ -79,15 +79,18 @@ Windows file clipboard interop is implemented. Remaining: Unix/macOS file clipbo
 
 Show git status in the file browser and eventually support git actions.
 
-#### Phase 1: Readonly status display
+#### Phase 1: Readonly status display ✅
 
-- Extend `GitUtils` (`src/Wade/FileSystem/GitUtils.cs`) — currently only has `FindRepoRoot()`; add file-level status querying (modified, untracked, staged, ignored, etc.)
-- Add git status fields to `FileSystemEntry` record (`src/Wade/FileSystem/DirectoryContents.cs:177`)
-- Add git-specific colors/styles in `PaneRenderer` (`src/Wade/UI/PaneRenderer.cs:11-29`) — e.g. modified=yellow, untracked=green, staged=cyan (common git UI conventions)
-- Update style selection logic in `PaneRenderer.RenderFileList()` (~line 137) to use git status
-- Consider: shell out to `git status --porcelain` or use a library like `LibGit2Sharp` (note: must be NativeAOT-compatible)
-- Show git branch name in status bar
-- Directory-level aggregate status (show modified if any child is modified)
+- ~~Extend `GitUtils` — add file-level status querying (modified, untracked, staged, ignored, conflict)~~
+- ~~Git status as separate `Dictionary<string, GitFileStatus>` map (not on `FileSystemEntry`) — async-friendly~~
+- ~~Git-specific colors/styles in `PaneRenderer` — modified=yellow, untracked=green, staged=cyan, conflict=red~~
+- ~~Nerd Font git status icons (modified dot, staged plus, untracked question, conflict alert)~~
+- ~~Shell out to `git status --porcelain=v1` (NativeAOT-compatible)~~
+- ~~Branch name read from `.git/HEAD` file (supports worktrees)~~
+- ~~Show git branch name in status bar (purple, left side after path)~~
+- ~~Directory-level aggregate status (OR child statuses into parent directories)~~
+- ~~Async via `GitStatusLoader` following `DirectorySizeLoader` pattern~~
+- ~~`git_status_enabled` config setting (default: true) with config dialog toggle~~
 
 #### Phase 2: Git actions
 

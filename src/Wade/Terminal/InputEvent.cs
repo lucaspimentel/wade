@@ -35,6 +35,11 @@ internal sealed record DirectorySizeReadyEvent(string Path, long TotalBytes) : I
 
 internal sealed record FileFinderScanCompleteEvent(string BasePath, List<FileSystemEntry> Entries) : InputEvent;
 
+internal sealed record GitStatusReadyEvent(
+    string RepoRoot,
+    string? BranchName,
+    Dictionary<string, GitFileStatus>? Statuses) : InputEvent;
+
 internal enum MouseButton
 {
     Left,
