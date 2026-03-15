@@ -54,10 +54,7 @@ internal sealed class App
     private string? _goToPathSuggestion;
 
     // Action palette state
-    private int _actionPaletteSelectedIndex;
-    private TextInput? _actionPaletteInput;
-    private (string Label, string Shortcut, AppAction Action, int Data)[]? _actionPaletteItems;
-    private int _actionPaletteScrollOffset;
+    private readonly Stack<ActionMenuLevel> _actionMenuStack = new();
 
     // Bookmark state
     private readonly BookmarkStore _bookmarkStore = new();
@@ -2207,84 +2204,81 @@ internal sealed class App
     private void ShowActionPalette()
     {
         _inputMode = InputMode.ActionPalette;
-        _actionPaletteSelectedIndex = 0;
-        _actionPaletteScrollOffset = 0;
-        _actionPaletteInput = new TextInput();
-        _actionPaletteItems = BuildActionPaletteItems();
+        _actionMenuStack.Clear();
+        _actionMenuStack.Push(new ActionMenuLevel("Action Palette", BuildActionPaletteItems()));
     }
 
-    private (string Label, string Shortcut, AppAction Action, int Data)[] BuildActionPaletteItems()
+    private ActionMenuItem[] BuildActionPaletteItems()
     {
-        var items = new List<(string Label, string Shortcut, AppAction Action, int Data)>
+        var items = new List<ActionMenuItem>
         {
-            ("Open with default app", "o", AppAction.OpenExternal, 0),
-            ("Rename", "F2", AppAction.Rename, 0),
-            ("Delete", "Del", AppAction.Delete, 0),
-            ("Copy", "c", AppAction.Copy, 0),
-            ("Cut", "x", AppAction.Cut, 0),
+            new() { Label = "Open with default app", Shortcut = "o", Action = AppAction.OpenExternal },
+            new() { Label = "Rename", Shortcut = "F2", Action = AppAction.Rename },
+            new() { Label = "Delete", Shortcut = "Del", Action = AppAction.Delete },
+            new() { Label = "Copy", Shortcut = "c", Action = AppAction.Copy },
+            new() { Label = "Cut", Shortcut = "x", Action = AppAction.Cut },
         };
 
         if (_clipboardPaths.Count > 0)
         {
-            items.Add(("Paste", "v", AppAction.Paste, 0));
+            items.Add(new() { Label = "Paste", Shortcut = "v", Action = AppAction.Paste });
         }
 
-        items.Add(("Copy absolute path", "y", AppAction.CopyAbsolutePath, 0));
-        items.Add(("New file", "n", AppAction.NewFile, 0));
-        items.Add(("New directory", "Shift+N", AppAction.NewDirectory, 0));
-        items.Add(("Create symlink", "Ctrl+L", AppAction.CreateSymlink, 0));
-        items.Add(("Properties", "i", AppAction.ShowProperties, 0));
+        items.Add(new() { Label = "Copy absolute path", Shortcut = "y", Action = AppAction.CopyAbsolutePath });
+        items.Add(new() { Label = "New file", Shortcut = "n", Action = AppAction.NewFile });
+        items.Add(new() { Label = "New directory", Shortcut = "Shift+N", Action = AppAction.NewDirectory });
+        items.Add(new() { Label = "Create symlink", Shortcut = "Ctrl+L", Action = AppAction.CreateSymlink });
+        items.Add(new() { Label = "Properties", Shortcut = "i", Action = AppAction.ShowProperties });
 
-        // Preview provider entries — shown when multiple providers are available
+        // Preview provider submenu — shown when multiple providers are available
         if (_applicableProviders is not null && _applicableProviders.Count > 1)
         {
+            var previewSubItems = new ActionMenuItem[_applicableProviders.Count];
             for (int i = 0; i < _applicableProviders.Count; i++)
             {
-                string prefix = i == _activeProviderIndex ? "* " : "  ";
-                string label = $"Preview: {prefix}{_applicableProviders[i].Label}";
-                items.Add((label, "", AppAction.SelectPreviewProvider, i));
+                string prefix = i == _activeProviderIndex ? "\u25cf " : "  ";
+                previewSubItems[i] = new() { Label = prefix + _applicableProviders[i].Label, Action = AppAction.SelectPreviewProvider, Data = i };
             }
+
+            items.Add(new() { Label = "Change preview", SubItems = previewSubItems });
         }
 
-        items.Add(("Toggle hidden files", ".", AppAction.ToggleHiddenFiles, 0));
-        items.Add(("Cycle sort mode", "s", AppAction.CycleSortMode, 0));
-        items.Add(("Reverse sort direction", "S", AppAction.ToggleSortDirection, 0));
-        items.Add(("Bookmarks", "b", AppAction.ShowBookmarks, 0));
-        items.Add(("Toggle bookmark", "B", AppAction.ToggleBookmark, 0));
-        items.Add(("Go to path", "g", AppAction.GoToPath, 0));
-        items.Add(("Search / Find file", "Ctrl+F", AppAction.ShowFileFinder, 0));
-        items.Add(("Filter", "/", AppAction.Search, 0));
-        items.Add(("Open terminal here", "Ctrl+T", AppAction.OpenTerminal, 0));
-        items.Add(("Configuration", ",", AppAction.ShowConfig, 0));
-        items.Add(("Help", "?", AppAction.ShowHelp, 0));
-        items.Add(("Refresh", "Ctrl+R", AppAction.Refresh, 0));
+        items.Add(new() { Label = "Toggle hidden files", Shortcut = ".", Action = AppAction.ToggleHiddenFiles });
+        items.Add(new() { Label = "Cycle sort mode", Shortcut = "s", Action = AppAction.CycleSortMode });
+        items.Add(new() { Label = "Reverse sort direction", Shortcut = "S", Action = AppAction.ToggleSortDirection });
+        items.Add(new() { Label = "Bookmarks", Shortcut = "b", Action = AppAction.ShowBookmarks });
+        items.Add(new() { Label = "Toggle bookmark", Shortcut = "B", Action = AppAction.ToggleBookmark });
+        items.Add(new() { Label = "Go to path", Shortcut = "g", Action = AppAction.GoToPath });
+        items.Add(new() { Label = "Search / Find file", Shortcut = "Ctrl+F", Action = AppAction.ShowFileFinder });
+        items.Add(new() { Label = "Filter", Shortcut = "/", Action = AppAction.Search });
+        items.Add(new() { Label = "Open terminal here", Shortcut = "Ctrl+T", Action = AppAction.OpenTerminal });
+        items.Add(new() { Label = "Configuration", Shortcut = ",", Action = AppAction.ShowConfig });
+        items.Add(new() { Label = "Help", Shortcut = "?", Action = AppAction.ShowHelp });
+        items.Add(new() { Label = "Refresh", Shortcut = "Ctrl+R", Action = AppAction.Refresh });
 
         // Git actions — only shown when actionable
         if (_currentRepoRoot is not null)
         {
-            items.Add(("Git: Copy relative path", "Y", AppAction.CopyGitRelativePath, 0));
+            items.Add(new() { Label = "Git: Copy relative path", Shortcut = "Y", Action = AppAction.CopyGitRelativePath });
 
             if (_gitStatuses is not null)
             {
                 var entries = GetVisibleEntries();
                 if (_selectedIndex < entries.Count)
                 {
-                    // Stage: visible when focused/marked files have Modified or Untracked status
                     bool hasStageableStatus = HasStatusInSelection(GitFileStatus.Modified | GitFileStatus.Untracked);
                     if (hasStageableStatus)
                     {
-                        items.Add(("Git: Stage", "", AppAction.StageFile, 0));
+                        items.Add(new() { Label = "Git: Stage", Action = AppAction.StageFile });
                     }
 
-                    // Unstage: visible when focused/marked files have Staged status
                     bool hasUnstageableStatus = HasStatusInSelection(GitFileStatus.Staged);
                     if (hasUnstageableStatus)
                     {
-                        items.Add(("Git: Unstage", "", AppAction.UnstageFile, 0));
+                        items.Add(new() { Label = "Git: Unstage", Action = AppAction.UnstageFile });
                     }
                 }
 
-                // Stage all: visible when any file has Modified or Untracked status
                 bool hasAnyChanges = false;
                 foreach (var kvp in _gitStatuses)
                 {
@@ -2297,7 +2291,7 @@ internal sealed class App
 
                 if (hasAnyChanges)
                 {
-                    items.Add(("Git: Stage all changes", "", AppAction.StageAll, 0));
+                    items.Add(new() { Label = "Git: Stage all changes", Action = AppAction.StageAll });
                 }
 
                 bool hasAnyStagedChanges = false;
@@ -2312,84 +2306,82 @@ internal sealed class App
 
                 if (hasAnyStagedChanges)
                 {
-                    items.Add(("Git: Unstage all", "", AppAction.UnstageAll, 0));
-                    items.Add(("Git: Commit", "", AppAction.GitCommit, 0));
+                    items.Add(new() { Label = "Git: Unstage all", Action = AppAction.UnstageAll });
+                    items.Add(new() { Label = "Git: Commit", Action = AppAction.GitCommit });
                 }
             }
 
-            items.Add(("Git: Push", "", AppAction.GitPush, 0));
-            items.Add(("Git: Push (force with lease)", "", AppAction.GitPushForceWithLease, 0));
-            items.Add(("Git: Pull", "", AppAction.GitPull, 0));
-            items.Add(("Git: Pull (rebase)", "", AppAction.GitPullRebase, 0));
-            items.Add(("Git: Fetch", "", AppAction.GitFetch, 0));
+            items.Add(new() { Label = "Git: Push", Action = AppAction.GitPush });
+            items.Add(new() { Label = "Git: Push (force with lease)", Action = AppAction.GitPushForceWithLease });
+            items.Add(new() { Label = "Git: Pull", Action = AppAction.GitPull });
+            items.Add(new() { Label = "Git: Pull (rebase)", Action = AppAction.GitPullRebase });
+            items.Add(new() { Label = "Git: Fetch", Action = AppAction.GitFetch });
         }
 
         return items.ToArray();
     }
 
-    private List<(string Label, string Shortcut, AppAction Action, int Data)> GetFilteredActionPaletteItems()
+    private List<ActionMenuItem> GetFilteredActionPaletteItems()
     {
-        if (_actionPaletteItems is null)
+        if (_actionMenuStack.Count == 0)
         {
             return [];
         }
 
-        string filter = _actionPaletteInput?.Value ?? "";
-
-        if (string.IsNullOrEmpty(filter))
-        {
-            return [.. _actionPaletteItems];
-        }
-
-        var result = new List<(string Label, string Shortcut, AppAction Action, int Data)>();
-
-        foreach (var item in _actionPaletteItems)
-        {
-            if (item.Label.Contains(filter, StringComparison.OrdinalIgnoreCase))
-            {
-                result.Add(item);
-            }
-        }
-
-        return result;
+        return _actionMenuStack.Peek().GetFilteredItems();
     }
 
     private void HandleActionPaletteKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer, InputPipeline pipeline)
     {
-        var filtered = GetFilteredActionPaletteItems();
+        if (_actionMenuStack.Count == 0)
+        {
+            return;
+        }
+
+        var level = _actionMenuStack.Peek();
+        var filtered = level.GetFilteredItems();
 
         switch (key.Key)
         {
             case ConsoleKey.Escape:
-                _inputMode = InputMode.Normal;
-                _actionPaletteInput = null;
-                _actionPaletteItems = null;
+                _actionMenuStack.Pop();
+                if (_actionMenuStack.Count == 0)
+                {
+                    _inputMode = InputMode.Normal;
+                }
+
                 break;
 
             case ConsoleKey.Enter:
-                if (filtered.Count > 0 && _actionPaletteSelectedIndex < filtered.Count)
+                if (filtered.Count > 0 && level.SelectedIndex < filtered.Count)
                 {
-                    var selected = filtered[_actionPaletteSelectedIndex];
-                    _inputMode = InputMode.Normal;
-                    _actionPaletteInput = null;
-                    _actionPaletteItems = null;
-                    DispatchActionPaletteAction(selected.Action, selected.Data, previewLoader, buffer, pipeline);
+                    var selected = filtered[level.SelectedIndex];
+                    if (selected.IsSubmenu)
+                    {
+                        _actionMenuStack.Push(new ActionMenuLevel(selected.Label, selected.SubItems!));
+                    }
+                    else
+                    {
+                        _actionMenuStack.Clear();
+                        _inputMode = InputMode.Normal;
+                        DispatchActionPaletteAction(selected.Action, selected.Data, previewLoader, buffer, pipeline);
+                    }
                 }
 
                 break;
 
             case ConsoleKey.UpArrow:
-                if (_actionPaletteSelectedIndex > 0)
+                if (level.SelectedIndex > 0)
                 {
-                    _actionPaletteSelectedIndex--;
+                    level.SelectedIndex--;
                 }
 
                 break;
 
             case ConsoleKey.DownArrow:
-                if (_actionPaletteSelectedIndex < filtered.Count - 1)
+                if (level.SelectedIndex < filtered.Count - 1)
                 {
-                    _actionPaletteSelectedIndex++;
+                    level.SelectedIndex++;
                 }
 
                 break;
@@ -2397,91 +2389,97 @@ internal sealed class App
             case ConsoleKey.PageUp:
             {
                 int visibleCount = Math.Min(18, filtered.Count);
-                _actionPaletteSelectedIndex = Math.Max(0, _actionPaletteSelectedIndex - visibleCount);
+                level.SelectedIndex = Math.Max(0, level.SelectedIndex - visibleCount);
                 break;
             }
 
             case ConsoleKey.PageDown:
             {
                 int visibleCount = Math.Min(18, filtered.Count);
-                _actionPaletteSelectedIndex = Math.Min(filtered.Count - 1, _actionPaletteSelectedIndex + visibleCount);
+                level.SelectedIndex = Math.Min(filtered.Count - 1, level.SelectedIndex + visibleCount);
                 break;
             }
 
             case ConsoleKey.Home:
-                _actionPaletteSelectedIndex = 0;
+                level.SelectedIndex = 0;
                 break;
 
             case ConsoleKey.End:
-                _actionPaletteSelectedIndex = Math.Max(0, filtered.Count - 1);
+                level.SelectedIndex = Math.Max(0, filtered.Count - 1);
                 break;
 
             case ConsoleKey.Backspace:
-                _actionPaletteInput!.DeleteBackward();
-                _actionPaletteSelectedIndex = 0;
-                _actionPaletteScrollOffset = 0;
+                level.Filter.DeleteBackward();
+                level.SelectedIndex = 0;
+                level.ScrollOffset = 0;
                 break;
 
             case ConsoleKey.Delete:
-                _actionPaletteInput!.DeleteForward();
-                _actionPaletteSelectedIndex = 0;
-                _actionPaletteScrollOffset = 0;
+                level.Filter.DeleteForward();
+                level.SelectedIndex = 0;
+                level.ScrollOffset = 0;
                 break;
 
             case ConsoleKey.LeftArrow:
-                _actionPaletteInput!.MoveCursorLeft();
+                level.Filter.MoveCursorLeft();
                 break;
 
             case ConsoleKey.RightArrow:
-                _actionPaletteInput!.MoveCursorRight();
+                level.Filter.MoveCursorRight();
                 break;
 
             default:
                 if (key.Key == ConsoleKey.K && key.Control)
                 {
-                    if (_actionPaletteSelectedIndex > 0)
+                    if (level.SelectedIndex > 0)
                     {
-                        _actionPaletteSelectedIndex--;
+                        level.SelectedIndex--;
                     }
                 }
                 else if (key.Key == ConsoleKey.J && key.Control)
                 {
-                    if (_actionPaletteSelectedIndex < filtered.Count - 1)
+                    if (level.SelectedIndex < filtered.Count - 1)
                     {
-                        _actionPaletteSelectedIndex++;
+                        level.SelectedIndex++;
                     }
                 }
                 else if (key.KeyChar >= ' ')
                 {
-                    _actionPaletteInput!.InsertChar(key.KeyChar);
-                    _actionPaletteSelectedIndex = 0;
-                    _actionPaletteScrollOffset = 0;
+                    level.Filter.InsertChar(key.KeyChar);
+                    level.SelectedIndex = 0;
+                    level.ScrollOffset = 0;
                 }
 
                 break;
         }
 
         // Adjust scroll offset to keep selection visible
-        filtered = GetFilteredActionPaletteItems();
+        if (_actionMenuStack.Count == 0)
+        {
+            return;
+        }
+
+        level = _actionMenuStack.Peek();
+        filtered = level.GetFilteredItems();
 
         if (filtered.Count > 0)
         {
-            _actionPaletteSelectedIndex = Math.Clamp(_actionPaletteSelectedIndex, 0, filtered.Count - 1);
+            level.SelectedIndex = Math.Clamp(level.SelectedIndex, 0, filtered.Count - 1);
         }
         else
         {
-            _actionPaletteSelectedIndex = 0;
+            level.SelectedIndex = 0;
         }
 
         int maxVisible = 18;
 
-        if (_actionPaletteSelectedIndex < _actionPaletteScrollOffset)
+        if (level.SelectedIndex < level.ScrollOffset)
         {
-            _actionPaletteScrollOffset = _actionPaletteSelectedIndex;
+            level.ScrollOffset = level.SelectedIndex;
         }
-        else if (_actionPaletteSelectedIndex >= _actionPaletteScrollOffset + maxVisible)
+        else if (level.SelectedIndex >= level.ScrollOffset + maxVisible)
         {
-            _actionPaletteScrollOffset = _actionPaletteSelectedIndex - maxVisible + 1;
+            level.ScrollOffset = level.SelectedIndex - maxVisible + 1;
         }
     }
 
@@ -3132,24 +3130,32 @@ internal sealed class App
 
     private void RenderActionPalette(ScreenBuffer buffer, int width, int height)
     {
-        var filtered = GetFilteredActionPaletteItems();
+        if (_actionMenuStack.Count == 0)
+        {
+            return;
+        }
+
+        var level = _actionMenuStack.Peek();
+        var filtered = level.GetFilteredItems();
         int contentWidth = Math.Min(60, width - 8);
         int itemRows = Math.Min(filtered.Count, 18);
         int contentHeight = itemRows + 2; // 1 row for text input + 1 separator + item rows
-        const string Footer = "[↑↓] Navigate  [Enter] Select  [Esc] Cancel";
+        string footer = _actionMenuStack.Count > 1
+            ? "[↑↓] Navigate  [Enter] Select  [Esc] Back"
+            : "[↑↓] Navigate  [Enter] Select  [Esc] Cancel";
 
         var content = DialogBox.Render(
             buffer, width, height,
-            Math.Max(contentWidth, Footer.Length),
+            Math.Max(contentWidth, footer.Length),
             contentHeight,
-            title: "Action Palette",
-            footer: Footer);
+            title: level.Title,
+            footer: footer);
 
         // Row 0: text input with "> " prefix
         var prefixStyle = new CellStyle(new Color(220, 220, 100), DialogBox.BgColor);
         var inputStyle = new CellStyle(new Color(200, 200, 200), DialogBox.BgColor);
         buffer.WriteString(content.Top, content.Left, "> ", prefixStyle);
-        _actionPaletteInput?.Render(buffer, content.Top, content.Left + 2, content.Width - 2, inputStyle);
+        level.Filter.Render(buffer, content.Top, content.Left + 2, content.Width - 2, inputStyle);
 
         // Row 1: separator
         var separatorStyle = new CellStyle(DialogBox.BorderColor, DialogBox.BgColor, Dim: true);
@@ -3163,35 +3169,47 @@ internal sealed class App
         var selectedStyle = new CellStyle(new Color(20, 20, 35), new Color(200, 200, 200));
         var shortcutStyle = new CellStyle(new Color(120, 120, 140), DialogBox.BgColor);
         var shortcutSelectedStyle = new CellStyle(new Color(20, 20, 35), new Color(200, 200, 200));
+        var submenuIndicatorStyle = new CellStyle(new Color(120, 120, 140), DialogBox.BgColor);
+        var submenuIndicatorSelectedStyle = new CellStyle(new Color(20, 20, 35), new Color(200, 200, 200));
 
         int visibleCount = content.Height - 2;
 
         for (int i = 0; i < visibleCount; i++)
         {
-            int itemIndex = _actionPaletteScrollOffset + i;
+            int itemIndex = level.ScrollOffset + i;
 
             if (itemIndex >= filtered.Count)
             {
                 break;
             }
 
-            var (label, shortcut, _, _) = filtered[itemIndex];
-            bool selected = itemIndex == _actionPaletteSelectedIndex;
+            var item = filtered[itemIndex];
+            bool isSelected = itemIndex == level.SelectedIndex;
             int row = content.Top + 2 + i;
 
-            CellStyle labelStyle = selected ? selectedStyle : normalStyle;
-            CellStyle scStyle = selected ? shortcutSelectedStyle : shortcutStyle;
+            CellStyle labelStyle = isSelected ? selectedStyle : normalStyle;
 
             // Fill entire row with selected background if selected
-            if (selected)
+            if (isSelected)
             {
                 buffer.FillRow(row, content.Left, content.Width, ' ', selectedStyle);
             }
 
-            buffer.WriteString(row, content.Left + 1, label, labelStyle, content.Width - shortcut.Length - 3);
-
-            int shortcutCol = content.Left + content.Width - shortcut.Length - 1;
-            buffer.WriteString(row, shortcutCol, shortcut, scStyle);
+            if (item.IsSubmenu)
+            {
+                // Submenu items show a "▸" indicator on the right
+                buffer.WriteString(row, content.Left + 1, item.Label, labelStyle, content.Width - 4);
+                CellStyle indStyle = isSelected ? submenuIndicatorSelectedStyle : submenuIndicatorStyle;
+                buffer.WriteString(row, content.Left + content.Width - 2, "\u25b8", indStyle);
+            }
+            else
+            {
+                string shortcut = item.Shortcut;
+                CellStyle scStyle = isSelected ? shortcutSelectedStyle : shortcutStyle;
+                buffer.WriteString(row, content.Left + 1, item.Label, labelStyle, content.Width - shortcut.Length - 3);
+                int shortcutCol = content.Left + content.Width - shortcut.Length - 1;
+                buffer.WriteString(row, shortcutCol, shortcut, scStyle);
+            }
         }
     }
 
