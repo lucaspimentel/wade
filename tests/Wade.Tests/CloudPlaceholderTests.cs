@@ -56,10 +56,7 @@ public class CloudPlaceholderTests
     [InlineData(0x00000000, false)] // no flags
     public void CheckIsCloudPlaceholder_DetectsCorrectly(int attributeBits, bool expected)
     {
-        // Test the detection logic directly (same logic as DirectoryContents.CheckIsCloudPlaceholder)
-        const int RecallOnDataAccess = 0x00400000;
-        const int RecallOnOpen = 0x00004000;
-        bool result = (attributeBits & (RecallOnDataAccess | RecallOnOpen)) != 0;
+        bool result = DirectoryContents.IsCloudPlaceholderAttributes(attributeBits);
         Assert.Equal(expected, result);
     }
 

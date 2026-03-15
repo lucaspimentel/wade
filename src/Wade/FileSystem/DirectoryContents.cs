@@ -186,9 +186,14 @@ internal sealed class DirectoryContents
             return false;
         }
 
+        return IsCloudPlaceholderAttributes((int)info.Attributes);
+    }
+
+    internal static bool IsCloudPlaceholderAttributes(int attributeBits)
+    {
         const int RecallOnDataAccess = 0x00400000;
         const int RecallOnOpen = 0x00004000;
-        return ((int)info.Attributes & (RecallOnDataAccess | RecallOnOpen)) != 0;
+        return (attributeBits & (RecallOnDataAccess | RecallOnOpen)) != 0;
     }
 
     private static bool CheckBrokenSymlink(FileSystemInfo info)
