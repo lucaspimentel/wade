@@ -84,11 +84,32 @@ public class PreviewProviderRegistryTests
         var context = MakeContext(gitStatus: GitFileStatus.Modified, repoRoot: "/repo");
         var providers = PreviewProviderRegistry.GetApplicableProviders("file.nupkg", context);
 
+        Assert.Equal(5, providers.Count);
+        Assert.IsType<NuGetPreviewProvider>(providers[0]);
+        Assert.IsType<ZipContentsPreviewProvider>(providers[1]);
+        Assert.IsType<TextPreviewProvider>(providers[2]);
+        Assert.IsType<HexPreviewProvider>(providers[3]);
+        Assert.IsType<DiffPreviewProvider>(providers[4]);
+    }
+
+    [Fact]
+    public void NupkgFile_ReturnsNuGetThenZipContentsThenTextThenHex()
+    {
+        var providers = PreviewProviderRegistry.GetApplicableProviders("package.nupkg", MakeContext());
+
         Assert.Equal(4, providers.Count);
-        Assert.IsType<ZipContentsPreviewProvider>(providers[0]);
-        Assert.IsType<TextPreviewProvider>(providers[1]);
-        Assert.IsType<HexPreviewProvider>(providers[2]);
-        Assert.IsType<DiffPreviewProvider>(providers[3]);
+        Assert.IsType<NuGetPreviewProvider>(providers[0]);
+        Assert.IsType<ZipContentsPreviewProvider>(providers[1]);
+        Assert.IsType<TextPreviewProvider>(providers[2]);
+        Assert.IsType<HexPreviewProvider>(providers[3]);
+    }
+
+    [Fact]
+    public void ZipFile_DoesNotIncludeNuGetProvider()
+    {
+        var providers = PreviewProviderRegistry.GetApplicableProviders("file.zip", MakeContext());
+
+        Assert.DoesNotContain(providers, p => p is NuGetPreviewProvider);
     }
 
     [Fact]
