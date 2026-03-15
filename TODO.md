@@ -60,6 +60,7 @@ Show git status in the file browser and eventually support git actions.
 
 - Phase 1: Readonly status display ✅
 - Diff preview for modified files ✅
+- Git action menu (`Ctrl+G`) ✅
 
 ### Drive type detection
 
@@ -91,9 +92,14 @@ Support additional archive formats in the preview pane (`.tar`, `.gz`, `.tar.gz`
 
 Instead of binding `Ctrl+G` directly to commit, open a dedicated git action menu (similar to the action palette but filtered to git actions only). Consolidate all git operations into this menu:
 
-- Diff preview toggle (move from current `d` key binding into this menu, freeing the `d` key)
+- Diff preview toggle (move from current `d` key binding into this menu, freeing the `d` key) ✅
 - Stage / Unstage (Phase 2a)
 - Commit with message (Phase 2b)
 - Push / Pull (Phase 2c)
 
 This replaces the per-phase keybinding approach — `Ctrl+G` becomes the single entry point for all git actions. Menu entries are context-sensitive (e.g. "Stage" only shown for modified/untracked files, "Commit" only when staged changes exist).
+
+#### Completed
+
+- Git action menu scaffolding with `Ctrl+G` binding ✅
+- Diff preview toggle moved into git menu (freed `d` key) ✅

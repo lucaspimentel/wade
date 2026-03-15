@@ -21,7 +21,8 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Directory preview** — shows contents of the selected directory
 - **Drive navigation** — browse across drives on Windows (Backspace from a drive root)
 - **Detail columns** — file size and modification date in the center pane; each column toggleable independently via `size_column_enabled` / `date_column_enabled` config; columns adapt responsively as the terminal narrows (full date → date only → short date → size only → name only)
-- **Git status** — files and directories colored by git status (modified=yellow, staged=cyan, untracked=green, conflict=red); Nerd Font status icons shown in a dedicated column between the filename and size; directory-level aggregate status; branch name with branch icon shown in status bar; async loading for large repos (toggle with `git_status_enabled` config, default: on); press `d` to toggle a colored diff preview for modified/staged files
+- **Git status** — files and directories colored by git status (modified=yellow, staged=cyan, untracked=green, conflict=red); Nerd Font status icons shown in a dedicated column between the filename and size; directory-level aggregate status; branch name with branch icon shown in status bar; async loading for large repos (toggle with `git_status_enabled` config, default: on)
+- **Git action menu** — press `Ctrl+G` to open a dedicated git action menu; includes diff preview toggle for modified/staged files (colored diff output with added/removed/hunk highlighting)
 - **Status bar** — current path, git branch name, item count, file type label (language name, "Text", or "Binary"), encoding (UTF-8, UTF-8 BOM, UTF-16 LE/BE), line endings (CRLF, LF, CR, Mixed), file size, and sort indicator
 - **Hidden files toggle** — dotfiles and system-hidden files are hidden by default; press `.` to toggle visibility at runtime, or set `show_hidden_files = true` in config; on Windows, system files (e.g. `$Recycle.Bin`) can be shown separately via `show_system_files = true` in config
 - **Sort order** — sort by name (default), modification time, size, or extension; press `s` to cycle modes, `S` to reverse direction; directories always listed first; configurable via `sort_mode` and `sort_ascending` in config; current sort mode shown in status bar
@@ -171,7 +172,7 @@ Then use `wd` instead of `wade` to browse. Press `q` to quit and cd to the last 
 | c | Copy |
 | x | Cut |
 | p / v | Paste |
-| d | Toggle diff preview |
+| Ctrl+G | Git action menu |
 | y | Copy absolute path to clipboard |
 | Y | Copy git-relative path to clipboard |
 | n | Create new file |
