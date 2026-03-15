@@ -707,7 +707,7 @@ internal sealed class App
                         try
                         {
                             Process.Start(new ProcessStartInfo(entry.FullPath) { UseShellExecute = true });
-                            ShowNotification($"Opened '{entry.Name}'", NotificationKind.Info);
+                            ShowNotification($"Opened '{entry.Name}'", NotificationKind.Success);
                         }
                         catch (Exception ex)
                         {
@@ -720,7 +720,7 @@ internal sealed class App
                     try
                     {
                         OpenTerminalHere(_currentPath);
-                        ShowNotification("Opened terminal", NotificationKind.Info);
+                        ShowNotification("Opened terminal", NotificationKind.Success);
                     }
                     catch (Exception ex)
                     {
@@ -828,14 +828,14 @@ internal sealed class App
                         _clipboardPaths.Clear();
                         _clipboardPaths.AddRange(_markedPaths);
                         _clipboardIsCut = false;
-                        ShowNotification($"Copied {_markedPaths.Count} item(s)", NotificationKind.Info);
+                        ShowNotification($"Copied {_markedPaths.Count} item(s)", NotificationKind.Success);
                     }
                     else if (entries.Count > 0 && _selectedIndex < entries.Count)
                     {
                         _clipboardPaths.Clear();
                         _clipboardPaths.Add(entries[_selectedIndex].FullPath);
                         _clipboardIsCut = false;
-                        ShowNotification($"Copied '{entries[_selectedIndex].Name}'", NotificationKind.Info);
+                        ShowNotification($"Copied '{entries[_selectedIndex].Name}'", NotificationKind.Success);
                     }
 
                     if (OperatingSystem.IsWindows())
@@ -851,14 +851,14 @@ internal sealed class App
                         _clipboardPaths.Clear();
                         _clipboardPaths.AddRange(_markedPaths);
                         _clipboardIsCut = true;
-                        ShowNotification($"Cut {_markedPaths.Count} item(s)", NotificationKind.Info);
+                        ShowNotification($"Cut {_markedPaths.Count} item(s)", NotificationKind.Success);
                     }
                     else if (entries.Count > 0 && _selectedIndex < entries.Count)
                     {
                         _clipboardPaths.Clear();
                         _clipboardPaths.Add(entries[_selectedIndex].FullPath);
                         _clipboardIsCut = true;
-                        ShowNotification($"Cut '{entries[_selectedIndex].Name}'", NotificationKind.Info);
+                        ShowNotification($"Cut '{entries[_selectedIndex].Name}'", NotificationKind.Success);
                     }
 
                     if (OperatingSystem.IsWindows())
@@ -875,7 +875,7 @@ internal sealed class App
 
                         if (SystemClipboard.SetText(pathToCopy))
                         {
-                            ShowNotification("Copied path to clipboard", NotificationKind.Info);
+                            ShowNotification("Copied path to clipboard", NotificationKind.Success);
                         }
                         else
                         {
@@ -900,7 +900,7 @@ internal sealed class App
 
                             if (SystemClipboard.SetText(relativePath))
                             {
-                                ShowNotification("Copied git-relative path to clipboard", NotificationKind.Info);
+                                ShowNotification("Copied git-relative path to clipboard", NotificationKind.Success);
                             }
                             else
                             {
@@ -1950,7 +1950,7 @@ internal sealed class App
                     {
                         if (SystemClipboard.SetText(previewPath))
                         {
-                            ShowNotification("Copied path to clipboard", NotificationKind.Info);
+                            ShowNotification("Copied path to clipboard", NotificationKind.Success);
                         }
                         else
                         {
@@ -1977,7 +1977,7 @@ internal sealed class App
 
                             if (SystemClipboard.SetText(relativePath))
                             {
-                                ShowNotification("Copied git-relative path to clipboard", NotificationKind.Info);
+                                ShowNotification("Copied git-relative path to clipboard", NotificationKind.Success);
                             }
                             else
                             {
@@ -2809,7 +2809,7 @@ internal sealed class App
                     try
                     {
                         Process.Start(new ProcessStartInfo(entry.FullPath) { UseShellExecute = true });
-                        ShowNotification($"Opened '{entry.Name}'", NotificationKind.Info);
+                        ShowNotification($"Opened '{entry.Name}'", NotificationKind.Success);
                     }
                     catch (Exception ex)
                     {
@@ -2916,14 +2916,14 @@ internal sealed class App
                     _clipboardPaths.Clear();
                     _clipboardPaths.AddRange(_markedPaths);
                     _clipboardIsCut = false;
-                    ShowNotification($"Copied {_markedPaths.Count} item(s)", NotificationKind.Info);
+                    ShowNotification($"Copied {_markedPaths.Count} item(s)", NotificationKind.Success);
                 }
                 else if (entries.Count > 0 && _selectedIndex < entries.Count)
                 {
                     _clipboardPaths.Clear();
                     _clipboardPaths.Add(entries[_selectedIndex].FullPath);
                     _clipboardIsCut = false;
-                    ShowNotification($"Copied '{entries[_selectedIndex].Name}'", NotificationKind.Info);
+                    ShowNotification($"Copied '{entries[_selectedIndex].Name}'", NotificationKind.Success);
                 }
 
                 if (OperatingSystem.IsWindows())
@@ -2939,14 +2939,14 @@ internal sealed class App
                     _clipboardPaths.Clear();
                     _clipboardPaths.AddRange(_markedPaths);
                     _clipboardIsCut = true;
-                    ShowNotification($"Cut {_markedPaths.Count} item(s)", NotificationKind.Info);
+                    ShowNotification($"Cut {_markedPaths.Count} item(s)", NotificationKind.Success);
                 }
                 else if (entries.Count > 0 && _selectedIndex < entries.Count)
                 {
                     _clipboardPaths.Clear();
                     _clipboardPaths.Add(entries[_selectedIndex].FullPath);
                     _clipboardIsCut = true;
-                    ShowNotification($"Cut '{entries[_selectedIndex].Name}'", NotificationKind.Info);
+                    ShowNotification($"Cut '{entries[_selectedIndex].Name}'", NotificationKind.Success);
                 }
 
                 if (OperatingSystem.IsWindows())
@@ -2996,7 +2996,7 @@ internal sealed class App
 
                     if (SystemClipboard.SetText(pathToCopy))
                     {
-                        ShowNotification("Copied path to clipboard", NotificationKind.Info);
+                        ShowNotification("Copied path to clipboard", NotificationKind.Success);
                     }
                     else
                     {
@@ -3022,7 +3022,7 @@ internal sealed class App
 
                         if (SystemClipboard.SetText(relativePath))
                         {
-                            ShowNotification("Copied git-relative path to clipboard", NotificationKind.Info);
+                            ShowNotification("Copied git-relative path to clipboard", NotificationKind.Success);
                         }
                         else
                         {
@@ -3260,7 +3260,7 @@ internal sealed class App
                 try
                 {
                     OpenTerminalHere(_currentPath);
-                    ShowNotification("Opened terminal", NotificationKind.Info);
+                    ShowNotification("Opened terminal", NotificationKind.Success);
                 }
                 catch (Exception ex)
                 {
