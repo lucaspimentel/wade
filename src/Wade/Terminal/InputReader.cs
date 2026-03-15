@@ -41,6 +41,7 @@ internal enum AppAction
     CreateSymlink,
     ShowFileFinder,
     ToggleDiffPreview,
+    ToggleHexPreview,
     ShowGitMenu,
 }
 

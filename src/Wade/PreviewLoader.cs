@@ -12,7 +12,6 @@ internal sealed class PreviewLoader
     private bool _imagePreviewsEnabled;
     private bool _glowEnabled;
     private bool _zipPreviewEnabled;
-    private bool _hexPreviewEnabled;
     private bool _pdfPreviewEnabled;
     private int _paneWidthCells;
     private int _paneHeightCells;
@@ -27,13 +26,12 @@ internal sealed class PreviewLoader
     }
 
     public void Configure(bool imagePreviewsEnabled, int paneWidthCells, int paneHeightCells,
-        int cellPixelWidth, int cellPixelHeight, bool glowEnabled, bool zipPreviewEnabled, bool hexPreviewEnabled,
+        int cellPixelWidth, int cellPixelHeight, bool glowEnabled, bool zipPreviewEnabled,
         bool pdfPreviewEnabled)
     {
         _imagePreviewsEnabled = imagePreviewsEnabled;
         _glowEnabled = glowEnabled;
         _zipPreviewEnabled = zipPreviewEnabled;
-        _hexPreviewEnabled = hexPreviewEnabled;
         _pdfPreviewEnabled = pdfPreviewEnabled;
         _paneWidthCells = paneWidthCells;
         _paneHeightCells = paneHeightCells;
@@ -66,14 +64,13 @@ internal sealed class PreviewLoader
         bool imageEnabled = _imagePreviewsEnabled;
         bool glowEnabled = _glowEnabled;
         bool zipEnabled = _zipPreviewEnabled;
-        bool hexEnabled = _hexPreviewEnabled;
         bool pdfEnabled = _pdfPreviewEnabled;
         int paneW = _paneWidthCells;
         int paneH = _paneHeightCells;
         int cellW = _cellPixelWidth;
         int cellH = _cellPixelHeight;
 
-        Task.Run(() => LoadPreview(path, imageEnabled, glowEnabled, zipEnabled, hexEnabled, pdfEnabled, paneW, paneH, cellW, cellH, token), token);
+        Task.Run(() => LoadPreview(path, imageEnabled, glowEnabled, zipEnabled, pdfEnabled, paneW, paneH, cellW, cellH, token), token);
     }
 
     public void BeginLoadDiff(string path, string repoRoot, bool staged)
@@ -86,6 +83,16 @@ internal sealed class PreviewLoader
         Task.Run(() => LoadDiff(path, repoRoot, staged, token), token);
     }
 
+    public void BeginLoadHex(string path)
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+        var token = _cts.Token;
+
+        Task.Run(() => LoadHex(path, token), token);
+    }
+
     public void Cancel()
     {
         _cts?.Cancel();
@@ -93,7 +100,7 @@ internal sealed class PreviewLoader
         _cts = null;
     }
 
-    private void LoadPreview(string path, bool imageEnabled, bool glowEnabled, bool zipEnabled, bool hexEnabled, bool pdfEnabled,
+    private void LoadPreview(string path, bool imageEnabled, bool glowEnabled, bool zipEnabled, bool pdfEnabled,
         int paneW, int paneH, int cellW, int cellH, CancellationToken ct)
     {
         try
@@ -184,23 +191,6 @@ internal sealed class PreviewLoader
                 }
             }
 
-            // Try hex preview for binary files
-            if (hexEnabled && FilePreview.IsBinary(path))
-            {
-                var hexLines = HexPreview.GetPreviewLines(path, ct);
-                if (hexLines is not null)
-                {
-                    if (ct.IsCancellationRequested)
-                    {
-                        return;
-                    }
-
-                    string hexLabel = FilePreview.GetFileTypeLabel(path) ?? "Binary";
-                    _pipeline.Inject(new PreviewReadyEvent(path, hexLines, hexLabel, null, null, IsRendered: true));
-                    return;
-                }
-            }
-
             var rawLines = FilePreview.GetPreviewLines(path, out var metadata);
 
             if (ct.IsCancellationRequested)
@@ -233,6 +223,34 @@ internal sealed class PreviewLoader
             }
 
             _pipeline.Inject(new PreviewReadyEvent(path, styledLines, fileTypeLabel, encoding, lineEnding));
+        }
+        catch (OperationCanceledException)
+        {
+            // Normal cancellation
+        }
+        catch (InvalidOperationException)
+        {
+            // Pipeline disposed / completed adding
+        }
+    }
+
+    private void LoadHex(string path, CancellationToken ct)
+    {
+        try
+        {
+            if (ct.IsCancellationRequested)
+            {
+                return;
+            }
+
+            var hexLines = HexPreview.GetPreviewLines(path, ct);
+            if (hexLines is null || ct.IsCancellationRequested)
+            {
+                return;
+            }
+
+            string hexLabel = FilePreview.GetFileTypeLabel(path) ?? "Binary";
+            _pipeline.Inject(new PreviewReadyEvent(path, hexLines, hexLabel, null, null, IsRendered: true));
         }
         catch (OperationCanceledException)
         {

@@ -87,7 +87,6 @@ internal sealed class App
     private bool _configDateColumn;
     private bool _configGlowMarkdownPreview;
     private bool _configZipPreview;
-    private bool _configHexPreview;
     private bool _configPdfPreview;
     private bool _configCopySymlinksAsLinks;
     private bool _configTerminalTitle;
@@ -121,6 +120,7 @@ internal sealed class App
     private bool _isImagePreview;
     private bool _isRenderedPreview;
     private bool _diffPreviewActive;
+    private bool _hexPreviewActive;
     private bool _sixelPending;
 
     // Terminal capability state
@@ -186,7 +186,7 @@ internal sealed class App
         _layout.Calculate(lastWidth, lastHeight, _config.PreviewPaneEnabled);
         previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
             _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
-            zipPreviewEnabled: _config.ZipPreviewEnabled, hexPreviewEnabled: _config.HexPreviewEnabled,
+            zipPreviewEnabled: _config.ZipPreviewEnabled,
             pdfPreviewEnabled: _config.PdfPreviewEnabled);
 
         UpdateTerminalTitle();
@@ -288,7 +288,7 @@ internal sealed class App
                     var resizePane = _inputMode == InputMode.ExpandedPreview ? _layout.ExpandedPane : _layout.RightPane;
                     previewLoader.Configure(_imagePreviewsEffective, resizePane.Width, resizePane.Height,
                         _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
-            zipPreviewEnabled: _config.ZipPreviewEnabled, hexPreviewEnabled: _config.HexPreviewEnabled,
+            zipPreviewEnabled: _config.ZipPreviewEnabled,
             pdfPreviewEnabled: _config.PdfPreviewEnabled);
                     Console.Write(AnsiCodes.ClearScreen);
 
@@ -1389,6 +1389,7 @@ internal sealed class App
                 if (selected.FullPath != _cachedPreviewPath && selected.FullPath != _pendingPreviewPath)
                 {
                     _diffPreviewActive = false;
+                    _hexPreviewActive = false;
                     _pendingPreviewPath = selected.FullPath;
                     _previewLoading = true;
                     _previewLoader!.BeginLoad(selected.FullPath, selected.IsCloudPlaceholder);
@@ -1585,10 +1586,47 @@ internal sealed class App
         }
 
         _diffPreviewActive = true;
+        _hexPreviewActive = false;
         _pendingPreviewPath = selected.FullPath;
         _previewLoading = true;
         // Prefer unstaged diff when both modified and staged; show staged if only staged
         previewLoader.BeginLoadDiff(selected.FullPath, _currentRepoRoot, staged: !hasModified && hasStaged);
+    }
+
+    private void HandleToggleHexPreview(List<FileSystemEntry> entries, PreviewLoader previewLoader)
+    {
+        if (entries.Count == 0 || _selectedIndex >= entries.Count)
+        {
+            return;
+        }
+
+        var selected = entries[_selectedIndex];
+        if (selected.IsDirectory)
+        {
+            return;
+        }
+
+        // Toggle off: reload normal preview
+        if (_hexPreviewActive)
+        {
+            _hexPreviewActive = false;
+            _pendingPreviewPath = selected.FullPath;
+            _previewLoading = true;
+            previewLoader.BeginLoad(selected.FullPath, selected.IsCloudPlaceholder);
+            return;
+        }
+
+        if (!FilePreview.IsBinary(selected.FullPath))
+        {
+            ShowNotification("Not a binary file", NotificationKind.Info);
+            return;
+        }
+
+        _hexPreviewActive = true;
+        _diffPreviewActive = false;
+        _pendingPreviewPath = selected.FullPath;
+        _previewLoading = true;
+        previewLoader.BeginLoadHex(selected.FullPath);
     }
 
     private void ClearPreviewCache(PreviewLoader loader, ScreenBuffer? buffer = null)
@@ -1615,6 +1653,7 @@ internal sealed class App
         _isImagePreview = false;
         _isRenderedPreview = false;
         _diffPreviewActive = false;
+        _hexPreviewActive = false;
         _sixelPending = false;
 
         if (wasImage)
@@ -1779,7 +1818,7 @@ internal sealed class App
         {
             previewLoader.Configure(_imagePreviewsEffective, _layout.ExpandedPane.Width, _layout.ExpandedPane.Height,
                 _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
-            zipPreviewEnabled: _config.ZipPreviewEnabled, hexPreviewEnabled: _config.HexPreviewEnabled,
+            zipPreviewEnabled: _config.ZipPreviewEnabled,
             pdfPreviewEnabled: _config.PdfPreviewEnabled);
             _cachedSixelData = null;
             _sixelPending = false;
@@ -1798,11 +1837,18 @@ internal sealed class App
             bool staged = !status.HasFlag(GitFileStatus.Modified) && status.HasFlag(GitFileStatus.Staged);
             previewLoader.BeginLoadDiff(_cachedPreviewPath, _currentRepoRoot, staged);
         }
+        else if (_hexPreviewActive && _cachedPreviewPath is not null)
+        {
+            _cachedStyledLines = null;
+            _pendingPreviewPath = _cachedPreviewPath;
+            _previewLoading = true;
+            previewLoader.BeginLoadHex(_cachedPreviewPath);
+        }
         else if (_isRenderedPreview && _cachedPreviewPath is not null)
         {
             previewLoader.Configure(_imagePreviewsEffective, _layout.ExpandedPane.Width, _layout.ExpandedPane.Height,
                 _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
-            zipPreviewEnabled: _config.ZipPreviewEnabled, hexPreviewEnabled: _config.HexPreviewEnabled,
+            zipPreviewEnabled: _config.ZipPreviewEnabled,
             pdfPreviewEnabled: _config.PdfPreviewEnabled);
             _cachedStyledLines = null;
             _pendingPreviewPath = _cachedPreviewPath;
@@ -1820,7 +1866,7 @@ internal sealed class App
 
         previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
             _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
-            zipPreviewEnabled: _config.ZipPreviewEnabled, hexPreviewEnabled: _config.HexPreviewEnabled,
+            zipPreviewEnabled: _config.ZipPreviewEnabled,
             pdfPreviewEnabled: _config.PdfPreviewEnabled);
 
         if (_isImagePreview && _cachedImagePath is not null)
@@ -2587,6 +2633,7 @@ internal sealed class App
             items.Add(("Git menu", "Ctrl+G", AppAction.ShowGitMenu));
         }
 
+        items.Add(("Toggle hex preview", "", AppAction.ToggleHexPreview));
         items.Add(("Toggle hidden files", ".", AppAction.ToggleHiddenFiles));
         items.Add(("Cycle sort mode", "s", AppAction.CycleSortMode));
         items.Add(("Reverse sort direction", "S", AppAction.ToggleSortDirection));
@@ -3191,6 +3238,10 @@ internal sealed class App
                 HandleToggleDiffPreview(GetVisibleEntries(), previewLoader);
                 break;
 
+            case AppAction.ToggleHexPreview:
+                HandleToggleHexPreview(GetVisibleEntries(), previewLoader);
+                break;
+
             case AppAction.ShowGitMenu:
                 ShowGitActionMenu();
                 break;
@@ -3636,7 +3687,6 @@ internal sealed class App
         _configDateColumn = _config.DateColumnEnabled;
         _configGlowMarkdownPreview = _config.GlowMarkdownPreviewEnabled;
         _configZipPreview = _config.ZipPreviewEnabled;
-        _configHexPreview = _config.HexPreviewEnabled;
         _configPdfPreview = _config.PdfPreviewEnabled;
         _configCopySymlinksAsLinks = _config.CopySymlinksAsLinksEnabled;
         _configTerminalTitle = _config.TerminalTitleEnabled;
@@ -3656,7 +3706,7 @@ internal sealed class App
                 break;
 
             case ConsoleKey.DownArrow or ConsoleKey.J:
-                int maxIndex = OperatingSystem.IsWindows() ? 15 : 14;
+                int maxIndex = OperatingSystem.IsWindows() ? 14 : 13;
                 if (_configSelectedIndex < maxIndex)
                 {
                     _configSelectedIndex++;
@@ -3754,18 +3804,11 @@ internal sealed class App
                 }
 
                 break;
-            case 10:
-                if (_configPreviewPane)
-                {
-                    _configHexPreview = !_configHexPreview;
-                }
-
-                break;
-            case 11: _configSizeColumn = !_configSizeColumn; break;
-            case 12: _configDateColumn = !_configDateColumn; break;
-            case 13: _configCopySymlinksAsLinks = !_configCopySymlinksAsLinks; break;
-            case 14: _configTerminalTitle = !_configTerminalTitle; break;
-            case 15: _configGitStatus = !_configGitStatus; break;
+            case 10: _configSizeColumn = !_configSizeColumn; break;
+            case 11: _configDateColumn = !_configDateColumn; break;
+            case 12: _configCopySymlinksAsLinks = !_configCopySymlinksAsLinks; break;
+            case 13: _configTerminalTitle = !_configTerminalTitle; break;
+            case 14: _configGitStatus = !_configGitStatus; break;
         }
     }
 
@@ -3784,7 +3827,6 @@ internal sealed class App
         _config.DateColumnEnabled = _configDateColumn;
         _config.GlowMarkdownPreviewEnabled = _configGlowMarkdownPreview;
         _config.ZipPreviewEnabled = _configZipPreview;
-        _config.HexPreviewEnabled = _configHexPreview;
         _config.PdfPreviewEnabled = _configPdfPreview;
         _config.CopySymlinksAsLinksEnabled = _configCopySymlinksAsLinks;
         _config.TerminalTitleEnabled = _configTerminalTitle;
@@ -3801,7 +3843,7 @@ internal sealed class App
         _layout.Calculate(Console.WindowWidth, Console.WindowHeight, _config.PreviewPaneEnabled);
         previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
             _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
-            zipPreviewEnabled: _config.ZipPreviewEnabled, hexPreviewEnabled: _config.HexPreviewEnabled,
+            zipPreviewEnabled: _config.ZipPreviewEnabled,
             pdfPreviewEnabled: _config.PdfPreviewEnabled);
         UpdateTerminalTitle();
         RefreshGitStatus();
@@ -3870,7 +3912,6 @@ internal sealed class App
         itemList.Add(("    PDF Preview", FormatBool(_configPdfPreview), _configPreviewPane && _configImagePreviews));
         itemList.Add(("  Glow (Markdown)", FormatBool(_configGlowMarkdownPreview), _configPreviewPane && GlowRenderer.IsAvailable));
         itemList.Add(("  Zip Preview", FormatBool(_configZipPreview), _configPreviewPane));
-        itemList.Add(("  Hex (Binary)", FormatBool(_configHexPreview), _configPreviewPane));
         itemList.Add(("Show Size Column", FormatBool(_configSizeColumn), true));
         itemList.Add(("Show Date Column", FormatBool(_configDateColumn), true));
         itemList.Add(("Copy Symlinks as Link", FormatBool(_configCopySymlinksAsLinks), true));

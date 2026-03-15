@@ -33,7 +33,6 @@ public class WadeConfigTests
         Assert.True(config.DateColumnEnabled);
         Assert.True(config.CopySymlinksAsLinksEnabled);
         Assert.True(config.ZipPreviewEnabled);
-        Assert.True(config.HexPreviewEnabled);
         Assert.True(config.PdfPreviewEnabled);
         Assert.True(config.TerminalTitleEnabled);
         Assert.Equal(Directory.GetCurrentDirectory(), config.StartPath);
@@ -79,8 +78,6 @@ public class WadeConfigTests
     [InlineData("copy_symlinks_as_links_enabled", false)]
     [InlineData("zip_preview_enabled", true)]
     [InlineData("zip_preview_enabled", false)]
-    [InlineData("hex_preview_enabled", true)]
-    [InlineData("hex_preview_enabled", false)]
     [InlineData("pdf_preview_enabled", true)]
     [InlineData("pdf_preview_enabled", false)]
     [InlineData("terminal_title_enabled", true)]
@@ -100,7 +97,6 @@ public class WadeConfigTests
                 "date_column_enabled" => config.DateColumnEnabled,
                 "copy_symlinks_as_links_enabled" => config.CopySymlinksAsLinksEnabled,
                 "zip_preview_enabled" => config.ZipPreviewEnabled,
-                "hex_preview_enabled" => config.HexPreviewEnabled,
                 "pdf_preview_enabled" => config.PdfPreviewEnabled,
                 "terminal_title_enabled" => config.TerminalTitleEnabled,
                 _ => throw new ArgumentException($"Unknown key: {key}"),
@@ -397,7 +393,6 @@ public class WadeConfigTests
             original.DateColumnEnabled = false;
             original.CopySymlinksAsLinksEnabled = false;
             original.ZipPreviewEnabled = false;
-            original.HexPreviewEnabled = false;
             original.PdfPreviewEnabled = false;
             original.TerminalTitleEnabled = false;
             original.Save();
@@ -415,7 +410,6 @@ public class WadeConfigTests
             Assert.False(loaded.DateColumnEnabled);
             Assert.False(loaded.CopySymlinksAsLinksEnabled);
             Assert.False(loaded.ZipPreviewEnabled);
-            Assert.False(loaded.HexPreviewEnabled);
             Assert.False(loaded.PdfPreviewEnabled);
             Assert.False(loaded.TerminalTitleEnabled);
         }
