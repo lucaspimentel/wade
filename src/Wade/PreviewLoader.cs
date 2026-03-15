@@ -13,6 +13,7 @@ internal sealed class PreviewLoader
     private bool _glowEnabled;
     private bool _zipPreviewEnabled;
     private bool _hexPreviewEnabled;
+    private bool _pdfPreviewEnabled;
     private int _paneWidthCells;
     private int _paneHeightCells;
     private int _cellPixelWidth = 8;
@@ -26,12 +27,14 @@ internal sealed class PreviewLoader
     }
 
     public void Configure(bool imagePreviewsEnabled, int paneWidthCells, int paneHeightCells,
-        int cellPixelWidth, int cellPixelHeight, bool glowEnabled, bool zipPreviewEnabled, bool hexPreviewEnabled)
+        int cellPixelWidth, int cellPixelHeight, bool glowEnabled, bool zipPreviewEnabled, bool hexPreviewEnabled,
+        bool pdfPreviewEnabled)
     {
         _imagePreviewsEnabled = imagePreviewsEnabled;
         _glowEnabled = glowEnabled;
         _zipPreviewEnabled = zipPreviewEnabled;
         _hexPreviewEnabled = hexPreviewEnabled;
+        _pdfPreviewEnabled = pdfPreviewEnabled;
         _paneWidthCells = paneWidthCells;
         _paneHeightCells = paneHeightCells;
         _cellPixelWidth = cellPixelWidth;
@@ -49,12 +52,13 @@ internal sealed class PreviewLoader
         bool glowEnabled = _glowEnabled;
         bool zipEnabled = _zipPreviewEnabled;
         bool hexEnabled = _hexPreviewEnabled;
+        bool pdfEnabled = _pdfPreviewEnabled;
         int paneW = _paneWidthCells;
         int paneH = _paneHeightCells;
         int cellW = _cellPixelWidth;
         int cellH = _cellPixelHeight;
 
-        Task.Run(() => LoadPreview(path, imageEnabled, glowEnabled, zipEnabled, hexEnabled, paneW, paneH, cellW, cellH, token), token);
+        Task.Run(() => LoadPreview(path, imageEnabled, glowEnabled, zipEnabled, hexEnabled, pdfEnabled, paneW, paneH, cellW, cellH, token), token);
     }
 
     public void Cancel()
@@ -64,8 +68,8 @@ internal sealed class PreviewLoader
         _cts = null;
     }
 
-    private void LoadPreview(string path, bool imageEnabled, bool glowEnabled, bool zipEnabled, bool hexEnabled, int paneW, int paneH,
-        int cellW, int cellH, CancellationToken ct)
+    private void LoadPreview(string path, bool imageEnabled, bool glowEnabled, bool zipEnabled, bool hexEnabled, bool pdfEnabled,
+        int paneW, int paneH, int cellW, int cellH, CancellationToken ct)
     {
         try
         {
@@ -89,6 +93,31 @@ internal sealed class PreviewLoader
                     return;
                 }
                 // Fall through to text/binary preview on failure
+            }
+
+            // Try convert-to-image preview (PDF, etc.)
+            if (imageEnabled && pdfEnabled && ImageConverter.CanConvert(path))
+            {
+                string? tempImagePath = ImageConverter.ConvertToImage(path, ct);
+                if (tempImagePath is not null)
+                {
+                    try
+                    {
+                        var result = ImagePreview.Load(tempImagePath, paneW, paneH, cellW, cellH, ct);
+                        if (result is not null && !ct.IsCancellationRequested)
+                        {
+                            string docExt = Path.GetExtension(path).TrimStart('.').ToUpperInvariant();
+                            string label = $"{docExt} Document (page 1)";
+                            _pipeline.Inject(new ImagePreviewReadyEvent(path, result.SixelData,
+                                result.PixelWidth, result.PixelHeight, label));
+                            return;
+                        }
+                    }
+                    finally
+                    {
+                        try { File.Delete(tempImagePath); } catch { }
+                    }
+                }
             }
 
             // Try glow for markdown files

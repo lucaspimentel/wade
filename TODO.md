@@ -151,15 +151,14 @@ OneDrive and similar cloud sync tools use placeholder files that aren't fully do
 ~~- Apply to both icon and non-icon code paths~~
 ~~- Also consider the symlink suffix path where the target can be truncated~~
 
-### PDF preview
+### PDF preview ✅
 
-Preview PDF files using Sixel image rendering, similar to existing image previews.
+~~Preview PDF files using Sixel image rendering, similar to existing image previews.~~
 
-- Consider shelling out to a PDF-to-image CLI tool (e.g. `mutool draw`, `pdftoppm` from poppler, or `magick` from ImageMagick) to convert the first page to a temporary PNG, then feed it through the existing `ImagePreview.Load()` pipeline
-- Existing image preview flow: `PreviewLoader.cs:75-85` checks `ImagePreview.IsImageFile()`, calls `ImagePreview.Load()`, emits `ImagePreviewReadyEvent`
-- Add a `pdf_previews_enabled` config setting (default: true), following the same pattern as `image_previews_enabled` in `WadeConfig.cs:8`
-- Gated by Sixel capability detection (same as image previews) plus availability of the conversion tool on PATH
-- `.pdf` is already in `FilePreview.s_binaryExtensions` (`src/Wade/FileSystem/FilePreview.cs:17`) — PDF preview should be checked before the binary fallback
+- ~~Shells out to `pdftopng` (xpdf) to convert the first page to a temporary PNG, then feeds it through the existing `ImagePreview.Load()` pipeline~~
+- ~~General-purpose convert-to-image abstraction (`IImageConverter` / `ImageConverter`) that PDF is the first consumer of~~
+- ~~`pdf_preview_enabled` config setting (default: true); effective preview requires image previews enabled + Sixel support + tool available~~
+- ~~Gated by Sixel capability detection (same as image previews) plus availability of `pdftopng` on PATH~~
 
 ### Set terminal title ✅
 

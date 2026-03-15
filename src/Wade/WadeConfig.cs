@@ -18,6 +18,7 @@ internal sealed class WadeConfig
     public bool CopySymlinksAsLinksEnabled { get; set; } = true;
     public bool ZipPreviewEnabled { get; set; } = true;
     public bool HexPreviewEnabled { get; set; } = true;
+    public bool PdfPreviewEnabled { get; set; } = true;
     public bool TerminalTitleEnabled { get; set; } = true;
     public string StartPath { get; set; } = Directory.GetCurrentDirectory();
     public bool ShowConfig { get; set; } = false;
@@ -120,6 +121,9 @@ internal sealed class WadeConfig
                     case "hex_preview_enabled":
                         config.HexPreviewEnabled = ParseBool(value, config.HexPreviewEnabled);
                         break;
+                    case "pdf_preview_enabled":
+                        config.PdfPreviewEnabled = ParseBool(value, config.PdfPreviewEnabled);
+                        break;
                     case "terminal_title_enabled":
                         config.TerminalTitleEnabled = ParseBool(value, config.TerminalTitleEnabled);
                         break;
@@ -212,6 +216,7 @@ internal sealed class WadeConfig
             copy_symlinks_as_links_enabled = {(CopySymlinksAsLinksEnabled ? "true" : "false")}
             zip_preview_enabled = {(ZipPreviewEnabled ? "true" : "false")}
             hex_preview_enabled = {(HexPreviewEnabled ? "true" : "false")}
+            pdf_preview_enabled = {(PdfPreviewEnabled ? "true" : "false")}
             terminal_title_enabled = {(TerminalTitleEnabled ? "true" : "false")}
             """;
 
@@ -237,6 +242,7 @@ internal sealed class WadeConfig
             $"\"copy_symlinks_as_links_enabled\":{(CopySymlinksAsLinksEnabled ? "true" : "false")}," +
             $"\"zip_preview_enabled\":{(ZipPreviewEnabled ? "true" : "false")}," +
             $"\"hex_preview_enabled\":{(HexPreviewEnabled ? "true" : "false")}," +
+            $"\"pdf_preview_enabled\":{(PdfPreviewEnabled ? "true" : "false")}," +
             $"\"terminal_title_enabled\":{(TerminalTitleEnabled ? "true" : "false")}," +
             $"\"start_path\":\"{escapedPath}\"" +
             "}";
