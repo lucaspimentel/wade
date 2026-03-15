@@ -33,6 +33,17 @@ public class GitUtilsTests
         }
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData(null)]
+    [InlineData("C:\\")]
+    [InlineData("D:\\")]
+    public void FindRepoRoot_NoRepoAbovePath_ReturnsNull(string? path)
+    {
+        string? root = GitUtils.FindRepoRoot(path!);
+        Assert.Null(root);
+    }
+
     [Fact]
     public void ReadBranchName_ValidHead_ReturnsBranchName()
     {

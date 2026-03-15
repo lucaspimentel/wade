@@ -21,9 +21,21 @@ internal static class GitUtils
     /// </summary>
     public static string? FindRepoRoot(string path)
     {
-        DirectoryInfo? dir = Directory.Exists(path)
-            ? new DirectoryInfo(path)
-            : new DirectoryInfo(Path.GetDirectoryName(path) ?? path);
+        if (string.IsNullOrEmpty(path))
+        {
+            return null;
+        }
+
+        string? dirPath = Directory.Exists(path)
+            ? path
+            : Path.GetDirectoryName(path);
+
+        if (string.IsNullOrEmpty(dirPath))
+        {
+            return null;
+        }
+
+        var dir = new DirectoryInfo(dirPath);
 
         while (dir is not null)
         {
