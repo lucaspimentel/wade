@@ -663,6 +663,7 @@ internal sealed class App
                     ClearSearchFilter();
                     _directoryContents.InvalidateAll();
                     ClearPreviewCache(previewLoader, buffer);
+                    RefreshGitStatus();
                     buffer.ForceFullRedraw();
                     break;
 
@@ -3050,6 +3051,7 @@ internal sealed class App
                 ClearSearchFilter();
                 _directoryContents.InvalidateAll();
                 ClearPreviewCache(previewLoader, buffer);
+                RefreshGitStatus();
                 buffer.ForceFullRedraw();
                 break;
 
