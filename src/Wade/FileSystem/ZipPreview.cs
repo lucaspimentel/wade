@@ -11,7 +11,9 @@ internal static class ZipPreview
     private static readonly FrozenSet<string> s_zipExtensions =
         new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            ".zip", ".nupkg", ".jar", ".war", ".ear",
+            ".zip", ".nupkg", ".snupkg", ".jar", ".war", ".ear",
+            ".docx", ".xlsx", ".pptx", ".odt", ".ods", ".odp",
+            ".apk", ".vsix", ".whl", ".epub",
         }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     public static bool IsZipFile(string path)

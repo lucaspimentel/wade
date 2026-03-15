@@ -15,7 +15,10 @@ internal static class FilePreview
             // Documents
             ".pdf",
             // Archives
-            ".zip", ".tar", ".gz", ".7z", ".rar", ".nupkg", ".jar", ".war", ".ear",
+            ".zip", ".tar", ".gz", ".7z", ".rar",
+            ".nupkg", ".snupkg", ".jar", ".war", ".ear",
+            ".docx", ".xlsx", ".pptx", ".odt", ".ods", ".odp",
+            ".apk", ".vsix", ".whl", ".epub",
             // Binaries
             ".exe", ".dll", ".so", ".dylib", ".pdb", ".wasm",
         }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
@@ -109,10 +112,21 @@ internal static class FilePreview
             [".gz"] = "Archive",
             [".7z"] = "Archive",
             [".rar"] = "Archive",
-            [".nupkg"] = "Archive",
-            [".jar"] = "Archive",
-            [".war"] = "Archive",
-            [".ear"] = "Archive",
+            [".nupkg"] = "NuGet Package",
+            [".snupkg"] = "NuGet Symbols Package",
+            [".jar"] = "Java Archive",
+            [".war"] = "Java Web Archive",
+            [".ear"] = "Java Enterprise Archive",
+            [".docx"] = "Word Document",
+            [".xlsx"] = "Excel Spreadsheet",
+            [".pptx"] = "PowerPoint",
+            [".odt"] = "OpenDocument Text",
+            [".ods"] = "OpenDocument Spreadsheet",
+            [".odp"] = "OpenDocument Presentation",
+            [".apk"] = "Android Package",
+            [".vsix"] = "VS Extension",
+            [".whl"] = "Python Wheel",
+            [".epub"] = "eBook",
             // Binaries
             [".exe"] = "Executable",
             [".dll"] = "Library",

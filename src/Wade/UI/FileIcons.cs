@@ -104,6 +104,21 @@ internal static class FileIcons
             [".xz"]          = new(0xF1C6),
             [".7z"]          = new(0xF1C6),
             [".rar"]         = new(0xF1C6),
+            [".nupkg"]       = new(0xF1C6),
+            [".snupkg"]      = new(0xF1C6),
+            [".jar"]         = new(0xF1C6),
+            [".war"]         = new(0xF1C6),
+            [".ear"]         = new(0xF1C6),
+            [".docx"]        = new(0xF1C2),  // nf-fa-file_text_o
+            [".xlsx"]        = new(0xF1C3),  // nf-fa-file_excel_o
+            [".pptx"]        = new(0xF1C4),  // nf-fa-file_powerpoint_o
+            [".odt"]         = new(0xF1C2),
+            [".ods"]         = new(0xF1C3),
+            [".odp"]         = new(0xF1C4),
+            [".apk"]         = new(0xF1C6),
+            [".vsix"]        = new(0xF1C6),
+            [".whl"]         = new(0xF1C6),
+            [".epub"]        = new(0xF02D),  // nf-fa-book
 
             // Binaries
             [".exe"]         = new(0xF17A),  // nf-fa-windows

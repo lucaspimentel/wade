@@ -13,9 +13,20 @@ public class ZipPreviewTests
 
     [Theory]
     [InlineData(".nupkg")]
+    [InlineData(".snupkg")]
     [InlineData(".jar")]
     [InlineData(".war")]
     [InlineData(".ear")]
+    [InlineData(".docx")]
+    [InlineData(".xlsx")]
+    [InlineData(".pptx")]
+    [InlineData(".odt")]
+    [InlineData(".ods")]
+    [InlineData(".odp")]
+    [InlineData(".apk")]
+    [InlineData(".vsix")]
+    [InlineData(".whl")]
+    [InlineData(".epub")]
     public void IsZipFile_ZipFormatExtensions_ReturnsTrue(string ext)
     {
         Assert.True(ZipPreview.IsZipFile($"file{ext}"));
