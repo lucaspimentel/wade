@@ -1,6 +1,7 @@
 using Wade.FileSystem;
 using Wade.Highlighting;
 using Wade.Imaging;
+using Wade.Preview;
 using Wade.Terminal;
 
 namespace Wade;
@@ -92,6 +93,16 @@ internal sealed class PreviewLoader
         var token = _cts.Token;
 
         Task.Run(() => LoadHex(path, token), token);
+    }
+
+    public void BeginLoad(string path, IPreviewProvider provider, PreviewContext context)
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+        var token = _cts.Token;
+
+        Task.Run(() => LoadWithProvider(path, provider, context, token), token);
     }
 
     public void Cancel()
@@ -252,6 +263,54 @@ internal sealed class PreviewLoader
 
             string hexLabel = FilePreview.GetFileTypeLabel(path) ?? "Binary";
             _pipeline.Inject(new PreviewReadyEvent(path, hexLines, hexLabel, null, null, IsRendered: true));
+        }
+        catch (OperationCanceledException)
+        {
+            // Normal cancellation
+        }
+        catch (InvalidOperationException)
+        {
+            // Pipeline disposed / completed adding
+        }
+    }
+
+    private void LoadWithProvider(string path, IPreviewProvider provider, PreviewContext context, CancellationToken ct)
+    {
+        try
+        {
+            if (ct.IsCancellationRequested)
+            {
+                return;
+            }
+
+            var result = provider.GetPreview(path, context, ct);
+            if (result is null || ct.IsCancellationRequested)
+            {
+                return;
+            }
+
+            // Inject image event if result has Sixel data
+            if (result.SixelData is not null)
+            {
+                _pipeline.Inject(new ImagePreviewReadyEvent(
+                    path,
+                    result.SixelData,
+                    result.SixelPixelWidth,
+                    result.SixelPixelHeight,
+                    result.FileTypeLabel ?? "Image"));
+            }
+
+            // Inject text event if result has text lines
+            if (result.TextLines is not null)
+            {
+                _pipeline.Inject(new PreviewReadyEvent(
+                    path,
+                    result.TextLines,
+                    result.FileTypeLabel,
+                    result.Encoding,
+                    result.LineEnding,
+                    result.IsRendered));
+            }
         }
         catch (OperationCanceledException)
         {
