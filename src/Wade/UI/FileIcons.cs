@@ -120,11 +120,6 @@ internal static class FileIcons
             return DriveIcon;
         }
 
-        if (entry.IsCloudPlaceholder)
-        {
-            return CloudIcon;
-        }
-
         if (entry.IsSymlink)
         {
             return entry.IsDirectory ? SymlinkDirIcon : SymlinkFileIcon;
@@ -156,6 +151,8 @@ internal static class FileIcons
 
         return FileIcon;
     }
+
+    public static Rune GetCloudIcon() => CloudIcon;
 
     private static readonly Rune GitModifiedIcon  = new(0xF06D7);  // nf-oct-diff_modified
     private static readonly Rune GitStagedIcon    = new(0xF06D3);  // nf-oct-diff_added

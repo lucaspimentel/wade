@@ -78,11 +78,9 @@ internal static class PropertiesOverlay
                 ? "Broken Symlink"
                 : entry.IsSymlink
                     ? (entry.IsDirectory ? "Symlink \u2192 Directory" : "Symlink \u2192 File")
-                    : entry.IsCloudPlaceholder
-                        ? (entry.IsDirectory ? "Cloud placeholder (Directory)" : "Cloud placeholder (File)")
-                        : entry.IsDirectory
-                            ? "Directory"
-                            : "File";
+                    : entry.IsDirectory
+                        ? "Directory"
+                        : "File";
 
         string target = entry.LinkTarget ?? "\u2014";
 
@@ -137,6 +135,13 @@ internal static class PropertiesOverlay
             accessed = "N/A";
             attributes = "N/A";
             readOnly = false;
+        }
+
+        if (entry.IsCloudPlaceholder)
+        {
+            attributes = attributes == "Normal"
+                ? "Cloud file"
+                : $"Cloud file, {attributes}";
         }
 
         string modified = FormatDateTime(entry.LastModified);

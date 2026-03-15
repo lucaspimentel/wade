@@ -19,17 +19,25 @@ public class CloudPlaceholderTests
             LinkTarget: null, IsBrokenSymlink: false, IsDrive: false, IsCloudPlaceholder: false);
 
     [Fact]
-    public void GetIcon_ReturnsCloudIcon_ForPlaceholderFile()
+    public void GetIcon_ReturnsOriginalIcon_ForPlaceholderFile()
     {
+        // Cloud placeholders keep their original file type icon
         var icon = FileIcons.GetIcon(PlaceholderFile("document.docx"));
-        Assert.Equal(new Rune(0xF0163), icon);
+        // docx has no special icon, should return the generic file icon
+        Assert.Equal(new Rune(0xF15B), icon);
     }
 
     [Fact]
-    public void GetIcon_ReturnsCloudIcon_ForPlaceholderDirectory()
+    public void GetIcon_ReturnsFolderIcon_ForPlaceholderDirectory()
     {
         var icon = FileIcons.GetIcon(PlaceholderDir("Photos"));
-        Assert.Equal(new Rune(0xF0163), icon);
+        Assert.Equal(new Rune(0xF114), icon);
+    }
+
+    [Fact]
+    public void GetCloudIcon_ReturnsCloudIcon()
+    {
+        Assert.Equal(new Rune(0xF0163), FileIcons.GetCloudIcon());
     }
 
     [Fact]

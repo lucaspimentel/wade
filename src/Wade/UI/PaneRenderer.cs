@@ -146,7 +146,17 @@ internal static class PaneRenderer
             }
         }
 
-        int statusColWidth = gitStatuses is not null ? StatusColWidth : 0;
+        bool hasCloudEntries = false;
+        for (int i = 0; i < entries.Count; i++)
+        {
+            if (entries[i].IsCloudPlaceholder)
+            {
+                hasCloudEntries = true;
+                break;
+            }
+        }
+
+        int statusColWidth = (gitStatuses is not null || hasCloudEntries) ? StatusColWidth : 0;
         int nameWidth = pane.Width - detailWidth - statusColWidth;
 
         Span<char> sizeBuf = stackalloc char[SizeWidth];
@@ -293,11 +303,19 @@ internal static class PaneRenderer
                 }
             }
 
-            // Status column (git status icon between name and size)
-            if (statusColWidth > 0 && gitStatus != GitFileStatus.None)
+            // Status column (git status or cloud icon between name and size)
+            if (statusColWidth > 0)
             {
-                var gitIconStyle = isSelected ? style : GetGitIconStyle(gitStatus, isMarked);
-                buffer.Put(screenRow, entryCol + nameWidth, FileIcons.GetGitStatusIcon(gitStatus), gitIconStyle);
+                if (gitStatus != GitFileStatus.None)
+                {
+                    var gitIconStyle = isSelected ? style : GetGitIconStyle(gitStatus, isMarked);
+                    buffer.Put(screenRow, entryCol + nameWidth, FileIcons.GetGitStatusIcon(gitStatus), gitIconStyle);
+                }
+                else if (entry.IsCloudPlaceholder)
+                {
+                    var cloudIconStyle = isSelected ? style : new CellStyle(CloudPlaceholderColor, isMarked ? MarkedBg : null);
+                    buffer.Put(screenRow, entryCol + nameWidth, FileIcons.GetCloudIcon(), cloudIconStyle);
+                }
             }
 
             // Render detail columns (right-aligned from pane edge)
