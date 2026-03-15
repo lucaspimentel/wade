@@ -94,51 +94,14 @@ Refactor the preview pane from a hardcoded fallback chain into a generic provide
 
 See plan: `.claude/plans/buzzing-gathering-rain.md`
 
-#### Task 1: Define IPreviewProvider interface and PreviewResult
-
-Create `src/Wade/Preview/IPreviewProvider.cs` with `IPreviewProvider` interface, `PreviewContext` record, and `PreviewResult` record. A `PreviewResult` can carry text lines, Sixel image data, or both. No dependencies on other tasks.
-
-#### Task 2: Implement preview providers
-
-Create `src/Wade/Preview/PreviewProviders.cs` with provider implementations that wrap existing static methods: `ImagePreviewProvider`, `PdfPreviewProvider`, `GlowMarkdownPreviewProvider`, `ZipContentsPreviewProvider`, `TextPreviewProvider`, `HexPreviewProvider`, `DiffPreviewProvider`. Each is a thin wrapper around existing code (`ImagePreview.Load()`, `ZipPreview.GetPreviewLines()`, etc.).
-
-Depends on: Task 1
-
-#### Task 3: Create PreviewProviderRegistry
-
-Create `src/Wade/Preview/PreviewProviderRegistry.cs` with static ordered list of all providers and `GetApplicableProviders(path, context)` method. Providers ordered by specificity (most specific first).
-
-Depends on: Task 2
-
-#### Task 4: Refactor PreviewLoader to use providers
-
-Replace the hardcoded fallback chain in `PreviewLoader.LoadPreview()` with provider dispatch. `BeginLoad()` accepts a provider (or index). Remove `BeginLoadDiff()` and `BeginLoadHex()` — these become provider calls.
-
-Depends on: Task 3
-
-#### Task 5: Replace toggle state with provider index in App.cs
-
-Replace `_diffPreviewActive` / `_hexPreviewActive` booleans with `_activeProviderIndex` (int) and `_applicableProviders` (list). Update `ClearPreviewCache()` and file selection change logic. Wire up `HandleSelectPreviewProvider(int index)`. Update `AppAction` enum (remove `ToggleDiffPreview`/`ToggleHexPreview`, add `SelectPreviewProvider`).
-
-Depends on: Task 4
-
-#### Task 6: Action palette submenu system
-
-Add generic submenu support to the action palette. Refactor from flat item list to a stack-based `ActionMenuLevel` model. Items can either dispatch an action or open a submenu. Enter on submenu → push level; Escape → pop level (or close if at root). Show title/breadcrumb for current level.
-
-Depends on: nothing (can be done in parallel with Tasks 1-5, but must be integrated with Task 7)
-
-#### Task 7: "Change preview" submenu
-
-Add "Change preview" entry to action palette that opens a submenu listing applicable preview providers with the active one highlighted. Selecting a provider dispatches `SelectPreviewProvider`.
-
-Depends on: Task 5, Task 6
-
-#### Task 8: Combined text+image preview rendering
-
-Update rendering code to handle `PreviewResult` with both text and image. Text renders in top portion of pane, image fills remaining space below. Update Sixel cursor positioning for the offset.
-
-Depends on: Task 5
+#### ~~Task 1: Define IPreviewProvider interface and PreviewResult~~ ✅
+#### ~~Task 2: Implement preview providers~~ ✅
+#### ~~Task 3: Create PreviewProviderRegistry~~ ✅
+#### ~~Task 4: Refactor PreviewLoader to use providers~~ ✅
+#### ~~Task 5: Replace toggle state with provider index in App.cs~~ ✅
+#### ~~Task 6: Action palette submenu system~~ ✅
+#### ~~Task 7: "Change preview" submenu~~ ✅
+#### ~~Task 8: Combined text+image preview rendering~~ ✅
 
 #### Future: Format-specific preview providers
 

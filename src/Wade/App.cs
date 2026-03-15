@@ -121,6 +121,8 @@ internal sealed class App
     private int _activeProviderIndex;
     private List<IPreviewProvider>? _applicableProviders;
     private PreviewContext? _activePreviewContext;
+    private bool _isCombinedPreview;
+    private int _sixelImageTop;
     private bool _sixelPending;
 
     // Terminal capability state
@@ -215,10 +217,10 @@ internal sealed class App
             {
                 _sixelPending = false;
                 var sixelPane = _inputMode == InputMode.ExpandedPreview ? _layout.ExpandedPane : _layout.RightPane;
-                int cursorRow = sixelPane.Top;
+                int cursorRow = _isCombinedPreview ? _sixelImageTop : sixelPane.Top;
                 int cursorCol = sixelPane.Left;
 
-                if (_inputMode == InputMode.ExpandedPreview && _cachedImagePixelWidth > 0 && _cachedImagePixelHeight > 0)
+                if (!_isCombinedPreview && _inputMode == InputMode.ExpandedPreview && _cachedImagePixelWidth > 0 && _cachedImagePixelHeight > 0)
                 {
                     (cursorRow, cursorCol) = sixelPane.CenterContent(_cachedImagePixelWidth / _cellPixelWidth, _cachedImagePixelHeight / _cellPixelHeight);
                 }
@@ -237,6 +239,15 @@ internal sealed class App
                 {
                     bool wasImage = _isImagePreview;
                     HandlePreviewReady(previewReady);
+                    if (wasImage)
+                    {
+                        buffer.ForceFullRedraw();
+                    }
+                }
+                else if (extra is CombinedPreviewReadyEvent combinedPreviewReady)
+                {
+                    bool wasImage = _isImagePreview;
+                    HandleCombinedPreviewReady(combinedPreviewReady);
                     if (wasImage)
                     {
                         buffer.ForceFullRedraw();
@@ -313,6 +324,18 @@ internal sealed class App
             {
                 bool wasImage = _isImagePreview;
                 HandlePreviewReady(previewEvt);
+                if (wasImage)
+                {
+                    buffer.ForceFullRedraw();
+                }
+
+                continue;
+            }
+
+            if (inputEvent is CombinedPreviewReadyEvent combinedEvt)
+            {
+                bool wasImage = _isImagePreview;
+                HandleCombinedPreviewReady(combinedEvt);
                 if (wasImage)
                 {
                     buffer.ForceFullRedraw();
@@ -1022,6 +1045,10 @@ internal sealed class App
                 {
                     PaneRenderer.RenderMessage(buffer, _layout.RightPane, "[loading\u2026]");
                 }
+                else if (_isCombinedPreview && _cachedStyledLines is not null && _cachedSixelData is not null)
+                {
+                    RenderCombinedPreview(buffer, _layout.RightPane);
+                }
                 else if (_isImagePreview && _cachedSixelData is not null)
                 {
                     // Fill right pane with spaces so ScreenBuffer claims the area
@@ -1115,6 +1142,7 @@ internal sealed class App
         _cachedPreviewLineEnding = evt.LineEnding;
         _previewLoading = false;
         _isImagePreview = false;
+        _isCombinedPreview = false;
         _isRenderedPreview = evt.IsRendered;
         _cachedSixelData = null;
         _cachedImagePath = null;
@@ -1137,6 +1165,29 @@ internal sealed class App
         _cachedPreviewLineEnding = null;
         _cachedStyledLines = null;
         _isImagePreview = true;
+        _isCombinedPreview = false;
+        _previewLoading = false;
+    }
+
+    private void HandleCombinedPreviewReady(CombinedPreviewReadyEvent evt)
+    {
+        if (evt.Path != _pendingPreviewPath)
+        {
+            return;
+        }
+
+        _cachedPreviewPath = evt.Path;
+        _cachedImagePath = evt.Path;
+        _cachedStyledLines = evt.StyledLines;
+        _cachedSixelData = evt.SixelData;
+        _cachedImagePixelWidth = evt.PixelWidth;
+        _cachedImagePixelHeight = evt.PixelHeight;
+        _cachedPreviewFileTypeLabel = evt.FileTypeLabel;
+        _cachedPreviewEncoding = evt.Encoding;
+        _cachedPreviewLineEnding = evt.LineEnding;
+        _isImagePreview = false;
+        _isCombinedPreview = true;
+        _isRenderedPreview = evt.IsRendered;
         _previewLoading = false;
     }
 
@@ -1319,6 +1370,7 @@ internal sealed class App
         _cachedImagePixelWidth = 0;
         _cachedImagePixelHeight = 0;
         _isImagePreview = false;
+        _isCombinedPreview = false;
         _isRenderedPreview = false;
         _activeProviderIndex = 0;
         _applicableProviders = null;
@@ -1644,6 +1696,27 @@ internal sealed class App
         }
     }
 
+    private void RenderCombinedPreview(ScreenBuffer buffer, Rect pane)
+    {
+        // Split pane: text at top, image below
+        int textRows = Math.Min(_cachedStyledLines!.Length, pane.Height / 2);
+        textRows = Math.Max(textRows, 1);
+        int imageRows = pane.Height - textRows;
+
+        var textRect = new Rect(pane.Left, pane.Top, pane.Width, textRows);
+        PaneRenderer.RenderPreview(buffer, textRect, _cachedStyledLines, showLineNumbers: !_isRenderedPreview);
+
+        // Fill image area with spaces for Sixel rendering
+        int imageTop = pane.Top + textRows;
+        for (int row = imageTop; row < pane.Bottom; row++)
+        {
+            buffer.FillRow(row, pane.Left, pane.Width, ' ', CellStyle.Default);
+        }
+
+        _sixelImageTop = imageTop;
+        _sixelPending = true;
+    }
+
     private void RenderExpandedPreview(ScreenBuffer buffer, int width, int height)
     {
         var pane = _layout.ExpandedPane;
@@ -1651,6 +1724,10 @@ internal sealed class App
         if (_previewLoading)
         {
             PaneRenderer.RenderMessage(buffer, pane, "[loading\u2026]");
+        }
+        else if (_isCombinedPreview && _cachedStyledLines is not null && _cachedSixelData is not null)
+        {
+            RenderCombinedPreview(buffer, pane);
         }
         else if (_isImagePreview && _cachedSixelData is not null)
         {
@@ -1666,7 +1743,7 @@ internal sealed class App
             PaneRenderer.RenderPreview(buffer, pane, _cachedStyledLines, _expandedPreviewScrollOffset, showLineNumbers: !_isRenderedPreview);
         }
 
-        // Status bar
+        // Status bar (expanded preview)
         var entries = GetVisibleEntries();
         FileSystemEntry? selectedEntry = entries.Count > 0 && _selectedIndex < entries.Count
             ? entries[_selectedIndex]

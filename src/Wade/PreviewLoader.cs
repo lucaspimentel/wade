@@ -289,8 +289,21 @@ internal sealed class PreviewLoader
                 return;
             }
 
-            // Inject image event if result has Sixel data
-            if (result.SixelData is not null)
+            // Inject combined event if result has both text and image
+            if (result.SixelData is not null && result.TextLines is not null)
+            {
+                _pipeline.Inject(new CombinedPreviewReadyEvent(
+                    path,
+                    result.TextLines,
+                    result.SixelData,
+                    result.SixelPixelWidth,
+                    result.SixelPixelHeight,
+                    result.FileTypeLabel,
+                    result.Encoding,
+                    result.LineEnding,
+                    result.IsRendered));
+            }
+            else if (result.SixelData is not null)
             {
                 _pipeline.Inject(new ImagePreviewReadyEvent(
                     path,
@@ -299,9 +312,7 @@ internal sealed class PreviewLoader
                     result.SixelPixelHeight,
                     result.FileTypeLabel ?? "Image"));
             }
-
-            // Inject text event if result has text lines
-            if (result.TextLines is not null)
+            else if (result.TextLines is not null)
             {
                 _pipeline.Inject(new PreviewReadyEvent(
                     path,

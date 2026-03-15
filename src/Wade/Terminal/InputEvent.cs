@@ -31,6 +31,17 @@ internal sealed record ImagePreviewReadyEvent(
     int PixelHeight,
     string FileTypeLabel) : InputEvent;
 
+internal sealed record CombinedPreviewReadyEvent(
+    string Path,
+    StyledLine[] StyledLines,
+    string SixelData,
+    int PixelWidth,
+    int PixelHeight,
+    string? FileTypeLabel,
+    string? Encoding,
+    string? LineEnding,
+    bool IsRendered = false) : InputEvent;
+
 internal sealed record DirectorySizeReadyEvent(string Path, long TotalBytes) : InputEvent;
 
 internal sealed record FileFinderScanCompleteEvent(string BasePath, List<FileSystemEntry> Entries) : InputEvent;
