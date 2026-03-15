@@ -47,6 +47,11 @@ internal enum AppAction
     StageAll,
     UnstageAll,
     GitCommit,
+    GitPush,
+    GitPushForceWithLease,
+    GitPull,
+    GitPullRebase,
+    GitFetch,
 }
 
 internal static class InputReader

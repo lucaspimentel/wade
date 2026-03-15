@@ -96,6 +96,7 @@ internal sealed class App
     private GitActionRunner? _gitActionRunner;
     private string? _currentRepoRoot;
     private string? _currentBranchName;
+    private string? _aheadBehindText;
     private Dictionary<string, GitFileStatus>? _gitStatuses;
 
     // Directory size calculation state
@@ -1058,7 +1059,7 @@ internal sealed class App
             ? entries[_selectedIndex]
             : null;
         string displayPath = _currentPath == DirectoryContents.DrivesPath ? "Drives" : _currentPath;
-        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count, _directoryContents.SortMode, _directoryContents.SortAscending, _clipboardPaths.Count, _clipboardIsCut, _currentBranchName);
+        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count, _directoryContents.SortMode, _directoryContents.SortAscending, _clipboardPaths.Count, _clipboardIsCut, _currentBranchName, _aheadBehindText);
 
         // Help overlay
         if (_inputMode == InputMode.Help)
@@ -1173,6 +1174,27 @@ internal sealed class App
 
         _currentBranchName = evt.BranchName;
         _gitStatuses = evt.Statuses;
+        _aheadBehindText = FormatAheadBehind(evt.AheadCount, evt.BehindCount);
+    }
+
+    private static string? FormatAheadBehind(int ahead, int behind)
+    {
+        if (ahead == 0 && behind == 0)
+        {
+            return null;
+        }
+
+        if (ahead > 0 && behind > 0)
+        {
+            return $" \u2191{ahead} \u2193{behind}";
+        }
+
+        if (ahead > 0)
+        {
+            return $" \u2191{ahead}";
+        }
+
+        return $" \u2193{behind}";
     }
 
     private bool HasStatusInSelection(GitFileStatus statusMask)
@@ -1730,7 +1752,7 @@ internal sealed class App
             displayPath = "Drives";
         }
 
-        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count, _directoryContents.SortMode, _directoryContents.SortAscending, _clipboardPaths.Count, _clipboardIsCut, _currentBranchName);
+        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count, _directoryContents.SortMode, _directoryContents.SortAscending, _clipboardPaths.Count, _clipboardIsCut, _currentBranchName, _aheadBehindText);
     }
 
     // ── Modal input handlers ────────────────────────────────────────────────
@@ -2362,6 +2384,12 @@ internal sealed class App
                     items.Add(("Git: Commit", "", AppAction.GitCommit));
                 }
             }
+
+            items.Add(("Git: Push", "", AppAction.GitPush));
+            items.Add(("Git: Push (force with lease)", "", AppAction.GitPushForceWithLease));
+            items.Add(("Git: Pull", "", AppAction.GitPull));
+            items.Add(("Git: Pull (rebase)", "", AppAction.GitPullRebase));
+            items.Add(("Git: Fetch", "", AppAction.GitFetch));
         }
 
         return items.ToArray();
@@ -3112,6 +3140,46 @@ internal sealed class App
 
                         _gitActionRunner?.RunCommit(_currentRepoRoot, trimmed);
                     });
+                }
+
+                break;
+
+            case AppAction.GitPush:
+                if (_currentRepoRoot is not null)
+                {
+                    _gitActionRunner?.RunPush(_currentRepoRoot);
+                }
+
+                break;
+
+            case AppAction.GitPushForceWithLease:
+                if (_currentRepoRoot is not null)
+                {
+                    _gitActionRunner?.RunPushForceWithLease(_currentRepoRoot);
+                }
+
+                break;
+
+            case AppAction.GitPull:
+                if (_currentRepoRoot is not null)
+                {
+                    _gitActionRunner?.RunPull(_currentRepoRoot);
+                }
+
+                break;
+
+            case AppAction.GitPullRebase:
+                if (_currentRepoRoot is not null)
+                {
+                    _gitActionRunner?.RunPullRebase(_currentRepoRoot);
+                }
+
+                break;
+
+            case AppAction.GitFetch:
+                if (_currentRepoRoot is not null)
+                {
+                    _gitActionRunner?.RunFetch(_currentRepoRoot);
                 }
 
                 break;

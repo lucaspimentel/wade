@@ -28,7 +28,8 @@ internal static class StatusBar
         bool sortAscending = true,
         int clipboardCount = 0,
         bool clipboardIsCut = false,
-        string? branchName = null)
+        string? branchName = null,
+        string? aheadBehind = null)
     {
         // Fill background
         var bgStyle = new CellStyle(StatusFg, StatusBg);
@@ -61,6 +62,15 @@ internal static class StatusBar
                 int total = 4 + maxBranch;
                 infoCol += total;
                 infoMaxWidth -= total;
+            }
+
+            // Ahead/behind counts (after branch name)
+            if (aheadBehind is not null && infoMaxWidth > aheadBehind.Length)
+            {
+                var abStyle = new CellStyle(new Color(140, 140, 160), StatusBg, Dim: true);
+                buffer.WriteString(rect.Top, infoCol, aheadBehind, abStyle, infoMaxWidth);
+                infoCol += Math.Min(aheadBehind.Length, infoMaxWidth);
+                infoMaxWidth -= Math.Min(aheadBehind.Length, infoMaxWidth);
             }
         }
 

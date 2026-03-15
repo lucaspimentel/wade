@@ -38,7 +38,9 @@ internal sealed record FileFinderScanCompleteEvent(string BasePath, List<FileSys
 internal sealed record GitStatusReadyEvent(
     string RepoRoot,
     string? BranchName,
-    Dictionary<string, GitFileStatus>? Statuses) : InputEvent;
+    Dictionary<string, GitFileStatus>? Statuses,
+    int AheadCount = 0,
+    int BehindCount = 0) : InputEvent;
 
 internal sealed record GitActionCompleteEvent(bool Success, string? ErrorMessage) : InputEvent;
 

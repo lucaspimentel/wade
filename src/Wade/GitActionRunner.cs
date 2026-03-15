@@ -40,6 +40,31 @@ internal sealed class GitActionRunner
         StartAction(ct => GitUtils.Commit(repoRoot, message, ct));
     }
 
+    public void RunPush(string repoRoot)
+    {
+        StartAction(ct => GitUtils.Push(repoRoot, ct));
+    }
+
+    public void RunPushForceWithLease(string repoRoot)
+    {
+        StartAction(ct => GitUtils.PushForceWithLease(repoRoot, ct));
+    }
+
+    public void RunPull(string repoRoot)
+    {
+        StartAction(ct => GitUtils.Pull(repoRoot, ct));
+    }
+
+    public void RunPullRebase(string repoRoot)
+    {
+        StartAction(ct => GitUtils.PullRebase(repoRoot, ct));
+    }
+
+    public void RunFetch(string repoRoot)
+    {
+        StartAction(ct => GitUtils.Fetch(repoRoot, ct));
+    }
+
     public void Cancel()
     {
         _cts?.Cancel();

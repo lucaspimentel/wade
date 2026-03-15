@@ -754,6 +754,176 @@ public class GitUtilsTests
     }
 
     [Fact]
+    public void Push_NoRemote_Fails()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            RunGit(tempDir, "init");
+            RunGit(tempDir, "config user.email test@test.com");
+            RunGit(tempDir, "config user.name Test");
+            File.WriteAllText(Path.Combine(tempDir, "test.txt"), "content\n");
+            RunGit(tempDir, "add .");
+            RunGit(tempDir, "commit -m initial");
+
+            var result = GitUtils.Push(tempDir, CancellationToken.None);
+            Assert.False(result.Success);
+        }
+        finally
+        {
+            ForceDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void PushForceWithLease_NoRemote_Fails()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            RunGit(tempDir, "init");
+            RunGit(tempDir, "config user.email test@test.com");
+            RunGit(tempDir, "config user.name Test");
+            File.WriteAllText(Path.Combine(tempDir, "test.txt"), "content\n");
+            RunGit(tempDir, "add .");
+            RunGit(tempDir, "commit -m initial");
+
+            var result = GitUtils.PushForceWithLease(tempDir, CancellationToken.None);
+            Assert.False(result.Success);
+        }
+        finally
+        {
+            ForceDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void Pull_NoRemote_Fails()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            RunGit(tempDir, "init");
+
+            var result = GitUtils.Pull(tempDir, CancellationToken.None);
+            Assert.False(result.Success);
+        }
+        finally
+        {
+            ForceDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void PullRebase_NoRemote_Fails()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            RunGit(tempDir, "init");
+
+            var result = GitUtils.PullRebase(tempDir, CancellationToken.None);
+            Assert.False(result.Success);
+        }
+        finally
+        {
+            ForceDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void Fetch_NoRemote_Succeeds()
+    {
+        // git fetch with no remote configured succeeds (no-op)
+        string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            RunGit(tempDir, "init");
+
+            var result = GitUtils.Fetch(tempDir, CancellationToken.None);
+            Assert.True(result.Success);
+        }
+        finally
+        {
+            ForceDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void GetAheadBehind_NoUpstream_ReturnsNull()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            RunGit(tempDir, "init");
+            RunGit(tempDir, "config user.email test@test.com");
+            RunGit(tempDir, "config user.name Test");
+            File.WriteAllText(Path.Combine(tempDir, "test.txt"), "content\n");
+            RunGit(tempDir, "add .");
+            RunGit(tempDir, "commit -m initial");
+
+            var result = GitUtils.GetAheadBehind(tempDir, CancellationToken.None);
+            Assert.Null(result);
+        }
+        finally
+        {
+            ForceDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void GetAheadBehind_WithUpstream_ReturnsCounts()
+    {
+        string remoteDir = Path.Combine(Path.GetTempPath(), "wade-test-remote-" + Guid.NewGuid().ToString("N"));
+        string localDir = Path.Combine(Path.GetTempPath(), "wade-test-local-" + Guid.NewGuid().ToString("N"));
+
+        try
+        {
+            // Create a bare remote
+            Directory.CreateDirectory(remoteDir);
+            RunGit(remoteDir, "init --bare");
+
+            // Clone it
+            RunGit(Path.GetTempPath(), $"clone \"{remoteDir}\" \"{localDir}\"");
+            RunGit(localDir, "config user.email test@test.com");
+            RunGit(localDir, "config user.name Test");
+
+            // Create initial commit and push
+            File.WriteAllText(Path.Combine(localDir, "test.txt"), "content\n");
+            RunGit(localDir, "add .");
+            RunGit(localDir, "commit -m initial");
+            RunGit(localDir, "push");
+
+            // Make a local commit (ahead by 1)
+            File.WriteAllText(Path.Combine(localDir, "test.txt"), "modified\n");
+            RunGit(localDir, "add .");
+            RunGit(localDir, "commit -m local");
+
+            var result = GitUtils.GetAheadBehind(localDir, CancellationToken.None);
+            Assert.NotNull(result);
+            Assert.Equal(1, result.Value.Ahead);
+            Assert.Equal(0, result.Value.Behind);
+        }
+        finally
+        {
+            ForceDeleteDirectory(localDir);
+            ForceDeleteDirectory(remoteDir);
+        }
+    }
+
+    [Fact]
     public void RunGitCommand_InvalidCommand_ReturnsFailure()
     {
         string? repoRoot = GitUtils.FindRepoRoot(AppContext.BaseDirectory);

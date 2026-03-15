@@ -49,13 +49,9 @@ Added "Git: Unstage all" action palette entry via `git reset HEAD`. Mirrors "Git
 
 Implemented "Git: Commit" action palette entry. Uses existing TextInput dialog for commit message input. Only shown when staged changes exist. Async via GitActionRunner, status auto-refreshes after commit.
 
-#### Phase 2c: Push / Pull
+#### ~~Phase 2c: Push / Pull / Fetch~~ ✅
 
-- Push to remote (`git push`) and pull from remote (`git pull`)
-- Network operations — may block on auth; use 30s timeout with kill
-- Display stderr as error message for auth/network failures
-- Action palette entries only (no direct key bindings)
-- Key files: `GitUtils.cs` (`Push`/`Pull` methods), `App.cs`
+Implemented "Git: Push", "Git: Push (force with lease)", "Git: Pull", "Git: Pull (rebase)", and "Git: Fetch" action palette entries. 30s timeout for network operations. Ahead/behind commit counts shown in status bar next to branch name.
 
 #### Completed
 
@@ -64,6 +60,7 @@ Implemented "Git: Commit" action palette entry. Uses existing TextInput dialog f
 - Git action menu (`Ctrl+G`) ✅
 - Phase 2a: Stage / Unstage ✅
 - Phase 2b: Commit ✅
+- Phase 2c: Push / Pull / Fetch ✅
 
 ### Drive type detection
 
@@ -102,7 +99,7 @@ Git actions are integrated into the global action palette (`Ctrl+P`), prefixed w
 - Diff preview toggle ✅
 - Stage / Unstage (Phase 2a) ✅
 - Commit with message (Phase 2b) ✅
-- Push / Pull (Phase 2c)
+- Push / Push force-with-lease / Pull / Pull rebase / Fetch (Phase 2c) ✅
 
 #### Completed
 
@@ -110,3 +107,5 @@ Git actions are integrated into the global action palette (`Ctrl+P`), prefixed w
 - Diff preview toggle as "Git: Toggle diff preview" (only shown for modified/staged files) ✅
 - Stage / Unstage via "Git: Stage", "Git: Unstage", "Git: Stage all changes" ✅
 - Commit via "Git: Commit" with TextInput message dialog ✅
+- Push / Pull / Fetch via "Git: Push", "Git: Push (force with lease)", "Git: Pull", "Git: Pull (rebase)", "Git: Fetch" ✅
+- Ahead/behind commit counts displayed in status bar next to branch name ✅

@@ -50,7 +50,16 @@ internal sealed class GitStatusLoader
                 return;
             }
 
-            _pipeline.Inject(new GitStatusReadyEvent(repoRoot, branch, statuses));
+            var aheadBehind = GitUtils.GetAheadBehind(repoRoot, ct);
+            int ahead = aheadBehind?.Ahead ?? 0;
+            int behind = aheadBehind?.Behind ?? 0;
+
+            if (ct.IsCancellationRequested)
+            {
+                return;
+            }
+
+            _pipeline.Inject(new GitStatusReadyEvent(repoRoot, branch, statuses, ahead, behind));
         }
         catch (OperationCanceledException)
         {

@@ -202,6 +202,99 @@ internal static class GitUtils
     public static (bool Success, string? Error) Commit(string repoRoot, string message, CancellationToken ct) =>
         RunGitCommand(repoRoot, $"commit -m \"{EscapeCommitMessage(message)}\"", ct);
 
+    /// <summary>
+    /// Pushes to the remote via <c>git push</c>.
+    /// </summary>
+    public static (bool Success, string? Error) Push(string repoRoot, CancellationToken ct) =>
+        RunGitCommand(repoRoot, "push", ct, timeoutMs: 30_000);
+
+    /// <summary>
+    /// Force-pushes to the remote via <c>git push --force-with-lease</c>.
+    /// </summary>
+    public static (bool Success, string? Error) PushForceWithLease(string repoRoot, CancellationToken ct) =>
+        RunGitCommand(repoRoot, "push --force-with-lease", ct, timeoutMs: 30_000);
+
+    /// <summary>
+    /// Pulls from the remote via <c>git pull</c>.
+    /// </summary>
+    public static (bool Success, string? Error) Pull(string repoRoot, CancellationToken ct) =>
+        RunGitCommand(repoRoot, "pull", ct, timeoutMs: 30_000);
+
+    /// <summary>
+    /// Pulls from the remote with rebase via <c>git pull --rebase</c>.
+    /// </summary>
+    public static (bool Success, string? Error) PullRebase(string repoRoot, CancellationToken ct) =>
+        RunGitCommand(repoRoot, "pull --rebase", ct, timeoutMs: 30_000);
+
+    /// <summary>
+    /// Fetches from the remote via <c>git fetch</c>.
+    /// </summary>
+    public static (bool Success, string? Error) Fetch(string repoRoot, CancellationToken ct) =>
+        RunGitCommand(repoRoot, "fetch", ct, timeoutMs: 30_000);
+
+    /// <summary>
+    /// Returns the number of commits ahead/behind the upstream branch.
+    /// Returns null if there is no upstream or an error occurs.
+    /// </summary>
+    public static (int Ahead, int Behind)? GetAheadBehind(string repoRoot, CancellationToken ct)
+    {
+        try
+        {
+            if (ct.IsCancellationRequested)
+            {
+                return null;
+            }
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = "git",
+                Arguments = "rev-list --count --left-right @{upstream}...HEAD",
+                WorkingDirectory = repoRoot,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+
+            using var process = Process.Start(psi);
+
+            if (process is null)
+            {
+                return null;
+            }
+
+            string stdout = process.StandardOutput.ReadToEnd();
+            process.StandardError.ReadToEnd(); // drain
+
+            if (!process.WaitForExit(10_000))
+            {
+                process.Kill();
+                return null;
+            }
+
+            if (process.ExitCode != 0)
+            {
+                return null;
+            }
+
+            // Output format: "<behind>\t<ahead>\n"
+            string[] parts = stdout.Trim().Split('\t');
+
+            if (parts.Length == 2 &&
+                int.TryParse(parts[0], out int behind) &&
+                int.TryParse(parts[1], out int ahead))
+            {
+                return (ahead, behind);
+            }
+
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static string EscapeCommitMessage(string message) =>
         message.Replace("\\", "\\\\").Replace("\"", "\\\"");
 
