@@ -92,13 +92,36 @@ Show git status in the file browser and eventually support git actions.
 - ~~Async via `GitStatusLoader` following `DirectorySizeLoader` pattern~~
 - ~~`git_status_enabled` config setting (default: true) with config dialog toggle~~
 
-#### Phase 2: Git actions
+#### Phase 2a: Stage / Unstage
 
-- Stage/unstage files (equivalent to `git add` / `git restore --staged`)
-- Commit with message (input dialog)
-- Push/pull
+- Stage file(s) via `git add` — action palette entry, context-sensitive (visible when selection has Modified/Untracked status)
+- Unstage file(s) via `git restore --staged` — action palette entry (visible when selection has Staged status)
+- Stage all changes — action palette entry (visible when any Modified/Untracked exist)
+- Multi-select support: operate on `_markedPaths` when non-empty, otherwise focused entry
+- Async via new `GitActionRunner` class (same pattern as `GitStatusLoader` / `DirectorySizeLoader`)
+- Add `RunGitCommand` private helper to `GitUtils.cs` to reduce boilerplate
+- Add `GitActionCompleteEvent` to `InputEvent.cs`
+- Key files: `GitUtils.cs`, `GitActionRunner.cs` (new), `InputEvent.cs`, `InputReader.cs` (new `AppAction` values), `App.cs` (palette entries + dispatch)
+
+#### Phase 2b: Commit
+
+- Commit staged changes with message via input dialog (`Ctrl+G`)
+- Reuses existing `TextInput` / `InputMode.TextInput` / `RenderTextInputDialog` machinery (same as Rename)
+- Single-line commit message (multi-line deferred)
+- Only available when staged changes exist
+- Key files: `GitUtils.cs` (`Commit` method), `App.cs`, `InputReader.cs` (`Ctrl+G` binding), `HelpOverlay.cs`
+
+#### Phase 2c: Push / Pull
+
+- Push to remote (`git push`) and pull from remote (`git pull`)
+- Network operations — may block on auth; use 30s timeout with kill
+- Display stderr as error message for auth/network failures
+- Action palette entries only (no direct key bindings)
+- Key files: `GitUtils.cs` (`Push`/`Pull` methods), `App.cs`
+
+#### Completed
+
 - Diff preview for modified files ✅
-- Keybindings for common actions (e.g. action palette entries)
 
 ### Drive type detection
 
