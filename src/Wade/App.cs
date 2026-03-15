@@ -701,19 +701,18 @@ internal sealed class App
                     break;
 
                 case AppAction.OpenExternal:
-                    if (entries.Count > 0 && _selectedIndex < entries.Count)
-                    {
-                        var entry = entries[_selectedIndex];
-                        try
-                        {
-                            Process.Start(new ProcessStartInfo(entry.FullPath) { UseShellExecute = true });
-                            ShowNotification($"Opened '{entry.Name}'", NotificationKind.Success);
-                        }
-                        catch (Exception ex)
-                        {
-                            ShowNotification($"Error: {ex.Message}", NotificationKind.Error);
-                        }
-                    }
+                case AppAction.Rename:
+                case AppAction.Delete:
+                case AppAction.DeletePermanently:
+                case AppAction.Copy:
+                case AppAction.Cut:
+                case AppAction.Paste:
+                case AppAction.CopyAbsolutePath:
+                case AppAction.CopyGitRelativePath:
+                case AppAction.NewFile:
+                case AppAction.NewDirectory:
+                case AppAction.CreateSymlink:
+                    DispatchFileAction(action);
                     break;
 
                 case AppAction.OpenTerminal:
@@ -728,382 +727,6 @@ internal sealed class App
                     }
                     break;
 
-                case AppAction.Rename:
-                    if (entries.Count > 0 && _selectedIndex < entries.Count)
-                    {
-                        var entry = entries[_selectedIndex];
-                        ShowTextInputDialog("Rename", entry.Name, newName =>
-                        {
-                            if (string.IsNullOrWhiteSpace(newName) || newName == entry.Name)
-                            {
-                                return;
-                            }
-
-                            string parentDir = Path.GetDirectoryName(entry.FullPath)!;
-                            string newPath = Path.Combine(parentDir, newName);
-
-                            if (Path.Exists(newPath))
-                            {
-                                ShowNotification($"'{newName}' already exists", NotificationKind.Error);
-                                return;
-                            }
-
-                            try
-                            {
-                                if (entry.IsDirectory)
-                                {
-                                    Directory.Move(entry.FullPath, newPath);
-                                }
-                                else
-                                {
-                                    File.Move(entry.FullPath, newPath);
-                                }
-
-                                _directoryContents.Invalidate(_currentPath);
-                                InvalidateFilteredEntries();
-                                RefreshGitStatus();
-                                ShowNotification($"Renamed to '{newName}'", NotificationKind.Success);
-
-                                // Re-select the renamed entry
-                                var updatedEntries = GetVisibleEntries();
-                                for (int i = 0; i < updatedEntries.Count; i++)
-                                {
-                                    if (updatedEntries[i].Name.Equals(newName, StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        _selectedIndex = i;
-                                        break;
-                                    }
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                ShowNotification($"Rename failed: {ex.Message}", NotificationKind.Error);
-                            }
-                        });
-                    }
-                    break;
-
-                case AppAction.Delete:
-                case AppAction.DeletePermanently:
-                    if (entries.Count > 0)
-                    {
-                        List<string> targets;
-                        string prompt;
-
-                        if (_markedPaths.Count > 0)
-                        {
-                            targets = [.. _markedPaths];
-                            prompt = $"Delete {targets.Count} item(s)?";
-                        }
-                        else if (_selectedIndex < entries.Count)
-                        {
-                            targets = [entries[_selectedIndex].FullPath];
-                            prompt = $"Delete '{entries[_selectedIndex].Name}'?";
-                        }
-                        else
-                        {
-                            break;
-                        }
-
-                        bool permanent = action == AppAction.DeletePermanently;
-                        bool isPermanent = permanent || !OperatingSystem.IsWindows();
-
-                        if (_config.ConfirmDeleteEnabled)
-                        {
-                            string title = isPermanent ? "Permanently Delete" : "Delete";
-                            string warning = isPermanent ? "\nThis cannot be undone!" : "";
-
-                            ShowConfirmDialog(title, prompt + warning, () => ExecuteDelete(targets, permanent));
-                        }
-                        else
-                        {
-                            ExecuteDelete(targets, permanent);
-                        }
-                    }
-                    break;
-
-                case AppAction.Copy:
-                    if (_markedPaths.Count > 0)
-                    {
-                        _clipboardPaths.Clear();
-                        _clipboardPaths.AddRange(_markedPaths);
-                        _clipboardIsCut = false;
-                        ShowNotification($"Copied {_markedPaths.Count} item(s)", NotificationKind.Success);
-                    }
-                    else if (entries.Count > 0 && _selectedIndex < entries.Count)
-                    {
-                        _clipboardPaths.Clear();
-                        _clipboardPaths.Add(entries[_selectedIndex].FullPath);
-                        _clipboardIsCut = false;
-                        ShowNotification($"Copied '{entries[_selectedIndex].Name}'", NotificationKind.Success);
-                    }
-
-                    if (OperatingSystem.IsWindows())
-                    {
-                        SystemClipboard.SetFiles(_clipboardPaths, _clipboardIsCut);
-                    }
-
-                    break;
-
-                case AppAction.Cut:
-                    if (_markedPaths.Count > 0)
-                    {
-                        _clipboardPaths.Clear();
-                        _clipboardPaths.AddRange(_markedPaths);
-                        _clipboardIsCut = true;
-                        ShowNotification($"Cut {_markedPaths.Count} item(s)", NotificationKind.Success);
-                    }
-                    else if (entries.Count > 0 && _selectedIndex < entries.Count)
-                    {
-                        _clipboardPaths.Clear();
-                        _clipboardPaths.Add(entries[_selectedIndex].FullPath);
-                        _clipboardIsCut = true;
-                        ShowNotification($"Cut '{entries[_selectedIndex].Name}'", NotificationKind.Success);
-                    }
-
-                    if (OperatingSystem.IsWindows())
-                    {
-                        SystemClipboard.SetFiles(_clipboardPaths, _clipboardIsCut);
-                    }
-
-                    break;
-
-                case AppAction.CopyAbsolutePath:
-                    if (entries.Count > 0 && _selectedIndex < entries.Count)
-                    {
-                        string pathToCopy = entries[_selectedIndex].FullPath;
-
-                        if (SystemClipboard.SetText(pathToCopy))
-                        {
-                            ShowNotification("Copied path to clipboard", NotificationKind.Success);
-                        }
-                        else
-                        {
-                            ShowNotification("Clipboard not available", NotificationKind.Error);
-                        }
-                    }
-                    break;
-
-                case AppAction.CopyGitRelativePath:
-                    if (entries.Count > 0 && _selectedIndex < entries.Count)
-                    {
-                        string? repoRoot = GitUtils.FindRepoRoot(_currentPath);
-
-                        if (repoRoot is null)
-                        {
-                            ShowNotification("Not inside a git repository", NotificationKind.Error);
-                        }
-                        else
-                        {
-                            string relativePath = Path.GetRelativePath(repoRoot, entries[_selectedIndex].FullPath)
-                                                      .Replace('\\', '/');
-
-                            if (SystemClipboard.SetText(relativePath))
-                            {
-                                ShowNotification("Copied git-relative path to clipboard", NotificationKind.Success);
-                            }
-                            else
-                            {
-                                ShowNotification("Clipboard not available", NotificationKind.Error);
-                            }
-                        }
-                    }
-                    break;
-
-                case AppAction.NewFile:
-                    ShowTextInputDialog("New File", "", name =>
-                    {
-                        if (string.IsNullOrWhiteSpace(name))
-                        {
-                            return;
-                        }
-
-                        if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
-                        {
-                            ShowNotification("Invalid file name", NotificationKind.Error);
-                            return;
-                        }
-
-                        string destPath = Path.Combine(_currentPath, name);
-
-                        if (Path.Exists(destPath))
-                        {
-                            ShowNotification($"'{name}' already exists", NotificationKind.Error);
-                            return;
-                        }
-
-                        try
-                        {
-                            File.Create(destPath).Dispose();
-                            _directoryContents.Invalidate(_currentPath);
-                            InvalidateFilteredEntries();
-                            RefreshGitStatus();
-                            ShowNotification($"Created '{name}'", NotificationKind.Success);
-
-                            var updatedEntries = GetVisibleEntries();
-                            for (int i = 0; i < updatedEntries.Count; i++)
-                            {
-                                if (updatedEntries[i].Name.Equals(name, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    _selectedIndex = i;
-                                    break;
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            ShowNotification($"Create failed: {ex.Message}", NotificationKind.Error);
-                        }
-                    });
-                    break;
-
-                case AppAction.NewDirectory:
-                    ShowTextInputDialog("New Directory", "", name =>
-                    {
-                        if (string.IsNullOrWhiteSpace(name))
-                        {
-                            return;
-                        }
-
-                        if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
-                        {
-                            ShowNotification("Invalid directory name", NotificationKind.Error);
-                            return;
-                        }
-
-                        string destPath = Path.Combine(_currentPath, name);
-
-                        if (Path.Exists(destPath))
-                        {
-                            ShowNotification($"'{name}' already exists", NotificationKind.Error);
-                            return;
-                        }
-
-                        try
-                        {
-                            Directory.CreateDirectory(destPath);
-                            _directoryContents.Invalidate(_currentPath);
-                            InvalidateFilteredEntries();
-                            RefreshGitStatus();
-                            ShowNotification($"Created '{name}'", NotificationKind.Success);
-
-                            var updatedEntries = GetVisibleEntries();
-                            for (int i = 0; i < updatedEntries.Count; i++)
-                            {
-                                if (updatedEntries[i].Name.Equals(name, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    _selectedIndex = i;
-                                    break;
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            ShowNotification($"Create failed: {ex.Message}", NotificationKind.Error);
-                        }
-                    });
-                    break;
-
-                case AppAction.CreateSymlink:
-                {
-                    if (entries.Count == 0 || _selectedIndex >= entries.Count)
-                    {
-                        break;
-                    }
-
-                    var selectedEntry = entries[_selectedIndex];
-                    string target = selectedEntry.FullPath;
-
-                    ShowTextInputDialog("Create Symlink", selectedEntry.Name + "_link", linkName =>
-                    {
-                        if (string.IsNullOrWhiteSpace(linkName))
-                        {
-                            return;
-                        }
-
-                        if (linkName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
-                        {
-                            ShowNotification("Invalid link name", NotificationKind.Error);
-                            return;
-                        }
-
-                        string linkPath = Path.Combine(_currentPath, linkName);
-
-                        if (Path.Exists(linkPath))
-                        {
-                            ShowNotification($"'{linkName}' already exists", NotificationKind.Error);
-                            return;
-                        }
-
-                        try
-                        {
-                            if (selectedEntry.IsDirectory)
-                            {
-                                Directory.CreateSymbolicLink(linkPath, target);
-                            }
-                            else
-                            {
-                                File.CreateSymbolicLink(linkPath, target);
-                            }
-
-                            _directoryContents.Invalidate(_currentPath);
-                            InvalidateFilteredEntries();
-                            RefreshGitStatus();
-                            ShowNotification($"Created symlink '{linkName}'", NotificationKind.Success);
-
-                            var updatedEntries = GetVisibleEntries();
-                            for (int i = 0; i < updatedEntries.Count; i++)
-                            {
-                                if (updatedEntries[i].Name.Equals(linkName, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    _selectedIndex = i;
-                                    break;
-                                }
-                            }
-                        }
-                        catch (UnauthorizedAccessException)
-                        {
-                            ShowNotification("Insufficient privileges to create symlink", NotificationKind.Error);
-                        }
-                        catch (Exception ex)
-                        {
-                            ShowNotification($"Create symlink failed: {ex.Message}", NotificationKind.Error);
-                        }
-                    });
-                    break;
-                }
-
-                case AppAction.Paste:
-                    if (OperatingSystem.IsWindows())
-                    {
-                        var osFiles = SystemClipboard.GetFiles();
-
-                        if (osFiles is not null && osFiles.Value.Paths.Count > 0)
-                        {
-                            _clipboardPaths.Clear();
-                            _clipboardPaths.AddRange(osFiles.Value.Paths);
-                            _clipboardIsCut = osFiles.Value.IsCut;
-                        }
-                    }
-
-                    if (_clipboardPaths.Count == 0)
-                    {
-                        ShowNotification("Clipboard is empty", NotificationKind.Error);
-                    }
-                    else
-                    {
-                        int conflicts = _clipboardPaths.Count(p => Path.Exists(Path.Combine(_currentPath, Path.GetFileName(p))));
-
-                        if (conflicts > 0)
-                        {
-                            ShowConfirmDialog("Overwrite", $"{conflicts} item(s) already exist. Overwrite?", () => ExecutePaste(overwrite: true));
-                        }
-                        else
-                        {
-                            ExecutePaste(overwrite: false);
-                        }
-                    }
-                    break;
             }
 
             // Clamp selection
@@ -2798,7 +2421,11 @@ internal sealed class App
         }
     }
 
-    private void DispatchActionPaletteAction(AppAction action, PreviewLoader previewLoader, ScreenBuffer buffer, InputPipeline pipeline)
+    /// <summary>
+    /// Dispatches file-operation actions shared between the main key handler and the action palette.
+    /// Returns true if the action was handled.
+    /// </summary>
+    private bool DispatchFileAction(AppAction action)
     {
         var entries = GetVisibleEntries();
 
@@ -2808,7 +2435,6 @@ internal sealed class App
                 if (entries.Count > 0 && _selectedIndex < entries.Count)
                 {
                     var entry = entries[_selectedIndex];
-
                     try
                     {
                         Process.Start(new ProcessStartInfo(entry.FullPath) { UseShellExecute = true });
@@ -2820,7 +2446,7 @@ internal sealed class App
                     }
                 }
 
-                break;
+                return true;
 
             case AppAction.Rename:
                 if (entries.Count > 0 && _selectedIndex < entries.Count)
@@ -2855,6 +2481,7 @@ internal sealed class App
 
                             _directoryContents.Invalidate(_currentPath);
                             InvalidateFilteredEntries();
+                            RefreshGitStatus();
                             ShowNotification($"Renamed to '{newName}'", NotificationKind.Success);
 
                             var updatedEntries = GetVisibleEntries();
@@ -2874,9 +2501,10 @@ internal sealed class App
                     });
                 }
 
-                break;
+                return true;
 
             case AppAction.Delete:
+            case AppAction.DeletePermanently:
                 if (entries.Count > 0)
                 {
                     List<string> targets;
@@ -2894,24 +2522,25 @@ internal sealed class App
                     }
                     else
                     {
-                        break;
+                        return true;
                     }
 
-                    bool isPermanent = !OperatingSystem.IsWindows();
+                    bool permanent = action == AppAction.DeletePermanently;
+                    bool isPermanent = permanent || !OperatingSystem.IsWindows();
 
                     if (_config.ConfirmDeleteEnabled)
                     {
                         string title = isPermanent ? "Permanently Delete" : "Delete";
                         string warning = isPermanent ? "\nThis cannot be undone!" : "";
-                        ShowConfirmDialog(title, prompt + warning, () => ExecuteDelete(targets, false));
+                        ShowConfirmDialog(title, prompt + warning, () => ExecuteDelete(targets, permanent));
                     }
                     else
                     {
-                        ExecuteDelete(targets, false);
+                        ExecuteDelete(targets, permanent);
                     }
                 }
 
-                break;
+                return true;
 
             case AppAction.Copy:
                 if (_markedPaths.Count > 0)
@@ -2934,7 +2563,7 @@ internal sealed class App
                     SystemClipboard.SetFiles(_clipboardPaths, _clipboardIsCut);
                 }
 
-                break;
+                return true;
 
             case AppAction.Cut:
                 if (_markedPaths.Count > 0)
@@ -2957,7 +2586,7 @@ internal sealed class App
                     SystemClipboard.SetFiles(_clipboardPaths, _clipboardIsCut);
                 }
 
-                break;
+                return true;
 
             case AppAction.Paste:
                 if (OperatingSystem.IsWindows())
@@ -2990,7 +2619,7 @@ internal sealed class App
                     }
                 }
 
-                break;
+                return true;
 
             case AppAction.CopyAbsolutePath:
                 if (entries.Count > 0 && _selectedIndex < entries.Count)
@@ -3007,7 +2636,7 @@ internal sealed class App
                     }
                 }
 
-                break;
+                return true;
 
             case AppAction.CopyGitRelativePath:
                 if (entries.Count > 0 && _selectedIndex < entries.Count)
@@ -3034,7 +2663,7 @@ internal sealed class App
                     }
                 }
 
-                break;
+                return true;
 
             case AppAction.NewFile:
                 ShowTextInputDialog("New File", "", name =>
@@ -3081,7 +2710,7 @@ internal sealed class App
                         ShowNotification($"Create failed: {ex.Message}", NotificationKind.Error);
                     }
                 });
-                break;
+                return true;
 
             case AppAction.NewDirectory:
                 ShowTextInputDialog("New Directory", "", name =>
@@ -3128,13 +2757,13 @@ internal sealed class App
                         ShowNotification($"Create failed: {ex.Message}", NotificationKind.Error);
                     }
                 });
-                break;
+                return true;
 
             case AppAction.CreateSymlink:
             {
                 if (entries.Count == 0 || _selectedIndex >= entries.Count)
                 {
-                    break;
+                    return true;
                 }
 
                 var selectedEntry = entries[_selectedIndex];
@@ -3174,6 +2803,7 @@ internal sealed class App
 
                         _directoryContents.Invalidate(_currentPath);
                         InvalidateFilteredEntries();
+                        RefreshGitStatus();
                         ShowNotification($"Created symlink '{linkName}'", NotificationKind.Success);
 
                         var updatedEntries = GetVisibleEntries();
@@ -3195,9 +2825,25 @@ internal sealed class App
                         ShowNotification($"Create symlink failed: {ex.Message}", NotificationKind.Error);
                     }
                 });
-                break;
+                return true;
             }
 
+            default:
+                return false;
+        }
+    }
+
+    private void DispatchActionPaletteAction(AppAction action, PreviewLoader previewLoader, ScreenBuffer buffer, InputPipeline pipeline)
+    {
+        if (DispatchFileAction(action))
+        {
+            return;
+        }
+
+        var entries = GetVisibleEntries();
+
+        switch (action)
+        {
             case AppAction.ShowProperties:
                 if (entries.Count > 0 && _selectedIndex < entries.Count)
                 {
