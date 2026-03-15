@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text;
 using Wade.FileSystem;
 using Wade.Highlighting;
+using Wade.Preview;
 using Wade.Terminal;
 using Wade.UI;
 
@@ -55,7 +56,7 @@ internal sealed class App
     // Action palette state
     private int _actionPaletteSelectedIndex;
     private TextInput? _actionPaletteInput;
-    private (string Label, string Shortcut, AppAction Action)[]? _actionPaletteItems;
+    private (string Label, string Shortcut, AppAction Action, int Data)[]? _actionPaletteItems;
     private int _actionPaletteScrollOffset;
 
     // Bookmark state
@@ -120,8 +121,9 @@ internal sealed class App
     private int _cachedImagePixelHeight;
     private bool _isImagePreview;
     private bool _isRenderedPreview;
-    private bool _diffPreviewActive;
-    private bool _hexPreviewActive;
+    private int _activeProviderIndex;
+    private List<IPreviewProvider>? _applicableProviders;
+    private PreviewContext? _activePreviewContext;
     private bool _sixelPending;
 
     // Terminal capability state
@@ -292,27 +294,17 @@ internal sealed class App
                     buffer.Resize(lastWidth, lastHeight);
                     _layout.Calculate(lastWidth, lastHeight, _config.PreviewPaneEnabled);
                     var resizePane = _inputMode == InputMode.ExpandedPreview ? _layout.ExpandedPane : _layout.RightPane;
-                    previewLoader.Configure(_imagePreviewsEffective, resizePane.Width, resizePane.Height,
-                        _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
-            zipPreviewEnabled: _config.ZipPreviewEnabled,
-            pdfPreviewEnabled: _config.PdfPreviewEnabled);
                     Console.Write(AnsiCodes.ClearScreen);
 
-                    // Re-render image at new size
-                    if (_isImagePreview && _cachedImagePath is not null)
+                    // Re-render preview at new size
+                    if (_cachedPreviewPath is not null || _cachedImagePath is not null)
                     {
+                        string path = (_isImagePreview ? _cachedImagePath : _cachedPreviewPath)!;
                         _cachedSixelData = null;
                         _sixelPending = false;
-                        _pendingPreviewPath = _cachedImagePath;
-                        _previewLoading = true;
-                        previewLoader.BeginLoad(_cachedImagePath);
-                    }
-                    else if (_isRenderedPreview && _cachedPreviewPath is not null)
-                    {
                         _cachedStyledLines = null;
-                        _pendingPreviewPath = _cachedPreviewPath;
-                        _previewLoading = true;
-                        previewLoader.BeginLoad(_cachedPreviewPath);
+                        _activePreviewContext = BuildPreviewContext(resizePane.Width, resizePane.Height);
+                        ReloadActiveProvider(path, previewLoader);
                     }
                 }
 
@@ -1023,11 +1015,10 @@ internal sealed class App
             {
                 if (selected.FullPath != _cachedPreviewPath && selected.FullPath != _pendingPreviewPath)
                 {
-                    _diffPreviewActive = false;
-                    _hexPreviewActive = false;
-                    _pendingPreviewPath = selected.FullPath;
-                    _previewLoading = true;
-                    _previewLoader!.BeginLoad(selected.FullPath, selected.IsCloudPlaceholder);
+                    _activeProviderIndex = 0;
+                    _activePreviewContext = BuildPreviewContext(_layout.RightPane.Width, _layout.RightPane.Height);
+                    _applicableProviders = PreviewProviderRegistry.GetApplicableProviders(selected.FullPath, _activePreviewContext);
+                    ReloadActiveProvider(selected.FullPath, _previewLoader!);
                 }
 
                 if (_previewLoading)
@@ -1241,9 +1232,15 @@ internal sealed class App
         RefreshGitStatus();
     }
 
-    private void HandleToggleDiffPreview(List<FileSystemEntry> entries, PreviewLoader previewLoader)
+    private void HandleSelectPreviewProvider(int index, PreviewLoader previewLoader)
     {
-        if (entries.Count == 0 || _selectedIndex >= entries.Count)
+        if (_applicableProviders is null || index < 0 || index >= _applicableProviders.Count)
+        {
+            return;
+        }
+
+        var entries = GetVisibleEntries();
+        if (_selectedIndex >= entries.Count)
         {
             return;
         }
@@ -1254,80 +1251,53 @@ internal sealed class App
             return;
         }
 
-        // Toggle off: reload normal preview
-        if (_diffPreviewActive)
-        {
-            _diffPreviewActive = false;
-            _pendingPreviewPath = selected.FullPath;
-            _previewLoading = true;
-            previewLoader.BeginLoad(selected.FullPath, selected.IsCloudPlaceholder);
-            return;
-        }
-
-        // Check git status for this file
-        GitFileStatus status = GitFileStatus.None;
-        if (_gitStatuses is not null)
-        {
-            _gitStatuses.TryGetValue(selected.FullPath, out status);
-        }
-
-        bool hasModified = status.HasFlag(GitFileStatus.Modified);
-        bool hasStaged = status.HasFlag(GitFileStatus.Staged);
-
-        if (!hasModified && !hasStaged)
-        {
-            ShowNotification("No changes to diff", NotificationKind.Info);
-            return;
-        }
-
-        if (_currentRepoRoot is null)
-        {
-            ShowNotification("No changes to diff", NotificationKind.Info);
-            return;
-        }
-
-        _diffPreviewActive = true;
-        _hexPreviewActive = false;
-        _pendingPreviewPath = selected.FullPath;
-        _previewLoading = true;
-        // Prefer unstaged diff when both modified and staged; show staged if only staged
-        previewLoader.BeginLoadDiff(selected.FullPath, _currentRepoRoot, staged: !hasModified && hasStaged);
+        _activeProviderIndex = index;
+        ReloadActiveProvider(selected.FullPath, previewLoader);
     }
 
-    private void HandleToggleHexPreview(List<FileSystemEntry> entries, PreviewLoader previewLoader)
+    private PreviewContext BuildPreviewContext(int paneWidth, int paneHeight)
     {
-        if (entries.Count == 0 || _selectedIndex >= entries.Count)
+        GitFileStatus? gitStatus = null;
+        var entries = GetVisibleEntries();
+        if (_selectedIndex < entries.Count && _gitStatuses is not null)
+        {
+            _gitStatuses.TryGetValue(entries[_selectedIndex].FullPath, out var status);
+            gitStatus = status;
+        }
+
+        bool isCloudPlaceholder = false;
+        if (_selectedIndex < entries.Count)
+        {
+            isCloudPlaceholder = entries[_selectedIndex].IsCloudPlaceholder;
+        }
+
+        return new PreviewContext(
+            PaneWidthCells: paneWidth,
+            PaneHeightCells: paneHeight,
+            CellPixelWidth: _cellPixelWidth,
+            CellPixelHeight: _cellPixelHeight,
+            IsCloudPlaceholder: isCloudPlaceholder,
+            GitStatus: gitStatus,
+            RepoRoot: _currentRepoRoot,
+            GlowEnabled: _config.GlowMarkdownPreviewEnabled,
+            ZipPreviewEnabled: _config.ZipPreviewEnabled,
+            PdfPreviewEnabled: _config.PdfPreviewEnabled,
+            ImagePreviewsEnabled: _imagePreviewsEffective);
+    }
+
+    private void ReloadActiveProvider(string path, PreviewLoader loader)
+    {
+        if (_applicableProviders is null || _applicableProviders.Count == 0 || _activePreviewContext is null)
         {
             return;
         }
 
-        var selected = entries[_selectedIndex];
-        if (selected.IsDirectory)
-        {
-            return;
-        }
+        int index = Math.Min(_activeProviderIndex, _applicableProviders.Count - 1);
+        var provider = _applicableProviders[index];
 
-        // Toggle off: reload normal preview
-        if (_hexPreviewActive)
-        {
-            _hexPreviewActive = false;
-            _pendingPreviewPath = selected.FullPath;
-            _previewLoading = true;
-            previewLoader.BeginLoad(selected.FullPath, selected.IsCloudPlaceholder);
-            return;
-        }
-
-        if (!FilePreview.IsBinary(selected.FullPath))
-        {
-            ShowNotification("Not a binary file", NotificationKind.Info);
-            return;
-        }
-
-        _hexPreviewActive = true;
-        _diffPreviewActive = false;
-        _pendingPreviewPath = selected.FullPath;
+        _pendingPreviewPath = path;
         _previewLoading = true;
-        previewLoader.BeginLoadHex(selected.FullPath);
+        loader.BeginLoad(path, provider, _activePreviewContext);
     }
 
     private void ClearPreviewCache(PreviewLoader loader, ScreenBuffer? buffer = null)
@@ -1353,8 +1323,9 @@ internal sealed class App
         _cachedImagePixelHeight = 0;
         _isImagePreview = false;
         _isRenderedPreview = false;
-        _diffPreviewActive = false;
-        _hexPreviewActive = false;
+        _activeProviderIndex = 0;
+        _applicableProviders = null;
+        _activePreviewContext = null;
         _sixelPending = false;
 
         if (wasImage)
@@ -1515,46 +1486,14 @@ internal sealed class App
         _inputMode = InputMode.ExpandedPreview;
         _expandedPreviewScrollOffset = 0;
 
-        if (_isImagePreview && _cachedImagePath is not null)
+        if (_cachedPreviewPath is not null || _cachedImagePath is not null)
         {
-            previewLoader.Configure(_imagePreviewsEffective, _layout.ExpandedPane.Width, _layout.ExpandedPane.Height,
-                _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
-            zipPreviewEnabled: _config.ZipPreviewEnabled,
-            pdfPreviewEnabled: _config.PdfPreviewEnabled);
+            string path = (_isImagePreview ? _cachedImagePath : _cachedPreviewPath)!;
             _cachedSixelData = null;
             _sixelPending = false;
-            _pendingPreviewPath = _cachedImagePath;
-            _previewLoading = true;
-            previewLoader.BeginLoad(_cachedImagePath);
-        }
-        else if (_diffPreviewActive && _cachedPreviewPath is not null && _currentRepoRoot is not null)
-        {
             _cachedStyledLines = null;
-            _pendingPreviewPath = _cachedPreviewPath;
-            _previewLoading = true;
-
-            GitFileStatus status = GitFileStatus.None;
-            _gitStatuses?.TryGetValue(_cachedPreviewPath, out status);
-            bool staged = !status.HasFlag(GitFileStatus.Modified) && status.HasFlag(GitFileStatus.Staged);
-            previewLoader.BeginLoadDiff(_cachedPreviewPath, _currentRepoRoot, staged);
-        }
-        else if (_hexPreviewActive && _cachedPreviewPath is not null)
-        {
-            _cachedStyledLines = null;
-            _pendingPreviewPath = _cachedPreviewPath;
-            _previewLoading = true;
-            previewLoader.BeginLoadHex(_cachedPreviewPath);
-        }
-        else if (_isRenderedPreview && _cachedPreviewPath is not null)
-        {
-            previewLoader.Configure(_imagePreviewsEffective, _layout.ExpandedPane.Width, _layout.ExpandedPane.Height,
-                _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
-            zipPreviewEnabled: _config.ZipPreviewEnabled,
-            pdfPreviewEnabled: _config.PdfPreviewEnabled);
-            _cachedStyledLines = null;
-            _pendingPreviewPath = _cachedPreviewPath;
-            _previewLoading = true;
-            previewLoader.BeginLoad(_cachedPreviewPath);
+            _activePreviewContext = BuildPreviewContext(_layout.ExpandedPane.Width, _layout.ExpandedPane.Height);
+            ReloadActiveProvider(path, previewLoader);
         }
 
         buffer.ForceFullRedraw();
@@ -1565,25 +1504,14 @@ internal sealed class App
         _inputMode = InputMode.Normal;
         _expandedPreviewScrollOffset = 0;
 
-        previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
-            _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
-            zipPreviewEnabled: _config.ZipPreviewEnabled,
-            pdfPreviewEnabled: _config.PdfPreviewEnabled);
-
-        if (_isImagePreview && _cachedImagePath is not null)
+        if (_cachedPreviewPath is not null || _cachedImagePath is not null)
         {
+            string path = (_isImagePreview ? _cachedImagePath : _cachedPreviewPath)!;
             _cachedSixelData = null;
             _sixelPending = false;
-            _pendingPreviewPath = _cachedImagePath;
-            _previewLoading = true;
-            previewLoader.BeginLoad(_cachedImagePath);
-        }
-        else if (_isRenderedPreview && _cachedPreviewPath is not null)
-        {
             _cachedStyledLines = null;
-            _pendingPreviewPath = _cachedPreviewPath;
-            _previewLoading = true;
-            previewLoader.BeginLoad(_cachedPreviewPath);
+            _activePreviewContext = BuildPreviewContext(_layout.RightPane.Width, _layout.RightPane.Height);
+            ReloadActiveProvider(path, previewLoader);
         }
 
         Console.Write(AnsiCodes.ClearScreen);
@@ -2285,70 +2213,74 @@ internal sealed class App
         _actionPaletteItems = BuildActionPaletteItems();
     }
 
-    private (string Label, string Shortcut, AppAction Action)[] BuildActionPaletteItems()
+    private (string Label, string Shortcut, AppAction Action, int Data)[] BuildActionPaletteItems()
     {
-        var items = new List<(string Label, string Shortcut, AppAction Action)>
+        var items = new List<(string Label, string Shortcut, AppAction Action, int Data)>
         {
-            ("Open with default app", "o", AppAction.OpenExternal),
-            ("Rename", "F2", AppAction.Rename),
-            ("Delete", "Del", AppAction.Delete),
-            ("Copy", "c", AppAction.Copy),
-            ("Cut", "x", AppAction.Cut),
+            ("Open with default app", "o", AppAction.OpenExternal, 0),
+            ("Rename", "F2", AppAction.Rename, 0),
+            ("Delete", "Del", AppAction.Delete, 0),
+            ("Copy", "c", AppAction.Copy, 0),
+            ("Cut", "x", AppAction.Cut, 0),
         };
 
         if (_clipboardPaths.Count > 0)
         {
-            items.Add(("Paste", "v", AppAction.Paste));
+            items.Add(("Paste", "v", AppAction.Paste, 0));
         }
 
-        items.Add(("Copy absolute path", "y", AppAction.CopyAbsolutePath));
-        items.Add(("New file", "n", AppAction.NewFile));
-        items.Add(("New directory", "Shift+N", AppAction.NewDirectory));
-        items.Add(("Create symlink", "Ctrl+L", AppAction.CreateSymlink));
-        items.Add(("Properties", "i", AppAction.ShowProperties));
-        items.Add(("Toggle hex preview", "", AppAction.ToggleHexPreview));
-        items.Add(("Toggle hidden files", ".", AppAction.ToggleHiddenFiles));
-        items.Add(("Cycle sort mode", "s", AppAction.CycleSortMode));
-        items.Add(("Reverse sort direction", "S", AppAction.ToggleSortDirection));
-        items.Add(("Bookmarks", "b", AppAction.ShowBookmarks));
-        items.Add(("Toggle bookmark", "B", AppAction.ToggleBookmark));
-        items.Add(("Go to path", "g", AppAction.GoToPath));
-        items.Add(("Search / Find file", "Ctrl+F", AppAction.ShowFileFinder));
-        items.Add(("Filter", "/", AppAction.Search));
-        items.Add(("Open terminal here", "Ctrl+T", AppAction.OpenTerminal));
-        items.Add(("Configuration", ",", AppAction.ShowConfig));
-        items.Add(("Help", "?", AppAction.ShowHelp));
-        items.Add(("Refresh", "Ctrl+R", AppAction.Refresh));
+        items.Add(("Copy absolute path", "y", AppAction.CopyAbsolutePath, 0));
+        items.Add(("New file", "n", AppAction.NewFile, 0));
+        items.Add(("New directory", "Shift+N", AppAction.NewDirectory, 0));
+        items.Add(("Create symlink", "Ctrl+L", AppAction.CreateSymlink, 0));
+        items.Add(("Properties", "i", AppAction.ShowProperties, 0));
+
+        // Preview provider entries — shown when multiple providers are available
+        if (_applicableProviders is not null && _applicableProviders.Count > 1)
+        {
+            for (int i = 0; i < _applicableProviders.Count; i++)
+            {
+                string prefix = i == _activeProviderIndex ? "* " : "  ";
+                string label = $"Preview: {prefix}{_applicableProviders[i].Label}";
+                items.Add((label, "", AppAction.SelectPreviewProvider, i));
+            }
+        }
+
+        items.Add(("Toggle hidden files", ".", AppAction.ToggleHiddenFiles, 0));
+        items.Add(("Cycle sort mode", "s", AppAction.CycleSortMode, 0));
+        items.Add(("Reverse sort direction", "S", AppAction.ToggleSortDirection, 0));
+        items.Add(("Bookmarks", "b", AppAction.ShowBookmarks, 0));
+        items.Add(("Toggle bookmark", "B", AppAction.ToggleBookmark, 0));
+        items.Add(("Go to path", "g", AppAction.GoToPath, 0));
+        items.Add(("Search / Find file", "Ctrl+F", AppAction.ShowFileFinder, 0));
+        items.Add(("Filter", "/", AppAction.Search, 0));
+        items.Add(("Open terminal here", "Ctrl+T", AppAction.OpenTerminal, 0));
+        items.Add(("Configuration", ",", AppAction.ShowConfig, 0));
+        items.Add(("Help", "?", AppAction.ShowHelp, 0));
+        items.Add(("Refresh", "Ctrl+R", AppAction.Refresh, 0));
 
         // Git actions — only shown when actionable
         if (_currentRepoRoot is not null)
         {
-            items.Add(("Git: Copy relative path", "Y", AppAction.CopyGitRelativePath));
+            items.Add(("Git: Copy relative path", "Y", AppAction.CopyGitRelativePath, 0));
 
             if (_gitStatuses is not null)
             {
                 var entries = GetVisibleEntries();
                 if (_selectedIndex < entries.Count)
                 {
-                    var selected = entries[_selectedIndex];
-                    _gitStatuses.TryGetValue(selected.FullPath, out var selectedStatus);
-                    if (selectedStatus.HasFlag(GitFileStatus.Modified) || selectedStatus.HasFlag(GitFileStatus.Staged))
-                    {
-                        items.Add(("Git: Toggle diff preview", "", AppAction.ToggleDiffPreview));
-                    }
-
                     // Stage: visible when focused/marked files have Modified or Untracked status
                     bool hasStageableStatus = HasStatusInSelection(GitFileStatus.Modified | GitFileStatus.Untracked);
                     if (hasStageableStatus)
                     {
-                        items.Add(("Git: Stage", "", AppAction.StageFile));
+                        items.Add(("Git: Stage", "", AppAction.StageFile, 0));
                     }
 
                     // Unstage: visible when focused/marked files have Staged status
                     bool hasUnstageableStatus = HasStatusInSelection(GitFileStatus.Staged);
                     if (hasUnstageableStatus)
                     {
-                        items.Add(("Git: Unstage", "", AppAction.UnstageFile));
+                        items.Add(("Git: Unstage", "", AppAction.UnstageFile, 0));
                     }
                 }
 
@@ -2365,7 +2297,7 @@ internal sealed class App
 
                 if (hasAnyChanges)
                 {
-                    items.Add(("Git: Stage all changes", "", AppAction.StageAll));
+                    items.Add(("Git: Stage all changes", "", AppAction.StageAll, 0));
                 }
 
                 bool hasAnyStagedChanges = false;
@@ -2380,22 +2312,22 @@ internal sealed class App
 
                 if (hasAnyStagedChanges)
                 {
-                    items.Add(("Git: Unstage all", "", AppAction.UnstageAll));
-                    items.Add(("Git: Commit", "", AppAction.GitCommit));
+                    items.Add(("Git: Unstage all", "", AppAction.UnstageAll, 0));
+                    items.Add(("Git: Commit", "", AppAction.GitCommit, 0));
                 }
             }
 
-            items.Add(("Git: Push", "", AppAction.GitPush));
-            items.Add(("Git: Push (force with lease)", "", AppAction.GitPushForceWithLease));
-            items.Add(("Git: Pull", "", AppAction.GitPull));
-            items.Add(("Git: Pull (rebase)", "", AppAction.GitPullRebase));
-            items.Add(("Git: Fetch", "", AppAction.GitFetch));
+            items.Add(("Git: Push", "", AppAction.GitPush, 0));
+            items.Add(("Git: Push (force with lease)", "", AppAction.GitPushForceWithLease, 0));
+            items.Add(("Git: Pull", "", AppAction.GitPull, 0));
+            items.Add(("Git: Pull (rebase)", "", AppAction.GitPullRebase, 0));
+            items.Add(("Git: Fetch", "", AppAction.GitFetch, 0));
         }
 
         return items.ToArray();
     }
 
-    private List<(string Label, string Shortcut, AppAction Action)> GetFilteredActionPaletteItems()
+    private List<(string Label, string Shortcut, AppAction Action, int Data)> GetFilteredActionPaletteItems()
     {
         if (_actionPaletteItems is null)
         {
@@ -2409,7 +2341,7 @@ internal sealed class App
             return [.. _actionPaletteItems];
         }
 
-        var result = new List<(string Label, string Shortcut, AppAction Action)>();
+        var result = new List<(string Label, string Shortcut, AppAction Action, int Data)>();
 
         foreach (var item in _actionPaletteItems)
         {
@@ -2437,11 +2369,11 @@ internal sealed class App
             case ConsoleKey.Enter:
                 if (filtered.Count > 0 && _actionPaletteSelectedIndex < filtered.Count)
                 {
-                    var selectedAction = filtered[_actionPaletteSelectedIndex].Action;
+                    var selected = filtered[_actionPaletteSelectedIndex];
                     _inputMode = InputMode.Normal;
                     _actionPaletteInput = null;
                     _actionPaletteItems = null;
-                    DispatchActionPaletteAction(selectedAction, previewLoader, buffer, pipeline);
+                    DispatchActionPaletteAction(selected.Action, selected.Data, previewLoader, buffer, pipeline);
                 }
 
                 break;
@@ -2965,7 +2897,7 @@ internal sealed class App
         }
     }
 
-    private void DispatchActionPaletteAction(AppAction action, PreviewLoader previewLoader, ScreenBuffer buffer, InputPipeline pipeline)
+    private void DispatchActionPaletteAction(AppAction action, int actionData, PreviewLoader previewLoader, ScreenBuffer buffer, InputPipeline pipeline)
     {
         if (DispatchFileAction(action))
         {
@@ -2996,12 +2928,8 @@ internal sealed class App
 
                 break;
 
-            case AppAction.ToggleDiffPreview:
-                HandleToggleDiffPreview(GetVisibleEntries(), previewLoader);
-                break;
-
-            case AppAction.ToggleHexPreview:
-                HandleToggleHexPreview(GetVisibleEntries(), previewLoader);
+            case AppAction.SelectPreviewProvider:
+                HandleSelectPreviewProvider(actionData, previewLoader);
                 break;
 
             case AppAction.ToggleHiddenFiles:
@@ -3247,7 +3175,7 @@ internal sealed class App
                 break;
             }
 
-            var (label, shortcut, _) = filtered[itemIndex];
+            var (label, shortcut, _, _) = filtered[itemIndex];
             bool selected = itemIndex == _actionPaletteSelectedIndex;
             int row = content.Top + 2 + i;
 
