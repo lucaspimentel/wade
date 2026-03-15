@@ -9,6 +9,7 @@ internal static class PreviewProviderRegistry
         new GlowMarkdownPreviewProvider(),
         new NuGetPreviewProvider(),
         new ZipContentsPreviewProvider(),
+        new ExecutablePreviewProvider(),
         new TextPreviewProvider(),
         new HexPreviewProvider(),
         new DiffPreviewProvider(),
