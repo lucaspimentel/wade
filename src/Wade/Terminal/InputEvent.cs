@@ -40,6 +40,8 @@ internal sealed record GitStatusReadyEvent(
     string? BranchName,
     Dictionary<string, GitFileStatus>? Statuses) : InputEvent;
 
+internal sealed record GitActionCompleteEvent(bool Success, string? ErrorMessage) : InputEvent;
+
 internal enum MouseButton
 {
     Left,

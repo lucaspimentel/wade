@@ -376,6 +376,312 @@ public class GitUtilsTests
         Assert.Null(diff);
     }
 
+    [Fact]
+    public void Stage_ModifiedFile_SetsStatusToStaged()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            RunGit(tempDir, "init");
+            RunGit(tempDir, "config user.email test@test.com");
+            RunGit(tempDir, "config user.name Test");
+
+            string filePath = Path.Combine(tempDir, "test.txt");
+            File.WriteAllText(filePath, "original\n");
+            RunGit(tempDir, "add test.txt");
+            RunGit(tempDir, "commit -m initial");
+
+            File.WriteAllText(filePath, "modified\n");
+
+            var statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Assert.True(statuses[filePath].HasFlag(GitFileStatus.Modified));
+
+            var result = GitUtils.Stage(tempDir, [filePath], CancellationToken.None);
+            Assert.True(result.Success);
+
+            statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Assert.True(statuses[filePath].HasFlag(GitFileStatus.Staged));
+            Assert.False(statuses[filePath].HasFlag(GitFileStatus.Modified));
+        }
+        finally
+        {
+            ForceDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void Stage_UntrackedFile_SetsStatusToStaged()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            RunGit(tempDir, "init");
+            RunGit(tempDir, "config user.email test@test.com");
+            RunGit(tempDir, "config user.name Test");
+
+            // Need an initial commit so git status works properly
+            string readmePath = Path.Combine(tempDir, "README.md");
+            File.WriteAllText(readmePath, "readme\n");
+            RunGit(tempDir, "add README.md");
+            RunGit(tempDir, "commit -m initial");
+
+            string filePath = Path.Combine(tempDir, "new-file.txt");
+            File.WriteAllText(filePath, "new content\n");
+
+            var statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Assert.True(statuses[filePath].HasFlag(GitFileStatus.Untracked));
+
+            var result = GitUtils.Stage(tempDir, [filePath], CancellationToken.None);
+            Assert.True(result.Success);
+
+            statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Assert.True(statuses[filePath].HasFlag(GitFileStatus.Staged));
+            Assert.False(statuses[filePath].HasFlag(GitFileStatus.Untracked));
+        }
+        finally
+        {
+            ForceDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void Unstage_StagedModifiedFile_SetsStatusToModified()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            RunGit(tempDir, "init");
+            RunGit(tempDir, "config user.email test@test.com");
+            RunGit(tempDir, "config user.name Test");
+
+            string filePath = Path.Combine(tempDir, "test.txt");
+            File.WriteAllText(filePath, "original\n");
+            RunGit(tempDir, "add test.txt");
+            RunGit(tempDir, "commit -m initial");
+
+            File.WriteAllText(filePath, "modified\n");
+            RunGit(tempDir, "add test.txt");
+
+            var statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Assert.True(statuses[filePath].HasFlag(GitFileStatus.Staged));
+
+            var result = GitUtils.Unstage(tempDir, [filePath], CancellationToken.None);
+            Assert.True(result.Success);
+
+            statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Assert.True(statuses[filePath].HasFlag(GitFileStatus.Modified));
+            Assert.False(statuses[filePath].HasFlag(GitFileStatus.Staged));
+        }
+        finally
+        {
+            ForceDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void Unstage_NewStagedFile_SetsStatusToUntracked()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            RunGit(tempDir, "init");
+            RunGit(tempDir, "config user.email test@test.com");
+            RunGit(tempDir, "config user.name Test");
+
+            string readmePath = Path.Combine(tempDir, "README.md");
+            File.WriteAllText(readmePath, "readme\n");
+            RunGit(tempDir, "add README.md");
+            RunGit(tempDir, "commit -m initial");
+
+            string filePath = Path.Combine(tempDir, "new-file.txt");
+            File.WriteAllText(filePath, "new content\n");
+            RunGit(tempDir, "add new-file.txt");
+
+            var statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Assert.True(statuses[filePath].HasFlag(GitFileStatus.Staged));
+
+            var result = GitUtils.Unstage(tempDir, [filePath], CancellationToken.None);
+            Assert.True(result.Success);
+
+            statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Assert.True(statuses[filePath].HasFlag(GitFileStatus.Untracked));
+            Assert.False(statuses[filePath].HasFlag(GitFileStatus.Staged));
+        }
+        finally
+        {
+            ForceDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void StageAll_MultipleDirtyFiles_StagesAll()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            RunGit(tempDir, "init");
+            RunGit(tempDir, "config user.email test@test.com");
+            RunGit(tempDir, "config user.name Test");
+
+            string file1 = Path.Combine(tempDir, "file1.txt");
+            File.WriteAllText(file1, "original\n");
+            RunGit(tempDir, "add file1.txt");
+            RunGit(tempDir, "commit -m initial");
+
+            // Modified tracked file
+            File.WriteAllText(file1, "modified\n");
+
+            // New untracked file
+            string file2 = Path.Combine(tempDir, "file2.txt");
+            File.WriteAllText(file2, "new\n");
+
+            var result = GitUtils.StageAll(tempDir, CancellationToken.None);
+            Assert.True(result.Success);
+
+            var statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Assert.True(statuses[file1].HasFlag(GitFileStatus.Staged));
+            Assert.True(statuses[file2].HasFlag(GitFileStatus.Staged));
+        }
+        finally
+        {
+            ForceDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void Stage_MultiplePaths_StagesAll()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            RunGit(tempDir, "init");
+            RunGit(tempDir, "config user.email test@test.com");
+            RunGit(tempDir, "config user.name Test");
+
+            string file1 = Path.Combine(tempDir, "a.txt");
+            string file2 = Path.Combine(tempDir, "b.txt");
+            File.WriteAllText(file1, "a\n");
+            File.WriteAllText(file2, "b\n");
+            RunGit(tempDir, "add .");
+            RunGit(tempDir, "commit -m initial");
+
+            File.WriteAllText(file1, "a modified\n");
+            File.WriteAllText(file2, "b modified\n");
+
+            var result = GitUtils.Stage(tempDir, [file1, file2], CancellationToken.None);
+            Assert.True(result.Success);
+
+            var statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Assert.True(statuses[file1].HasFlag(GitFileStatus.Staged));
+            Assert.True(statuses[file2].HasFlag(GitFileStatus.Staged));
+        }
+        finally
+        {
+            ForceDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void Stage_Cancellation_ReturnsFalse()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            RunGit(tempDir, "init");
+
+            string filePath = Path.Combine(tempDir, "test.txt");
+            File.WriteAllText(filePath, "content\n");
+
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            var result = GitUtils.Stage(tempDir, [filePath], cts.Token);
+            Assert.False(result.Success);
+        }
+        finally
+        {
+            ForceDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void RunGitCommand_ValidCommand_ReturnsSuccess()
+    {
+        string? repoRoot = GitUtils.FindRepoRoot(AppContext.BaseDirectory);
+        Assert.NotNull(repoRoot);
+
+        var result = GitUtils.RunGitCommand(repoRoot, "status", CancellationToken.None);
+        Assert.True(result.Success);
+        Assert.Null(result.Error);
+    }
+
+    [Fact]
+    public void UnstageAll_MultipleStagedFiles_UnstagesAll()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            RunGit(tempDir, "init");
+            RunGit(tempDir, "config user.email test@test.com");
+            RunGit(tempDir, "config user.name Test");
+
+            string file1 = Path.Combine(tempDir, "file1.txt");
+            string file2 = Path.Combine(tempDir, "file2.txt");
+            File.WriteAllText(file1, "original\n");
+            File.WriteAllText(file2, "original\n");
+            RunGit(tempDir, "add .");
+            RunGit(tempDir, "commit -m initial");
+
+            File.WriteAllText(file1, "modified\n");
+            File.WriteAllText(file2, "modified\n");
+            RunGit(tempDir, "add .");
+
+            var statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Assert.True(statuses[file1].HasFlag(GitFileStatus.Staged));
+            Assert.True(statuses[file2].HasFlag(GitFileStatus.Staged));
+
+            var result = GitUtils.UnstageAll(tempDir, CancellationToken.None);
+            Assert.True(result.Success);
+
+            statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Assert.True(statuses[file1].HasFlag(GitFileStatus.Modified));
+            Assert.False(statuses[file1].HasFlag(GitFileStatus.Staged));
+            Assert.True(statuses[file2].HasFlag(GitFileStatus.Modified));
+            Assert.False(statuses[file2].HasFlag(GitFileStatus.Staged));
+        }
+        finally
+        {
+            ForceDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void RunGitCommand_InvalidCommand_ReturnsFailure()
+    {
+        string? repoRoot = GitUtils.FindRepoRoot(AppContext.BaseDirectory);
+        Assert.NotNull(repoRoot);
+
+        var result = GitUtils.RunGitCommand(repoRoot, "not-a-real-command", CancellationToken.None);
+        Assert.False(result.Success);
+        Assert.NotNull(result.Error);
+    }
+
     private static void RunGit(string workDir, string arguments)
     {
         var psi = new System.Diagnostics.ProcessStartInfo

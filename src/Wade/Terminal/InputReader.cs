@@ -42,6 +42,10 @@ internal enum AppAction
     ShowFileFinder,
     ToggleDiffPreview,
     ToggleHexPreview,
+    StageFile,
+    UnstageFile,
+    StageAll,
+    UnstageAll,
 }
 
 internal static class InputReader

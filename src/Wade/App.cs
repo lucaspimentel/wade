@@ -93,6 +93,7 @@ internal sealed class App
 
     // Git status state
     private GitStatusLoader? _gitStatusLoader;
+    private GitActionRunner? _gitActionRunner;
     private string? _currentRepoRoot;
     private string? _currentBranchName;
     private Dictionary<string, GitFileStatus>? _gitStatuses;
@@ -170,6 +171,7 @@ internal sealed class App
         _previewLoader = new PreviewLoader(pipeline);
         _dirSizeLoader = new DirectorySizeLoader(pipeline);
         _gitStatusLoader = new GitStatusLoader(pipeline);
+        _gitActionRunner = new GitActionRunner(pipeline);
         var previewLoader = _previewLoader;
 
         var caps = terminal.Capabilities;
@@ -256,6 +258,10 @@ internal sealed class App
                 else if (extra is GitStatusReadyEvent gitExtra)
                 {
                     HandleGitStatusReady(gitExtra);
+                }
+                else if (extra is GitActionCompleteEvent gitActionExtra)
+                {
+                    HandleGitActionComplete(gitActionExtra);
                 }
                 else if (extra is FileFinderScanCompleteEvent scanExtra)
                 {
@@ -346,6 +352,12 @@ internal sealed class App
             if (inputEvent is GitStatusReadyEvent gitEvt)
             {
                 HandleGitStatusReady(gitEvt);
+                continue;
+            }
+
+            if (inputEvent is GitActionCompleteEvent gitActionEvt)
+            {
+                HandleGitActionComplete(gitActionEvt);
                 continue;
             }
 
@@ -1159,6 +1171,50 @@ internal sealed class App
 
         _currentBranchName = evt.BranchName;
         _gitStatuses = evt.Statuses;
+    }
+
+    private bool HasStatusInSelection(GitFileStatus statusMask)
+    {
+        if (_gitStatuses is null)
+        {
+            return false;
+        }
+
+        if (_markedPaths.Count > 0)
+        {
+            foreach (string path in _markedPaths)
+            {
+                if (_gitStatuses.TryGetValue(path, out var s) && (s & statusMask) != 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        var entries = GetVisibleEntries();
+        if (_selectedIndex < entries.Count)
+        {
+            string path = entries[_selectedIndex].FullPath;
+            return _gitStatuses.TryGetValue(path, out var s) && (s & statusMask) != 0;
+        }
+
+        return false;
+    }
+
+    private void HandleGitActionComplete(GitActionCompleteEvent evt)
+    {
+        if (evt.Success)
+        {
+            ShowNotification("Git action completed", NotificationKind.Success);
+        }
+        else
+        {
+            ShowNotification($"Git error: {evt.ErrorMessage}", NotificationKind.Error);
+        }
+
+        RefreshGitStatus();
     }
 
     private void HandleToggleDiffPreview(List<FileSystemEntry> entries, PreviewLoader previewLoader)
@@ -2251,11 +2307,56 @@ internal sealed class App
                 if (_selectedIndex < entries.Count)
                 {
                     var selected = entries[_selectedIndex];
-                    _gitStatuses.TryGetValue(selected.FullPath, out var status);
-                    if (status.HasFlag(GitFileStatus.Modified) || status.HasFlag(GitFileStatus.Staged))
+                    _gitStatuses.TryGetValue(selected.FullPath, out var selectedStatus);
+                    if (selectedStatus.HasFlag(GitFileStatus.Modified) || selectedStatus.HasFlag(GitFileStatus.Staged))
                     {
                         items.Add(("Git: Toggle diff preview", "", AppAction.ToggleDiffPreview));
                     }
+
+                    // Stage: visible when focused/marked files have Modified or Untracked status
+                    bool hasStageableStatus = HasStatusInSelection(GitFileStatus.Modified | GitFileStatus.Untracked);
+                    if (hasStageableStatus)
+                    {
+                        items.Add(("Git: Stage", "", AppAction.StageFile));
+                    }
+
+                    // Unstage: visible when focused/marked files have Staged status
+                    bool hasUnstageableStatus = HasStatusInSelection(GitFileStatus.Staged);
+                    if (hasUnstageableStatus)
+                    {
+                        items.Add(("Git: Unstage", "", AppAction.UnstageFile));
+                    }
+                }
+
+                // Stage all: visible when any file has Modified or Untracked status
+                bool hasAnyChanges = false;
+                foreach (var kvp in _gitStatuses)
+                {
+                    if ((kvp.Value & (GitFileStatus.Modified | GitFileStatus.Untracked)) != 0)
+                    {
+                        hasAnyChanges = true;
+                        break;
+                    }
+                }
+
+                if (hasAnyChanges)
+                {
+                    items.Add(("Git: Stage all changes", "", AppAction.StageAll));
+                }
+
+                bool hasAnyStagedChanges = false;
+                foreach (var kvp in _gitStatuses)
+                {
+                    if ((kvp.Value & GitFileStatus.Staged) != 0)
+                    {
+                        hasAnyStagedChanges = true;
+                        break;
+                    }
+                }
+
+                if (hasAnyStagedChanges)
+                {
+                    items.Add(("Git: Unstage all", "", AppAction.UnstageAll));
                 }
             }
         }
@@ -2952,7 +3053,62 @@ internal sealed class App
                 buffer.ForceFullRedraw();
                 break;
 
+            case AppAction.StageFile:
+                if (_currentRepoRoot is not null)
+                {
+                    var stagePaths = GetSelectedOrMarkedPaths(entries);
+                    if (stagePaths.Count > 0)
+                    {
+                        _gitActionRunner?.RunStage(_currentRepoRoot, stagePaths);
+                    }
+                }
+
+                break;
+
+            case AppAction.UnstageFile:
+                if (_currentRepoRoot is not null)
+                {
+                    var unstagePaths = GetSelectedOrMarkedPaths(entries);
+                    if (unstagePaths.Count > 0)
+                    {
+                        _gitActionRunner?.RunUnstage(_currentRepoRoot, unstagePaths);
+                    }
+                }
+
+                break;
+
+            case AppAction.StageAll:
+                if (_currentRepoRoot is not null)
+                {
+                    _gitActionRunner?.RunStageAll(_currentRepoRoot);
+                }
+
+                break;
+
+            case AppAction.UnstageAll:
+                if (_currentRepoRoot is not null)
+                {
+                    _gitActionRunner?.RunUnstageAll(_currentRepoRoot);
+                }
+
+                break;
+
         }
+    }
+
+    private List<string> GetSelectedOrMarkedPaths(List<FileSystemEntry> entries)
+    {
+        if (_markedPaths.Count > 0)
+        {
+            return [.. _markedPaths];
+        }
+
+        if (_selectedIndex < entries.Count)
+        {
+            return [entries[_selectedIndex].FullPath];
+        }
+
+        return [];
     }
 
     private void RenderActionPalette(ScreenBuffer buffer, int width, int height)

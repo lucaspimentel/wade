@@ -110,6 +110,108 @@ internal static class GitUtils
     }
 
     /// <summary>
+    /// Runs a git command in the given repo root and returns success/failure with optional error message.
+    /// </summary>
+    public static (bool Success, string? Error) RunGitCommand(string repoRoot, string arguments, CancellationToken ct, int timeoutMs = 10_000)
+    {
+        try
+        {
+            if (ct.IsCancellationRequested)
+            {
+                return (false, "Cancelled");
+            }
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = "git",
+                Arguments = arguments,
+                WorkingDirectory = repoRoot,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+
+            using var process = Process.Start(psi);
+            if (process is null)
+            {
+                return (false, "Failed to start git");
+            }
+
+            string stderr = process.StandardError.ReadToEnd();
+            process.StandardOutput.ReadToEnd(); // drain stdout
+
+            if (!process.WaitForExit(timeoutMs))
+            {
+                process.Kill();
+                return (false, "Git command timed out");
+            }
+
+            if (ct.IsCancellationRequested)
+            {
+                return (false, "Cancelled");
+            }
+
+            if (process.ExitCode != 0)
+            {
+                string error = stderr.Trim();
+                return (false, string.IsNullOrEmpty(error) ? $"git exited with code {process.ExitCode}" : error);
+            }
+
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Stages the specified file paths via <c>git add</c>.
+    /// </summary>
+    public static (bool Success, string? Error) Stage(string repoRoot, IReadOnlyList<string> paths, CancellationToken ct)
+    {
+        string args = BuildPathArgs("add", repoRoot, paths);
+        return RunGitCommand(repoRoot, args, ct);
+    }
+
+    /// <summary>
+    /// Unstages the specified file paths via <c>git restore --staged</c>.
+    /// </summary>
+    public static (bool Success, string? Error) Unstage(string repoRoot, IReadOnlyList<string> paths, CancellationToken ct)
+    {
+        string args = BuildPathArgs("restore --staged", repoRoot, paths);
+        return RunGitCommand(repoRoot, args, ct);
+    }
+
+    /// <summary>
+    /// Stages all changes via <c>git add -A</c>.
+    /// </summary>
+    public static (bool Success, string? Error) StageAll(string repoRoot, CancellationToken ct) =>
+        RunGitCommand(repoRoot, "add -A", ct);
+
+    /// <summary>
+    /// Unstages all staged changes via <c>git reset HEAD</c>.
+    /// </summary>
+    public static (bool Success, string? Error) UnstageAll(string repoRoot, CancellationToken ct) =>
+        RunGitCommand(repoRoot, "reset HEAD", ct);
+
+    private static string BuildPathArgs(string command, string repoRoot, IReadOnlyList<string> paths)
+    {
+        var sb = new System.Text.StringBuilder(command);
+        sb.Append(" --");
+        foreach (string path in paths)
+        {
+            string relative = Path.GetRelativePath(repoRoot, path).Replace('\\', '/');
+            sb.Append(" \"");
+            sb.Append(relative);
+            sb.Append('"');
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
     /// Runs <c>git diff</c> for a single file and returns the output lines.
     /// Returns null on error, cancellation, or empty diff.
     /// </summary>
