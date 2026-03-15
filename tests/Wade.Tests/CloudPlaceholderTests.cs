@@ -23,8 +23,8 @@ public class CloudPlaceholderTests
     {
         // Cloud placeholders keep their original file type icon
         var icon = FileIcons.GetIcon(PlaceholderFile("document.docx"));
-        // docx has no special icon, should return the generic file icon
-        Assert.Equal(new Rune(0xF15B), icon);
+        // docx has a Word document icon (nf-fa-file_text_o)
+        Assert.Equal(new Rune(0xF1C2), icon);
     }
 
     [Fact]
@@ -44,8 +44,8 @@ public class CloudPlaceholderTests
     public void GetIcon_ReturnsNormalIcon_ForNonPlaceholderFile()
     {
         var icon = FileIcons.GetIcon(NormalFile("document.docx"));
-        // docx has no special icon, should return the generic file icon
-        Assert.Equal(new Rune(0xF15B), icon);
+        // docx has a Word document icon (nf-fa-file_text_o)
+        Assert.Equal(new Rune(0xF1C2), icon);
     }
 
     [Theory]
