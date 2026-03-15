@@ -127,9 +127,9 @@ internal static class StatusBar
             };
             var notifStyle = new CellStyle(notifFg, StatusBg);
 
-            // Available gap: from end of left half to 2 chars before metadata
+            // Available gap: from end of left content to 2 chars before metadata
             int gapEnd = rightCol > 0 ? rightCol - 2 : rect.Width - rightLen - 3;
-            int gapStart = pathMaxWidth + 1;
+            int gapStart = infoCol + 2;
             int gapWidth = gapEnd - gapStart;
 
             if (gapWidth > 0)

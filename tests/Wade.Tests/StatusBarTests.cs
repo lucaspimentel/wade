@@ -104,6 +104,21 @@ public class StatusBarTests
     }
 
     [Fact]
+    public void Render_NotificationNotCroppedWhenSpaceAvailable()
+    {
+        // Wide terminal with short path and branch — notification should not be cropped
+        int width = 120;
+        var buf = new ScreenBuffer(width, 1);
+        var notification = new Notification("Copied path to clipboard", NotificationKind.Success, 0);
+
+        StatusBar.Render(buf, StatusBarRect(width), "/home", 5, 0, null,
+            notification: notification, branchName: "main");
+
+        string output = Flush(buf);
+        Assert.Contains("Copied path to clipboard", output);
+    }
+
+    [Fact]
     public void Render_NotificationTruncatedToFit()
     {
         int width = 40;
