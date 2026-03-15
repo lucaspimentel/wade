@@ -42,7 +42,6 @@ internal enum AppAction
     ShowFileFinder,
     ToggleDiffPreview,
     ToggleHexPreview,
-    ShowGitMenu,
 }
 
 internal static class InputReader
@@ -52,11 +51,6 @@ internal static class InputReader
         if (key.Key == ConsoleKey.P && key.Control && !key.Shift)
         {
             return AppAction.ShowActionPalette;
-        }
-
-        if (key.Key == ConsoleKey.G && key.Control && !key.Shift)
-        {
-            return AppAction.ShowGitMenu;
         }
 
         if (key.KeyChar == '?')

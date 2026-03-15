@@ -57,7 +57,6 @@ internal sealed class App
     private TextInput? _actionPaletteInput;
     private (string Label, string Shortcut, AppAction Action)[]? _actionPaletteItems;
     private int _actionPaletteScrollOffset;
-    private string _actionPaletteTitle = "Action Palette";
 
     // Bookmark state
     private readonly BookmarkStore _bookmarkStore = new();
@@ -625,10 +624,6 @@ internal sealed class App
 
                 case AppAction.ShowActionPalette:
                     ShowActionPalette();
-                    break;
-
-                case AppAction.ShowGitMenu:
-                    ShowGitActionMenu();
                     break;
 
                 case AppAction.ShowBookmarks:
@@ -1947,12 +1942,7 @@ internal sealed class App
                 break;
 
             default:
-                if (key.Key == ConsoleKey.G && key.Control && !key.Shift)
-                {
-                    _inputMode = InputMode.Normal;
-                    ShowGitActionMenu();
-                }
-                else if (key.KeyChar == 'y')
+                if (key.KeyChar == 'y')
                 {
                     string? previewPath = _cachedPreviewPath ?? _cachedImagePath;
 
@@ -2582,28 +2572,11 @@ internal sealed class App
 
     private void ShowActionPalette()
     {
-        _actionPaletteTitle = "Action Palette";
         _inputMode = InputMode.ActionPalette;
         _actionPaletteSelectedIndex = 0;
         _actionPaletteScrollOffset = 0;
         _actionPaletteInput = new TextInput();
         _actionPaletteItems = BuildActionPaletteItems();
-    }
-
-    private void ShowGitActionMenu()
-    {
-        if (_currentRepoRoot is null)
-        {
-            ShowNotification("Not in a git repository", NotificationKind.Error);
-            return;
-        }
-
-        _actionPaletteTitle = "Git";
-        _inputMode = InputMode.ActionPalette;
-        _actionPaletteSelectedIndex = 0;
-        _actionPaletteScrollOffset = 0;
-        _actionPaletteInput = new TextInput();
-        _actionPaletteItems = BuildGitActionMenuItems();
     }
 
     private (string Label, string Shortcut, AppAction Action)[] BuildActionPaletteItems()
@@ -2623,16 +2596,10 @@ internal sealed class App
         }
 
         items.Add(("Copy absolute path", "y", AppAction.CopyAbsolutePath));
-        items.Add(("Copy git-relative path", "Y", AppAction.CopyGitRelativePath));
         items.Add(("New file", "n", AppAction.NewFile));
         items.Add(("New directory", "Shift+N", AppAction.NewDirectory));
         items.Add(("Create symlink", "Ctrl+L", AppAction.CreateSymlink));
         items.Add(("Properties", "i", AppAction.ShowProperties));
-        if (_currentRepoRoot is not null)
-        {
-            items.Add(("Git menu", "Ctrl+G", AppAction.ShowGitMenu));
-        }
-
         items.Add(("Toggle hex preview", "", AppAction.ToggleHexPreview));
         items.Add(("Toggle hidden files", ".", AppAction.ToggleHiddenFiles));
         items.Add(("Cycle sort mode", "s", AppAction.CycleSortMode));
@@ -2647,15 +2614,27 @@ internal sealed class App
         items.Add(("Help", "?", AppAction.ShowHelp));
         items.Add(("Refresh", "Ctrl+R", AppAction.Refresh));
 
-        return items.ToArray();
-    }
+        // Git actions — only shown when actionable
+        if (_currentRepoRoot is not null)
+        {
+            items.Add(("Git: Copy relative path", "Y", AppAction.CopyGitRelativePath));
 
-    private (string Label, string Shortcut, AppAction Action)[] BuildGitActionMenuItems()
-    {
-        return
-        [
-            ("Toggle diff preview", "", AppAction.ToggleDiffPreview),
-        ];
+            if (_gitStatuses is not null)
+            {
+                var entries = GetVisibleEntries();
+                if (_selectedIndex < entries.Count)
+                {
+                    var selected = entries[_selectedIndex];
+                    _gitStatuses.TryGetValue(selected.FullPath, out var status);
+                    if (status.HasFlag(GitFileStatus.Modified) || status.HasFlag(GitFileStatus.Staged))
+                    {
+                        items.Add(("Git: Toggle diff preview", "", AppAction.ToggleDiffPreview));
+                    }
+                }
+            }
+        }
+
+        return items.ToArray();
     }
 
     private List<(string Label, string Shortcut, AppAction Action)> GetFilteredActionPaletteItems()
@@ -3242,10 +3221,6 @@ internal sealed class App
                 HandleToggleHexPreview(GetVisibleEntries(), previewLoader);
                 break;
 
-            case AppAction.ShowGitMenu:
-                ShowGitActionMenu();
-                break;
-
             case AppAction.ToggleHiddenFiles:
                 _directoryContents.ShowHiddenFiles = !_directoryContents.ShowHiddenFiles;
                 _directoryContents.InvalidateAll();
@@ -3341,7 +3316,7 @@ internal sealed class App
             buffer, width, height,
             Math.Max(contentWidth, Footer.Length),
             contentHeight,
-            title: _actionPaletteTitle,
+            title: "Action Palette",
             footer: Footer);
 
         // Row 0: text input with "> " prefix

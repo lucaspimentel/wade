@@ -192,6 +192,13 @@ public class InputReaderTests
         Assert.Equal(AppAction.ShowActionPalette, InputReader.MapKey(evt));
     }
 
+    [Fact]
+    public void MapKey_CtrlG_ReturnsNone()
+    {
+        var evt = new KeyEvent(ConsoleKey.G, '\a', false, false, true);
+        Assert.Equal(AppAction.None, InputReader.MapKey(evt));
+    }
+
     // ── File finder ─────────────────────────────────────────────────────
 
     [Fact]

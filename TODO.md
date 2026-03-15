@@ -42,11 +42,11 @@ Show git status in the file browser and eventually support git actions.
 
 #### Phase 2b: Commit
 
-- Commit staged changes with message via input dialog (`Ctrl+G`)
+- Commit staged changes with message via input dialog (action palette entry)
 - Reuses existing `TextInput` / `InputMode.TextInput` / `RenderTextInputDialog` machinery (same as Rename)
 - Single-line commit message (multi-line deferred)
 - Only available when staged changes exist
-- Key files: `GitUtils.cs` (`Commit` method), `App.cs`, `InputReader.cs` (`Ctrl+G` binding), `HelpOverlay.cs`
+- Key files: `GitUtils.cs` (`Commit` method), `App.cs`
 
 #### Phase 2c: Push / Pull
 
@@ -78,18 +78,16 @@ Detect whether a drive is SSD, HDD, or network. Some features (like directory si
 
 Support additional archive formats in the preview pane (`.tar`, `.gz`, `.tar.gz`). Zip preview is already implemented via `System.IO.Compression.ZipFile`.
 
-### Git action menu (`Ctrl+G`)
+### Git actions in action palette
 
-Instead of binding `Ctrl+G` directly to commit, open a dedicated git action menu (similar to the action palette but filtered to git actions only). Consolidate all git operations into this menu:
+Git actions are integrated into the global action palette (`Ctrl+P`), prefixed with "Git:" and shown only when actionable. No dedicated git menu or keybinding.
 
-- Diff preview toggle (move from current `d` key binding into this menu, freeing the `d` key) ✅
+- Diff preview toggle ✅
 - Stage / Unstage (Phase 2a)
 - Commit with message (Phase 2b)
 - Push / Pull (Phase 2c)
 
-This replaces the per-phase keybinding approach — `Ctrl+G` becomes the single entry point for all git actions. Menu entries are context-sensitive (e.g. "Stage" only shown for modified/untracked files, "Commit" only when staged changes exist).
-
 #### Completed
 
-- Git action menu scaffolding with `Ctrl+G` binding ✅
-- Diff preview toggle moved into git menu (freed `d` key) ✅
+- Moved git actions from dedicated `Ctrl+G` menu into global action palette ✅
+- Diff preview toggle as "Git: Toggle diff preview" (only shown for modified/staged files) ✅
