@@ -187,10 +187,6 @@ internal sealed class App
 
         var buffer = new ScreenBuffer(lastWidth, lastHeight);
         _layout.Calculate(lastWidth, lastHeight, _config.PreviewPaneEnabled);
-        previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
-            _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
-            zipPreviewEnabled: _config.ZipPreviewEnabled,
-            pdfPreviewEnabled: _config.PdfPreviewEnabled);
 
         UpdateTerminalTitle();
         RefreshGitStatus();
@@ -3737,10 +3733,6 @@ internal sealed class App
         _directoryContents.InvalidateAll();
         ClearPreviewCache(previewLoader, buffer);
         _layout.Calculate(Console.WindowWidth, Console.WindowHeight, _config.PreviewPaneEnabled);
-        previewLoader.Configure(_imagePreviewsEffective, _layout.RightPane.Width, _layout.RightPane.Height,
-            _cellPixelWidth, _cellPixelHeight, glowEnabled: _config.GlowMarkdownPreviewEnabled,
-            zipPreviewEnabled: _config.ZipPreviewEnabled,
-            pdfPreviewEnabled: _config.PdfPreviewEnabled);
         UpdateTerminalTitle();
         RefreshGitStatus();
 

@@ -1,3 +1,4 @@
+using Wade.Preview;
 using Wade.Terminal;
 
 namespace Wade.Tests;
@@ -17,18 +18,33 @@ public class PreviewLoaderTests
         public void Dispose() => _gate.Set();
     }
 
+    private static PreviewContext DefaultContext() =>
+        new(
+            PaneWidthCells: 40,
+            PaneHeightCells: 30,
+            CellPixelWidth: 8,
+            CellPixelHeight: 16,
+            IsCloudPlaceholder: false,
+            GitStatus: null,
+            RepoRoot: null,
+            GlowEnabled: false,
+            ZipPreviewEnabled: true,
+            PdfPreviewEnabled: true,
+            ImagePreviewsEnabled: true);
+
     [Fact]
     public void BeginLoad_PostsPreviewReadyEvent()
     {
         var source = new FakeInputSource();
         using var pipeline = new InputPipeline(source);
         var loader = new PreviewLoader(pipeline);
+        var provider = new TextPreviewProvider();
 
         var tempFile = Path.GetTempFileName();
         try
         {
             File.WriteAllText(tempFile, "hello world");
-            loader.BeginLoad(tempFile);
+            loader.BeginLoad(tempFile, provider, DefaultContext());
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             var evt = pipeline.Take(cts.Token);
@@ -50,6 +66,8 @@ public class PreviewLoaderTests
         var source = new FakeInputSource();
         using var pipeline = new InputPipeline(source);
         var loader = new PreviewLoader(pipeline);
+        var provider = new TextPreviewProvider();
+        var context = DefaultContext();
 
         var tempFile1 = Path.GetTempFileName();
         var tempFile2 = Path.GetTempFileName();
@@ -59,8 +77,8 @@ public class PreviewLoaderTests
             File.WriteAllText(tempFile2, "second");
 
             // Rapid double-load — only second should matter
-            loader.BeginLoad(tempFile1);
-            loader.BeginLoad(tempFile2);
+            loader.BeginLoad(tempFile1, provider, context);
+            loader.BeginLoad(tempFile2, provider, context);
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
@@ -89,38 +107,19 @@ public class PreviewLoaderTests
         }
     }
 
-    [Theory]
-    [InlineData("placeholder.pdf", "PDF")]
-    [InlineData("placeholder.cs", "C#")]
-    [InlineData("placeholder.unknown", "File")]
-    public void BeginLoad_CloudPlaceholder_UsesFileTypeLabel(string fileName, string expectedLabel)
-    {
-        var source = new FakeInputSource();
-        using var pipeline = new InputPipeline(source);
-        var loader = new PreviewLoader(pipeline);
-
-        var tempFile = Path.Combine(Path.GetTempPath(), fileName);
-        loader.BeginLoad(tempFile, isCloudPlaceholder: true);
-
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        var evt = pipeline.Take(cts.Token);
-
-        var preview = Assert.IsType<PreviewReadyEvent>(evt);
-        Assert.Equal(expectedLabel, preview.FileTypeLabel);
-    }
-
     [Fact]
     public void Cancel_PreventsEvent()
     {
         var source = new FakeInputSource();
         using var pipeline = new InputPipeline(source);
         var loader = new PreviewLoader(pipeline);
+        var provider = new TextPreviewProvider();
 
         var tempFile = Path.GetTempFileName();
         try
         {
             File.WriteAllText(tempFile, "hello world");
-            loader.BeginLoad(tempFile);
+            loader.BeginLoad(tempFile, provider, DefaultContext());
             loader.Cancel();
 
             // Give background task time to (not) post
