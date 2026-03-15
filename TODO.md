@@ -74,16 +74,6 @@ Detect whether a drive is SSD, HDD, or network. Some features (like directory si
   - Show directory size for network drives (default false)
 - Must be NativeAOT-compatible (no reflection-heavy WMI wrappers)
 
-### Remote/cloud file handling (OneDrive, etc.)
-
-OneDrive and similar cloud sync tools use placeholder files that aren't fully downloaded locally. Wade should detect and handle these gracefully.
-
-- Detect cloud placeholder status via `FileAttributes.Offline` / `FileAttributes.ReparsePoint` with `IO_REPARSE_TAG_CLOUD` reparse tags (Windows-specific)
-- Display placeholder status visually (e.g. icon overlay or status indicator)
-- Handle file size correctly — local size vs cloud size may differ for placeholders
-- Don't attempt to read placeholder-only files: skip image previews, skip text preview, show a "[cloud file — not downloaded]" message instead
-- Preview loading in `PreviewLoader.LoadPreview()` should check placeholder status before reading
-
 ### Zip — other archive formats
 
 Support additional archive formats in the preview pane (`.tar`, `.gz`, `.tar.gz`). Zip preview is already implemented via `System.IO.Compression.ZipFile`.

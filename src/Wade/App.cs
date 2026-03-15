@@ -1391,7 +1391,7 @@ internal sealed class App
                     _diffPreviewActive = false;
                     _pendingPreviewPath = selected.FullPath;
                     _previewLoading = true;
-                    _previewLoader!.BeginLoad(selected.FullPath);
+                    _previewLoader!.BeginLoad(selected.FullPath, selected.IsCloudPlaceholder);
                 }
 
                 if (_previewLoading)
@@ -1558,7 +1558,7 @@ internal sealed class App
             _diffPreviewActive = false;
             _pendingPreviewPath = selected.FullPath;
             _previewLoading = true;
-            previewLoader.BeginLoad(selected.FullPath);
+            previewLoader.BeginLoad(selected.FullPath, selected.IsCloudPlaceholder);
             return;
         }
 

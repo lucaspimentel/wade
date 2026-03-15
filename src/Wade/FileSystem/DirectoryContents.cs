@@ -105,7 +105,8 @@ internal sealed class DirectoryContents
                     LastModified: dir.LastWriteTime,
                     LinkTarget: dir.LinkTarget,
                     IsBrokenSymlink: CheckBrokenSymlink(dir),
-                    IsDrive: false));
+                    IsDrive: false,
+                    IsCloudPlaceholder: CheckIsCloudPlaceholder(dir)));
             }
 
             foreach (var file in dirInfo.EnumerateFiles())
@@ -131,7 +132,8 @@ internal sealed class DirectoryContents
                     LastModified: file.LastWriteTime,
                     LinkTarget: file.LinkTarget,
                     IsBrokenSymlink: CheckBrokenSymlink(file),
-                    IsDrive: false));
+                    IsDrive: false,
+                    IsCloudPlaceholder: CheckIsCloudPlaceholder(file)));
             }
         }
         catch (UnauthorizedAccessException)
@@ -177,6 +179,18 @@ internal sealed class DirectoryContents
         return cmp != 0 ? cmp : string.Compare(nameA, nameB, StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool CheckIsCloudPlaceholder(FileSystemInfo info)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return false;
+        }
+
+        const int RecallOnDataAccess = 0x00400000;
+        const int RecallOnOpen = 0x00004000;
+        return ((int)info.Attributes & (RecallOnDataAccess | RecallOnOpen)) != 0;
+    }
+
     private static bool CheckBrokenSymlink(FileSystemInfo info)
     {
         if (info.LinkTarget == null)
@@ -203,7 +217,8 @@ internal sealed record FileSystemEntry(
     DateTime LastModified,
     string? LinkTarget,
     bool IsBrokenSymlink,
-    bool IsDrive)
+    bool IsDrive,
+    bool IsCloudPlaceholder = false)
 {
     public bool IsSymlink => LinkTarget != null;
 }

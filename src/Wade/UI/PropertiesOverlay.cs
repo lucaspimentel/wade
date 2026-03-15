@@ -78,9 +78,11 @@ internal static class PropertiesOverlay
                 ? "Broken Symlink"
                 : entry.IsSymlink
                     ? (entry.IsDirectory ? "Symlink \u2192 Directory" : "Symlink \u2192 File")
-                    : entry.IsDirectory
-                        ? "Directory"
-                        : "File";
+                    : entry.IsCloudPlaceholder
+                        ? (entry.IsDirectory ? "Cloud placeholder (Directory)" : "Cloud placeholder (File)")
+                        : entry.IsDirectory
+                            ? "Directory"
+                            : "File";
 
         string target = entry.LinkTarget ?? "\u2014";
 

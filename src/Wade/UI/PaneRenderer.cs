@@ -19,6 +19,8 @@ internal static class PaneRenderer
     private static readonly Color SymlinkColor = new(0, 200, 200);
     private static readonly Color BrokenSymlinkColor = new(200, 60, 60);
 
+    private static readonly Color CloudPlaceholderColor = new(140, 140, 160);
+
     private static readonly Color GitModifiedColor = new(220, 180, 50);
     private static readonly Color GitStagedColor = new(80, 200, 200);
     private static readonly Color GitUntrackedColor = new(80, 200, 80);
@@ -31,6 +33,8 @@ internal static class PaneRenderer
     private static readonly CellStyle DetailStyle = new(DetailColor, null);
     private static readonly CellStyle SymlinkStyle = new(SymlinkColor, null);
     private static readonly CellStyle BrokenSymlinkStyle = new(BrokenSymlinkColor, null);
+    private static readonly CellStyle CloudPlaceholderFileStyle = new(CloudPlaceholderColor, null);
+    private static readonly CellStyle CloudPlaceholderDirStyle = new(CloudPlaceholderColor, null, Bold: true);
 
     private static readonly Color MarkedBg = new(60, 60, 0);
     private static readonly CellStyle MarkedStyle = new(FileColor, MarkedBg);
@@ -38,6 +42,7 @@ internal static class PaneRenderer
     private static readonly CellStyle MarkedSelectedStyle = new(SelectionFg, new Color(180, 180, 60), Bold: true);
     private static readonly CellStyle MarkedSymlinkStyle = new(SymlinkColor, MarkedBg);
     private static readonly CellStyle MarkedBrokenSymlinkStyle = new(BrokenSymlinkColor, MarkedBg);
+    private static readonly CellStyle MarkedCloudPlaceholderStyle = new(CloudPlaceholderColor, MarkedBg);
 
     private static readonly CellStyle GitModifiedFileStyle = new(GitModifiedColor, null);
     private static readonly CellStyle GitModifiedDirStyle = new(GitModifiedColor, null, Bold: true);
@@ -185,6 +190,10 @@ internal static class PaneRenderer
             {
                 style = MarkedSymlinkStyle;
             }
+            else if (isMarked && entry.IsCloudPlaceholder)
+            {
+                style = MarkedCloudPlaceholderStyle;
+            }
             else if (isMarked)
             {
                 style = GetMarkedGitStyle(gitStatus, entry.IsDirectory) ?? (entry.IsDirectory ? MarkedDirStyle : MarkedStyle);
@@ -196,6 +205,10 @@ internal static class PaneRenderer
             else if (entry.IsSymlink)
             {
                 style = SymlinkStyle;
+            }
+            else if (entry.IsCloudPlaceholder)
+            {
+                style = entry.IsDirectory ? CloudPlaceholderDirStyle : CloudPlaceholderFileStyle;
             }
             else
             {

@@ -11,6 +11,7 @@ internal static class FileIcons
     private static readonly Rune FileIcon        = new(0xF15B);  // nf-fa-file
     private static readonly Rune SymlinkDirIcon  = new(0xF482);  // nf-oct-file_symlink_directory
     private static readonly Rune SymlinkFileIcon = new(0xF481);  // nf-oct-file_symlink_file
+    private static readonly Rune CloudIcon       = new(0xF0163); // nf-md-cloud_outline
 
     private static readonly FrozenDictionary<string, Rune> ExtensionIcons =
         new Dictionary<string, Rune>(StringComparer.OrdinalIgnoreCase)
@@ -117,6 +118,11 @@ internal static class FileIcons
         if (entry.IsDrive)
         {
             return DriveIcon;
+        }
+
+        if (entry.IsCloudPlaceholder)
+        {
+            return CloudIcon;
         }
 
         if (entry.IsSymlink)

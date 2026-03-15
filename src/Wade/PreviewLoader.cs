@@ -41,12 +41,27 @@ internal sealed class PreviewLoader
         _cellPixelHeight = cellPixelHeight;
     }
 
-    public void BeginLoad(string path)
+    public void BeginLoad(string path, bool isCloudPlaceholder = false)
     {
         _cts?.Cancel();
         _cts?.Dispose();
         _cts = new CancellationTokenSource();
         var token = _cts.Token;
+
+        if (isCloudPlaceholder)
+        {
+            Task.Run(() =>
+            {
+                if (token.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                var line = new StyledLine("[cloud file — not downloaded]", null);
+                _pipeline.Inject(new PreviewReadyEvent(path, [line], "Cloud File", null, null, IsRendered: true));
+            }, token);
+            return;
+        }
 
         bool imageEnabled = _imagePreviewsEnabled;
         bool glowEnabled = _glowEnabled;
