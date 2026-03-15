@@ -937,6 +937,7 @@ internal sealed class App
                             File.Create(destPath).Dispose();
                             _directoryContents.Invalidate(_currentPath);
                             InvalidateFilteredEntries();
+                            RefreshGitStatus();
                             ShowNotification($"Created '{name}'", NotificationKind.Success);
 
                             var updatedEntries = GetVisibleEntries();
@@ -983,6 +984,7 @@ internal sealed class App
                             Directory.CreateDirectory(destPath);
                             _directoryContents.Invalidate(_currentPath);
                             InvalidateFilteredEntries();
+                            RefreshGitStatus();
                             ShowNotification($"Created '{name}'", NotificationKind.Success);
 
                             var updatedEntries = GetVisibleEntries();
@@ -1046,6 +1048,7 @@ internal sealed class App
 
                             _directoryContents.Invalidate(_currentPath);
                             InvalidateFilteredEntries();
+                            RefreshGitStatus();
                             ShowNotification($"Created symlink '{linkName}'", NotificationKind.Success);
 
                             var updatedEntries = GetVisibleEntries();
@@ -3060,6 +3063,7 @@ internal sealed class App
                         File.Create(destPath).Dispose();
                         _directoryContents.Invalidate(_currentPath);
                         InvalidateFilteredEntries();
+                        RefreshGitStatus();
                         ShowNotification($"Created '{name}'", NotificationKind.Success);
 
                         var updatedEntries = GetVisibleEntries();
@@ -3106,6 +3110,7 @@ internal sealed class App
                         Directory.CreateDirectory(destPath);
                         _directoryContents.Invalidate(_currentPath);
                         InvalidateFilteredEntries();
+                        RefreshGitStatus();
                         ShowNotification($"Created '{name}'", NotificationKind.Success);
 
                         var updatedEntries = GetVisibleEntries();
