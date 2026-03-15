@@ -41,6 +41,7 @@ internal enum AppAction
     CreateSymlink,
     ShowFileFinder,
     ToggleDiffPreview,
+    ShowGitMenu,
 }
 
 internal static class InputReader
@@ -50,6 +51,11 @@ internal static class InputReader
         if (key.Key == ConsoleKey.P && key.Control && !key.Shift)
         {
             return AppAction.ShowActionPalette;
+        }
+
+        if (key.Key == ConsoleKey.G && key.Control && !key.Shift)
+        {
+            return AppAction.ShowGitMenu;
         }
 
         if (key.KeyChar == '?')
@@ -155,11 +161,6 @@ internal static class InputReader
         if (key.KeyChar == 'Y')
         {
             return AppAction.CopyGitRelativePath;
-        }
-
-        if (key.KeyChar == 'd')
-        {
-            return AppAction.ToggleDiffPreview;
         }
 
         if (key.KeyChar == 'b')

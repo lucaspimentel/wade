@@ -57,6 +57,7 @@ internal sealed class App
     private TextInput? _actionPaletteInput;
     private (string Label, string Shortcut, AppAction Action)[]? _actionPaletteItems;
     private int _actionPaletteScrollOffset;
+    private string _actionPaletteTitle = "Action Palette";
 
     // Bookmark state
     private readonly BookmarkStore _bookmarkStore = new();
@@ -626,6 +627,10 @@ internal sealed class App
                     ShowActionPalette();
                     break;
 
+                case AppAction.ShowGitMenu:
+                    ShowGitActionMenu();
+                    break;
+
                 case AppAction.ShowBookmarks:
                     ShowBookmarks();
                     break;
@@ -668,10 +673,6 @@ internal sealed class App
                             _selectedIndex++;
                         }
                     }
-                    break;
-
-                case AppAction.ToggleDiffPreview:
-                    HandleToggleDiffPreview(entries, previewLoader);
                     break;
 
                 case AppAction.ToggleHiddenFiles:
@@ -1900,12 +1901,10 @@ internal sealed class App
                 break;
 
             default:
-                if (key.KeyChar == 'd')
+                if (key.Key == ConsoleKey.G && key.Control && !key.Shift)
                 {
-                    HandleToggleDiffPreview(GetVisibleEntries(), previewLoader);
-                    _expandedPreviewScrollOffset = 0;
-                    Console.Write(AnsiCodes.ClearScreen);
-                    buffer.ForceFullRedraw();
+                    _inputMode = InputMode.Normal;
+                    ShowGitActionMenu();
                 }
                 else if (key.KeyChar == 'y')
                 {
@@ -2537,11 +2536,28 @@ internal sealed class App
 
     private void ShowActionPalette()
     {
+        _actionPaletteTitle = "Action Palette";
         _inputMode = InputMode.ActionPalette;
         _actionPaletteSelectedIndex = 0;
         _actionPaletteScrollOffset = 0;
         _actionPaletteInput = new TextInput();
         _actionPaletteItems = BuildActionPaletteItems();
+    }
+
+    private void ShowGitActionMenu()
+    {
+        if (_currentRepoRoot is null)
+        {
+            ShowNotification("Not in a git repository", NotificationKind.Error);
+            return;
+        }
+
+        _actionPaletteTitle = "Git";
+        _inputMode = InputMode.ActionPalette;
+        _actionPaletteSelectedIndex = 0;
+        _actionPaletteScrollOffset = 0;
+        _actionPaletteInput = new TextInput();
+        _actionPaletteItems = BuildGitActionMenuItems();
     }
 
     private (string Label, string Shortcut, AppAction Action)[] BuildActionPaletteItems()
@@ -2566,7 +2582,11 @@ internal sealed class App
         items.Add(("New directory", "Shift+N", AppAction.NewDirectory));
         items.Add(("Create symlink", "Ctrl+L", AppAction.CreateSymlink));
         items.Add(("Properties", "i", AppAction.ShowProperties));
-        items.Add(("Toggle git diff preview", "d", AppAction.ToggleDiffPreview));
+        if (_currentRepoRoot is not null)
+        {
+            items.Add(("Git menu", "Ctrl+G", AppAction.ShowGitMenu));
+        }
+
         items.Add(("Toggle hidden files", ".", AppAction.ToggleHiddenFiles));
         items.Add(("Cycle sort mode", "s", AppAction.CycleSortMode));
         items.Add(("Reverse sort direction", "S", AppAction.ToggleSortDirection));
@@ -2581,6 +2601,14 @@ internal sealed class App
         items.Add(("Refresh", "Ctrl+R", AppAction.Refresh));
 
         return items.ToArray();
+    }
+
+    private (string Label, string Shortcut, AppAction Action)[] BuildGitActionMenuItems()
+    {
+        return
+        [
+            ("Toggle diff preview", "", AppAction.ToggleDiffPreview),
+        ];
     }
 
     private List<(string Label, string Shortcut, AppAction Action)> GetFilteredActionPaletteItems()
@@ -3163,6 +3191,10 @@ internal sealed class App
                 HandleToggleDiffPreview(GetVisibleEntries(), previewLoader);
                 break;
 
+            case AppAction.ShowGitMenu:
+                ShowGitActionMenu();
+                break;
+
             case AppAction.ToggleHiddenFiles:
                 _directoryContents.ShowHiddenFiles = !_directoryContents.ShowHiddenFiles;
                 _directoryContents.InvalidateAll();
@@ -3258,7 +3290,7 @@ internal sealed class App
             buffer, width, height,
             Math.Max(contentWidth, Footer.Length),
             contentHeight,
-            title: "Action Palette",
+            title: _actionPaletteTitle,
             footer: Footer);
 
         // Row 0: text input with "> " prefix
