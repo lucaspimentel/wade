@@ -55,8 +55,9 @@ internal sealed class PreviewLoader
                     return;
                 }
 
+                string label = FilePreview.GetFileTypeLabel(path) ?? "File";
                 var line = new StyledLine("[cloud file — not downloaded]", null);
-                _pipeline.Inject(new PreviewReadyEvent(path, [line], "Cloud File", null, null, IsRendered: true));
+                _pipeline.Inject(new PreviewReadyEvent(path, [line], label, null, null, IsRendered: true));
             }, token);
             return;
         }

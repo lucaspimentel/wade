@@ -80,7 +80,7 @@ internal static class PropertiesOverlay
                     ? (entry.IsDirectory ? "Symlink \u2192 Directory" : "Symlink \u2192 File")
                     : entry.IsDirectory
                         ? "Directory"
-                        : "File";
+                        : FilePreview.GetFileTypeLabel(entry.FullPath) ?? "File";
 
         string target = entry.LinkTarget ?? "\u2014";
 

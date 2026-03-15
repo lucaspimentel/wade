@@ -42,18 +42,22 @@ public class PropertiesOverlayTests
         Assert.Contains("Read-only", output);
     }
 
-    [Fact]
-    public void Render_FileEntry_ShowsFileType()
+    [Theory]
+    [InlineData("readme.md", "Markdown")]
+    [InlineData("report.pdf", "PDF")]
+    [InlineData("app.cs", "C#")]
+    [InlineData("data.unknown", "File")]
+    public void Render_FileEntry_ShowsFileTypeLabel(string fileName, string expectedType)
     {
         var buf = new ScreenBuffer(100, 30);
         var entry = new FileSystemEntry(
-            "readme.md", "/tmp/readme.md", false, 2048, DateTime.Now, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
+            fileName, "/tmp/" + fileName, false, 2048, DateTime.Now, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
 
         PropertiesOverlay.Render(buf, 100, 30, entry, null);
 
         var output = Flush(buf);
-        Assert.Contains("File", output);
-        Assert.Contains("readme.md", output);
+        Assert.Contains(expectedType, output);
+        Assert.Contains(fileName, output);
     }
 
     [Fact]
@@ -173,9 +177,9 @@ public class PropertiesOverlayTests
     public void Render_RegularFile_ShowsEmDashForTarget()
     {
         var buf = new ScreenBuffer(120, 30);
-        string filePath = Path.Combine(Path.GetTempPath(), "normal.txt");
+        string filePath = Path.Combine(Path.GetTempPath(), "normal.dat");
         var entry = new FileSystemEntry(
-            "normal.txt", filePath, false, 512, DateTime.Now, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
+            "normal.dat", filePath, false, 512, DateTime.Now, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
 
         PropertiesOverlay.Render(buf, 120, 30, entry, null);
 

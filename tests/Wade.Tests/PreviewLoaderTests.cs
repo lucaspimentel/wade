@@ -89,6 +89,26 @@ public class PreviewLoaderTests
         }
     }
 
+    [Theory]
+    [InlineData("placeholder.pdf", "PDF")]
+    [InlineData("placeholder.cs", "C#")]
+    [InlineData("placeholder.unknown", "File")]
+    public void BeginLoad_CloudPlaceholder_UsesFileTypeLabel(string fileName, string expectedLabel)
+    {
+        var source = new FakeInputSource();
+        using var pipeline = new InputPipeline(source);
+        var loader = new PreviewLoader(pipeline);
+
+        var tempFile = Path.Combine(Path.GetTempPath(), fileName);
+        loader.BeginLoad(tempFile, isCloudPlaceholder: true);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var evt = pipeline.Take(cts.Token);
+
+        var preview = Assert.IsType<PreviewReadyEvent>(evt);
+        Assert.Equal(expectedLabel, preview.FileTypeLabel);
+    }
+
     [Fact]
     public void Cancel_PreventsEvent()
     {
