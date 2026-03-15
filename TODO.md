@@ -80,15 +80,11 @@ Detect whether a drive is SSD, HDD, or network. Some features (like directory si
   - Show directory size for network drives (default false)
 - Must be NativeAOT-compatible (no reflection-heavy WMI wrappers)
 
-### Keybinding and naming cleanup
+### ~~Keybinding and naming cleanup~~ ✅
 
-- Remove `'p'` as a keyboard shortcut for paste, keep only `'v'`
-  - `InputReader.cs:149` — change `key.KeyChar is 'p' or 'v'` to `key.KeyChar is 'v'`
-  - Update action palette shortcut label in `App.cs` from `"p"` to `"v"` (if shown)
-- Rename `/` action from "Search / filter" to "Filter"
-  - `App.cs:2293` — `("Search / filter", "/", ...)` → `("Filter", "/", ...)`
-- Add "Search" to name of `Ctrl+F` find action (e.g. "Search / Find file")
-  - `App.cs:2292` — `("Find file", "Ctrl+F", ...)` → `("Search / Find file", "Ctrl+F", ...)`
+- Removed `'p'` paste shortcut (now `'v'` only) in `InputReader.cs`, action palette, help overlay, `--help`, and README
+- Renamed `/` from "Search / filter" to "Filter" everywhere
+- Renamed `Ctrl+F` from "Find file" to "Search / Find file" everywhere
 
 ### File finder: ignore .git folders
 
