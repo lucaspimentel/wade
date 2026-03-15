@@ -55,7 +55,7 @@ static void PrintHelp()
           Del                             Delete
           c / Ctrl+C                      Copy
           x / Ctrl+X                      Cut
-          p / v                           Paste
+          v                               Paste
           ?                               Show help overlay
           q / Escape                      Quit
           Q                               Quit without cd

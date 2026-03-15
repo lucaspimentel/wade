@@ -2275,7 +2275,7 @@ internal sealed class App
 
         if (_clipboardPaths.Count > 0)
         {
-            items.Add(("Paste", "p", AppAction.Paste));
+            items.Add(("Paste", "v", AppAction.Paste));
         }
 
         items.Add(("Copy absolute path", "y", AppAction.CopyAbsolutePath));
@@ -2290,8 +2290,8 @@ internal sealed class App
         items.Add(("Bookmarks", "b", AppAction.ShowBookmarks));
         items.Add(("Toggle bookmark", "B", AppAction.ToggleBookmark));
         items.Add(("Go to path", "g", AppAction.GoToPath));
-        items.Add(("Find file", "Ctrl+F", AppAction.ShowFileFinder));
-        items.Add(("Search / filter", "/", AppAction.Search));
+        items.Add(("Search / Find file", "Ctrl+F", AppAction.ShowFileFinder));
+        items.Add(("Filter", "/", AppAction.Search));
         items.Add(("Open terminal here", "Ctrl+T", AppAction.OpenTerminal));
         items.Add(("Configuration", ",", AppAction.ShowConfig));
         items.Add(("Help", "?", AppAction.ShowHelp));

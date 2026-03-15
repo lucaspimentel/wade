@@ -147,7 +147,7 @@ internal static class InputReader
             return AppAction.Cut;
         }
 
-        if (key.KeyChar is 'p' or 'v')
+        if (key.KeyChar is 'v')
         {
             return AppAction.Paste;
         }
