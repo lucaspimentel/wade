@@ -8,6 +8,7 @@ public class PreviewProviderTests
 {
     private static PreviewContext DefaultContext(
         bool isCloudPlaceholder = false,
+        bool isBrokenSymlink = false,
         GitFileStatus? gitStatus = null,
         string? repoRoot = null,
         bool glowEnabled = false,
@@ -20,6 +21,7 @@ public class PreviewProviderTests
             CellPixelWidth: 8,
             CellPixelHeight: 16,
             IsCloudPlaceholder: isCloudPlaceholder,
+            IsBrokenSymlink: isBrokenSymlink,
             GitStatus: gitStatus,
             RepoRoot: repoRoot,
             GlowEnabled: glowEnabled,
@@ -54,13 +56,6 @@ public class PreviewProviderTests
         }
 
         [Fact]
-        public void CanPreview_CloudPlaceholder_ReturnsFalse()
-        {
-            var provider = new ImagePreviewProvider();
-            Assert.False(provider.CanPreview("file.png", DefaultContext(isCloudPlaceholder: true)));
-        }
-
-        [Fact]
         public void CanPreview_ImagePreviewsDisabled_ReturnsFalse()
         {
             var provider = new ImagePreviewProvider();
@@ -78,13 +73,6 @@ public class PreviewProviderTests
 
     public class PdfPreviewProviderTests
     {
-        [Fact]
-        public void CanPreview_CloudPlaceholder_ReturnsFalse()
-        {
-            var provider = new PdfPreviewProvider();
-            Assert.False(provider.CanPreview("file.pdf", DefaultContext(isCloudPlaceholder: true)));
-        }
-
         [Fact]
         public void CanPreview_PdfDisabled_ReturnsFalse()
         {
@@ -237,13 +225,6 @@ public class PreviewProviderTests
         }
 
         [Fact]
-        public void CanPreview_CloudPlaceholder_ReturnsFalse()
-        {
-            var provider = new TextPreviewProvider();
-            Assert.False(provider.CanPreview("file.txt", DefaultContext(isCloudPlaceholder: true)));
-        }
-
-        [Fact]
         public void GetPreview_TextFile_ReturnsLinesWithMetadata()
         {
             string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".txt");
@@ -304,13 +285,6 @@ public class PreviewProviderTests
         {
             var provider = new HexPreviewProvider();
             Assert.True(provider.CanPreview("anything.bin", DefaultContext()));
-        }
-
-        [Fact]
-        public void CanPreview_CloudPlaceholder_ReturnsFalse()
-        {
-            var provider = new HexPreviewProvider();
-            Assert.False(provider.CanPreview("file.bin", DefaultContext(isCloudPlaceholder: true)));
         }
 
         [Fact]

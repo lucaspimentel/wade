@@ -11,6 +11,7 @@ public class ExecutablePreviewProviderTests
             CellPixelWidth: 8,
             CellPixelHeight: 16,
             IsCloudPlaceholder: false,
+            IsBrokenSymlink: false,
             GitStatus: null,
             RepoRoot: null,
             GlowEnabled: false,

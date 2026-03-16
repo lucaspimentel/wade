@@ -18,6 +18,7 @@ internal record PreviewContext(
     int CellPixelWidth,
     int CellPixelHeight,
     bool IsCloudPlaceholder,
+    bool IsBrokenSymlink,
     GitFileStatus? GitStatus,
     string? RepoRoot,
     bool GlowEnabled,

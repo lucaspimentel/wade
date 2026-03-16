@@ -7,6 +7,7 @@ public class PreviewProviderRegistryTests
 {
     private static PreviewContext MakeContext(
         bool isCloudPlaceholder = false,
+        bool isBrokenSymlink = false,
         GitFileStatus? gitStatus = null,
         string? repoRoot = null,
         bool glowEnabled = false,
@@ -19,6 +20,7 @@ public class PreviewProviderRegistryTests
             CellPixelWidth: 8,
             CellPixelHeight: 16,
             IsCloudPlaceholder: isCloudPlaceholder,
+            IsBrokenSymlink: isBrokenSymlink,
             GitStatus: gitStatus,
             RepoRoot: repoRoot,
             GlowEnabled: glowEnabled,
@@ -62,6 +64,14 @@ public class PreviewProviderRegistryTests
     public void CloudPlaceholder_ReturnsEmpty()
     {
         var providers = PreviewProviderRegistry.GetApplicableProviders("file.cs", MakeContext(isCloudPlaceholder: true));
+
+        Assert.Empty(providers);
+    }
+
+    [Fact]
+    public void BrokenSymlink_ReturnsEmpty()
+    {
+        var providers = PreviewProviderRegistry.GetApplicableProviders("file.cs", MakeContext(isBrokenSymlink: true));
 
         Assert.Empty(providers);
     }

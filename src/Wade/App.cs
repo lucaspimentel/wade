@@ -1038,10 +1038,27 @@ internal sealed class App
                     _activeProviderIndex = 0;
                     _activePreviewContext = BuildPreviewContext(_layout.RightPane.Width, _layout.RightPane.Height);
                     _applicableProviders = PreviewProviderRegistry.GetApplicableProviders(selected.FullPath, _activePreviewContext);
-                    ReloadActiveProvider(selected.FullPath, _previewLoader!);
+
+                    if (_applicableProviders.Count == 0)
+                    {
+                        ClearPreviewCache(_previewLoader!);
+                        _applicableProviders = [];
+                        _cachedPreviewPath = selected.FullPath;
+                    }
+                    else
+                    {
+                        ReloadActiveProvider(selected.FullPath, _previewLoader!);
+                    }
                 }
 
-                if (_previewLoading)
+                if (_applicableProviders is { Count: 0 })
+                {
+                    string message = _activePreviewContext is { IsBrokenSymlink: true } ? "[broken symlink]"
+                        : _activePreviewContext is { IsCloudPlaceholder: true } ? "[cloud file \u2013 not downloaded]"
+                        : "[no preview available]";
+                    PaneRenderer.RenderMessage(buffer, _layout.RightPane, message);
+                }
+                else if (_previewLoading)
                 {
                     PaneRenderer.RenderMessage(buffer, _layout.RightPane, "[loading\u2026]");
                 }
@@ -1314,9 +1331,11 @@ internal sealed class App
         }
 
         bool isCloudPlaceholder = false;
+        bool isBrokenSymlink = false;
         if (_selectedIndex < entries.Count)
         {
             isCloudPlaceholder = entries[_selectedIndex].IsCloudPlaceholder;
+            isBrokenSymlink = entries[_selectedIndex].IsBrokenSymlink;
         }
 
         return new PreviewContext(
@@ -1325,6 +1344,7 @@ internal sealed class App
             CellPixelWidth: _cellPixelWidth,
             CellPixelHeight: _cellPixelHeight,
             IsCloudPlaceholder: isCloudPlaceholder,
+            IsBrokenSymlink: isBrokenSymlink,
             GitStatus: gitStatus,
             RepoRoot: _currentRepoRoot,
             GlowEnabled: _config.GlowMarkdownPreviewEnabled,

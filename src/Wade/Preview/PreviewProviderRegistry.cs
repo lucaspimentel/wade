@@ -19,6 +19,11 @@ internal static class PreviewProviderRegistry
 
     public static List<IPreviewProvider> GetApplicableProviders(string path, PreviewContext context)
     {
+        if (context.IsBrokenSymlink || context.IsCloudPlaceholder)
+        {
+            return [];
+        }
+
         var result = new List<IPreviewProvider>();
 
         foreach (var provider in s_providers)

@@ -205,7 +205,8 @@ internal sealed class DirectoryContents
 
         try
         {
-            return info.ResolveLinkTarget(returnFinalTarget: true) == null;
+            var target = info.ResolveLinkTarget(returnFinalTarget: true);
+            return target == null || !Path.Exists(target.FullName);
         }
         catch
         {

@@ -10,8 +10,7 @@ internal sealed class ImagePreviewProvider : IPreviewProvider
     public string Label => "Image";
 
     public bool CanPreview(string path, PreviewContext context) =>
-        !context.IsCloudPlaceholder
-        && context.ImagePreviewsEnabled
+        context.ImagePreviewsEnabled
         && ImagePreview.IsImageFile(path);
 
     public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct)
@@ -42,8 +41,7 @@ internal sealed class PdfPreviewProvider : IPreviewProvider
     public string Label => "PDF";
 
     public bool CanPreview(string path, PreviewContext context) =>
-        !context.IsCloudPlaceholder
-        && context.PdfPreviewEnabled
+        context.PdfPreviewEnabled
         && context.ImagePreviewsEnabled
         && ImageConverter.CanConvert(path);
 
@@ -152,8 +150,7 @@ internal sealed class TextPreviewProvider : IPreviewProvider
 {
     public string Label => "Source";
 
-    public bool CanPreview(string path, PreviewContext context) =>
-        !context.IsCloudPlaceholder;
+    public bool CanPreview(string path, PreviewContext context) => true;
 
     public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct)
     {
@@ -190,8 +187,7 @@ internal sealed class HexPreviewProvider : IPreviewProvider
 {
     public string Label => "Hex dump";
 
-    public bool CanPreview(string path, PreviewContext context) =>
-        !context.IsCloudPlaceholder;
+    public bool CanPreview(string path, PreviewContext context) => true;
 
     public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct)
     {
