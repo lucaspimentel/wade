@@ -105,6 +105,37 @@ public class PreviewProviderRegistryTests
     }
 
     [Fact]
+    public void DocxFile_ReturnsOfficeThenZipContentsThenTextThenHex()
+    {
+        var providers = PreviewProviderRegistry.GetApplicableProviders("report.docx", MakeContext());
+
+        Assert.Equal(4, providers.Count);
+        Assert.IsType<OfficePreviewProvider>(providers[0]);
+        Assert.IsType<ZipContentsPreviewProvider>(providers[1]);
+        Assert.IsType<TextPreviewProvider>(providers[2]);
+        Assert.IsType<HexPreviewProvider>(providers[3]);
+    }
+
+    [Fact]
+    public void ExeFile_ReturnsExecutableThenTextThenHex()
+    {
+        var providers = PreviewProviderRegistry.GetApplicableProviders("app.exe", MakeContext());
+
+        Assert.Equal(3, providers.Count);
+        Assert.IsType<ExecutablePreviewProvider>(providers[0]);
+        Assert.IsType<TextPreviewProvider>(providers[1]);
+        Assert.IsType<HexPreviewProvider>(providers[2]);
+    }
+
+    [Fact]
+    public void DocxFile_DoesNotIncludeNuGetProvider()
+    {
+        var providers = PreviewProviderRegistry.GetApplicableProviders("report.docx", MakeContext());
+
+        Assert.DoesNotContain(providers, p => p is NuGetPreviewProvider);
+    }
+
+    [Fact]
     public void ZipFile_DoesNotIncludeNuGetProvider()
     {
         var providers = PreviewProviderRegistry.GetApplicableProviders("file.zip", MakeContext());

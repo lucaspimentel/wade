@@ -115,7 +115,7 @@ Add primary preview providers for specific formats. Each is an `IPreviewProvider
 ##### Backlog
 
 - **PDF metadata** — title, author, page count, producer, creation date. Extract from PDF header/trailer without rendering. Could use a lightweight parser or CLI tool.
-- **MS Office documents** (`.docx`, `.xlsx`, `.pptx`) — title, author, created/modified dates, page/sheet/slide count. Extract from OPC core properties XML (`docProps/core.xml`, `docProps/app.xml`) inside the zip archive.
+- ~~MS Office documents (`.docx`, `.xlsx`, `.pptx`) — title, author, created/modified dates, page/sheet/slide count. Extract from OPC core properties XML (`docProps/core.xml`, `docProps/app.xml`) inside the zip archive.~~ ✅
 - **Font files** (`.ttf`, `.otf`, `.woff2`) — font family, style, weight, glyph count. Parse OpenType/TrueType `name` and `head` tables.
 - **Media files** (`.mp3`, `.mp4`, `.flac`, `.mkv`, `.avi`, `.wav`, `.ogg`, etc.) — duration, codec, bitrate, resolution, sample rate. Delegate to `mediainfo` CLI (JSON output) if available on PATH.
 
