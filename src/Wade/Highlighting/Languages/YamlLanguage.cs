@@ -57,7 +57,7 @@ internal sealed class YamlLanguage : ILanguage
         // Key: value
         int keyStart = pos;
         // Quoted key
-        if (ch == '"' || ch == '\'')
+        if (ch is '"' or '\'')
         {
             char q = ch;
             pos++;
@@ -125,7 +125,7 @@ internal sealed class YamlLanguage : ILanguage
         int commentIdx = line.IndexOf(" #", pos, StringComparison.Ordinal);
 
         // Quoted string
-        if (ch == '"' || ch == '\'')
+        if (ch is '"' or '\'')
         {
             char q = ch;
             int p = pos + 1;

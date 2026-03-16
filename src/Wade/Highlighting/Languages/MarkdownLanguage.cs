@@ -71,8 +71,8 @@ internal sealed partial class MarkdownLanguage : ILanguage
 
         // Horizontal rule: --- or *** or ___
         if (trimmed == "---" || trimmed == "***" || trimmed == "___" ||
-            (trimmed.Length >= 3 && trimmed.All(c => c == '-' || c == ' ') && trimmed.Count(c => c == '-') >= 3) ||
-            (trimmed.Length >= 3 && trimmed.All(c => c == '*' || c == ' ') && trimmed.Count(c => c == '*') >= 3))
+            (trimmed.Length >= 3 && trimmed.All(c => c is '-' or ' ') && trimmed.Count(c => c == '-') >= 3) ||
+            (trimmed.Length >= 3 && trimmed.All(c => c is '*' or ' ') && trimmed.Count(c => c == '*') >= 3))
         {
             spans.Add(new StyledSpan(0, line.Length, TokenKind.Operator));
             return new StyledLine(line, [.. spans]);

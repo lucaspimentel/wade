@@ -202,7 +202,7 @@ internal abstract class RegexLanguage : ILanguage
     protected virtual bool TryMatchString(string line, int pos, List<StyledSpan> spans, ref byte state, out int end)
     {
         char ch = line[pos];
-        if (ch == '"' || ch == '\'')
+        if (ch is '"' or '\'')
         {
             end = ScanQuotedString(line, pos, ch, spans);
             return true;
@@ -238,7 +238,7 @@ internal abstract class RegexLanguage : ILanguage
 
         int start = pos;
         // Hex: 0x...
-        if (ch == '0' && pos + 1 < line.Length && (line[pos + 1] == 'x' || line[pos + 1] == 'X'))
+        if (ch == '0' && pos + 1 < line.Length && line[pos + 1] is 'x' or 'X')
         {
             pos += 2;
             while (pos < line.Length && (char.IsAsciiHexDigit(line[pos]) || line[pos] == '_'))

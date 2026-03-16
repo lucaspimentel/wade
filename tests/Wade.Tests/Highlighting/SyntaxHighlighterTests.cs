@@ -7,7 +7,7 @@ public class SyntaxHighlighterTests
     [Fact]
     public void UnknownExtension_AllLinesNullSpans()
     {
-        var lines = new[] { "hello world", "line two" };
+        string[] lines = ["hello world", "line two"];
         var result = SyntaxHighlighter.Highlight(lines, "file.unknown");
         Assert.All(result, l => Assert.Null(l.Spans));
     }
@@ -15,7 +15,7 @@ public class SyntaxHighlighterTests
     [Fact]
     public void KnownExtension_ContentLinesHaveSpans()
     {
-        var lines = new[] { "namespace Foo;", "public class Bar {", "}" };
+        string[] lines = ["namespace Foo;", "public class Bar {", "}"];
         var result = SyntaxHighlighter.Highlight(lines, "Program.cs");
         // At least one line should have spans (namespace, class are keywords)
         Assert.Contains(result, l => l.Spans is { Length: > 0 });
@@ -24,7 +24,7 @@ public class SyntaxHighlighterTests
     [Fact]
     public void TextPreserved_InResultLines()
     {
-        var lines = new[] { "var x = 42;" };
+        string[] lines = ["var x = 42;"];
         var result = SyntaxHighlighter.Highlight(lines, "Program.cs");
         Assert.Equal("var x = 42;", result[0].Text);
     }

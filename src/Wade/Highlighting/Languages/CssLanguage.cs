@@ -72,7 +72,7 @@ internal sealed class CssLanguage : RegexLanguage
             }
 
             // String values
-            if (line[pos] == '"' || line[pos] == '\'')
+            if (line[pos] is '"' or '\'')
             {
                 byte dummy = 0;
                 bool _ = TryMatchString(line, pos, spans, ref dummy, out int strEnd);

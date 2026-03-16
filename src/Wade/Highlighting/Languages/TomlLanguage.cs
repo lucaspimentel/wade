@@ -159,7 +159,7 @@ internal sealed class TomlLanguage : ILanguage
         }
 
         // Regular string
-        if (ch == '"' || ch == '\'')
+        if (ch is '"' or '\'')
         {
             char quote = ch;
             int p = pos + 1;

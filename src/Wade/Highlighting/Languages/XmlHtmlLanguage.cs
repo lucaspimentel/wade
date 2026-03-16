@@ -103,7 +103,7 @@ internal sealed class XmlHtmlLanguage : ILanguage
                         pos++;
 
                         // Attribute value
-                        if (pos < len && (line[pos] == '"' || line[pos] == '\''))
+                        if (pos < len && line[pos] is '"' or '\'')
                         {
                             char q = line[pos];
                             int valStart = pos;

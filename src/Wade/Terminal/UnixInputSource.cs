@@ -173,14 +173,14 @@ internal static class VtParser
                 events.Add(new KeyEvent(ConsoleKey.Backspace, '\b', false, false, false));
                 i++;
             }
-            else if (b >= 0x01 && b <= 0x1A) // Ctrl+A through Ctrl+Z
+            else if (b is >= 0x01 and <= 0x1A) // Ctrl+A through Ctrl+Z
             {
                 char letter = (char)('A' + b - 1);
                 var consoleKey = (ConsoleKey)letter;
                 events.Add(new KeyEvent(consoleKey, (char)b, false, false, true));
                 i++;
             }
-            else if (b >= 0x20 && b <= 0x7E) // Printable ASCII
+            else if (b is >= 0x20 and <= 0x7E) // Printable ASCII
             {
                 char c = (char)b;
                 var consoleKey = CharToConsoleKey(c);
@@ -308,7 +308,7 @@ internal static class VtParser
                 current = 0;
                 inSecond = true;
             }
-            else if (b >= '0' && b <= '9')
+            else if (b is >= (byte)'0' and <= (byte)'9')
             {
                 current = current * 10 + (b - '0');
             }
@@ -347,7 +347,7 @@ internal static class VtParser
                 current = 0;
                 field++;
             }
-            else if (b >= '0' && b <= '9')
+            else if (b is >= (byte)'0' and <= (byte)'9')
             {
                 current = current * 10 + (b - '0');
             }

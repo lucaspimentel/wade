@@ -60,7 +60,7 @@ internal sealed class PythonLanguage : RegexLanguage
         // f-strings, b-strings, r-strings: f"...", b"...", r"...", etc.
         char ch = line[pos];
         if ((ch == 'f' || ch == 'b' || ch == 'r' || ch == 'u' || ch == 'F' || ch == 'B' || ch == 'R') &&
-            pos + 1 < line.Length && (line[pos + 1] == '"' || line[pos + 1] == '\''))
+            pos + 1 < line.Length && line[pos + 1] is '"' or '\'')
         {
             pos++; // skip prefix
         }
@@ -69,9 +69,9 @@ internal sealed class PythonLanguage : RegexLanguage
         if (pos + 2 < line.Length)
         {
             char q = line[pos];
-            if ((q == '"' || q == '\'') && line[pos + 1] == q && line[pos + 2] == q)
+            if (q is '"' or '\'' && line[pos + 1] == q && line[pos + 2] == q)
             {
-                string triple = new string(q, 3);
+                string triple = new(q, 3);
                 int closeIdx = line.IndexOf(triple, pos + 3, StringComparison.Ordinal);
                 if (closeIdx >= 0)
                 {
@@ -92,7 +92,7 @@ internal sealed class PythonLanguage : RegexLanguage
         }
 
         // Regular strings (single or double quote)
-        if (pos < line.Length && (line[pos] == '"' || line[pos] == '\''))
+        if (pos < line.Length && line[pos] is '"' or '\'')
         {
             int spanStart = (pos > 0 && (line[pos - 1] == 'f' || line[pos - 1] == 'b' || line[pos - 1] == 'r' || line[pos - 1] == 'u')) ? pos - 1 : pos;
             end = ScanQuotedString(line, pos, line[pos], spans);
