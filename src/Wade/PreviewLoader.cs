@@ -141,7 +141,8 @@ internal sealed class PreviewLoader
                     result.FileTypeLabel,
                     result.Encoding,
                     result.LineEnding,
-                    result.IsRendered));
+                    result.IsRendered,
+                    result.IsPlaceholder));
             }
         }
         catch (OperationCanceledException)

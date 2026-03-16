@@ -48,9 +48,10 @@ public class FilePreviewTests
         string tempFile = Path.GetTempFileName();
         try
         {
-            var lines = FilePreview.GetPreviewLines(tempFile);
+            var lines = FilePreview.GetPreviewLines(tempFile, out var metadata);
             Assert.Single(lines);
             Assert.Equal("[empty file]", lines[0]);
+            Assert.Equal("[empty file]", metadata.PlaceholderMessage);
         }
         finally
         {
@@ -95,9 +96,10 @@ public class FilePreviewTests
         try
         {
             File.WriteAllBytes(tempFile, [0x48, 0x65, 0x6C, 0x00, 0x6F]);
-            var lines = FilePreview.GetPreviewLines(tempFile);
+            var lines = FilePreview.GetPreviewLines(tempFile, out var metadata);
             Assert.Single(lines);
             Assert.Equal("[binary file]", lines[0]);
+            Assert.Equal("[binary file]", metadata.PlaceholderMessage);
         }
         finally
         {
@@ -113,9 +115,26 @@ public class FilePreviewTests
         try
         {
             File.WriteAllBytes(tempFile, [0x4D, 0x5A, 0x00, 0x00]); // MZ header + null bytes
-            var lines = FilePreview.GetPreviewLines(tempFile);
+            var lines = FilePreview.GetPreviewLines(tempFile, out var metadata);
             Assert.Single(lines);
             Assert.Equal("[binary file]", lines[0]);
+            Assert.Equal("[binary file]", metadata.PlaceholderMessage);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public void GetPreviewLines_TextFile_PlaceholderMessageIsNull()
+    {
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(tempFile, "Hello, world!");
+            FilePreview.GetPreviewLines(tempFile, out var metadata);
+            Assert.Null(metadata.PlaceholderMessage);
         }
         finally
         {

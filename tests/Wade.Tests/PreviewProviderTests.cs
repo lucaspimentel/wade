@@ -237,6 +237,7 @@ public class PreviewProviderTests
                 Assert.NotNull(result);
                 Assert.NotNull(result.TextLines);
                 Assert.False(result.IsRendered);
+                Assert.False(result.IsPlaceholder);
                 Assert.NotNull(result.Encoding);
                 Assert.NotNull(result.FileTypeLabel);
                 Assert.True(result.TextLines.Length >= 2);
@@ -260,8 +261,27 @@ public class PreviewProviderTests
                 Assert.NotNull(result);
                 Assert.NotNull(result.TextLines);
                 Assert.True(result.IsRendered);
+                Assert.True(result.IsPlaceholder);
                 Assert.Single(result.TextLines);
                 Assert.Equal("[binary file]", result.TextLines[0].Text);
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        [Fact]
+        public void GetPreview_EmptyFile_IsPlaceholder()
+        {
+            string path = Path.GetTempFileName();
+            try
+            {
+                var provider = new TextPreviewProvider();
+                var result = provider.GetPreview(path, DefaultContext(), CancellationToken.None);
+
+                Assert.NotNull(result);
+                Assert.True(result.IsPlaceholder);
             }
             finally
             {

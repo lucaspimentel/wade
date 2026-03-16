@@ -17,9 +17,9 @@ Design a common pattern for external CLI tools (glow, ffprobe, mediainfo, pdftop
 - Show a help message in the preview pane when a tool is missing but would provide useful output (e.g., "install ffprobe for media metadata")
 - Single shared abstraction or convention so new tools follow the same pattern
 
-### Suppress `[binary file]` preview when metadata is present
+### ~~Suppress placeholder previews when metadata is present~~ ✅
 
-When a metadata provider returns structured data for a binary file (`.exe`, `.dll`, audio/video), the default `TextPreviewProvider` shows `[binary file]` in the bottom half of the split pane — wasting space. Render metadata-only (full pane) instead of the split layout when the active preview is just `[binary file]`.
+When a metadata provider returns structured data and the active preview is just a placeholder (`[binary file]`, `[empty file]`, etc.), render metadata full-pane instead of splitting with the useless placeholder.
 
 ### ~~Extract shared `WrapText` helper~~ ✅
 

@@ -118,6 +118,7 @@ internal sealed class App
     private int _cachedImagePixelHeight;
     private bool _isImagePreview;
     private bool _isRenderedPreview;
+    private bool _isPlaceholderPreview;
     private int _activeProviderIndex;
     private List<IPreviewProvider>? _applicableProviders;
     private PreviewContext? _activePreviewContext;
@@ -1078,9 +1079,10 @@ internal sealed class App
                 {
                     PaneRenderer.RenderMessage(buffer, _layout.RightPane, "[loading\u2026]");
                 }
-                else if (_cachedMetadataSections is not null && !_previewLoading && _cachedStyledLines is null && !_isImagePreview && !_isCombinedPreview)
+                else if (_cachedMetadataSections is not null && !_previewLoading && !_isImagePreview && !_isCombinedPreview
+                         && (_cachedStyledLines is null || _isPlaceholderPreview))
                 {
-                    // Metadata only (no preview provider)
+                    // Metadata only (no preview provider, or preview is just a placeholder like "[binary file]")
                     StyledLine[] metadataLines = MetadataRenderer.Render(_cachedMetadataSections, _layout.RightPane.Width);
                     PaneRenderer.RenderPreview(buffer, _layout.RightPane, metadataLines, showLineNumbers: false);
                 }
@@ -1089,7 +1091,7 @@ internal sealed class App
                     // Metadata + image: render metadata at top, image below
                     RenderMetadataWithImage(buffer, _layout.RightPane);
                 }
-                else if (_cachedMetadataSections is not null && _cachedStyledLines is not null)
+                else if (_cachedMetadataSections is not null && _cachedStyledLines is not null && !_isPlaceholderPreview)
                 {
                     // Metadata + text preview: render metadata at top, text below
                     RenderMetadataWithText(buffer, _layout.RightPane);
@@ -1193,6 +1195,7 @@ internal sealed class App
         _isImagePreview = false;
         _isCombinedPreview = false;
         _isRenderedPreview = evt.IsRendered;
+        _isPlaceholderPreview = evt.IsPlaceholder;
         _cachedSixelData = null;
         _cachedImagePath = null;
     }
@@ -1452,6 +1455,7 @@ internal sealed class App
         _isImagePreview = false;
         _isCombinedPreview = false;
         _isRenderedPreview = false;
+        _isPlaceholderPreview = false;
         _activeProviderIndex = 0;
         _applicableProviders = null;
         _activePreviewContext = null;

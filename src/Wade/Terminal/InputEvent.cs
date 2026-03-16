@@ -23,7 +23,8 @@ internal sealed record PreviewReadyEvent(
     string? FileTypeLabel,
     string? Encoding,
     string? LineEnding,
-    bool IsRendered = false) : InputEvent;
+    bool IsRendered = false,
+    bool IsPlaceholder = false) : InputEvent;
 
 internal sealed record ImagePreviewReadyEvent(
     string Path,

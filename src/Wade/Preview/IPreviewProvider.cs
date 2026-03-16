@@ -43,4 +43,10 @@ internal record PreviewResult
     /// (used for rendered previews like zip contents, hex dump, diff).
     /// </summary>
     public bool IsRendered { get; init; }
+
+    /// <summary>
+    /// When true, the preview is a placeholder message (e.g. "[binary file]", "[empty file]")
+    /// rather than real content. Used to suppress split layout when metadata is present.
+    /// </summary>
+    public bool IsPlaceholder { get; init; }
 }

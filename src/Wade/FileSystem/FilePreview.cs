@@ -174,6 +174,7 @@ internal static class FilePreview
             metadata = DetectFileMetadata(filePath);
             if (metadata.IsBinary)
             {
+                metadata = metadata with { PlaceholderMessage = "[binary file]" };
                 return ["[binary file]"];
             }
 
@@ -186,17 +187,24 @@ internal static class FilePreview
                 lines.Add(line.Replace("\t", "    "));
             }
 
-            return lines.Count > 0 ? [.. lines] : ["[empty file]"];
+            if (lines.Count == 0)
+            {
+                metadata = metadata with { PlaceholderMessage = "[empty file]" };
+                return ["[empty file]"];
+            }
+
+            return [.. lines];
         }
         catch (UnauthorizedAccessException)
         {
-            metadata = new FileMetadata(IsBinary: false, Encoding: "UTF-8", LineEnding: null);
+            metadata = new FileMetadata(IsBinary: false, Encoding: "UTF-8", LineEnding: null, PlaceholderMessage: "[access denied]");
             return ["[access denied]"];
         }
         catch (IOException ex)
         {
-            metadata = new FileMetadata(IsBinary: false, Encoding: "UTF-8", LineEnding: null);
-            return [$"[error: {ex.Message}]"];
+            string message = $"[error: {ex.Message}]";
+            metadata = new FileMetadata(IsBinary: false, Encoding: "UTF-8", LineEnding: null, PlaceholderMessage: message);
+            return [message];
         }
     }
 
@@ -291,4 +299,4 @@ internal static class FilePreview
     internal static bool IsBinary(string filePath) => DetectFileMetadata(filePath).IsBinary;
 }
 
-internal readonly record struct FileMetadata(bool IsBinary, string Encoding, string? LineEnding);
+internal readonly record struct FileMetadata(bool IsBinary, string Encoding, string? LineEnding, string? PlaceholderMessage = null);
