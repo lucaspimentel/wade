@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Separate `IMetadataProvider` system for structured file metadata (NuGet, Executable, Office, Media)
+- Metadata displayed as styled header above preview pane and in properties overlay
+- `MetadataRenderer` for consistent colored label/value metadata rendering
+- `MetadataProviderRegistry` for file-type-based metadata provider matching
+
+### Changed
+- Migrated `ExecutablePreviewProvider`, `OfficePreviewProvider`, `MediaPreviewProvider`, `NuGetPreviewProvider` to metadata providers (`IMetadataProvider`)
+- `PreviewLoader` supports combined metadata + preview loading via new `BeginLoad` overload
+- `PropertiesOverlay` renders extracted metadata sections below file system properties
+
 ## [1.2.0] - 2026-03-15
 
 ### Added

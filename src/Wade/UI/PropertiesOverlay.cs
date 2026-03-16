@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Runtime.InteropServices;
 using Wade.FileSystem;
+using Wade.Preview;
 using Wade.Terminal;
 
 namespace Wade.UI;
@@ -32,7 +33,8 @@ internal static class PropertiesOverlay
     private const int LabelWidth = 12;
 
     public static void Render(ScreenBuffer buffer, int screenWidth, int screenHeight,
-        FileSystemEntry entry, string? directorySizeText, GitFileStatus? gitStatus = null)
+        FileSystemEntry entry, string? directorySizeText, GitFileStatus? gitStatus = null,
+        MetadataSection[]? metadataSections = null)
     {
         string[] values = BuildValues(entry, directorySizeText, gitStatus);
 
@@ -45,6 +47,43 @@ internal static class PropertiesOverlay
             }
         }
 
+        // Compute metadata rows
+        int metadataRowCount = 0;
+        List<(string Label, string Value)>? metadataRows = null;
+
+        if (metadataSections is { Length: > 0 })
+        {
+            metadataRows = [];
+
+            foreach (MetadataSection section in metadataSections)
+            {
+                // Blank line before section
+                if (metadataRows.Count > 0)
+                {
+                    metadataRows.Add(("", ""));
+                }
+
+                // Section header
+                if (section.Header is not null)
+                {
+                    metadataRows.Add(("", section.Header));
+                }
+
+                foreach (MetadataEntry metaEntry in section.Entries)
+                {
+                    metadataRows.Add((metaEntry.Label, metaEntry.Value));
+
+                    int rowLen = metaEntry.Label.Length > 0 ? LabelWidth + metaEntry.Value.Length : metaEntry.Value.Length + 2;
+                    if (rowLen > maxValueLen + LabelWidth)
+                    {
+                        maxValueLen = rowLen - LabelWidth;
+                    }
+                }
+            }
+
+            metadataRowCount = 1 + metadataRows.Count; // 1 blank separator + rows
+        }
+
         int contentWidth = LabelWidth + maxValueLen;
 
         // Clamp to screen width minus some padding
@@ -54,7 +93,7 @@ internal static class PropertiesOverlay
             contentWidth = maxContentWidth;
         }
 
-        int contentHeight = Labels.Length;
+        int contentHeight = Labels.Length + metadataRowCount;
 
         var content = DialogBox.Render(
             buffer, screenWidth, screenHeight,
@@ -82,6 +121,41 @@ internal static class PropertiesOverlay
             Color gitColor = GetGitStatusColor(s);
             var gitValueStyle = new CellStyle(gitColor, DialogBox.BgColor);
             buffer.WriteString(gitY, content.Left + LabelWidth, values[gitRowIndex], gitValueStyle, valueMaxWidth);
+        }
+
+        // Render metadata sections below file system properties
+        if (metadataRows is { Count: > 0 })
+        {
+            int metaStartY = content.Top + Labels.Length + 1; // +1 for blank separator
+            var headerStyle = new CellStyle(new Color(180, 180, 200), DialogBox.BgColor, Bold: true);
+
+            for (int i = 0; i < metadataRows.Count; i++)
+            {
+                int y = metaStartY + i;
+                (string label, string value) = metadataRows[i];
+
+                if (label.Length == 0 && value.Length == 0)
+                {
+                    // Blank separator row
+                    continue;
+                }
+
+                if (label.Length == 0 && metadataRows.Count > i + 1 && (i == 0 || metadataRows[i - 1] is { Label: "", Value: "" }))
+                {
+                    // Section header
+                    buffer.WriteString(y, content.Left, value, headerStyle, contentWidth);
+                }
+                else if (label.Length > 0)
+                {
+                    buffer.WriteString(y, content.Left, label, labelStyle, LabelWidth);
+                    buffer.WriteString(y, content.Left + LabelWidth, value, valueStyle, valueMaxWidth);
+                }
+                else
+                {
+                    // List item
+                    buffer.WriteString(y, content.Left + 2, value, valueStyle, valueMaxWidth);
+                }
+            }
         }
     }
 

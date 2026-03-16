@@ -4,7 +4,7 @@ using Wade.Preview;
 
 namespace Wade.Tests;
 
-public class OfficePreviewProviderTests
+public class OfficeMetadataProviderTests
 {
     private static PreviewContext MakeContext() =>
         new(
@@ -29,10 +29,10 @@ public class OfficePreviewProviderTests
     [InlineData("template.dotx")]
     [InlineData("template.xltx")]
     [InlineData("template.potx")]
-    public void CanPreview_OfficeExtensions_ReturnsTrue(string path)
+    public void CanProvideMetadata_OfficeExtensions_ReturnsTrue(string path)
     {
-        var provider = new OfficePreviewProvider();
-        Assert.True(provider.CanPreview(path, MakeContext()));
+        var provider = new OfficeMetadataProvider();
+        Assert.True(provider.CanProvideMetadata(path, MakeContext()));
     }
 
     [Theory]
@@ -41,14 +41,14 @@ public class OfficePreviewProviderTests
     [InlineData("document.odt")]
     [InlineData("package.nupkg")]
     [InlineData("document.doc")]
-    public void CanPreview_NonOfficeExtensions_ReturnsFalse(string path)
+    public void CanProvideMetadata_NonOfficeExtensions_ReturnsFalse(string path)
     {
-        var provider = new OfficePreviewProvider();
-        Assert.False(provider.CanPreview(path, MakeContext()));
+        var provider = new OfficeMetadataProvider();
+        Assert.False(provider.CanProvideMetadata(path, MakeContext()));
     }
 
     [Fact]
-    public void GetPreview_WithCoreAndAppProperties_ReturnsMetadata()
+    public void GetMetadata_WithCoreAndAppProperties_ReturnsSections()
     {
         string tempPath = CreateTestDocx(
             coreXml: """
@@ -78,15 +78,14 @@ public class OfficePreviewProviderTests
 
         try
         {
-            var provider = new OfficePreviewProvider();
-            PreviewResult? result = provider.GetPreview(tempPath, MakeContext(), CancellationToken.None);
+            var provider = new OfficeMetadataProvider();
+            MetadataResult? result = provider.GetMetadata(tempPath, MakeContext(), CancellationToken.None);
 
             Assert.NotNull(result);
-            Assert.NotNull(result.TextLines);
-            Assert.True(result.IsRendered);
+            Assert.NotEmpty(result.Sections);
             Assert.Equal("Word Document", result.FileTypeLabel);
 
-            string allText = string.Join('\n', result.TextLines.Select(l => l.Text));
+            string allText = FlattenSections(result.Sections);
             Assert.Contains("Quarterly Report", allText);
             Assert.Contains("Jane Smith", allText);
             Assert.Contains("Q1 2025 Results", allText);
@@ -104,7 +103,7 @@ public class OfficePreviewProviderTests
     }
 
     [Fact]
-    public void GetPreview_ExcelWithSheetNames_ShowsSheets()
+    public void GetMetadata_ExcelWithSheetNames_ShowsSheets()
     {
         string tempPath = CreateTestOfficeFile(
             ".xlsx",
@@ -126,14 +125,14 @@ public class OfficePreviewProviderTests
 
         try
         {
-            var provider = new OfficePreviewProvider();
-            PreviewResult? result = provider.GetPreview(tempPath, MakeContext(), CancellationToken.None);
+            var provider = new OfficeMetadataProvider();
+            MetadataResult? result = provider.GetMetadata(tempPath, MakeContext(), CancellationToken.None);
 
             Assert.NotNull(result);
             Assert.Equal("Excel Workbook", result!.FileTypeLabel);
 
-            string allText = string.Join('\n', result.TextLines!.Select(l => l.Text));
-            Assert.Contains("Sheets:", allText);
+            string allText = FlattenSections(result.Sections);
+            Assert.Contains("Sheets", allText);
             Assert.Contains("Sales", allText);
             Assert.Contains("Expenses", allText);
             Assert.Contains("Summary", allText);
@@ -145,7 +144,7 @@ public class OfficePreviewProviderTests
     }
 
     [Fact]
-    public void GetPreview_PowerPointWithSlides_ShowsSlideCount()
+    public void GetMetadata_PowerPointWithSlides_ShowsSlideCount()
     {
         string tempPath = CreateTestOfficeFile(
             ".pptx",
@@ -161,13 +160,13 @@ public class OfficePreviewProviderTests
 
         try
         {
-            var provider = new OfficePreviewProvider();
-            PreviewResult? result = provider.GetPreview(tempPath, MakeContext(), CancellationToken.None);
+            var provider = new OfficeMetadataProvider();
+            MetadataResult? result = provider.GetMetadata(tempPath, MakeContext(), CancellationToken.None);
 
             Assert.NotNull(result);
             Assert.Equal("PowerPoint Presentation", result!.FileTypeLabel);
 
-            string allText = string.Join('\n', result.TextLines!.Select(l => l.Text));
+            string allText = FlattenSections(result.Sections);
             Assert.Contains("24", allText);
             Assert.Contains("Hidden slides", allText);
             Assert.Contains("Microsoft PowerPoint", allText);
@@ -179,17 +178,18 @@ public class OfficePreviewProviderTests
     }
 
     [Fact]
-    public void GetPreview_NoMetadata_ReturnsFallbackMessage()
+    public void GetMetadata_NoMetadata_ReturnsFallbackMessage()
     {
         string tempPath = CreateTestDocx(coreXml: null, appXml: null);
 
         try
         {
-            var provider = new OfficePreviewProvider();
-            PreviewResult? result = provider.GetPreview(tempPath, MakeContext(), CancellationToken.None);
+            var provider = new OfficeMetadataProvider();
+            MetadataResult? result = provider.GetMetadata(tempPath, MakeContext(), CancellationToken.None);
 
             Assert.NotNull(result);
-            Assert.Contains("[no document metadata found]", result!.TextLines![0].Text);
+            string allText = FlattenSections(result!.Sections);
+            Assert.Contains("[no document metadata found]", allText);
         }
         finally
         {
@@ -198,7 +198,7 @@ public class OfficePreviewProviderTests
     }
 
     [Fact]
-    public void GetPreview_CancelledToken_ReturnsNull()
+    public void GetMetadata_CancelledToken_ReturnsNull()
     {
         string tempPath = CreateTestDocx(
             coreXml: """
@@ -212,11 +212,11 @@ public class OfficePreviewProviderTests
 
         try
         {
-            var provider = new OfficePreviewProvider();
+            var provider = new OfficeMetadataProvider();
             using var cts = new CancellationTokenSource();
             cts.Cancel();
 
-            PreviewResult? result = provider.GetPreview(tempPath, MakeContext(), cts.Token);
+            MetadataResult? result = provider.GetMetadata(tempPath, MakeContext(), cts.Token);
             Assert.Null(result);
         }
         finally
@@ -226,16 +226,31 @@ public class OfficePreviewProviderTests
     }
 
     [Fact]
-    public void Registry_DocxFile_ReturnsOfficeBeforeZipContents()
+    public void Registry_DocxFile_ReturnsOfficeMetadataProvider()
     {
-        var providers = PreviewProviderRegistry.GetApplicableProviders("report.docx", MakeContext());
+        var provider = MetadataProviderRegistry.GetProvider("report.docx", MakeContext());
 
-        int officeIndex = providers.FindIndex(p => p is OfficePreviewProvider);
-        int zipIndex = providers.FindIndex(p => p is ZipContentsPreviewProvider);
+        Assert.NotNull(provider);
+        Assert.IsType<OfficeMetadataProvider>(provider);
+    }
 
-        Assert.True(officeIndex >= 0, "OfficePreviewProvider should be in the list");
-        Assert.True(zipIndex >= 0, "ZipContentsPreviewProvider should be in the list");
-        Assert.True(officeIndex < zipIndex, "Office provider should come before ZipContents provider");
+    private static string FlattenSections(MetadataSection[] sections)
+    {
+        var parts = new List<string>();
+        foreach (MetadataSection s in sections)
+        {
+            if (s.Header is not null)
+            {
+                parts.Add(s.Header);
+            }
+
+            foreach (MetadataEntry e in s.Entries)
+            {
+                parts.Add($"{e.Label} {e.Value}");
+            }
+        }
+
+        return string.Join('\n', parts);
     }
 
     private static string CreateTestDocx(string? coreXml, string? appXml) =>

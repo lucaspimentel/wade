@@ -88,36 +88,25 @@ Switched `ScanFilesForFinder` to manual recursive directory walk. `.git` directo
 
 Added "Git status" row to properties overlay. Shows comma-separated flag labels (Modified, Staged, Untracked, Conflict) with matching colors (yellow, cyan, green, red). Shows em-dash for clean/untracked files.
 
-### Preview provider system
+### ~~Preview provider system~~ ✅
 
-Refactor the preview pane from a hardcoded fallback chain into a generic provider-based system. Any file type can have multiple preview providers (text, image, or both). Users can switch between providers via the action palette.
+Refactored into a dual-interface architecture: `IPreviewProvider` for visual previews (text/image) and `IMetadataProvider` for structured metadata extraction. Metadata providers return `MetadataResult` with `MetadataSection[]`/`MetadataEntry[]`; `MetadataRenderer` converts to styled lines. Metadata displays as a header above any applicable preview. `PreviewLoader` loads metadata first, then preview. `PropertiesOverlay` also shows extracted metadata.
 
-See plan: `.claude/plans/buzzing-gathering-rain.md`
+#### Future: Format-specific metadata providers
 
-#### ~~Task 1: Define IPreviewProvider interface and PreviewResult~~ ✅
-#### ~~Task 2: Implement preview providers~~ ✅
-#### ~~Task 3: Create PreviewProviderRegistry~~ ✅
-#### ~~Task 4: Refactor PreviewLoader to use providers~~ ✅
-#### ~~Task 5: Replace toggle state with provider index in App.cs~~ ✅
-#### ~~Task 6: Action palette submenu system~~ ✅
-#### ~~Task 7: "Change preview" submenu~~ ✅
-#### ~~Task 8: Combined text+image preview rendering~~ ✅
-
-#### Future: Format-specific preview providers
-
-Add primary preview providers for specific formats. Each is an `IPreviewProvider` implementation registered in the provider list. They automatically become the default for their file types and the existing zip/text previews become secondary options. Consider delegating to CLI tools (like `mediainfo`) where pure .NET parsing would be too complex.
+Add metadata providers for specific formats. Each is an `IMetadataProvider` implementation registered in `MetadataProviderRegistry`. They display structured metadata as a header above any applicable preview providers. Consider delegating to CLI tools where pure .NET parsing would be too complex.
 
 ##### Completed
 
 - NuGet metadata (`.nupkg`, `.snupkg`) — extracts from embedded `.nuspec` XML ✅
 - Executable metadata (`.exe`, `.dll`) — PE headers, .NET assembly info, Win32 version info ✅
+- MS Office documents (`.docx`, `.xlsx`, `.pptx`) — title, author, created/modified dates, page/sheet/slide count ✅
+- Media files (`.mp3`, `.mp4`, `.flac`, `.mkv`, `.avi`, `.wav`, `.ogg`, etc.) — duration, codec, bitrate, resolution, sample rate ✅
 
 ##### Backlog
 
 - **PDF metadata** — title, author, page count, producer, creation date. Extract from PDF header/trailer without rendering. Could use a lightweight parser or CLI tool.
-- ~~MS Office documents (`.docx`, `.xlsx`, `.pptx`) — title, author, created/modified dates, page/sheet/slide count. Extract from OPC core properties XML (`docProps/core.xml`, `docProps/app.xml`) inside the zip archive.~~ ✅
 - **Font files** (`.ttf`, `.otf`, `.woff2`) — font family, style, weight, glyph count. Parse OpenType/TrueType `name` and `head` tables.
-- ~~Media files (`.mp3`, `.mp4`, `.flac`, `.mkv`, `.avi`, `.wav`, `.ogg`, etc.) — duration, codec, bitrate, resolution, sample rate. Delegates to `ffprobe` (preferred) or `mediainfo` CLI (JSON output) if available on PATH.~~ ✅
 
 ### Zip — other archive formats
 

@@ -2,7 +2,7 @@ using Wade.Preview;
 
 namespace Wade.Tests;
 
-public class MediaPreviewProviderTests
+public class MediaMetadataProviderTests
 {
     private static PreviewContext MakeContext() =>
         new(
@@ -34,15 +34,15 @@ public class MediaPreviewProviderTests
     [InlineData("video.webm")]
     [InlineData("audio.m4a")]
     [InlineData("audio.opus")]
-    public void CanPreview_MediaExtensions_ReturnsTrueWhenAvailable(string path)
+    public void CanProvideMetadata_MediaExtensions_ReturnsTrueWhenAvailable(string path)
     {
-        if (!MediaPreviewProvider.IsAvailable)
+        if (!MediaMetadataProvider.IsAvailable)
         {
             return; // Skip if no CLI tool installed
         }
 
-        var provider = new MediaPreviewProvider();
-        Assert.True(provider.CanPreview(path, MakeContext()));
+        var provider = new MediaMetadataProvider();
+        Assert.True(provider.CanProvideMetadata(path, MakeContext()));
     }
 
     [Theory]
@@ -51,10 +51,10 @@ public class MediaPreviewProviderTests
     [InlineData("app.exe")]
     [InlineData("image.png")]
     [InlineData("report.docx")]
-    public void CanPreview_NonMediaExtensions_ReturnsFalse(string path)
+    public void CanProvideMetadata_NonMediaExtensions_ReturnsFalse(string path)
     {
-        var provider = new MediaPreviewProvider();
-        Assert.False(provider.CanPreview(path, MakeContext()));
+        var provider = new MediaMetadataProvider();
+        Assert.False(provider.CanProvideMetadata(path, MakeContext()));
     }
 
     // ── ffprobe JSON parsing ──────────────────────────────────────────────────
@@ -91,10 +91,10 @@ public class MediaPreviewProviderTests
             }
             """;
 
-        var lines = MediaPreviewProvider.ParseFfprobeJson(json);
+        var sections = MediaMetadataProvider.ParseFfprobeJson(json);
 
-        Assert.NotNull(lines);
-        string allText = string.Join('\n', lines!.Select(l => l.Text));
+        Assert.NotNull(sections);
+        string allText = FlattenSections(sections!);
 
         // General
         Assert.Contains("QuickTime / MOV", allText);
@@ -138,10 +138,10 @@ public class MediaPreviewProviderTests
             }
             """;
 
-        var lines = MediaPreviewProvider.ParseFfprobeJson(json);
+        var sections = MediaMetadataProvider.ParseFfprobeJson(json);
 
-        Assert.NotNull(lines);
-        string allText = string.Join('\n', lines!.Select(l => l.Text));
+        Assert.NotNull(sections);
+        string allText = FlattenSections(sections!);
 
         Assert.Contains("FLAC", allText);
         Assert.Contains("3m 15s", allText);
@@ -159,9 +159,9 @@ public class MediaPreviewProviderTests
             }
             """;
 
-        var lines = MediaPreviewProvider.ParseFfprobeJson(json);
+        var sections = MediaMetadataProvider.ParseFfprobeJson(json);
 
-        Assert.Null(lines);
+        Assert.Null(sections);
     }
 
     // ── mediainfo JSON parsing ────────────────────────────────────────────────
@@ -200,10 +200,10 @@ public class MediaPreviewProviderTests
             }
             """;
 
-        var lines = MediaPreviewProvider.ParseMediainfoJson(json);
+        var sections = MediaMetadataProvider.ParseMediainfoJson(json);
 
-        Assert.NotNull(lines);
-        string allText = string.Join('\n', lines!.Select(l => l.Text));
+        Assert.NotNull(sections);
+        string allText = FlattenSections(sections!);
 
         Assert.Contains("MPEG-4", allText);
         Assert.Contains("3m 42s", allText);
@@ -238,10 +238,10 @@ public class MediaPreviewProviderTests
             }
             """;
 
-        var lines = MediaPreviewProvider.ParseMediainfoJson(json);
+        var sections = MediaMetadataProvider.ParseMediainfoJson(json);
 
-        Assert.NotNull(lines);
-        string allText = string.Join('\n', lines!.Select(l => l.Text));
+        Assert.NotNull(sections);
+        string allText = FlattenSections(sections!);
 
         Assert.Contains("FLAC", allText);
         Assert.Contains("3m 15s", allText);
@@ -253,9 +253,9 @@ public class MediaPreviewProviderTests
     {
         const string json = """{ }""";
 
-        var lines = MediaPreviewProvider.ParseMediainfoJson(json);
+        var sections = MediaMetadataProvider.ParseMediainfoJson(json);
 
-        Assert.Null(lines);
+        Assert.Null(sections);
     }
 
     // ── Formatting helpers ────────────────────────────────────────────────────
@@ -268,7 +268,7 @@ public class MediaPreviewProviderTests
     [InlineData(3661, "1h 01m 01s")]
     public void FormatDuration_ReturnsExpected(double seconds, string expected)
     {
-        Assert.Equal(expected, MediaPreviewProvider.FormatDuration(seconds));
+        Assert.Equal(expected, MediaMetadataProvider.FormatDuration(seconds));
     }
 
     [Theory]
@@ -279,26 +279,41 @@ public class MediaPreviewProviderTests
     [InlineData(1073741824, "1.0 GB")]
     public void FormatFileSize_ReturnsExpected(long bytes, string expected)
     {
-        Assert.Equal(expected, MediaPreviewProvider.FormatFileSize(bytes));
+        Assert.Equal(expected, MediaMetadataProvider.FormatFileSize(bytes));
     }
 
     // ── Registry ──────────────────────────────────────────────────────────────
 
     [Fact]
-    public void Registry_Mp4File_ReturnsMediaBeforeTextWhenAvailable()
+    public void Registry_Mp4File_ReturnsMediaMetadataProviderWhenAvailable()
     {
-        if (!MediaPreviewProvider.IsAvailable)
+        if (!MediaMetadataProvider.IsAvailable)
         {
             return; // Skip if no CLI tool installed
         }
 
-        var providers = PreviewProviderRegistry.GetApplicableProviders("video.mp4", MakeContext());
+        var provider = MetadataProviderRegistry.GetProvider("video.mp4", MakeContext());
 
-        int mediaIndex = providers.FindIndex(p => p is MediaPreviewProvider);
-        int textIndex = providers.FindIndex(p => p is TextPreviewProvider);
+        Assert.NotNull(provider);
+        Assert.IsType<MediaMetadataProvider>(provider);
+    }
 
-        Assert.True(mediaIndex >= 0, "MediaPreviewProvider should be in the list");
-        Assert.True(textIndex >= 0, "TextPreviewProvider should be in the list");
-        Assert.True(mediaIndex < textIndex, "Media provider should come before Text provider");
+    private static string FlattenSections(MetadataSection[] sections)
+    {
+        var parts = new List<string>();
+        foreach (MetadataSection s in sections)
+        {
+            if (s.Header is not null)
+            {
+                parts.Add(s.Header);
+            }
+
+            foreach (MetadataEntry e in s.Entries)
+            {
+                parts.Add($"{e.Label} {e.Value}");
+            }
+        }
+
+        return string.Join('\n', parts);
     }
 }

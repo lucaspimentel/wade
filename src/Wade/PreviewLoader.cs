@@ -25,11 +25,74 @@ internal sealed class PreviewLoader
         Task.Run(() => LoadWithProvider(path, provider, context, token), token);
     }
 
+    public void BeginLoad(
+        string path,
+        IMetadataProvider? metadataProvider,
+        IPreviewProvider? previewProvider,
+        PreviewContext context)
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+        var token = _cts.Token;
+
+        Task.Run(() => LoadMetadataAndPreview(path, metadataProvider, previewProvider, context, token), token);
+    }
+
     public void Cancel()
     {
         _cts?.Cancel();
         _cts?.Dispose();
         _cts = null;
+    }
+
+    private void LoadMetadataAndPreview(
+        string path,
+        IMetadataProvider? metadataProvider,
+        IPreviewProvider? previewProvider,
+        PreviewContext context,
+        CancellationToken ct)
+    {
+        try
+        {
+            if (ct.IsCancellationRequested)
+            {
+                return;
+            }
+
+            // Load metadata first
+            if (metadataProvider is not null)
+            {
+                var metadataResult = metadataProvider.GetMetadata(path, context, ct);
+
+                if (metadataResult is not null && !ct.IsCancellationRequested)
+                {
+                    _pipeline.Inject(new MetadataReadyEvent(
+                        path,
+                        metadataResult.Sections,
+                        metadataResult.FileTypeLabel));
+                }
+            }
+
+            if (ct.IsCancellationRequested)
+            {
+                return;
+            }
+
+            // Then load preview
+            if (previewProvider is not null)
+            {
+                LoadWithProvider(path, previewProvider, context, ct);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Normal cancellation
+        }
+        catch (InvalidOperationException)
+        {
+            // Pipeline disposed / completed adding
+        }
     }
 
     private void LoadWithProvider(string path, IPreviewProvider provider, PreviewContext context, CancellationToken ct)

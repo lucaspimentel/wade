@@ -1,10 +1,9 @@
 using System.Diagnostics;
 using System.Text.Json;
-using Wade.Highlighting;
 
 namespace Wade.Preview;
 
-internal sealed class MediaPreviewProvider : IPreviewProvider
+internal sealed class MediaMetadataProvider : IMetadataProvider
 {
     private static readonly Lazy<bool> s_ffprobeAvailable = new(CheckFfprobe);
     private static readonly Lazy<bool> s_mediainfoAvailable = new(CheckMediainfo);
@@ -21,13 +20,13 @@ internal sealed class MediaPreviewProvider : IPreviewProvider
 
     internal static bool IsAvailable => s_ffprobeAvailable.Value || s_mediainfoAvailable.Value;
 
-    public bool CanPreview(string path, PreviewContext context)
+    public bool CanProvideMetadata(string path, PreviewContext context)
     {
         string ext = Path.GetExtension(path);
         return s_extensions.Contains(ext) && IsAvailable;
     }
 
-    public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct)
+    public MetadataResult? GetMetadata(string path, PreviewContext context, CancellationToken ct)
     {
         if (ct.IsCancellationRequested)
         {
@@ -49,19 +48,18 @@ internal sealed class MediaPreviewProvider : IPreviewProvider
 
             ct.ThrowIfCancellationRequested();
 
-            List<StyledLine>? lines = s_ffprobeAvailable.Value
+            MetadataSection[]? sections = s_ffprobeAvailable.Value
                 ? ParseFfprobeJson(json)
                 : ParseMediainfoJson(json);
 
-            if (lines is null || lines.Count == 0)
+            if (sections is null || sections.Length == 0)
             {
                 return null;
             }
 
-            return new PreviewResult
+            return new MetadataResult
             {
-                TextLines = lines.ToArray(),
-                IsRendered = true,
+                Sections = sections,
                 FileTypeLabel = GetFileTypeLabel(path),
             };
         }
@@ -135,22 +133,26 @@ internal sealed class MediaPreviewProvider : IPreviewProvider
 
     // ── JSON parsing ──────────────────────────────────────────────────────────
 
-    internal static List<StyledLine>? ParseFfprobeJson(string json)
+    internal static MetadataSection[]? ParseFfprobeJson(string json)
     {
         using var doc = JsonDocument.Parse(json);
         JsonElement root = doc.RootElement;
-        var lines = new List<StyledLine>();
+        var sections = new List<MetadataSection>();
 
         // General info from "format"
         if (root.TryGetProperty("format", out JsonElement format))
         {
-            lines.Add(new StyledLine("  Media File", null));
-            lines.Add(new StyledLine("  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500", null));
+            var entries = new List<MetadataEntry>();
 
-            AddJsonField(lines, "Format", format, "format_long_name");
-            AddDuration(lines, format, "duration");
-            AddFileSize(lines, format, "size");
-            AddBitRate(lines, format, "bit_rate");
+            AddJsonEntry(entries, "Format", format, "format_long_name");
+            AddDurationEntry(entries, format, "duration");
+            AddFileSizeEntry(entries, format, "size");
+            AddBitRateEntry(entries, format, "bit_rate");
+
+            if (entries.Count > 0)
+            {
+                sections.Add(new MetadataSection("Media File", entries.ToArray()));
+            }
         }
 
         // Streams
@@ -162,33 +164,37 @@ internal sealed class MediaPreviewProvider : IPreviewProvider
 
                 if (codecType == "video")
                 {
-                    lines.Add(new StyledLine("", null));
-                    lines.Add(new StyledLine("  Video", null));
-                    lines.Add(new StyledLine("  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500", null));
+                    var entries = new List<MetadataEntry>();
+                    AddJsonEntry(entries, "Codec", stream, "codec_long_name");
+                    AddResolutionEntry(entries, stream, "width", "height");
+                    AddFrameRateEntry(entries, stream, "r_frame_rate");
+                    AddBitRateEntry(entries, stream, "bit_rate");
 
-                    AddJsonField(lines, "Codec", stream, "codec_long_name");
-                    AddResolution(lines, stream, "width", "height");
-                    AddFrameRate(lines, stream, "r_frame_rate");
-                    AddBitRate(lines, stream, "bit_rate");
+                    if (entries.Count > 0)
+                    {
+                        sections.Add(new MetadataSection("Video", entries.ToArray()));
+                    }
                 }
                 else if (codecType == "audio")
                 {
-                    lines.Add(new StyledLine("", null));
-                    lines.Add(new StyledLine("  Audio", null));
-                    lines.Add(new StyledLine("  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500", null));
+                    var entries = new List<MetadataEntry>();
+                    AddJsonEntry(entries, "Codec", stream, "codec_long_name");
+                    AddChannelsEntry(entries, stream, "channels", "channel_layout");
+                    AddSampleRateEntry(entries, stream, "sample_rate");
+                    AddBitRateEntry(entries, stream, "bit_rate");
 
-                    AddJsonField(lines, "Codec", stream, "codec_long_name");
-                    AddChannels(lines, stream, "channels", "channel_layout");
-                    AddSampleRate(lines, stream, "sample_rate");
-                    AddBitRate(lines, stream, "bit_rate");
+                    if (entries.Count > 0)
+                    {
+                        sections.Add(new MetadataSection("Audio", entries.ToArray()));
+                    }
                 }
             }
         }
 
-        return lines.Count > 2 ? lines : null;
+        return sections.Count > 0 ? sections.ToArray() : null;
     }
 
-    internal static List<StyledLine>? ParseMediainfoJson(string json)
+    internal static MetadataSection[]? ParseMediainfoJson(string json)
     {
         using var doc = JsonDocument.Parse(json);
         JsonElement root = doc.RootElement;
@@ -200,7 +206,7 @@ internal sealed class MediaPreviewProvider : IPreviewProvider
             return null;
         }
 
-        var lines = new List<StyledLine>();
+        var sections = new List<MetadataSection>();
 
         foreach (JsonElement track in tracks.EnumerateArray())
         {
@@ -208,95 +214,102 @@ internal sealed class MediaPreviewProvider : IPreviewProvider
 
             if (trackType == "General")
             {
-                lines.Add(new StyledLine("  Media File", null));
-                lines.Add(new StyledLine("  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500", null));
+                var entries = new List<MetadataEntry>();
+                AddJsonEntry(entries, "Format", track, "Format");
+                AddDurationEntry(entries, track, "Duration");
+                AddFileSizeEntry(entries, track, "FileSize");
+                AddBitRateEntry(entries, track, "OverallBitRate");
 
-                AddJsonField(lines, "Format", track, "Format");
-                AddDuration(lines, track, "Duration");
-                AddFileSize(lines, track, "FileSize");
-                AddBitRate(lines, track, "OverallBitRate");
+                if (entries.Count > 0)
+                {
+                    sections.Add(new MetadataSection("Media File", entries.ToArray()));
+                }
             }
             else if (trackType == "Video")
             {
-                lines.Add(new StyledLine("", null));
-                lines.Add(new StyledLine("  Video", null));
-                lines.Add(new StyledLine("  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500", null));
+                var entries = new List<MetadataEntry>();
+                AddJsonEntry(entries, "Codec", track, "Format");
+                AddResolutionEntry(entries, track, "Width", "Height");
+                AddJsonEntry(entries, "Frame rate", track, "FrameRate", " fps");
+                AddBitRateEntry(entries, track, "BitRate");
 
-                AddJsonField(lines, "Codec", track, "Format");
-                AddResolution(lines, track, "Width", "Height");
-                AddJsonField(lines, "Frame rate", track, "FrameRate", " fps");
-                AddBitRate(lines, track, "BitRate");
+                if (entries.Count > 0)
+                {
+                    sections.Add(new MetadataSection("Video", entries.ToArray()));
+                }
             }
             else if (trackType == "Audio")
             {
-                lines.Add(new StyledLine("", null));
-                lines.Add(new StyledLine("  Audio", null));
-                lines.Add(new StyledLine("  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500", null));
+                var entries = new List<MetadataEntry>();
+                AddJsonEntry(entries, "Codec", track, "Format");
+                AddChannelsEntry(entries, track, "Channels", null);
+                AddSampleRateEntry(entries, track, "SamplingRate");
+                AddBitRateEntry(entries, track, "BitRate");
 
-                AddJsonField(lines, "Codec", track, "Format");
-                AddChannels(lines, track, "Channels", null);
-                AddSampleRate(lines, track, "SamplingRate");
-                AddBitRate(lines, track, "BitRate");
+                if (entries.Count > 0)
+                {
+                    sections.Add(new MetadataSection("Audio", entries.ToArray()));
+                }
             }
         }
 
-        return lines.Count > 2 ? lines : null;
+        return sections.Count > 0 ? sections.ToArray() : null;
     }
 
-    // ── Field helpers ─────────────────────────────────────────────────────────
+    // ── Entry helpers ─────────────────────────────────────────────────────────
 
-    private static void AddJsonField(List<StyledLine> lines, string label, JsonElement element, string property, string suffix = "")
+    private static void AddJsonEntry(List<MetadataEntry> entries, string label, JsonElement element, string property, string suffix = "")
     {
         string? value = GetString(element, property);
 
         if (!string.IsNullOrWhiteSpace(value))
         {
-            lines.Add(new StyledLine($"  {label,-14} {value}{suffix}", null));
+            entries.Add(new MetadataEntry(label, value + suffix));
         }
     }
 
-    private static void AddDuration(List<StyledLine> lines, JsonElement element, string property)
+    private static void AddDurationEntry(List<MetadataEntry> entries, JsonElement element, string property)
     {
         string? value = GetString(element, property);
 
         if (value is not null && double.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out double seconds) && seconds > 0)
         {
-            lines.Add(new StyledLine($"  {"Duration",-14} {FormatDuration(seconds)}", null));
+            entries.Add(new MetadataEntry("Duration", FormatDuration(seconds)));
         }
     }
 
-    private static void AddFileSize(List<StyledLine> lines, JsonElement element, string property)
+    private static void AddFileSizeEntry(List<MetadataEntry> entries, JsonElement element, string property)
     {
         string? value = GetString(element, property);
 
         if (value is not null && long.TryParse(value, out long bytes) && bytes > 0)
         {
-            lines.Add(new StyledLine($"  {"File size",-14} {FormatFileSize(bytes)}", null));
+            entries.Add(new MetadataEntry("File size", FormatFileSize(bytes)));
         }
     }
 
-    private static void AddBitRate(List<StyledLine> lines, JsonElement element, string property)
+    private static void AddBitRateEntry(List<MetadataEntry> entries, JsonElement element, string property)
     {
         string? value = GetString(element, property);
 
         if (value is not null && long.TryParse(value, out long bps) && bps > 0)
         {
-            lines.Add(new StyledLine($"  {"Bit rate",-14} {bps / 1000:N0} kbps", null));
+            entries.Add(new MetadataEntry("Bit rate", $"{bps / 1000:N0} kbps"));
         }
     }
 
-    private static void AddResolution(List<StyledLine> lines, JsonElement element, string widthProp, string heightProp)
+    private static void AddResolutionEntry(List<MetadataEntry> entries, JsonElement element, string widthProp, string heightProp)
     {
         string? w = GetString(element, widthProp);
         string? h = GetString(element, heightProp);
 
         if (w is not null && h is not null)
         {
-            lines.Add(new StyledLine($"  {"Resolution",-14} {w}\u00d7{h}", null));
+            entries.Add(new MetadataEntry("Resolution", $"{w}\u00d7{h}"));
         }
     }
 
-    private static void AddFrameRate(List<StyledLine> lines, JsonElement element, string property)
+    private static void AddFrameRateEntry(List<MetadataEntry> entries, JsonElement element, string property)
     {
         string? value = GetString(element, property);
 
@@ -305,7 +318,6 @@ internal sealed class MediaPreviewProvider : IPreviewProvider
             return;
         }
 
-        // ffprobe uses fraction format like "30/1" or "30000/1001"
         string[] parts = value.Split('/');
 
         if (parts.Length == 2
@@ -314,15 +326,15 @@ internal sealed class MediaPreviewProvider : IPreviewProvider
             && den > 0)
         {
             double fps = num / den;
-            lines.Add(new StyledLine($"  {"Frame rate",-14} {fps:F3} fps", null));
+            entries.Add(new MetadataEntry("Frame rate", $"{fps:F3} fps"));
         }
         else if (double.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out double directFps))
         {
-            lines.Add(new StyledLine($"  {"Frame rate",-14} {directFps:F3} fps", null));
+            entries.Add(new MetadataEntry("Frame rate", $"{directFps:F3} fps"));
         }
     }
 
-    private static void AddChannels(List<StyledLine> lines, JsonElement element, string channelsProp, string? layoutProp)
+    private static void AddChannelsEntry(List<MetadataEntry> entries, JsonElement element, string channelsProp, string? layoutProp)
     {
         string? channels = GetString(element, channelsProp);
 
@@ -346,16 +358,16 @@ internal sealed class MediaPreviewProvider : IPreviewProvider
         }
 
         string display = layout is not null ? $"{channels} ({layout})" : channels;
-        lines.Add(new StyledLine($"  {"Channels",-14} {display}", null));
+        entries.Add(new MetadataEntry("Channels", display));
     }
 
-    private static void AddSampleRate(List<StyledLine> lines, JsonElement element, string property)
+    private static void AddSampleRateEntry(List<MetadataEntry> entries, JsonElement element, string property)
     {
         string? value = GetString(element, property);
 
         if (value is not null && int.TryParse(value, out int hz) && hz > 0)
         {
-            lines.Add(new StyledLine($"  {"Sample rate",-14} {hz:N0} Hz", null));
+            entries.Add(new MetadataEntry("Sample rate", $"{hz:N0} Hz"));
         }
     }
 

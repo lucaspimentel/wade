@@ -4,7 +4,7 @@ using Wade.Preview;
 
 namespace Wade.Tests;
 
-public class NuGetPreviewProviderTests
+public class NuGetMetadataProviderTests
 {
     private static PreviewContext MakeContext() =>
         new(
@@ -26,24 +26,24 @@ public class NuGetPreviewProviderTests
     [InlineData("package.NUPKG")]
     [InlineData("symbols.snupkg")]
     [InlineData("symbols.SNUPKG")]
-    public void CanPreview_NuGetExtensions_ReturnsTrue(string path)
+    public void CanProvideMetadata_NuGetExtensions_ReturnsTrue(string path)
     {
-        var provider = new NuGetPreviewProvider();
-        Assert.True(provider.CanPreview(path, MakeContext()));
+        var provider = new NuGetMetadataProvider();
+        Assert.True(provider.CanProvideMetadata(path, MakeContext()));
     }
 
     [Theory]
     [InlineData("archive.zip")]
     [InlineData("library.jar")]
     [InlineData("readme.txt")]
-    public void CanPreview_NonNuGetExtensions_ReturnsFalse(string path)
+    public void CanProvideMetadata_NonNuGetExtensions_ReturnsFalse(string path)
     {
-        var provider = new NuGetPreviewProvider();
-        Assert.False(provider.CanPreview(path, MakeContext()));
+        var provider = new NuGetMetadataProvider();
+        Assert.False(provider.CanProvideMetadata(path, MakeContext()));
     }
 
     [Fact]
-    public void GetPreview_WithNuspec_ReturnsMetadataLines()
+    public void GetMetadata_WithNuspec_ReturnsSections()
     {
         string tempPath = CreateTestNupkg(
             """
@@ -69,15 +69,14 @@ public class NuGetPreviewProviderTests
 
         try
         {
-            var provider = new NuGetPreviewProvider();
-            PreviewResult? result = provider.GetPreview(tempPath, MakeContext(), CancellationToken.None);
+            var provider = new NuGetMetadataProvider();
+            MetadataResult? result = provider.GetMetadata(tempPath, MakeContext(), CancellationToken.None);
 
             Assert.NotNull(result);
-            Assert.NotNull(result.TextLines);
-            Assert.True(result.IsRendered);
+            Assert.NotEmpty(result.Sections);
             Assert.Equal("NuGet Package", result.FileTypeLabel);
 
-            string allText = string.Join('\n', result.TextLines.Select(l => l.Text));
+            string allText = FlattenSections(result.Sections);
             Assert.Contains("TestPackage", allText);
             Assert.Contains("1.2.3", allText);
             Assert.Contains("Test Author", allText);
@@ -96,18 +95,18 @@ public class NuGetPreviewProviderTests
     }
 
     [Fact]
-    public void GetPreview_MissingNuspec_ReturnsFallbackMessage()
+    public void GetMetadata_MissingNuspec_ReturnsFallbackMessage()
     {
         string tempPath = CreateTestNupkg(nuspecXml: null);
 
         try
         {
-            var provider = new NuGetPreviewProvider();
-            PreviewResult? result = provider.GetPreview(tempPath, MakeContext(), CancellationToken.None);
+            var provider = new NuGetMetadataProvider();
+            MetadataResult? result = provider.GetMetadata(tempPath, MakeContext(), CancellationToken.None);
 
             Assert.NotNull(result);
-            Assert.NotNull(result.TextLines);
-            Assert.Contains("[no .nuspec found in package]", result.TextLines[0].Text);
+            string allText = FlattenSections(result!.Sections);
+            Assert.Contains("[no .nuspec found in package]", allText);
         }
         finally
         {
@@ -116,7 +115,7 @@ public class NuGetPreviewProviderTests
     }
 
     [Fact]
-    public void GetPreview_CancelledToken_ReturnsNull()
+    public void GetMetadata_CancelledToken_ReturnsNull()
     {
         string tempPath = CreateTestNupkg(
             """
@@ -128,10 +127,10 @@ public class NuGetPreviewProviderTests
 
         try
         {
-            var provider = new NuGetPreviewProvider();
+            var provider = new NuGetMetadataProvider();
             using var cts = new CancellationTokenSource();
             cts.Cancel();
-            PreviewResult? result = provider.GetPreview(tempPath, MakeContext(), cts.Token);
+            MetadataResult? result = provider.GetMetadata(tempPath, MakeContext(), cts.Token);
 
             Assert.Null(result);
         }
@@ -142,22 +141,16 @@ public class NuGetPreviewProviderTests
     }
 
     [Fact]
-    public void Registry_NupkgFile_ReturnsNuGetBeforeZipContents()
+    public void Registry_NupkgFile_ReturnsNuGetMetadataProvider()
     {
-        var providers = PreviewProviderRegistry.GetApplicableProviders("package.nupkg", MakeContext());
+        var provider = MetadataProviderRegistry.GetProvider("package.nupkg", MakeContext());
 
-        Assert.True(providers.Count >= 2);
-
-        int nugetIndex = providers.FindIndex(p => p is NuGetPreviewProvider);
-        int zipIndex = providers.FindIndex(p => p is ZipContentsPreviewProvider);
-
-        Assert.True(nugetIndex >= 0, "NuGetPreviewProvider should be in the list");
-        Assert.True(zipIndex >= 0, "ZipContentsPreviewProvider should be in the list");
-        Assert.True(nugetIndex < zipIndex, "NuGet provider should come before ZipContents provider");
+        Assert.NotNull(provider);
+        Assert.IsType<NuGetMetadataProvider>(provider);
     }
 
     [Fact]
-    public void GetPreview_FlatDependencies_ShowsDependencies()
+    public void GetMetadata_FlatDependencies_ShowsDependencies()
     {
         string tempPath = CreateTestNupkg(
             """
@@ -176,11 +169,11 @@ public class NuGetPreviewProviderTests
 
         try
         {
-            var provider = new NuGetPreviewProvider();
-            PreviewResult? result = provider.GetPreview(tempPath, MakeContext(), CancellationToken.None);
+            var provider = new NuGetMetadataProvider();
+            MetadataResult? result = provider.GetMetadata(tempPath, MakeContext(), CancellationToken.None);
 
             Assert.NotNull(result);
-            string allText = string.Join('\n', result!.TextLines!.Select(l => l.Text));
+            string allText = FlattenSections(result!.Sections);
             Assert.Contains("SomeLib", allText);
             Assert.Contains("OtherLib", allText);
         }
@@ -188,6 +181,25 @@ public class NuGetPreviewProviderTests
         {
             File.Delete(tempPath);
         }
+    }
+
+    private static string FlattenSections(MetadataSection[] sections)
+    {
+        var parts = new List<string>();
+        foreach (MetadataSection s in sections)
+        {
+            if (s.Header is not null)
+            {
+                parts.Add(s.Header);
+            }
+
+            foreach (MetadataEntry e in s.Entries)
+            {
+                parts.Add($"{e.Label} {e.Value}");
+            }
+        }
+
+        return string.Join('\n', parts);
     }
 
     private static string CreateTestNupkg(string? nuspecXml)

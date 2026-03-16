@@ -1,5 +1,6 @@
 using Wade.FileSystem;
 using Wade.Highlighting;
+using Wade.Preview;
 
 namespace Wade.Terminal;
 
@@ -41,6 +42,11 @@ internal sealed record CombinedPreviewReadyEvent(
     string? Encoding,
     string? LineEnding,
     bool IsRendered = false) : InputEvent;
+
+internal sealed record MetadataReadyEvent(
+    string Path,
+    MetadataSection[] Sections,
+    string? FileTypeLabel) : InputEvent;
 
 internal sealed record DirectorySizeReadyEvent(string Path, long TotalBytes) : InputEvent;
 

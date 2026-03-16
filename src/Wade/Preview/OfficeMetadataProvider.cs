@@ -1,10 +1,9 @@
 using System.IO.Compression;
 using System.Xml.Linq;
-using Wade.Highlighting;
 
 namespace Wade.Preview;
 
-internal sealed class OfficePreviewProvider : IPreviewProvider
+internal sealed class OfficeMetadataProvider : IMetadataProvider
 {
     private static readonly XNamespace DcNs = "http://purl.org/dc/elements/1.1/";
     private static readonly XNamespace DcTermsNs = "http://purl.org/dc/terms/";
@@ -14,7 +13,7 @@ internal sealed class OfficePreviewProvider : IPreviewProvider
 
     public string Label => "Document metadata";
 
-    public bool CanPreview(string path, PreviewContext context)
+    public bool CanProvideMetadata(string path, PreviewContext context)
     {
         string ext = Path.GetExtension(path);
         return ext.Equals(".docx", StringComparison.OrdinalIgnoreCase)
@@ -25,7 +24,7 @@ internal sealed class OfficePreviewProvider : IPreviewProvider
             || ext.Equals(".potx", StringComparison.OrdinalIgnoreCase);
     }
 
-    public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct)
+    public MetadataResult? GetMetadata(string path, PreviewContext context, CancellationToken ct)
     {
         if (ct.IsCancellationRequested)
         {
@@ -35,35 +34,30 @@ internal sealed class OfficePreviewProvider : IPreviewProvider
         try
         {
             using var zip = ZipFile.OpenRead(path);
-            var lines = new List<StyledLine>();
             string fileTypeLabel = GetFileTypeLabel(path);
+            var sections = new List<MetadataSection>();
 
-            lines.Add(new StyledLine($"  {fileTypeLabel}", null));
-            lines.Add(new StyledLine("  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500", null));
-
-            bool hasCoreProps = AddCoreProperties(lines, zip, context);
+            bool hasCoreProps = AddCoreProperties(sections, zip, context);
 
             if (ct.IsCancellationRequested)
             {
                 return null;
             }
 
-            bool hasAppProps = AddAppProperties(lines, zip, path);
+            bool hasAppProps = AddAppProperties(sections, zip, path);
 
             if (!hasCoreProps && !hasAppProps)
             {
-                return new PreviewResult
+                return new MetadataResult
                 {
-                    TextLines = [new StyledLine("[no document metadata found]", null)],
-                    IsRendered = true,
+                    Sections = [new MetadataSection(null, [new MetadataEntry("", "[no document metadata found]")])],
                     FileTypeLabel = fileTypeLabel,
                 };
             }
 
-            return new PreviewResult
+            return new MetadataResult
             {
-                TextLines = lines.ToArray(),
-                IsRendered = true,
+                Sections = sections.ToArray(),
                 FileTypeLabel = fileTypeLabel,
             };
         }
@@ -77,7 +71,7 @@ internal sealed class OfficePreviewProvider : IPreviewProvider
         }
     }
 
-    private static bool AddCoreProperties(List<StyledLine> lines, ZipArchive zip, PreviewContext context)
+    private static bool AddCoreProperties(List<MetadataSection> sections, ZipArchive zip, PreviewContext context)
     {
         ZipArchiveEntry? coreEntry = zip.GetEntry("docProps/core.xml");
 
@@ -95,37 +89,49 @@ internal sealed class OfficePreviewProvider : IPreviewProvider
         }
 
         XElement root = doc.Root;
-        bool hasData = false;
+        var entries = new List<MetadataEntry>();
 
-        hasData |= AddField(lines, "Title", root.Element(DcNs + "title")?.Value);
-        hasData |= AddField(lines, "Author", root.Element(DcNs + "creator")?.Value);
-        hasData |= AddField(lines, "Subject", root.Element(DcNs + "subject")?.Value);
-        hasData |= AddField(lines, "Keywords", root.Element(CpNs + "keywords")?.Value);
-        hasData |= AddField(lines, "Category", root.Element(CpNs + "category")?.Value);
-        hasData |= AddDateField(lines, "Created", root.Element(DcTermsNs + "created")?.Value);
-        hasData |= AddDateField(lines, "Modified", root.Element(DcTermsNs + "modified")?.Value);
-        hasData |= AddField(lines, "Last author", root.Element(CpNs + "lastModifiedBy")?.Value);
-        hasData |= AddField(lines, "Revision", root.Element(CpNs + "revision")?.Value);
+        AddEntryIfPresent(entries, "Title", root.Element(DcNs + "title")?.Value);
+        AddEntryIfPresent(entries, "Author", root.Element(DcNs + "creator")?.Value);
+        AddEntryIfPresent(entries, "Subject", root.Element(DcNs + "subject")?.Value);
+        AddEntryIfPresent(entries, "Keywords", root.Element(CpNs + "keywords")?.Value);
+        AddEntryIfPresent(entries, "Category", root.Element(CpNs + "category")?.Value);
+        AddDateEntry(entries, "Created", root.Element(DcTermsNs + "created")?.Value);
+        AddDateEntry(entries, "Modified", root.Element(DcTermsNs + "modified")?.Value);
+        AddEntryIfPresent(entries, "Last author", root.Element(CpNs + "lastModifiedBy")?.Value);
+        AddEntryIfPresent(entries, "Revision", root.Element(CpNs + "revision")?.Value);
 
         string? description = root.Element(DcNs + "description")?.Value;
 
         if (!string.IsNullOrWhiteSpace(description))
         {
-            lines.Add(new StyledLine("", null));
-            lines.Add(new StyledLine("  Description:", null));
-
+            // Add description as a separate section
+            var descEntries = new List<MetadataEntry>();
             foreach (string descLine in WrapText(description.Trim(), Math.Max(context.PaneWidthCells - 6, 20)))
             {
-                lines.Add(new StyledLine($"    {descLine}", null));
+                descEntries.Add(new MetadataEntry("", descLine));
             }
 
-            hasData = true;
+            if (entries.Count > 0)
+            {
+                string fileTypeLabel = "Document Properties";
+                sections.Add(new MetadataSection(fileTypeLabel, entries.ToArray()));
+            }
+
+            sections.Add(new MetadataSection("Description", descEntries.ToArray()));
+            return true;
         }
 
-        return hasData;
+        if (entries.Count == 0)
+        {
+            return false;
+        }
+
+        sections.Add(new MetadataSection("Document Properties", entries.ToArray()));
+        return true;
     }
 
-    private static bool AddAppProperties(List<StyledLine> lines, ZipArchive zip, string path)
+    private static bool AddAppProperties(List<MetadataSection> sections, ZipArchive zip, string path)
     {
         ZipArchiveEntry? appEntry = zip.GetEntry("docProps/app.xml");
 
@@ -143,29 +149,28 @@ internal sealed class OfficePreviewProvider : IPreviewProvider
         }
 
         XElement root = doc.Root;
-        bool hasData = false;
-
-        lines.Add(new StyledLine("", null));
-        lines.Add(new StyledLine("  Document Properties", null));
-        lines.Add(new StyledLine("  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500", null));
-
+        var entries = new List<MetadataEntry>();
         string ext = Path.GetExtension(path);
 
         if (ext.Equals(".docx", StringComparison.OrdinalIgnoreCase) || ext.Equals(".dotx", StringComparison.OrdinalIgnoreCase))
         {
-            hasData |= AddFormattedIntField(lines, "Pages", root.Element(AppNs + "Pages")?.Value);
-            hasData |= AddFormattedIntField(lines, "Words", root.Element(AppNs + "Words")?.Value);
-            hasData |= AddFormattedIntField(lines, "Paragraphs", root.Element(AppNs + "Paragraphs")?.Value);
+            AddFormattedIntEntry(entries, "Pages", root.Element(AppNs + "Pages")?.Value);
+            AddFormattedIntEntry(entries, "Words", root.Element(AppNs + "Words")?.Value);
+            AddFormattedIntEntry(entries, "Paragraphs", root.Element(AppNs + "Paragraphs")?.Value);
         }
         else if (ext.Equals(".pptx", StringComparison.OrdinalIgnoreCase) || ext.Equals(".potx", StringComparison.OrdinalIgnoreCase))
         {
-            hasData |= AddFormattedIntField(lines, "Slides", root.Element(AppNs + "Slides")?.Value);
-            hasData |= AddFormattedIntField(lines, "Hidden slides", root.Element(AppNs + "HiddenSlides")?.Value);
+            AddFormattedIntEntry(entries, "Slides", root.Element(AppNs + "Slides")?.Value);
+            AddFormattedIntEntry(entries, "Hidden slides", root.Element(AppNs + "HiddenSlides")?.Value);
         }
+
+        AddEntryIfPresent(entries, "Application", root.Element(AppNs + "Application")?.Value);
 
         // Sheet/slide names from TitlesOfParts
         XElement? titlesOfParts = root.Element(AppNs + "TitlesOfParts");
         XElement? vector = titlesOfParts?.Element(VtNs + "vector");
+        List<MetadataEntry>? partEntries = null;
+        string? partLabel = null;
 
         if (vector is not null)
         {
@@ -176,77 +181,76 @@ internal sealed class OfficePreviewProvider : IPreviewProvider
 
             if (parts.Count > 0)
             {
-                string partLabel = ext.Equals(".xlsx", StringComparison.OrdinalIgnoreCase)
+                partLabel = ext.Equals(".xlsx", StringComparison.OrdinalIgnoreCase)
                     || ext.Equals(".xltx", StringComparison.OrdinalIgnoreCase)
                     ? "Sheets" : "Parts";
 
-                lines.Add(new StyledLine("", null));
-                lines.Add(new StyledLine($"  {partLabel}:", null));
-
+                partEntries = new List<MetadataEntry>();
                 foreach (string part in parts)
                 {
-                    lines.Add(new StyledLine($"    {part}", null));
+                    partEntries.Add(new MetadataEntry("", part));
                 }
-
-                hasData = true;
             }
         }
 
-        hasData |= AddField(lines, "Application", root.Element(AppNs + "Application")?.Value);
-
-        if (!hasData)
-        {
-            // Remove the section header we added speculatively
-            lines.RemoveRange(lines.Count - 3, 3);
-        }
-
-        return hasData;
-    }
-
-    private static bool AddField(List<StyledLine> lines, string label, string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
+        if (entries.Count == 0 && partEntries is null)
         {
             return false;
         }
 
-        lines.Add(new StyledLine($"  {label,-14} {value}", null));
+        if (entries.Count > 0)
+        {
+            sections.Add(new MetadataSection("Statistics", entries.ToArray()));
+        }
+
+        if (partEntries is not null)
+        {
+            sections.Add(new MetadataSection(partLabel, partEntries.ToArray()));
+        }
+
         return true;
     }
 
-    private static bool AddDateField(List<StyledLine> lines, string label, string? value)
+    private static void AddEntryIfPresent(List<MetadataEntry> entries, string label, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            entries.Add(new MetadataEntry(label, value));
+        }
+    }
+
+    private static void AddDateEntry(List<MetadataEntry> entries, string label, string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            return false;
+            return;
         }
 
         if (DateTimeOffset.TryParse(value, out DateTimeOffset dto))
         {
-            lines.Add(new StyledLine($"  {label,-14} {dto:yyyy-MM-dd HH:mm:ss}", null));
-            return true;
+            entries.Add(new MetadataEntry(label, $"{dto:yyyy-MM-dd HH:mm:ss}"));
         }
-
-        // Fall back to raw value if parsing fails
-        lines.Add(new StyledLine($"  {label,-14} {value}", null));
-        return true;
+        else
+        {
+            entries.Add(new MetadataEntry(label, value));
+        }
     }
 
-    private static bool AddFormattedIntField(List<StyledLine> lines, string label, string? value)
+    private static void AddFormattedIntEntry(List<MetadataEntry> entries, string label, string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            return false;
+            return;
         }
 
         if (int.TryParse(value, out int num))
         {
-            lines.Add(new StyledLine($"  {label,-14} {num:N0}", null));
-            return true;
+            entries.Add(new MetadataEntry(label, $"{num:N0}"));
         }
-
-        lines.Add(new StyledLine($"  {label,-14} {value}", null));
-        return true;
+        else
+        {
+            entries.Add(new MetadataEntry(label, value));
+        }
     }
 
     private static string GetFileTypeLabel(string path)

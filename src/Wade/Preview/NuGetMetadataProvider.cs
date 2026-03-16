@@ -1,21 +1,20 @@
 using System.IO.Compression;
 using System.Xml.Linq;
-using Wade.Highlighting;
 
 namespace Wade.Preview;
 
-internal sealed class NuGetPreviewProvider : IPreviewProvider
+internal sealed class NuGetMetadataProvider : IMetadataProvider
 {
     public string Label => "NuGet metadata";
 
-    public bool CanPreview(string path, PreviewContext context)
+    public bool CanProvideMetadata(string path, PreviewContext context)
     {
         string ext = Path.GetExtension(path);
         return ext.Equals(".nupkg", StringComparison.OrdinalIgnoreCase)
             || ext.Equals(".snupkg", StringComparison.OrdinalIgnoreCase);
     }
 
-    public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct)
+    public MetadataResult? GetMetadata(string path, PreviewContext context, CancellationToken ct)
     {
         if (ct.IsCancellationRequested)
         {
@@ -40,10 +39,9 @@ internal sealed class NuGetPreviewProvider : IPreviewProvider
 
             if (nuspecEntry is null)
             {
-                return new PreviewResult
+                return new MetadataResult
                 {
-                    TextLines = [new StyledLine("[no .nuspec found in package]", null)],
-                    IsRendered = true,
+                    Sections = [new MetadataSection(null, [new MetadataEntry("", "[no .nuspec found in package]")])],
                     FileTypeLabel = "NuGet Package",
                 };
             }
@@ -61,7 +59,6 @@ internal sealed class NuGetPreviewProvider : IPreviewProvider
                 return null;
             }
 
-            var lines = new List<StyledLine>();
             XElement root = doc.Root;
 
             // Find <metadata> element using local name to ignore namespace variations
@@ -69,43 +66,50 @@ internal sealed class NuGetPreviewProvider : IPreviewProvider
 
             if (metadata is null)
             {
-                return new PreviewResult
+                return new MetadataResult
                 {
-                    TextLines = [new StyledLine("[invalid .nuspec: no metadata element]", null)],
-                    IsRendered = true,
+                    Sections = [new MetadataSection(null, [new MetadataEntry("", "[invalid .nuspec: no metadata element]")])],
                     FileTypeLabel = "NuGet Package",
                 };
             }
 
-            lines.Add(new StyledLine("  NuGet Package", null));
-            lines.Add(new StyledLine("  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500", null));
+            var sections = new List<MetadataSection>();
 
-            AddField(lines, metadata, "Id", "Id");
-            AddField(lines, metadata, "Version", "Version");
-            AddField(lines, metadata, "Authors", "Authors");
-            AddLicense(lines, metadata);
-            AddField(lines, metadata, "ProjectUrl", "Project");
-            AddRepositoryUrl(lines, metadata);
-            AddField(lines, metadata, "Tags", "Tags");
+            // Main metadata section
+            var mainEntries = new List<MetadataEntry>();
+            AddField(mainEntries, metadata, "Id", "Id");
+            AddField(mainEntries, metadata, "Version", "Version");
+            AddField(mainEntries, metadata, "Authors", "Authors");
+            AddLicense(mainEntries, metadata);
+            AddField(mainEntries, metadata, "ProjectUrl", "Project");
+            AddRepositoryUrl(mainEntries, metadata);
+            AddField(mainEntries, metadata, "Tags", "Tags");
 
+            if (mainEntries.Count > 0)
+            {
+                sections.Add(new MetadataSection("NuGet Package", mainEntries.ToArray()));
+            }
+
+            // Description section
             string? description = GetElementValue(metadata, "description");
 
             if (!string.IsNullOrWhiteSpace(description))
             {
-                lines.Add(new StyledLine("", null));
-                lines.Add(new StyledLine("  Description:", null));
+                var descEntries = new List<MetadataEntry>();
                 foreach (string descLine in WrapText(description.Trim(), Math.Max(context.PaneWidthCells - 6, 20)))
                 {
-                    lines.Add(new StyledLine($"    {descLine}", null));
+                    descEntries.Add(new MetadataEntry("", descLine));
                 }
+
+                sections.Add(new MetadataSection("Description", descEntries.ToArray()));
             }
 
-            AddDependencies(lines, metadata);
+            // Dependencies sections
+            AddDependencies(sections, metadata);
 
-            return new PreviewResult
+            return new MetadataResult
             {
-                TextLines = lines.ToArray(),
-                IsRendered = true,
+                Sections = sections.ToArray(),
                 FileTypeLabel = "NuGet Package",
             };
         }
@@ -119,23 +123,23 @@ internal sealed class NuGetPreviewProvider : IPreviewProvider
         }
     }
 
-    private static void AddField(List<StyledLine> lines, XElement metadata, string elementName, string label)
+    private static void AddField(List<MetadataEntry> entries, XElement metadata, string elementName, string label)
     {
         string? value = GetElementValue(metadata, elementName);
 
         if (!string.IsNullOrWhiteSpace(value))
         {
-            lines.Add(new StyledLine($"  {label,-12} {value}", null));
+            entries.Add(new MetadataEntry(label, value));
         }
     }
 
-    private static void AddLicense(List<StyledLine> lines, XElement metadata)
+    private static void AddLicense(List<MetadataEntry> entries, XElement metadata)
     {
         XElement? licenseEl = metadata.Elements().FirstOrDefault(e => e.Name.LocalName == "license");
 
         if (licenseEl is not null)
         {
-            lines.Add(new StyledLine($"  {"License",-12} {licenseEl.Value}", null));
+            entries.Add(new MetadataEntry("License", licenseEl.Value));
             return;
         }
 
@@ -143,11 +147,11 @@ internal sealed class NuGetPreviewProvider : IPreviewProvider
 
         if (!string.IsNullOrWhiteSpace(licenseUrl))
         {
-            lines.Add(new StyledLine($"  {"License",-12} {licenseUrl}", null));
+            entries.Add(new MetadataEntry("License", licenseUrl));
         }
     }
 
-    private static void AddRepositoryUrl(List<StyledLine> lines, XElement metadata)
+    private static void AddRepositoryUrl(List<MetadataEntry> entries, XElement metadata)
     {
         XElement? repoEl = metadata.Elements().FirstOrDefault(e => e.Name.LocalName == "repository");
 
@@ -160,11 +164,11 @@ internal sealed class NuGetPreviewProvider : IPreviewProvider
 
         if (!string.IsNullOrWhiteSpace(url))
         {
-            lines.Add(new StyledLine($"  {"Repository",-12} {url}", null));
+            entries.Add(new MetadataEntry("Repository", url));
         }
     }
 
-    private static void AddDependencies(List<StyledLine> lines, XElement metadata)
+    private static void AddDependencies(List<MetadataSection> sections, XElement metadata)
     {
         XElement? deps = metadata.Elements().FirstOrDefault(e => e.Name.LocalName == "dependencies");
 
@@ -187,9 +191,7 @@ internal sealed class NuGetPreviewProvider : IPreviewProvider
                     continue;
                 }
 
-                lines.Add(new StyledLine("", null));
-                lines.Add(new StyledLine($"  Dependencies ({framework}):", null));
-
+                var entries = new List<MetadataEntry>();
                 foreach (XElement dep in depElements)
                 {
                     string? id = dep.Attribute("id")?.Value;
@@ -197,9 +199,14 @@ internal sealed class NuGetPreviewProvider : IPreviewProvider
 
                     if (id is not null)
                     {
-                        string entry = version is not null ? $"    {id} >= {version}" : $"    {id}";
-                        lines.Add(new StyledLine(entry, null));
+                        string entry = version is not null ? $"{id} >= {version}" : id;
+                        entries.Add(new MetadataEntry("", entry));
                     }
+                }
+
+                if (entries.Count > 0)
+                {
+                    sections.Add(new MetadataSection($"Dependencies ({framework})", entries.ToArray()));
                 }
             }
         }
@@ -213,9 +220,7 @@ internal sealed class NuGetPreviewProvider : IPreviewProvider
                 return;
             }
 
-            lines.Add(new StyledLine("", null));
-            lines.Add(new StyledLine("  Dependencies:", null));
-
+            var entries = new List<MetadataEntry>();
             foreach (XElement dep in depElements)
             {
                 string? id = dep.Attribute("id")?.Value;
@@ -223,9 +228,14 @@ internal sealed class NuGetPreviewProvider : IPreviewProvider
 
                 if (id is not null)
                 {
-                    string entry = version is not null ? $"    {id} >= {version}" : $"    {id}";
-                    lines.Add(new StyledLine(entry, null));
+                    string entry = version is not null ? $"{id} >= {version}" : id;
+                    entries.Add(new MetadataEntry("", entry));
                 }
+            }
+
+            if (entries.Count > 0)
+            {
+                sections.Add(new MetadataSection("Dependencies", entries.ToArray()));
             }
         }
     }
@@ -241,7 +251,6 @@ internal sealed class NuGetPreviewProvider : IPreviewProvider
     {
         var result = new List<string>();
 
-        // Normalize whitespace
         string normalized = string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
         if (normalized.Length <= maxWidth)

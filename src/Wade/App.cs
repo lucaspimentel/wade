@@ -125,6 +125,11 @@ internal sealed class App
     private int _sixelImageTop;
     private bool _sixelPending;
 
+    // Metadata provider state
+    private MetadataSection[]? _cachedMetadataSections;
+    private string? _cachedMetadataFileTypeLabel;
+    private IMetadataProvider? _activeMetadataProvider;
+
     // Terminal capability state
     private bool _imagePreviewsEffective;
     private bool _sixelSupported;
@@ -258,6 +263,10 @@ internal sealed class App
                         buffer.ForceFullRedraw();
                     }
                 }
+                else if (extra is MetadataReadyEvent metadataExtra)
+                {
+                    HandleMetadataReady(metadataExtra);
+                }
                 else if (extra is DirectorySizeReadyEvent dirSizeExtra)
                 {
                     HandleDirectorySizeReady(dirSizeExtra);
@@ -349,6 +358,12 @@ internal sealed class App
                     buffer.ForceFullRedraw();
                 }
 
+                continue;
+            }
+
+            if (inputEvent is MetadataReadyEvent metadataEvt)
+            {
+                HandleMetadataReady(metadataEvt);
                 continue;
             }
 
@@ -1037,9 +1052,10 @@ internal sealed class App
                 {
                     _activeProviderIndex = 0;
                     _activePreviewContext = BuildPreviewContext(_layout.RightPane.Width, _layout.RightPane.Height);
+                    _activeMetadataProvider = MetadataProviderRegistry.GetProvider(selected.FullPath, _activePreviewContext);
                     _applicableProviders = PreviewProviderRegistry.GetApplicableProviders(selected.FullPath, _activePreviewContext);
 
-                    if (_applicableProviders.Count == 0)
+                    if (_applicableProviders.Count == 0 && _activeMetadataProvider is null)
                     {
                         ClearPreviewCache(_previewLoader!);
                         _applicableProviders = [];
@@ -1051,16 +1067,32 @@ internal sealed class App
                     }
                 }
 
-                if (_applicableProviders is { Count: 0 })
+                if (_applicableProviders is { Count: 0 } && _activeMetadataProvider is null)
                 {
                     string message = _activePreviewContext is { IsBrokenSymlink: true } ? "[broken symlink]"
                         : _activePreviewContext is { IsCloudPlaceholder: true } ? "[cloud file \u2013 not downloaded]"
                         : "[no preview available]";
                     PaneRenderer.RenderMessage(buffer, _layout.RightPane, message);
                 }
-                else if (_previewLoading)
+                else if (_previewLoading && _cachedMetadataSections is null)
                 {
                     PaneRenderer.RenderMessage(buffer, _layout.RightPane, "[loading\u2026]");
+                }
+                else if (_cachedMetadataSections is not null && !_previewLoading && _cachedStyledLines is null && !_isImagePreview && !_isCombinedPreview)
+                {
+                    // Metadata only (no preview provider)
+                    StyledLine[] metadataLines = MetadataRenderer.Render(_cachedMetadataSections, _layout.RightPane.Width);
+                    PaneRenderer.RenderPreview(buffer, _layout.RightPane, metadataLines, showLineNumbers: false);
+                }
+                else if (_cachedMetadataSections is not null && _isImagePreview && _cachedSixelData is not null)
+                {
+                    // Metadata + image: render metadata at top, image below
+                    RenderMetadataWithImage(buffer, _layout.RightPane);
+                }
+                else if (_cachedMetadataSections is not null && _cachedStyledLines is not null)
+                {
+                    // Metadata + text preview: render metadata at top, text below
+                    RenderMetadataWithText(buffer, _layout.RightPane);
                 }
                 else if (_isCombinedPreview && _cachedStyledLines is not null && _cachedSixelData is not null)
                 {
@@ -1118,7 +1150,7 @@ internal sealed class App
                 if (selectedEntry is not null)
                 {
                     GitFileStatus? propGitStatus = _gitStatuses?.TryGetValue(selectedEntry.FullPath, out var gs) == true ? gs : null;
-                    PropertiesOverlay.Render(buffer, width, height, selectedEntry, _propertiesDirSizeText, propGitStatus);
+                    PropertiesOverlay.Render(buffer, width, height, selectedEntry, _propertiesDirSizeText, propGitStatus, _cachedMetadataSections);
                 }
                 break;
             case InputMode.ActionPalette:
@@ -1206,6 +1238,23 @@ internal sealed class App
         _isCombinedPreview = true;
         _isRenderedPreview = evt.IsRendered;
         _previewLoading = false;
+    }
+
+    private void HandleMetadataReady(MetadataReadyEvent evt)
+    {
+        if (evt.Path != _pendingPreviewPath && evt.Path != _cachedPreviewPath)
+        {
+            return;
+        }
+
+        _cachedMetadataSections = evt.Sections;
+        _cachedMetadataFileTypeLabel = evt.FileTypeLabel;
+
+        // Use metadata file type label if preview hasn't provided one
+        if (_cachedPreviewFileTypeLabel is null && evt.FileTypeLabel is not null)
+        {
+            _cachedPreviewFileTypeLabel = evt.FileTypeLabel;
+        }
     }
 
     private void HandleDirectorySizeReady(DirectorySizeReadyEvent evt)
@@ -1355,17 +1404,28 @@ internal sealed class App
 
     private void ReloadActiveProvider(string path, PreviewLoader loader)
     {
-        if (_applicableProviders is null || _applicableProviders.Count == 0 || _activePreviewContext is null)
+        if (_activePreviewContext is null)
         {
             return;
         }
 
-        int index = Math.Min(_activeProviderIndex, _applicableProviders.Count - 1);
-        var provider = _applicableProviders[index];
+        IPreviewProvider? previewProvider = null;
+        if (_applicableProviders is { Count: > 0 })
+        {
+            int index = Math.Min(_activeProviderIndex, _applicableProviders.Count - 1);
+            previewProvider = _applicableProviders[index];
+        }
+
+        if (previewProvider is null && _activeMetadataProvider is null)
+        {
+            return;
+        }
 
         _pendingPreviewPath = path;
         _previewLoading = true;
-        loader.BeginLoad(path, provider, _activePreviewContext);
+        _cachedMetadataSections = null;
+        _cachedMetadataFileTypeLabel = null;
+        loader.BeginLoad(path, _activeMetadataProvider, previewProvider, _activePreviewContext);
     }
 
     private void ClearPreviewCache(PreviewLoader loader, ScreenBuffer? buffer = null)
@@ -1396,6 +1456,9 @@ internal sealed class App
         _applicableProviders = null;
         _activePreviewContext = null;
         _sixelPending = false;
+        _cachedMetadataSections = null;
+        _cachedMetadataFileTypeLabel = null;
+        _activeMetadataProvider = null;
 
         if (wasImage)
         {
@@ -1728,6 +1791,45 @@ internal sealed class App
 
         // Fill image area with spaces for Sixel rendering
         int imageTop = pane.Top + textRows;
+        for (int row = imageTop; row < pane.Bottom; row++)
+        {
+            buffer.FillRow(row, pane.Left, pane.Width, ' ', CellStyle.Default);
+        }
+
+        _sixelImageTop = imageTop;
+        _sixelPending = true;
+    }
+
+    private void RenderMetadataWithText(ScreenBuffer buffer, Rect pane)
+    {
+        StyledLine[] metadataLines = MetadataRenderer.Render(_cachedMetadataSections!, pane.Width);
+
+        // Metadata at top, preview text below
+        int metadataRows = Math.Min(metadataLines.Length + 1, pane.Height / 2); // +1 for blank separator
+        int previewRows = pane.Height - metadataRows;
+
+        var metadataRect = new Rect(pane.Left, pane.Top, pane.Width, metadataRows);
+        PaneRenderer.RenderPreview(buffer, metadataRect, metadataLines, showLineNumbers: false);
+
+        if (previewRows > 0)
+        {
+            var previewRect = new Rect(pane.Left, pane.Top + metadataRows, pane.Width, previewRows);
+            PaneRenderer.RenderPreview(buffer, previewRect, _cachedStyledLines!, showLineNumbers: !_isRenderedPreview);
+        }
+    }
+
+    private void RenderMetadataWithImage(ScreenBuffer buffer, Rect pane)
+    {
+        StyledLine[] metadataLines = MetadataRenderer.Render(_cachedMetadataSections!, pane.Width);
+
+        int metadataRows = Math.Min(metadataLines.Length + 1, pane.Height / 2);
+        int imageRows = pane.Height - metadataRows;
+
+        var metadataRect = new Rect(pane.Left, pane.Top, pane.Width, metadataRows);
+        PaneRenderer.RenderPreview(buffer, metadataRect, metadataLines, showLineNumbers: false);
+
+        // Fill image area with spaces for Sixel rendering
+        int imageTop = pane.Top + metadataRows;
         for (int row = imageTop; row < pane.Bottom; row++)
         {
             buffer.FillRow(row, pane.Left, pane.Width, ' ', CellStyle.Default);
