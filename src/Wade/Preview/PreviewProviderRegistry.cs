@@ -11,6 +11,7 @@ internal static class PreviewProviderRegistry
         new OfficePreviewProvider(),
         new ZipContentsPreviewProvider(),
         new ExecutablePreviewProvider(),
+        new MediaPreviewProvider(),
         new TextPreviewProvider(),
         new HexPreviewProvider(),
         new DiffPreviewProvider(),
