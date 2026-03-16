@@ -46,10 +46,18 @@ internal sealed class ExecutableMetadataProvider : IMetadataProvider
             bool isDll = (headers.CoffHeader.Characteristics & Characteristics.Dll) != 0;
             peEntries.Add(new MetadataEntry("Type", isDll ? "DLL" : "Executable"));
 
-            DateTimeOffset timestamp = DateTimeOffset.FromUnixTimeSeconds(headers.CoffHeader.TimeDateStamp);
-            if (timestamp.Year is >= 2000 and <= 2100)
+            int rawTimestamp = headers.CoffHeader.TimeDateStamp;
+            if (rawTimestamp == 0)
             {
-                peEntries.Add(new MetadataEntry("Timestamp", $"{timestamp:yyyy-MM-dd HH:mm:ss} UTC"));
+                peEntries.Add(new MetadataEntry("Timestamp", "Reproducible build"));
+            }
+            else
+            {
+                DateTimeOffset timestamp = DateTimeOffset.FromUnixTimeSeconds(rawTimestamp);
+                if (timestamp.Year is >= 2000 and <= 2100)
+                {
+                    peEntries.Add(new MetadataEntry("Timestamp", $"{timestamp:yyyy-MM-dd HH:mm:ss} UTC"));
+                }
             }
 
             sections.Add(new MetadataSection("Executable Info", peEntries.ToArray()));

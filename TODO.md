@@ -126,7 +126,7 @@ Add metadata providers for specific formats. Each is an `IMetadataProvider` impl
 - **Font files** (`.ttf`, `.otf`, `.woff2`) — font family, style, weight, glyph count. Parse OpenType/TrueType `name` and `head` tables.
 - **OpenDocument** (`.odt`, `.ods`, `.odp`) — title, author, dates, page/sheet count. Extract from `meta.xml` inside the ODF zip archive (similar to Office OOXML approach).
 - **EPUB** (`.epub`) — title, author, publisher, language, identifier. Extract from `content.opf` metadata inside the zip archive.
-- **PE timestamp indicator** — when the PE timestamp is zeroed (reproducible builds) or out of range, show "Reproducible build" or similar instead of silently omitting the field.
+- ~~**PE timestamp indicator** — when the PE timestamp is zeroed (reproducible builds) or out of range, show "Reproducible build" or similar instead of silently omitting the field.~~ ✅
 
 ### Zip — other archive formats
 
