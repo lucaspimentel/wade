@@ -8,6 +8,7 @@ internal static class MetadataProviderRegistry
         new OfficeMetadataProvider(),
         new MediaMetadataProvider(),
         new NuGetMetadataProvider(),
+        new PdfMetadataProvider(),
     ];
 
     public static IMetadataProvider? GetProvider(string path, PreviewContext context)

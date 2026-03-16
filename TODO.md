@@ -122,7 +122,7 @@ Add metadata providers for specific formats. Each is an `IMetadataProvider` impl
 
 ##### Backlog
 
-- **PDF metadata** — title, author, page count, producer, creation date. Extract from PDF header/trailer without rendering. Could use a lightweight parser or CLI tool.
+- ~~**PDF metadata** — title, author, page count, producer, creation date. Shells out to `pdfinfo` CLI (Poppler), following the `MediaMetadataProvider` pattern.~~ ✅
 - **Font files** (`.ttf`, `.otf`, `.woff2`) — font family, style, weight, glyph count. Parse OpenType/TrueType `name` and `head` tables.
 - **OpenDocument** (`.odt`, `.ods`, `.odp`) — title, author, dates, page/sheet count. Extract from `meta.xml` inside the ODF zip archive (similar to Office OOXML approach).
 - **EPUB** (`.epub`) — title, author, publisher, language, identifier. Extract from `content.opf` metadata inside the zip archive.
