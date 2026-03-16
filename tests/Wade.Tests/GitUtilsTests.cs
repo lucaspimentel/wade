@@ -965,6 +965,18 @@ public class GitUtilsTests
             File.SetAttributes(file, FileAttributes.Normal);
         }
 
-        Directory.Delete(path, true);
+        // Retry to handle Windows file handle release delays (antivirus, indexer, git locks)
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            try
+            {
+                Directory.Delete(path, true);
+                return;
+            }
+            catch (Exception) when (attempt < 2)
+            {
+                Thread.Sleep(100);
+            }
+        }
     }
 }
