@@ -21,7 +21,7 @@ Design a common pattern for external CLI tools (glow, ffprobe, mediainfo, pdftop
 
 When a metadata provider returns structured data for a binary file (`.exe`, `.dll`, audio/video), the default `TextPreviewProvider` shows `[binary file]` in the bottom half of the split pane — wasting space. Render metadata-only (full pane) instead of the split layout when the active preview is just `[binary file]`.
 
-### Extract shared `WrapText` helper
+### ~~Extract shared `WrapText` helper~~ ✅
 
 `OfficeMetadataProvider.WrapText` and `NuGetMetadataProvider.WrapText` are identical private static methods. Extract to a shared utility.
 
