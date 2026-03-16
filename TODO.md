@@ -8,6 +8,23 @@
 
 ## Refactoring
 
+### External CLI tool abstraction
+
+Design a common pattern for external CLI tools (glow, ffprobe, mediainfo, pdftopng, etc.). All tools should be handled consistently:
+
+- Configurable enable/disable per tool in settings
+- Consistent availability detection (cached, like `MediaMetadataProvider.IsAvailable`)
+- Show a help message in the preview pane when a tool is missing but would provide useful output (e.g., "install ffprobe for media metadata")
+- Single shared abstraction or convention so new tools follow the same pattern
+
+### Suppress `[binary file]` preview when metadata is present
+
+When a metadata provider returns structured data for a binary file (`.exe`, `.dll`, audio/video), the default `TextPreviewProvider` shows `[binary file]` in the bottom half of the split pane — wasting space. Render metadata-only (full pane) instead of the split layout when the active preview is just `[binary file]`.
+
+### Extract shared `WrapText` helper
+
+`OfficeMetadataProvider.WrapText` and `NuGetMetadataProvider.WrapText` are identical private static methods. Extract to a shared utility.
+
 ### ~~Deduplicate action dispatch~~ ✅
 
 Extracted `DispatchFileAction` method shared by both the main key handler and action palette dispatch. Removed ~350 lines of duplicated logic.
@@ -107,6 +124,9 @@ Add metadata providers for specific formats. Each is an `IMetadataProvider` impl
 
 - **PDF metadata** — title, author, page count, producer, creation date. Extract from PDF header/trailer without rendering. Could use a lightweight parser or CLI tool.
 - **Font files** (`.ttf`, `.otf`, `.woff2`) — font family, style, weight, glyph count. Parse OpenType/TrueType `name` and `head` tables.
+- **OpenDocument** (`.odt`, `.ods`, `.odp`) — title, author, dates, page/sheet count. Extract from `meta.xml` inside the ODF zip archive (similar to Office OOXML approach).
+- **EPUB** (`.epub`) — title, author, publisher, language, identifier. Extract from `content.opf` metadata inside the zip archive.
+- **PE timestamp indicator** — when the PE timestamp is zeroed (reproducible builds) or out of range, show "Reproducible build" or similar instead of silently omitting the field.
 
 ### Zip — other archive formats
 
