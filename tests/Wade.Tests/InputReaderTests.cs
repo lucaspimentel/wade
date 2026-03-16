@@ -145,10 +145,10 @@ public class InputReaderTests
     }
 
     [Fact]
-    public void MapKey_P_ReturnsNone()
+    public void MapKey_P_ReturnsShowPreviewMenu()
     {
         var evt = new KeyEvent(ConsoleKey.P, 'p', false, false, false);
-        Assert.Equal(AppAction.None, InputReader.MapKey(evt));
+        Assert.Equal(AppAction.ShowPreviewMenu, InputReader.MapKey(evt));
     }
 
     [Fact]
