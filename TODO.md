@@ -202,14 +202,14 @@ Research and implement image previews for Office Open XML formats (`.docx`, `.xl
 - Performance concern: LibreOffice startup is slow (~1-2s); consider debouncing or async user feedback
 - Start with DOCX (most common); extend to XLSX/PPTX after proving the concept
 
-### F5 as alias for Ctrl+R (refresh)
+### ~~F5 as alias for Ctrl+R (refresh)~~ ✓
 
-Add F5 as a second keybinding for `AppAction.Refresh`, alongside the existing `Ctrl+R`.
+~~Add F5 as a second keybinding for `AppAction.Refresh`, alongside the existing `Ctrl+R`.~~
 
-- `InputReader.cs:132` handles `Ctrl+R → AppAction.Refresh`; add `ConsoleKey.F5 → AppAction.Refresh` in the same file
-- On Unix, F5 is already decoded as `ConsoleKey.F5` in `UnixInputSource.cs:275` (VT sequence `\e[15~`)
-- On Windows, `WindowsInputSource` passes `(ConsoleKey)k.wVirtualKeyCode` directly — `VK_F5 = 0x74` maps to `ConsoleKey.F5` automatically
-- One-liner addition next to the `Ctrl+R` check in `InputReader.cs`
+~~- `InputReader.cs:132` handles `Ctrl+R → AppAction.Refresh`; add `ConsoleKey.F5 → AppAction.Refresh` in the same file~~
+~~- On Unix, F5 is already decoded as `ConsoleKey.F5` in `UnixInputSource.cs:275` (VT sequence `\e[15~`)~~
+~~- On Windows, `WindowsInputSource` passes `(ConsoleKey)k.wVirtualKeyCode` directly — `VK_F5 = 0x74` maps to `ConsoleKey.F5` automatically~~
+~~- One-liner addition next to the `Ctrl+R` check in `InputReader.cs`~~
 
 ### Show filename in metadata header
 

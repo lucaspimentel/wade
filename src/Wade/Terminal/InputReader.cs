@@ -215,6 +215,7 @@ internal static class InputReader
             ConsoleKey.PageDown => AppAction.PageDown,
             ConsoleKey.Home => AppAction.Home,
             ConsoleKey.End => AppAction.End,
+            ConsoleKey.F5 => AppAction.Refresh,
             _ => AppAction.None,
         };
     }
