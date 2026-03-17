@@ -4,9 +4,7 @@ namespace Wade.Imaging;
 
 internal sealed class XpdfPdfTool : IPdfTool
 {
-    private static readonly Lazy<bool> s_isAvailable = new(CheckAvailability);
-
-    public bool IsAvailable => s_isAvailable.Value;
+    public bool IsAvailable => CliTool.IsAvailable("pdftopng");
 
     public string? RenderPage(string pdfPath, int pageNumber, CancellationToken ct)
     {
@@ -67,34 +65,6 @@ internal sealed class XpdfPdfTool : IPdfTool
             // Clean up temp dir on failure
             try { Directory.Delete(tempDir, recursive: true); } catch { }
             return null;
-        }
-    }
-
-    private static bool CheckAvailability()
-    {
-        try
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "pdftopng",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(psi);
-            if (process is null)
-            {
-                return false;
-            }
-
-            process.WaitForExit(TimeSpan.FromSeconds(5));
-            return true;
-        }
-        catch
-        {
-            return false;
         }
     }
 }

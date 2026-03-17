@@ -5,9 +5,7 @@ namespace Wade.Highlighting;
 
 internal static class GlowRenderer
 {
-    private static readonly Lazy<bool> LazyIsAvailable = new(CheckAvailable);
-
-    public static bool IsAvailable => LazyIsAvailable.Value;
+    public static bool IsAvailable => CliTool.IsAvailable("glow", "--version", requireZeroExitCode: true);
 
     // Standard dark terminal 16-color palette (indices 0-15)
     private static readonly Color[] Palette =
@@ -38,28 +36,12 @@ internal static class GlowRenderer
             {
                 FileName = "glow",
                 ArgumentList = { "--style", "dark", "--width", width.ToString(), filePath },
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
             };
             psi.Environment["CLICOLOR_FORCE"] = "1";
 
-            using var process = Process.Start(psi);
-            if (process is null)
-            {
-                return null;
-            }
+            string? output = CliTool.Run(psi, 5000);
 
-            string output = process.StandardOutput.ReadToEnd();
-
-            if (!process.WaitForExit(5000))
-            {
-                try { process.Kill(); } catch { /* best effort */ }
-                return null;
-            }
-
-            if (process.ExitCode != 0)
+            if (output is null)
             {
                 return null;
             }
@@ -328,34 +310,5 @@ internal static class GlowRenderer
         }
 
         return null;
-    }
-
-    private static bool CheckAvailable()
-    {
-        try
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "glow",
-                Arguments = "--version",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
-
-            using var process = Process.Start(psi);
-            if (process is null)
-            {
-                return false;
-            }
-
-            process.StandardOutput.ReadToEnd();
-            return process.WaitForExit(3000) && process.ExitCode == 0;
-        }
-        catch
-        {
-            return false;
-        }
     }
 }

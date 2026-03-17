@@ -82,9 +82,8 @@ internal sealed class App
     private bool _configPreviewPane;
     private bool _configSizeColumn;
     private bool _configDateColumn;
-    private bool _configGlowMarkdownPreview;
     private bool _configZipPreview;
-    private bool _configPdfPreview;
+    private HashSet<string> _configDisabledTools = [];
     private bool _configCopySymlinksAsLinks;
     private bool _configTerminalTitle;
     private bool _configGitStatus;
@@ -1072,7 +1071,7 @@ internal sealed class App
                 {
                     string message = _activePreviewContext is { IsBrokenSymlink: true } ? "[broken symlink]"
                         : _activePreviewContext is { IsCloudPlaceholder: true } ? "[cloud file \u2013 not downloaded]"
-                        : "[no preview available]";
+                        : CliToolHints.GetHint(selected.FullPath) ?? "[no preview available]";
                     PaneRenderer.RenderMessage(buffer, _layout.RightPane, message);
                 }
                 else if (_previewLoading && _cachedMetadataSections is null)
@@ -1399,9 +1398,8 @@ internal sealed class App
             IsBrokenSymlink: isBrokenSymlink,
             GitStatus: gitStatus,
             RepoRoot: _currentRepoRoot,
-            GlowEnabled: _config.GlowMarkdownPreviewEnabled,
+            DisabledTools: _config.DisabledTools,
             ZipPreviewEnabled: _config.ZipPreviewEnabled,
-            PdfPreviewEnabled: _config.PdfPreviewEnabled,
             ImagePreviewsEnabled: _imagePreviewsEffective);
     }
 
@@ -3731,9 +3729,8 @@ internal sealed class App
         _configPreviewPane = _config.PreviewPaneEnabled;
         _configSizeColumn = _config.SizeColumnEnabled;
         _configDateColumn = _config.DateColumnEnabled;
-        _configGlowMarkdownPreview = _config.GlowMarkdownPreviewEnabled;
         _configZipPreview = _config.ZipPreviewEnabled;
-        _configPdfPreview = _config.PdfPreviewEnabled;
+        _configDisabledTools = new HashSet<string>(_config.DisabledTools);
         _configCopySymlinksAsLinks = _config.CopySymlinksAsLinksEnabled;
         _configTerminalTitle = _config.TerminalTitleEnabled;
         _configGitStatus = _config.GitStatusEnabled;
@@ -3752,7 +3749,7 @@ internal sealed class App
                 break;
 
             case ConsoleKey.DownArrow or ConsoleKey.J:
-                int maxIndex = OperatingSystem.IsWindows() ? 14 : 13;
+                int maxIndex = OperatingSystem.IsWindows() ? 17 : 16;
                 if (_configSelectedIndex < maxIndex)
                 {
                     _configSelectedIndex++;
@@ -3832,29 +3829,50 @@ internal sealed class App
             case 7:
                 if (_configPreviewPane && _configImagePreviews)
                 {
-                    _configPdfPreview = !_configPdfPreview;
+                    ToggleDisabledTool("pdftopng");
                 }
 
                 break;
             case 8:
-                if (_configPreviewPane)
+                if (_configPreviewPane && _configImagePreviews)
                 {
-                    _configGlowMarkdownPreview = !_configGlowMarkdownPreview;
+                    ToggleDisabledTool("pdfinfo");
                 }
 
                 break;
             case 9:
                 if (_configPreviewPane)
                 {
+                    ToggleDisabledTool("glow");
+                }
+
+                break;
+            case 10:
+                if (_configPreviewPane)
+                {
+                    ToggleDisabledTool("ffprobe");
+                }
+
+                break;
+            case 11:
+                if (_configPreviewPane)
+                {
+                    ToggleDisabledTool("mediainfo");
+                }
+
+                break;
+            case 12:
+                if (_configPreviewPane)
+                {
                     _configZipPreview = !_configZipPreview;
                 }
 
                 break;
-            case 10: _configSizeColumn = !_configSizeColumn; break;
-            case 11: _configDateColumn = !_configDateColumn; break;
-            case 12: _configCopySymlinksAsLinks = !_configCopySymlinksAsLinks; break;
-            case 13: _configTerminalTitle = !_configTerminalTitle; break;
-            case 14: _configGitStatus = !_configGitStatus; break;
+            case 13: _configSizeColumn = !_configSizeColumn; break;
+            case 14: _configDateColumn = !_configDateColumn; break;
+            case 15: _configCopySymlinksAsLinks = !_configCopySymlinksAsLinks; break;
+            case 16: _configTerminalTitle = !_configTerminalTitle; break;
+            case 17: _configGitStatus = !_configGitStatus; break;
         }
     }
 
@@ -3871,9 +3889,8 @@ internal sealed class App
         _config.PreviewPaneEnabled = _configPreviewPane;
         _config.SizeColumnEnabled = _configSizeColumn;
         _config.DateColumnEnabled = _configDateColumn;
-        _config.GlowMarkdownPreviewEnabled = _configGlowMarkdownPreview;
         _config.ZipPreviewEnabled = _configZipPreview;
-        _config.PdfPreviewEnabled = _configPdfPreview;
+        _config.DisabledTools = new HashSet<string>(_configDisabledTools);
         _config.CopySymlinksAsLinksEnabled = _configCopySymlinksAsLinks;
         _config.TerminalTitleEnabled = _configTerminalTitle;
         _config.GitStatusEnabled = _configGitStatus;
@@ -3924,7 +3941,7 @@ internal sealed class App
     private void RenderConfigDialog(ScreenBuffer buffer, int width, int height)
     {
         const int ContentWidth = 40;
-        int contentHeight = OperatingSystem.IsWindows() ? 17 : 16;
+        int contentHeight = OperatingSystem.IsWindows() ? 20 : 19;
         const string Footer = "[Space] Toggle [◄►] Cycle [Enter] Save [Esc] Cancel";
 
         var content = DialogBox.Render(buffer, width, height, Math.Max(ContentWidth, Footer.Length), contentHeight, title: "Configuration", footer: Footer);
@@ -3951,8 +3968,11 @@ internal sealed class App
         itemList.Add(("Confirm Delete", FormatBool(_configConfirmDelete), true));
         itemList.Add(("Show Preview Pane", FormatBool(_configPreviewPane), true));
         itemList.Add(("  Image Previews", FormatBool(_configImagePreviews), _configPreviewPane));
-        itemList.Add(("    PDF Preview", FormatBool(_configPdfPreview), _configPreviewPane && _configImagePreviews));
-        itemList.Add(("  Glow (Markdown)", FormatBool(_configGlowMarkdownPreview), _configPreviewPane && GlowRenderer.IsAvailable));
+        itemList.Add(("    pdftopng (PDF imgs)", FormatToolBool("pdftopng"), _configPreviewPane && _configImagePreviews));
+        itemList.Add(("    pdfinfo (PDF meta)", FormatToolBool("pdfinfo"), _configPreviewPane && _configImagePreviews));
+        itemList.Add(("  glow (Markdown)", FormatToolBool("glow"), _configPreviewPane));
+        itemList.Add(("  ffprobe (media meta)", FormatToolBool("ffprobe"), _configPreviewPane));
+        itemList.Add(("  mediainfo (media alt)", FormatToolBool("mediainfo"), _configPreviewPane));
         itemList.Add(("  Zip Preview", FormatBool(_configZipPreview), _configPreviewPane));
         itemList.Add(("Show Size Column", FormatBool(_configSizeColumn), true));
         itemList.Add(("Show Date Column", FormatBool(_configDateColumn), true));
@@ -3985,6 +4005,16 @@ internal sealed class App
     }
 
     private static string FormatBool(bool value) => value ? "[X]" : "[ ]";
+
+    private string FormatToolBool(string toolName) => FormatBool(!_configDisabledTools.Contains(toolName));
+
+    private void ToggleDisabledTool(string toolName)
+    {
+        if (!_configDisabledTools.Remove(toolName))
+        {
+            _configDisabledTools.Add(toolName);
+        }
+    }
 
     private void RenderSearchBar(ScreenBuffer buffer)
     {

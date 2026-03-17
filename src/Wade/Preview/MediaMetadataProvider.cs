@@ -1,13 +1,9 @@
-using System.Diagnostics;
 using System.Text.Json;
 
 namespace Wade.Preview;
 
 internal sealed class MediaMetadataProvider : IMetadataProvider
 {
-    private static readonly Lazy<bool> s_ffprobeAvailable = new(CheckFfprobe);
-    private static readonly Lazy<bool> s_mediainfoAvailable = new(CheckMediainfo);
-
     private static readonly HashSet<string> s_extensions = new(StringComparer.OrdinalIgnoreCase)
     {
         // Audio
@@ -18,12 +14,24 @@ internal sealed class MediaMetadataProvider : IMetadataProvider
 
     public string Label => "Media info";
 
-    internal static bool IsAvailable => s_ffprobeAvailable.Value || s_mediainfoAvailable.Value;
+    internal static bool FfprobeAvailable => CliTool.IsAvailable("ffprobe", "-version", requireZeroExitCode: true);
+
+    internal static bool MediainfoAvailable => CliTool.IsAvailable("mediainfo", "--version");
+
+    internal static bool IsAvailable => FfprobeAvailable || MediainfoAvailable;
 
     public bool CanProvideMetadata(string path, PreviewContext context)
     {
         string ext = Path.GetExtension(path);
-        return s_extensions.Contains(ext) && IsAvailable;
+
+        if (!s_extensions.Contains(ext))
+        {
+            return false;
+        }
+
+        bool ffprobeEnabled = !context.DisabledTools.Contains("ffprobe") && FfprobeAvailable;
+        bool mediainfoEnabled = !context.DisabledTools.Contains("mediainfo") && MediainfoAvailable;
+        return ffprobeEnabled || mediainfoEnabled;
     }
 
     public MetadataResult? GetMetadata(string path, PreviewContext context, CancellationToken ct)
@@ -35,10 +43,13 @@ internal sealed class MediaMetadataProvider : IMetadataProvider
 
         try
         {
-            string? json = s_ffprobeAvailable.Value
-                ? RunFfprobe(path)
-                : s_mediainfoAvailable.Value
-                    ? RunMediainfo(path)
+            bool useFfprobe = !context.DisabledTools.Contains("ffprobe") && FfprobeAvailable;
+            bool useMediainfo = !useFfprobe && !context.DisabledTools.Contains("mediainfo") && MediainfoAvailable;
+
+            string? json = useFfprobe
+                ? CliTool.Run("ffprobe", ["-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", path])
+                : useMediainfo
+                    ? CliTool.Run("mediainfo", ["--Output=JSON", path])
                     : null;
 
             if (json is null)
@@ -48,7 +59,7 @@ internal sealed class MediaMetadataProvider : IMetadataProvider
 
             ct.ThrowIfCancellationRequested();
 
-            MetadataSection[]? sections = s_ffprobeAvailable.Value
+            MetadataSection[]? sections = useFfprobe
                 ? ParseFfprobeJson(json)
                 : ParseMediainfoJson(json);
 
@@ -75,60 +86,6 @@ internal sealed class MediaMetadataProvider : IMetadataProvider
         {
             return null;
         }
-    }
-
-    // ── Process execution ─────────────────────────────────────────────────────
-
-    private static string? RunFfprobe(string path)
-    {
-        var psi = new ProcessStartInfo
-        {
-            FileName = "ffprobe",
-            ArgumentList = { "-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", path },
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-
-        return RunProcess(psi);
-    }
-
-    private static string? RunMediainfo(string path)
-    {
-        var psi = new ProcessStartInfo
-        {
-            FileName = "mediainfo",
-            ArgumentList = { "--Output=JSON", path },
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-
-        return RunProcess(psi);
-    }
-
-    private static string? RunProcess(ProcessStartInfo psi)
-    {
-        using var process = Process.Start(psi);
-
-        if (process is null)
-        {
-            return null;
-        }
-
-        string output = process.StandardOutput.ReadToEnd();
-
-        if (!process.WaitForExit(5000))
-        {
-            try { process.Kill(); }
-            catch { /* best effort */ }
-
-            return null;
-        }
-
-        return process.ExitCode == 0 ? output : null;
     }
 
     // ── JSON parsing ──────────────────────────────────────────────────────────
@@ -444,67 +401,5 @@ internal sealed class MediaMetadataProvider : IMetadataProvider
             ".MPG" or ".MPEG" => "MPEG",
             _ => ext.TrimStart('.'),
         };
-    }
-
-    // ── Availability checks ───────────────────────────────────────────────────
-
-    private static bool CheckFfprobe()
-    {
-        try
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "ffprobe",
-                Arguments = "-version",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
-
-            using var process = Process.Start(psi);
-
-            if (process is null)
-            {
-                return false;
-            }
-
-            process.StandardOutput.ReadToEnd();
-            return process.WaitForExit(3000) && process.ExitCode == 0;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private static bool CheckMediainfo()
-    {
-        try
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "mediainfo",
-                Arguments = "--version",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
-
-            using var process = Process.Start(psi);
-
-            if (process is null)
-            {
-                return false;
-            }
-
-            process.StandardOutput.ReadToEnd();
-            return process.WaitForExit(3000);
-        }
-        catch
-        {
-            return false;
-        }
     }
 }

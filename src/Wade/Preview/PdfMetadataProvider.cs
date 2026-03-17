@@ -1,17 +1,15 @@
-using System.Diagnostics;
-
 namespace Wade.Preview;
 
 internal sealed class PdfMetadataProvider : IMetadataProvider
 {
-    private static readonly Lazy<bool> s_isAvailable = new(CheckAvailability);
-
     public string Label => "PDF metadata";
 
-    internal static bool IsAvailable => s_isAvailable.Value;
+    internal static bool IsAvailable => CliTool.IsAvailable("pdfinfo", "-v");
 
     public bool CanProvideMetadata(string path, PreviewContext context) =>
-        string.Equals(Path.GetExtension(path), ".pdf", StringComparison.OrdinalIgnoreCase) && IsAvailable;
+        !context.DisabledTools.Contains("pdfinfo")
+        && string.Equals(Path.GetExtension(path), ".pdf", StringComparison.OrdinalIgnoreCase)
+        && IsAvailable;
 
     public MetadataResult? GetMetadata(string path, PreviewContext context, CancellationToken ct)
     {
@@ -22,7 +20,7 @@ internal sealed class PdfMetadataProvider : IMetadataProvider
 
         try
         {
-            string? output = RunPdfInfo(path);
+            string? output = CliTool.Run("pdfinfo", [path]);
 
             if (output is null)
             {
@@ -52,45 +50,6 @@ internal sealed class PdfMetadataProvider : IMetadataProvider
         {
             return null;
         }
-    }
-
-    // ── Process execution ─────────────────────────────────────────────────────
-
-    private static string? RunPdfInfo(string path)
-    {
-        var psi = new ProcessStartInfo
-        {
-            FileName = "pdfinfo",
-            ArgumentList = { path },
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-
-        return RunProcess(psi);
-    }
-
-    private static string? RunProcess(ProcessStartInfo psi)
-    {
-        using var process = Process.Start(psi);
-
-        if (process is null)
-        {
-            return null;
-        }
-
-        string output = process.StandardOutput.ReadToEnd();
-
-        if (!process.WaitForExit(5000))
-        {
-            try { process.Kill(); }
-            catch { /* best effort */ }
-
-            return null;
-        }
-
-        return process.ExitCode == 0 ? output : null;
     }
 
     // ── Output parsing ────────────────────────────────────────────────────────
@@ -158,38 +117,5 @@ internal sealed class PdfMetadataProvider : IMetadataProvider
         return entries.Count > 0
             ? [new MetadataSection("PDF Document", entries.ToArray())]
             : null;
-    }
-
-    // ── Availability check ────────────────────────────────────────────────────
-
-    private static bool CheckAvailability()
-    {
-        try
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "pdfinfo",
-                Arguments = "-v",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
-
-            using var process = Process.Start(psi);
-
-            if (process is null)
-            {
-                return false;
-            }
-
-            process.StandardOutput.ReadToEnd();
-            process.StandardError.ReadToEnd();
-            return process.WaitForExit(3000);
-        }
-        catch
-        {
-            return false;
-        }
     }
 }

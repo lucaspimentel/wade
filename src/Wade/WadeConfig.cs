@@ -6,7 +6,6 @@ internal sealed class WadeConfig
 {
     public bool ShowIconsEnabled { get; set; } = true;
     public bool ImagePreviewsEnabled { get; set; } = true;
-    public bool GlowMarkdownPreviewEnabled { get; set; } = false;
     public bool ShowHiddenFiles { get; set; } = false;
     public bool ShowSystemFiles { get; set; } = false;
     public SortMode SortMode { get; set; } = SortMode.Name;
@@ -17,9 +16,9 @@ internal sealed class WadeConfig
     public bool DateColumnEnabled { get; set; } = true;
     public bool CopySymlinksAsLinksEnabled { get; set; } = true;
     public bool ZipPreviewEnabled { get; set; } = true;
-    public bool PdfPreviewEnabled { get; set; } = true;
     public bool TerminalTitleEnabled { get; set; } = true;
     public bool GitStatusEnabled { get; set; } = true;
+    public HashSet<string> DisabledTools { get; set; } = [];
     public string StartPath { get; set; } = Directory.GetCurrentDirectory();
     public bool ShowConfig { get; set; } = false;
     public bool ShowHelp { get; set; } = false;
@@ -81,9 +80,6 @@ internal sealed class WadeConfig
                     case "image_previews_enabled":
                         config.ImagePreviewsEnabled = ParseBool(value, config.ImagePreviewsEnabled);
                         break;
-                    case "glow_markdown_preview_enabled":
-                        config.GlowMarkdownPreviewEnabled = ParseBool(value, config.GlowMarkdownPreviewEnabled);
-                        break;
                     case "show_hidden_files":
                         config.ShowHiddenFiles = ParseBool(value, config.ShowHiddenFiles);
                         break;
@@ -118,20 +114,40 @@ internal sealed class WadeConfig
                     case "zip_preview_enabled":
                         config.ZipPreviewEnabled = ParseBool(value, config.ZipPreviewEnabled);
                         break;
-                    case "pdf_preview_enabled":
-                        config.PdfPreviewEnabled = ParseBool(value, config.PdfPreviewEnabled);
-                        break;
                     case "terminal_title_enabled":
                         config.TerminalTitleEnabled = ParseBool(value, config.TerminalTitleEnabled);
                         break;
                     case "git_status_enabled":
                         config.GitStatusEnabled = ParseBool(value, config.GitStatusEnabled);
                         break;
+                    case "disabled_tools":
+                        foreach (string tool in value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                        {
+                            config.DisabledTools.Add(tool);
+                        }
+
+                        break;
                     case "detail_columns_enabled":
                         // Backward compat: sets both columns
                         var detailBool = ParseBool(value, true);
                         config.SizeColumnEnabled = detailBool;
                         config.DateColumnEnabled = detailBool;
+                        break;
+                    // Backward compat: map old per-tool booleans to disabled_tools
+                    case "glow_markdown_preview_enabled":
+                        if (!ParseBool(value, true))
+                        {
+                            config.DisabledTools.Add("glow");
+                        }
+
+                        break;
+                    case "pdf_preview_enabled":
+                        if (!ParseBool(value, true))
+                        {
+                            config.DisabledTools.Add("pdftopng");
+                            config.DisabledTools.Add("pdfinfo");
+                        }
+
                         break;
                 }
             }
@@ -204,7 +220,6 @@ internal sealed class WadeConfig
         var content = $"""
             show_icons_enabled = {(ShowIconsEnabled ? "true" : "false")}
             image_previews_enabled = {(ImagePreviewsEnabled ? "true" : "false")}
-            glow_markdown_preview_enabled = {(GlowMarkdownPreviewEnabled ? "true" : "false")}
             show_hidden_files = {(ShowHiddenFiles ? "true" : "false")}
             show_system_files = {(ShowSystemFiles ? "true" : "false")}
             sort_mode = {sortModeStr}
@@ -215,10 +230,14 @@ internal sealed class WadeConfig
             date_column_enabled = {(DateColumnEnabled ? "true" : "false")}
             copy_symlinks_as_links_enabled = {(CopySymlinksAsLinksEnabled ? "true" : "false")}
             zip_preview_enabled = {(ZipPreviewEnabled ? "true" : "false")}
-            pdf_preview_enabled = {(PdfPreviewEnabled ? "true" : "false")}
             terminal_title_enabled = {(TerminalTitleEnabled ? "true" : "false")}
             git_status_enabled = {(GitStatusEnabled ? "true" : "false")}
             """;
+
+        if (DisabledTools.Count > 0)
+        {
+            content += $"\ndisabled_tools = {string.Join(",", DisabledTools.Order())}";
+        }
 
         File.WriteAllText(ConfigFilePath, content);
     }
@@ -227,10 +246,13 @@ internal sealed class WadeConfig
     {
         var escapedPath = StartPath.Replace("\\", "\\\\");
         var sortModeStr = SortMode.ToString().ToLowerInvariant();
+        string disabledToolsJson = DisabledTools.Count > 0
+            ? "[" + string.Join(",", DisabledTools.Order().Select(t => $"\"{t}\"")) + "]"
+            : "[]";
+
         return "{" +
             $"\"show_icons_enabled\":{(ShowIconsEnabled ? "true" : "false")}," +
             $"\"image_previews_enabled\":{(ImagePreviewsEnabled ? "true" : "false")}," +
-            $"\"glow_markdown_preview_enabled\":{(GlowMarkdownPreviewEnabled ? "true" : "false")}," +
             $"\"show_hidden_files\":{(ShowHiddenFiles ? "true" : "false")}," +
             $"\"show_system_files\":{(ShowSystemFiles ? "true" : "false")}," +
             $"\"sort_mode\":\"{sortModeStr}\"," +
@@ -241,7 +263,7 @@ internal sealed class WadeConfig
             $"\"date_column_enabled\":{(DateColumnEnabled ? "true" : "false")}," +
             $"\"copy_symlinks_as_links_enabled\":{(CopySymlinksAsLinksEnabled ? "true" : "false")}," +
             $"\"zip_preview_enabled\":{(ZipPreviewEnabled ? "true" : "false")}," +
-            $"\"pdf_preview_enabled\":{(PdfPreviewEnabled ? "true" : "false")}," +
+            $"\"disabled_tools\":{disabledToolsJson}," +
             $"\"terminal_title_enabled\":{(TerminalTitleEnabled ? "true" : "false")}," +
             $"\"git_status_enabled\":{(GitStatusEnabled ? "true" : "false")}," +
             $"\"start_path\":\"{escapedPath}\"" +

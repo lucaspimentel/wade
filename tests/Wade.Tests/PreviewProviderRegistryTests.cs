@@ -10,9 +10,8 @@ public class PreviewProviderRegistryTests
         bool isBrokenSymlink = false,
         GitFileStatus? gitStatus = null,
         string? repoRoot = null,
-        bool glowEnabled = false,
+        HashSet<string>? disabledTools = null,
         bool zipPreviewEnabled = true,
-        bool pdfPreviewEnabled = true,
         bool imagePreviewsEnabled = true) =>
         new(
             PaneWidthCells: 40,
@@ -23,9 +22,8 @@ public class PreviewProviderRegistryTests
             IsBrokenSymlink: isBrokenSymlink,
             GitStatus: gitStatus,
             RepoRoot: repoRoot,
-            GlowEnabled: glowEnabled,
+            DisabledTools: disabledTools ?? new HashSet<string>(),
             ZipPreviewEnabled: zipPreviewEnabled,
-            PdfPreviewEnabled: pdfPreviewEnabled,
             ImagePreviewsEnabled: imagePreviewsEnabled);
 
     [Fact]

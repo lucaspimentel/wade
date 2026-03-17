@@ -11,9 +11,8 @@ public class PreviewProviderTests
         bool isBrokenSymlink = false,
         GitFileStatus? gitStatus = null,
         string? repoRoot = null,
-        bool glowEnabled = false,
+        HashSet<string>? disabledTools = null,
         bool zipPreviewEnabled = true,
-        bool pdfPreviewEnabled = true,
         bool imagePreviewsEnabled = true) =>
         new(
             PaneWidthCells: 40,
@@ -24,9 +23,8 @@ public class PreviewProviderTests
             IsBrokenSymlink: isBrokenSymlink,
             GitStatus: gitStatus,
             RepoRoot: repoRoot,
-            GlowEnabled: glowEnabled,
+            DisabledTools: disabledTools ?? new HashSet<string>(),
             ZipPreviewEnabled: zipPreviewEnabled,
-            PdfPreviewEnabled: pdfPreviewEnabled,
             ImagePreviewsEnabled: imagePreviewsEnabled);
 
     // --- ImagePreviewProvider ---
@@ -77,7 +75,7 @@ public class PreviewProviderTests
         public void CanPreview_PdfDisabled_ReturnsFalse()
         {
             var provider = new PdfPreviewProvider();
-            Assert.False(provider.CanPreview("file.pdf", DefaultContext(pdfPreviewEnabled: false)));
+            Assert.False(provider.CanPreview("file.pdf", DefaultContext(disabledTools: new HashSet<string> { "pdftopng" })));
         }
 
         [Fact]
@@ -115,14 +113,14 @@ public class PreviewProviderTests
         public void CanPreview_NonMarkdownExtensions_ReturnsFalse(string ext)
         {
             var provider = new GlowMarkdownPreviewProvider();
-            Assert.False(provider.CanPreview($"file{ext}", DefaultContext(glowEnabled: true)));
+            Assert.False(provider.CanPreview($"file{ext}", DefaultContext()));
         }
 
         [Fact]
         public void CanPreview_GlowDisabled_ReturnsFalse()
         {
             var provider = new GlowMarkdownPreviewProvider();
-            Assert.False(provider.CanPreview("file.md", DefaultContext(glowEnabled: false)));
+            Assert.False(provider.CanPreview("file.md", DefaultContext(disabledTools: new HashSet<string> { "glow" })));
         }
 
         [Fact]

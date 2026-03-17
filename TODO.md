@@ -8,14 +8,9 @@
 
 ## Refactoring
 
-### External CLI tool abstraction
+### ~~External CLI tool abstraction~~ ✅
 
-Design a common pattern for external CLI tools (glow, ffprobe, mediainfo, pdftopng, etc.). All tools should be handled consistently:
-
-- Configurable enable/disable per tool in settings
-- Consistent availability detection (cached, like `MediaMetadataProvider.IsAvailable`)
-- Show a help message in the preview pane when a tool is missing but would provide useful output (e.g., "install ffprobe for media metadata")
-- Single shared abstraction or convention so new tools follow the same pattern
+Extracted `CliTool` static helper for shared process spawning (availability cache + run). Replaced per-tool `Lazy<bool>` and `RunProcess` boilerplate in `GlowRenderer`, `XpdfPdfTool`, `PdfMetadataProvider`, `MediaMetadataProvider`. Added `CliToolHints` for missing-tool messages in preview pane. Replaced `GlowMarkdownPreviewEnabled`/`PdfPreviewEnabled` config flags with unified `disabled_tools` (per-tool toggles in settings overlay).
 
 ### ~~Suppress placeholder previews when metadata is present~~ ✅
 

@@ -33,7 +33,7 @@ public class WadeConfigTests
         Assert.True(config.DateColumnEnabled);
         Assert.True(config.CopySymlinksAsLinksEnabled);
         Assert.True(config.ZipPreviewEnabled);
-        Assert.True(config.PdfPreviewEnabled);
+        Assert.Empty(config.DisabledTools);
         Assert.True(config.TerminalTitleEnabled);
         Assert.Equal(Directory.GetCurrentDirectory(), config.StartPath);
     }
@@ -78,8 +78,6 @@ public class WadeConfigTests
     [InlineData("copy_symlinks_as_links_enabled", false)]
     [InlineData("zip_preview_enabled", true)]
     [InlineData("zip_preview_enabled", false)]
-    [InlineData("pdf_preview_enabled", true)]
-    [InlineData("pdf_preview_enabled", false)]
     [InlineData("terminal_title_enabled", true)]
     [InlineData("terminal_title_enabled", false)]
     public void ConfigFile_ParsesNewBoolSettings(string key, bool value)
@@ -97,7 +95,6 @@ public class WadeConfigTests
                 "date_column_enabled" => config.DateColumnEnabled,
                 "copy_symlinks_as_links_enabled" => config.CopySymlinksAsLinksEnabled,
                 "zip_preview_enabled" => config.ZipPreviewEnabled,
-                "pdf_preview_enabled" => config.PdfPreviewEnabled,
                 "terminal_title_enabled" => config.TerminalTitleEnabled,
                 _ => throw new ArgumentException($"Unknown key: {key}"),
             };
@@ -393,7 +390,7 @@ public class WadeConfigTests
             original.DateColumnEnabled = false;
             original.CopySymlinksAsLinksEnabled = false;
             original.ZipPreviewEnabled = false;
-            original.PdfPreviewEnabled = false;
+            original.DisabledTools = new HashSet<string> { "pdftopng", "pdfinfo" };
             original.TerminalTitleEnabled = false;
             original.Save();
 
@@ -410,7 +407,8 @@ public class WadeConfigTests
             Assert.False(loaded.DateColumnEnabled);
             Assert.False(loaded.CopySymlinksAsLinksEnabled);
             Assert.False(loaded.ZipPreviewEnabled);
-            Assert.False(loaded.PdfPreviewEnabled);
+            Assert.Contains("pdftopng", loaded.DisabledTools);
+            Assert.Contains("pdfinfo", loaded.DisabledTools);
             Assert.False(loaded.TerminalTitleEnabled);
         }
         finally

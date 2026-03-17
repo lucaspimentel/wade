@@ -21,9 +21,8 @@ internal record PreviewContext(
     bool IsBrokenSymlink,
     GitFileStatus? GitStatus,
     string? RepoRoot,
-    bool GlowEnabled,
+    HashSet<string> DisabledTools,
     bool ZipPreviewEnabled,
-    bool PdfPreviewEnabled,
     bool ImagePreviewsEnabled);
 
 internal record PreviewResult

@@ -14,9 +14,8 @@ public class ExecutableMetadataProviderTests
             IsBrokenSymlink: false,
             GitStatus: null,
             RepoRoot: null,
-            GlowEnabled: false,
+            DisabledTools: new HashSet<string>(),
             ZipPreviewEnabled: true,
-            PdfPreviewEnabled: true,
             ImagePreviewsEnabled: true);
 
     [Theory]
