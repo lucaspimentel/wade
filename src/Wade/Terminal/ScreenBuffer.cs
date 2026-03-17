@@ -45,7 +45,10 @@ internal sealed class ScreenBuffer
     public void Clear()
     {
         Array.Fill(_back, Cell.Empty);
-        // Don't clear dirty bits — rows that changed from previous frame must still be flushed
+        // Mark all rows dirty so Flush() will compare every row against the front buffer.
+        // Without this, rows where nothing is rendered (back stays Cell.Empty) would be
+        // skipped by Flush(), leaving stale front-buffer content visible on screen.
+        Array.Fill(_dirtyRows, ulong.MaxValue);
     }
 
     public void Put(int row, int col, Rune rune, CellStyle style)

@@ -176,6 +176,41 @@ public class ScreenBufferTests
         Assert.Contains("NEW", Flush(buf));
     }
 
+    // ── Clear marks rows dirty ─────────────────────────────────────────────
+
+    [Fact]
+    public void Clear_MarksRowsDirty_StaleContentFlushed()
+    {
+        // Simulate the glow scroll bug: content at row 1, then scroll so row 1
+        // becomes empty, then scroll back so row 1 has the same content again.
+        // If Clear() doesn't mark rows dirty, the "empty" frame never updates
+        // the front buffer, so the third frame sees front==back and emits nothing.
+        var buf = new ScreenBuffer(20, 3);
+
+        // Frame 1: write "HELLO" at row 1
+        buf.Clear();
+        buf.WriteString(1, 0, "HELLO", DefaultStyle);
+        Flush(buf); // front[row 1] = "HELLO"
+
+        // Frame 2: row 1 is empty (spacer line after scroll)
+        buf.Clear();
+        buf.WriteString(0, 0, "TOP", DefaultStyle);
+        // row 1 intentionally left empty
+        buf.WriteString(2, 0, "BOT", DefaultStyle);
+        Flush(buf); // should clear front[row 1] to Cell.Empty
+
+        // Frame 3: write "HELLO" at row 1 again (scroll back)
+        buf.Clear();
+        buf.WriteString(1, 0, "HELLO", DefaultStyle);
+        var output = Flush(buf);
+
+        // If Clear() properly marked rows dirty in frame 2, front[row 1] was
+        // cleared to Cell.Empty, so frame 3 must re-emit "HELLO".
+        // If Clear() didn't mark rows dirty, front[row 1] still has stale
+        // "HELLO" from frame 1, and frame 3 sees no difference → no output.
+        Assert.Contains("HELLO", output);
+    }
+
     // ── Underline style ──────────────────────────────────────────────────────
 
     [Fact]
