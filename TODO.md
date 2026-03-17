@@ -58,10 +58,6 @@ Some files (e.g. binary files) have no meaningful "Source" preview but the optio
 - `TextPreviewProvider.CanPreview` (`src/Wade/Preview/PreviewProviders.cs:153`) always returns `true` — needs a pre-check or the registry should filter based on placeholder results
 - `PreviewProviderRegistry` builds the provider list in `GetProviders()`
 
-### Rename "Source" preview to "Text"
-
-`TextPreviewProvider.Label` (`src/Wade/Preview/PreviewProviders.cs:151`) currently returns `"Source"` — rename to `"Text"`.
-
 ### Zip — other archive formats
 
 Support additional archive formats in the preview pane (`.tar`, `.gz`, `.tar.gz`). Zip preview is already implemented via `System.IO.Compression.ZipFile`.

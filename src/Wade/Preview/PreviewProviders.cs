@@ -148,7 +148,7 @@ internal sealed class ZipContentsPreviewProvider : IPreviewProvider
 
 internal sealed class TextPreviewProvider : IPreviewProvider
 {
-    public string Label => "Source";
+    public string Label => "Text";
 
     public bool CanPreview(string path, PreviewContext context) => true;
 

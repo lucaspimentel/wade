@@ -288,9 +288,9 @@ public class PreviewProviderTests
         }
 
         [Fact]
-        public void Label_IsSource()
+        public void Label_IsText()
         {
-            Assert.Equal("Source", new TextPreviewProvider().Label);
+            Assert.Equal("Text", new TextPreviewProvider().Label);
         }
     }
 
