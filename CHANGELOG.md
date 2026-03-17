@@ -3,10 +3,15 @@
 ## [Unreleased]
 
 ### Added
-- Separate `IMetadataProvider` system for structured file metadata (NuGet, Executable, Office, Media)
+- Separate `IMetadataProvider` system for structured file metadata (NuGet, Executable, Office, Media, PDF)
 - Metadata displayed as styled header above preview pane and in properties overlay
-- `MetadataRenderer` for consistent colored label/value metadata rendering
-- `MetadataProviderRegistry` for file-type-based metadata provider matching
+- Add PDF metadata provider showing document properties (title, author, page count) via pdfinfo
+- Add 'Download cloud file' action for OneDrive/Dropbox placeholder files (Windows)
+- Add 'p' keybinding to open 'Change preview' submenu directly
+- Add F5 as alias for Ctrl+R to refresh the current directory
+- Add action palette submenu support for grouped actions (used by 'Change preview')
+- Extend zip archive preview to .docx, .xlsx, .pptx, .odt, .ods, .odp, .apk, .vsix, .whl, .epub, and other zip-based formats
+- Show 'Reproducible build' label for executables with zeroed PE timestamps
 
 ### Changed
 - Add "None" preview option available for all files; binary files now default to "None" instead of hex dump
@@ -15,6 +20,15 @@
 - Migrated `ExecutablePreviewProvider`, `OfficePreviewProvider`, `MediaPreviewProvider`, `NuGetPreviewProvider` to metadata providers (`IMetadataProvider`)
 - `PreviewLoader` supports combined metadata + preview loading via new `BeginLoad` overload
 - `PropertiesOverlay` renders extracted metadata sections below file system properties
+- Support combining sections from multiple metadata providers per file
+- Rename 'Source' preview label to 'Text'
+- Hide unavailable preview providers from 'Change preview' menu
+
+### Fixed
+- Fix PDF preview image overlapping metadata in preview pane
+- Fix stale preview content when switching files
+- Fix stale content when scrolling in preview pane
+- Fix syntax highlighting for dotfiles (e.g. .bashrc, .zshrc)
 
 ## [1.2.0] - 2026-03-15
 
