@@ -48,12 +48,16 @@ Detect whether a drive is SSD, HDD, or network. Some features (like directory si
 #### Backlog
 
 - **Font files** (`.ttf`, `.otf`, `.woff2`) — font family, style, weight, glyph count. Parse OpenType/TrueType `name` and `head` tables.
-- **OpenDocument** (`.odt`, `.ods`, `.odp`) — title, author, dates, page/sheet count. Extract from `meta.xml` inside the ODF zip archive (similar to Office OOXML approach).
-- **EPUB** (`.epub`) — title, author, publisher, language, identifier. Extract from `content.opf` metadata inside the zip archive.
+- **OpenDocument** (`.odt`, `.ods`, `.odp`) — title, author, dates, page/sheet count. Extract from `meta.xml` inside the ODF zip archive (similar to Office OOXML approach). These are zip-based; **benefits from** "Support multiple metadata providers per file" to show document metadata alongside archive metadata.
+- **EPUB** (`.epub`) — title, author, publisher, language, identifier. Extract from `content.opf` metadata inside the zip archive. Also zip-based; **benefits from** "Support multiple metadata providers per file" for the same reason.
+- **Windows shortcuts** (`.lnk`) — target path, working directory, arguments, timestamps, icon location, hotkey, file attributes, volume info, extra data (environment variables, known folder, tracker info). Reuse existing parser from [lucaspimentel/windows-shortcut-parser](https://github.com/lucaspimentel/windows-shortcut-parser) — pure C#, NativeAOT-safe, zero dependencies. Entry point: `LnkFile.Parse(path)` → `GetTargetPath()`, `Header` (timestamps, size, attributes), `StringData` (name, relative path, working dir, args, icon location), `LinkInfo` (local/network path, volume info), `ExtraDataBlocks`. Add as a project reference or publish as NuGet package. Preview could show the resolved target path prominently, with metadata sections for shortcut properties. Windows-only (`.lnk` is a Windows format; on Unix, detect but skip gracefully).
+- **URL shortcuts** (`.url`) — URL and icon location. Reuse `UrlFile.Parse(path)` from [lucaspimentel/windows-shortcut-parser](https://github.com/lucaspimentel/windows-shortcut-parser). Simple INI-style format; metadata section showing the target URL prominently. Cross-platform (plain text format, works on Unix too).
 
 ### Zip — other archive formats
 
 Support additional archive formats in the preview pane (`.tar`, `.gz`, `.tar.gz`). Zip preview is already implemented via `System.IO.Compression.ZipFile`.
+
+**Recommended after:** "Refactor archive preview: move summary into metadata provider" — new formats would follow the cleaner metadata+file-list pattern from the start, avoiding a second refactor pass.
 
 ---
 
@@ -137,6 +141,8 @@ Simplify the help dialog by removing most hardcoded hotkey references and instea
 
 ### Add config option to show/hide file metadata
 
+**Note:** If "Support multiple metadata providers per file" lands first, the toggle should hide/show all combined metadata sections, not just the first provider's output. Either order works, but be aware of the interaction.
+
 Add a `file_metadata_enabled` config flag (like `file_preview_enabled`) to allow users to toggle the file metadata display in the right column.
 
 - New config key: `file_metadata_enabled` (default: `true`)
@@ -179,6 +185,8 @@ Add metadata extraction and optional preview for `.msi` (Windows Installer) file
 - Optional: New `src/Wade/Preview/MsiPreviewProvider.cs` if preview is desired
 
 ### Preview for Office/document formats (DOCX, XLSX, PPTX, etc.)
+
+**Benefits from:** "Cancel in-flight preview when navigating to another file" — LibreOffice subprocess conversion is slow (~1-2s); proper subprocess cancellation prevents stale Office previews from running after the user navigates away.
 
 Research and implement image previews for Office Open XML formats (`.docx`, `.xlsx`, `.pptx`, `.dotx`, `.xltx`, `.potx`) by converting the first page to an image, similar to PDF preview.
 
@@ -224,6 +232,8 @@ Show image metadata (resolution, format, color depth, EXIF) above the image prev
 
 ### Fix stale/leftover content when switching preview types
 
+**Related to:** "Cancel in-flight preview when navigating to another file" — both deal with stale preview artifacts. Faster cancellation from that task may expose more rendering cleanup edge cases here, so doing both together is recommended.
+
 When switching preview providers (e.g., from Glow-rendered Markdown to None, or from an image to text), residual content from the previous render can remain visible.
 
 - Sixel images bypass the `ScreenBuffer` cell grid (written directly to stdout after flush); when switching away from an image preview, the sixel graphics are not explicitly erased — need to emit a Sixel erase/overwrite or use DEC terminal erase sequence (`\e[2J` scoped to the pane region) before rendering the new content
@@ -244,6 +254,19 @@ Subscribe to filesystem-change events and auto-refresh the view when files are c
 - Consider watching subdirectories (for preview pane directory listings) but be mindful of performance on large trees
 - Handle watcher buffer overflow (`Error` event) gracefully — fall back to full directory re-read
 - NativeAOT-compatible (`FileSystemWatcher` is supported in NativeAOT)
+
+### Cancel in-flight preview when navigating to another file
+
+**Related to:** "Fix stale/leftover content when switching preview types" — both address stale preview artifacts from different angles (cancellation vs rendering cleanup). "Preview for Office/document formats" also benefits from this since it shells out to slow subprocesses (LibreOffice).
+
+Pressing up/down to change selection while a file preview is still generating should cancel the in-progress load immediately and respond to the navigation without delay.
+
+- The cancellation infrastructure already exists: `PreviewLoader` holds a `CancellationTokenSource`; each `BeginLoad()` call (`src/Wade/PreviewLoader.cs:20`) cancels the previous token before starting a new background task
+- Selection change (`NavigateUp`/`NavigateDown` in `App.cs:523-537`) updates `_selectedIndex` immediately, and the next render frame calls `ReloadActiveProvider` (`App.cs:1077`) which triggers `BeginLoad` and cancels the old CTS
+- Issue: subprocess-based providers (Glow, ffprobe/mediainfo, pdftopng) may ignore the cancellation token because the `Process` is not explicitly killed when the token fires — add `ct.Register(() => process.Kill())` in each subprocess helper
+- Also audit `TextPreviewProvider` and `HexPreviewProvider` for large files — ensure they check `ct.IsCancellationRequested` between chunks, not just at the top of the method
+- Stale events: events injected by a cancelled task carry the old path; verify they are silently discarded (check `_pendingPreviewPath` / `_cachedPreviewPath` guards when handling `PreviewReadyEvent`, `ImagePreviewReadyEvent`, `CombinedPreviewReadyEvent`, `MetadataReadyEvent`)
+- Key files: `src/Wade/PreviewLoader.cs`, `src/Wade/App.cs:1061`, `src/Wade/Highlighting/GlowRenderer.cs`, `src/Wade/Preview/MediaMetadataProvider.cs`, `src/Wade/FileSystem/HexPreview.cs`
 
 ### Investigate oversized image preview rendering
 
