@@ -65,11 +65,12 @@ public class MetadataProviderRegistryTests
     }
 
     [Fact]
-    public void CloudPlaceholder_ReturnsEmptyList()
+    public void CloudPlaceholder_ReturnsOnlyFileMetadataProvider()
     {
         var providers = MetadataProviderRegistry.GetApplicableProviders("app.exe", MakeContext(isCloudPlaceholder: true));
 
-        Assert.Empty(providers);
+        var provider = Assert.Single(providers);
+        Assert.IsType<FileMetadataProvider>(provider);
     }
 
     [Fact]

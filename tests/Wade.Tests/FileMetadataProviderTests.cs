@@ -117,6 +117,40 @@ public class FileMetadataProviderTests
     }
 
     [Fact]
+    public void GetMetadata_CloudPlaceholder_IncludesCloudEntry()
+    {
+        string tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.txt");
+        try
+        {
+            File.WriteAllText(tempPath, "hello");
+
+            var context = new PreviewContext(
+                PaneWidthCells: 60,
+                PaneHeightCells: 30,
+                CellPixelWidth: 8,
+                CellPixelHeight: 16,
+                IsCloudPlaceholder: true,
+                IsBrokenSymlink: false,
+                GitStatus: null,
+                RepoRoot: null,
+                DisabledTools: new HashSet<string>(),
+                ZipPreviewEnabled: true,
+                ImagePreviewsEnabled: true);
+
+            var provider = new FileMetadataProvider();
+            MetadataResult? result = provider.GetMetadata(tempPath, context, CancellationToken.None);
+
+            Assert.NotNull(result);
+            string flat = FlattenSections(result.Sections);
+            Assert.Contains("Cloud", flat);
+        }
+        finally
+        {
+            File.Delete(tempPath);
+        }
+    }
+
+    [Fact]
     public void GetMetadata_NoGitStatus_OmitsGitEntry()
     {
         string tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.txt");

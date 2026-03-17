@@ -205,6 +205,26 @@ public class PreviewProviderTests
         }
 
         [Fact]
+        public void GetPreview_ValidZip_StartsWithArchiveContentsHeader()
+        {
+            string zipPath = CreateTempZip(("hello.txt", "Hello"));
+            try
+            {
+                var provider = new ZipContentsPreviewProvider();
+                var result = provider.GetPreview(zipPath, DefaultContext(), CancellationToken.None);
+
+                Assert.NotNull(result);
+                Assert.NotNull(result.TextLines);
+                Assert.True(result.TextLines.Length >= 2);
+                Assert.Contains("Archive Contents", result.TextLines[0].Text);
+            }
+            finally
+            {
+                File.Delete(zipPath);
+            }
+        }
+
+        [Fact]
         public void Label_IsArchiveContents()
         {
             Assert.Equal("Archive contents", new ZipContentsPreviewProvider().Label);

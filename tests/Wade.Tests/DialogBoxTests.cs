@@ -123,7 +123,9 @@ public class DialogBoxTests
         var output = Flush(buf);
         Assert.Contains("Help", output);
         Assert.Contains("Press any key to close", output);
-        Assert.Contains("Move selection up", output);
-        Assert.Contains("Quit", output);
+        Assert.Contains("Ctrl+P", output);
+        Assert.Contains("Open action list", output);
+        Assert.Contains("Navigation", output);
+        Assert.Contains("Move selection", output);
     }
 }
