@@ -291,9 +291,9 @@ public class MediaMetadataProviderTests
             return; // Skip if no CLI tool installed
         }
 
-        var provider = MetadataProviderRegistry.GetProvider("video.mp4", MakeContext());
+        var providers = MetadataProviderRegistry.GetApplicableProviders("video.mp4", MakeContext());
 
-        Assert.NotNull(provider);
+        var provider = Assert.Single(providers);
         Assert.IsType<MediaMetadataProvider>(provider);
     }
 

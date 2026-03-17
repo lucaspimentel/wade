@@ -130,9 +130,9 @@ public class PdfMetadataProviderTests
             return; // Skip if pdfinfo not installed
         }
 
-        var provider = MetadataProviderRegistry.GetProvider("doc.pdf", MakeContext());
+        var providers = MetadataProviderRegistry.GetApplicableProviders("doc.pdf", MakeContext());
 
-        Assert.NotNull(provider);
+        var provider = Assert.Single(providers);
         Assert.IsType<PdfMetadataProvider>(provider);
     }
 

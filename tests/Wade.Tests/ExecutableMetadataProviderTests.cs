@@ -160,9 +160,9 @@ public class ExecutableMetadataProviderTests
     [Fact]
     public void Registry_ExeFile_ReturnsExecutableMetadataProvider()
     {
-        var provider = MetadataProviderRegistry.GetProvider("app.exe", MakeContext());
+        var providers = MetadataProviderRegistry.GetApplicableProviders("app.exe", MakeContext());
 
-        Assert.NotNull(provider);
+        var provider = Assert.Single(providers);
         Assert.IsType<ExecutableMetadataProvider>(provider);
     }
 

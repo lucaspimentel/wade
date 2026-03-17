@@ -128,7 +128,7 @@ internal sealed class App
     // Metadata provider state
     private MetadataSection[]? _cachedMetadataSections;
     private string? _cachedMetadataFileTypeLabel;
-    private IMetadataProvider? _activeMetadataProvider;
+    private List<IMetadataProvider>? _applicableMetadataProviders;
 
     // Terminal capability state
     private bool _imagePreviewsEffective;
@@ -1062,10 +1062,10 @@ internal sealed class App
                 {
                     _activeProviderIndex = 0;
                     _activePreviewContext = BuildPreviewContext(_layout.RightPane.Width, _layout.RightPane.Height);
-                    _activeMetadataProvider = MetadataProviderRegistry.GetProvider(selected.FullPath, _activePreviewContext);
+                    _applicableMetadataProviders = MetadataProviderRegistry.GetApplicableProviders(selected.FullPath, _activePreviewContext);
                     _applicableProviders = PreviewProviderRegistry.GetApplicableProviders(selected.FullPath, _activePreviewContext);
 
-                    if (_applicableProviders.Count == 0 && _activeMetadataProvider is null)
+                    if (_applicableProviders.Count == 0 && _applicableMetadataProviders is { Count: 0 })
                     {
                         ClearPreviewCache(_previewLoader!);
                         _applicableProviders = [];
@@ -1082,7 +1082,7 @@ internal sealed class App
                     }
                 }
 
-                if (_applicableProviders is { Count: 0 } && _activeMetadataProvider is null)
+                if (_applicableProviders is { Count: 0 } && _applicableMetadataProviders is { Count: 0 })
                 {
                     string message = _activePreviewContext is { IsBrokenSymlink: true } ? "[broken symlink]"
                         : _activePreviewContext is { IsCloudPlaceholder: true } ? "[cloud file \u2013 not downloaded]"
@@ -1450,7 +1450,7 @@ internal sealed class App
             previewProvider = _applicableProviders[index];
         }
 
-        if (previewProvider is null && _activeMetadataProvider is null)
+        if (previewProvider is null && _applicableMetadataProviders is null or { Count: 0 })
         {
             return;
         }
@@ -1469,7 +1469,7 @@ internal sealed class App
         _isCombinedPreview = false;
         _isRenderedPreview = false;
         _isPlaceholderPreview = false;
-        loader.BeginLoad(path, _activeMetadataProvider, previewProvider, _activePreviewContext);
+        loader.BeginLoad(path, _applicableMetadataProviders, previewProvider, _activePreviewContext);
     }
 
     private void ClearPreviewCache(PreviewLoader loader, ScreenBuffer? buffer = null)
@@ -1503,7 +1503,7 @@ internal sealed class App
         _sixelPending = false;
         _cachedMetadataSections = null;
         _cachedMetadataFileTypeLabel = null;
-        _activeMetadataProvider = null;
+        _applicableMetadataProviders = null;
 
         if (wasImage)
         {

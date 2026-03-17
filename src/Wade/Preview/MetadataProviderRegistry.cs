@@ -11,21 +11,22 @@ internal static class MetadataProviderRegistry
         new PdfMetadataProvider(),
     ];
 
-    public static IMetadataProvider? GetProvider(string path, PreviewContext context)
+    public static List<IMetadataProvider> GetApplicableProviders(string path, PreviewContext context)
     {
         if (context.IsBrokenSymlink || context.IsCloudPlaceholder)
         {
-            return null;
+            return [];
         }
 
+        var result = new List<IMetadataProvider>();
         foreach (var provider in s_providers)
         {
             if (provider.CanProvideMetadata(path, context))
             {
-                return provider;
+                result.Add(provider);
             }
         }
 
-        return null;
+        return result;
     }
 }

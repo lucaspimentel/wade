@@ -72,40 +72,15 @@ Consider using the [CsWin32](https://github.com/microsoft/CsWin32) source genera
 - `src/Wade/Terminal/WindowsInputSource.cs` — kernel32 (ReadConsoleInput, WaitForSingleObject)
 - `src/Wade/Terminal/LibC.cs` — libc (open, read, poll, tcgetattr, tcsetattr, cfmakeraw) — Unix only, CsWin32 won't cover these
 
-### Support multiple metadata providers per file
+### ~~Support multiple metadata providers per file~~ ✓
 
-Refactor the metadata provider system to allow multiple applicable metadata providers per file. Currently `MetadataProviderRegistry.GetProvider()` returns only the first match; refactor to return all applicable providers and **combine their metadata sections into a single view**.
+~~Refactor the metadata provider system to allow multiple applicable metadata providers per file. Currently `MetadataProviderRegistry.GetProvider()` returns only the first match; refactor to return all applicable providers and **combine their metadata sections into a single view**.~~
 
-**Key difference from preview providers:**
-- **Metadata**: Combine and show all applicable providers' sections together (complementary information: document metadata + archive metadata)
-- **Preview**: Cycle through applicable preview providers (alternative views; user picks one at a time)
-
-**Changes:**
-- `MetadataProviderRegistry.GetProvider()` → `GetApplicableProviders()` returning `List<IMetadataProvider>`
-- `App.cs`: replace `IMetadataProvider? _activeMetadataProvider` with `List<IMetadataProvider>? _applicableMetadataProviders`
-- No cycling keybinding needed for metadata (unlike previews) — all sections are shown together
-- `PreviewLoader.BeginLoad()` signature updated to accept `List<IMetadataProvider>` instead of single provider
-- Update metadata rendering: pass all applicable providers' sections to `MetadataRenderer.Render()` in order, merge all `MetadataSection[]` results into one combined array (preserves provider order)
-- Metadata is shown in the right column when a file is selected and in the file details dialog (`i` key)
-
-**Benefits:**
-- Files like DOCX show both document metadata (title, author, dates) AND archive metadata (total size, file count, compression ratio) in one cohesive view
-- Same for NUPKG (NuGet metadata + archive metadata), EPUB (EPUB metadata + archive metadata), etc.
-- Cleaner architecture: each metadata aspect is its own provider, not crammed into one
-
-**Files to touch:**
-- `src/Wade/Preview/MetadataProviderRegistry.cs` — refactor `GetProvider()` to `GetApplicableProviders()`
-- `src/Wade/Preview/IMetadataProvider.cs` — no interface changes
-- `src/Wade/App.cs` — update metadata provider state management (list, no active index)
-- `src/Wade/PreviewLoader.cs` — accept `List<IMetadataProvider>`, load all in sequence or parallel, combine results
-- `src/Wade/UI/MetadataRenderer.cs` — no changes (already accepts `MetadataSection[]`, which can be merged from multiple providers)
-
-**Prerequisite for:**
-- "Refactor archive preview: move summary into metadata provider" — once multiple metadata providers are supported, archive metadata naturally fits as an additional provider for files with existing metadata (DOCX, NUPKG)
+~~**Key difference from preview providers:**~~
+~~- **Metadata**: Combine and show all applicable providers' sections together (complementary information: document metadata + archive metadata)~~
+~~- **Preview**: Cycle through applicable preview providers (alternative views; user picks one at a time)~~
 
 ### Refactor archive preview: move summary into metadata provider
-
-**⚠️ PREREQUISITE: "Support multiple metadata providers per file" must be completed first.**
 
 Separate archive summary info (total size, compressed size, ratio, file count) from the file list preview. Show summary as metadata above the preview, consistent with PDF + image + metadata pattern.
 

@@ -227,9 +227,9 @@ public class OfficeMetadataProviderTests
     [Fact]
     public void Registry_DocxFile_ReturnsOfficeMetadataProvider()
     {
-        var provider = MetadataProviderRegistry.GetProvider("report.docx", MakeContext());
+        var providers = MetadataProviderRegistry.GetApplicableProviders("report.docx", MakeContext());
 
-        Assert.NotNull(provider);
+        var provider = Assert.Single(providers);
         Assert.IsType<OfficeMetadataProvider>(provider);
     }
 

@@ -27,7 +27,7 @@ internal sealed class PreviewLoader
 
     public void BeginLoad(
         string path,
-        IMetadataProvider? metadataProvider,
+        List<IMetadataProvider>? metadataProviders,
         IPreviewProvider? previewProvider,
         PreviewContext context)
     {
@@ -36,7 +36,7 @@ internal sealed class PreviewLoader
         _cts = new CancellationTokenSource();
         var token = _cts.Token;
 
-        Task.Run(() => LoadMetadataAndPreview(path, metadataProvider, previewProvider, context, token), token);
+        Task.Run(() => LoadMetadataAndPreview(path, metadataProviders, previewProvider, context, token), token);
     }
 
     public void Cancel()
@@ -48,7 +48,7 @@ internal sealed class PreviewLoader
 
     private void LoadMetadataAndPreview(
         string path,
-        IMetadataProvider? metadataProvider,
+        List<IMetadataProvider>? metadataProviders,
         IPreviewProvider? previewProvider,
         PreviewContext context,
         CancellationToken ct)
@@ -60,17 +60,30 @@ internal sealed class PreviewLoader
                 return;
             }
 
-            // Load metadata first
-            if (metadataProvider is not null)
+            // Load metadata first — collect sections from all applicable providers
+            if (metadataProviders is { Count: > 0 })
             {
-                var metadataResult = metadataProvider.GetMetadata(path, context, ct);
+                var allSections = new List<MetadataSection>();
+                string? fileTypeLabel = null;
 
-                if (metadataResult is not null && !ct.IsCancellationRequested)
+                foreach (var provider in metadataProviders)
                 {
-                    _pipeline.Inject(new MetadataReadyEvent(
-                        path,
-                        metadataResult.Sections,
-                        metadataResult.FileTypeLabel));
+                    if (ct.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
+                    var result = provider.GetMetadata(path, context, ct);
+                    if (result is not null)
+                    {
+                        allSections.AddRange(result.Sections);
+                        fileTypeLabel ??= result.FileTypeLabel;
+                    }
+                }
+
+                if (allSections.Count > 0 && !ct.IsCancellationRequested)
+                {
+                    _pipeline.Inject(new MetadataReadyEvent(path, [.. allSections], fileTypeLabel));
                 }
             }
 

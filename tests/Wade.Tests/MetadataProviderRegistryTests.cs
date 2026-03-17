@@ -25,9 +25,9 @@ public class MetadataProviderRegistryTests
     [InlineData("lib.dll")]
     public void ExeOrDll_ReturnsExecutableMetadataProvider(string path)
     {
-        var provider = MetadataProviderRegistry.GetProvider(path, MakeContext());
+        var providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
 
-        Assert.NotNull(provider);
+        var provider = Assert.Single(providers);
         Assert.IsType<ExecutableMetadataProvider>(provider);
     }
 
@@ -37,9 +37,9 @@ public class MetadataProviderRegistryTests
     [InlineData("slides.pptx")]
     public void OfficeFile_ReturnsOfficeMetadataProvider(string path)
     {
-        var provider = MetadataProviderRegistry.GetProvider(path, MakeContext());
+        var providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
 
-        Assert.NotNull(provider);
+        var provider = Assert.Single(providers);
         Assert.IsType<OfficeMetadataProvider>(provider);
     }
 
@@ -48,9 +48,9 @@ public class MetadataProviderRegistryTests
     [InlineData("symbols.snupkg")]
     public void NupkgFile_ReturnsNuGetMetadataProvider(string path)
     {
-        var provider = MetadataProviderRegistry.GetProvider(path, MakeContext());
+        var providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
 
-        Assert.NotNull(provider);
+        var provider = Assert.Single(providers);
         Assert.IsType<NuGetMetadataProvider>(provider);
     }
 
@@ -59,26 +59,42 @@ public class MetadataProviderRegistryTests
     [InlineData("file.zip")]
     [InlineData("file.png")]
     [InlineData("readme.txt")]
-    public void NonMetadataFile_ReturnsNull(string path)
+    public void NonMetadataFile_ReturnsEmptyList(string path)
     {
-        var provider = MetadataProviderRegistry.GetProvider(path, MakeContext());
+        var providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
 
-        Assert.Null(provider);
+        Assert.Empty(providers);
     }
 
     [Fact]
-    public void CloudPlaceholder_ReturnsNull()
+    public void CloudPlaceholder_ReturnsEmptyList()
     {
-        var provider = MetadataProviderRegistry.GetProvider("app.exe", MakeContext(isCloudPlaceholder: true));
+        var providers = MetadataProviderRegistry.GetApplicableProviders("app.exe", MakeContext(isCloudPlaceholder: true));
 
-        Assert.Null(provider);
+        Assert.Empty(providers);
     }
 
     [Fact]
-    public void BrokenSymlink_ReturnsNull()
+    public void BrokenSymlink_ReturnsEmptyList()
     {
-        var provider = MetadataProviderRegistry.GetProvider("app.exe", MakeContext(isBrokenSymlink: true));
+        var providers = MetadataProviderRegistry.GetApplicableProviders("app.exe", MakeContext(isBrokenSymlink: true));
 
-        Assert.Null(provider);
+        Assert.Empty(providers);
+    }
+
+    [Fact]
+    public void RegistryPreservesProviderOrder()
+    {
+        // exe/dll matches ExecutableMetadataProvider (first in registry)
+        var exeProviders = MetadataProviderRegistry.GetApplicableProviders("app.exe", MakeContext());
+        Assert.IsType<ExecutableMetadataProvider>(exeProviders[0]);
+
+        // docx matches OfficeMetadataProvider (second in registry)
+        var docxProviders = MetadataProviderRegistry.GetApplicableProviders("report.docx", MakeContext());
+        Assert.IsType<OfficeMetadataProvider>(docxProviders[0]);
+
+        // nupkg matches NuGetMetadataProvider (fourth in registry)
+        var nupkgProviders = MetadataProviderRegistry.GetApplicableProviders("package.nupkg", MakeContext());
+        Assert.IsType<NuGetMetadataProvider>(nupkgProviders[0]);
     }
 }

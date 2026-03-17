@@ -142,9 +142,9 @@ public class NuGetMetadataProviderTests
     [Fact]
     public void Registry_NupkgFile_ReturnsNuGetMetadataProvider()
     {
-        var provider = MetadataProviderRegistry.GetProvider("package.nupkg", MakeContext());
+        var providers = MetadataProviderRegistry.GetApplicableProviders("package.nupkg", MakeContext());
 
-        Assert.NotNull(provider);
+        var provider = Assert.Single(providers);
         Assert.IsType<NuGetMetadataProvider>(provider);
     }
 
