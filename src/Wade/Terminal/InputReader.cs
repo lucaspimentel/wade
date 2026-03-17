@@ -52,6 +52,7 @@ internal enum AppAction
     GitPull,
     GitPullRebase,
     GitFetch,
+    DownloadCloudFile,
 }
 
 internal static class InputReader

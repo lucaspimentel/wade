@@ -2499,6 +2499,16 @@ internal sealed class App
         items.Add(new() { Label = "Create symlink", Shortcut = "Ctrl+L", Action = AppAction.CreateSymlink });
         items.Add(new() { Label = "Properties", Shortcut = "i", Action = AppAction.ShowProperties });
 
+        // Cloud file download — only shown for cloud placeholders
+        if (OperatingSystem.IsWindows())
+        {
+            var visibleEntries = GetVisibleEntries();
+            if (_selectedIndex < visibleEntries.Count && visibleEntries[_selectedIndex].IsCloudPlaceholder)
+            {
+                items.Add(new() { Label = "Download cloud file", Action = AppAction.DownloadCloudFile });
+            }
+        }
+
         // Preview provider submenu — shown when multiple providers are available
         ActionMenuItem[]? previewSubItems = BuildPreviewMenuItems();
         if (previewSubItems is not null)
@@ -3373,7 +3383,41 @@ internal sealed class App
 
                 break;
 
+            case AppAction.DownloadCloudFile:
+                if (entries.Count > 0 && _selectedIndex < entries.Count)
+                {
+                    var cloudEntry = entries[_selectedIndex];
+                    if (cloudEntry.IsCloudPlaceholder)
+                    {
+                        DownloadCloudFile(cloudEntry.FullPath);
+                    }
+                }
+
+                break;
+
         }
+    }
+
+    private void DownloadCloudFile(string path)
+    {
+        ShowNotification("Downloading\u2026", NotificationKind.Info);
+
+        Task.Run(() =>
+        {
+            try
+            {
+                // Opening the file triggers Windows Cloud Files recall (download)
+                using (File.OpenRead(path)) { }
+
+                // Refresh directory to update the cloud placeholder status
+                _directoryContents.InvalidateAll();
+                ShowNotification("Download complete", NotificationKind.Success);
+            }
+            catch (Exception ex)
+            {
+                ShowNotification($"Download failed: {ex.Message}", NotificationKind.Error);
+            }
+        });
     }
 
     private List<string> GetSelectedOrMarkedPaths(List<FileSystemEntry> entries)
