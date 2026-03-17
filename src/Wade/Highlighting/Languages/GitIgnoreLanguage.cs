@@ -1,6 +1,6 @@
 namespace Wade.Highlighting.Languages;
 
-internal sealed class GitignoreLanguage : ILanguage
+internal sealed class GitIgnoreLanguage : ILanguage
 {
     public StyledLine TokenizeLine(string line, ref byte state)
     {

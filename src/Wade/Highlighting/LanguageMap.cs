@@ -20,7 +20,7 @@ internal static class LanguageMap
     private static readonly YamlLanguage       Yaml       = new();
     private static readonly XmlHtmlLanguage    XmlHtml    = new();
     private static readonly MarkdownLanguage   Markdown   = new();
-    private static readonly GitignoreLanguage Gitignore  = new();
+    private static readonly GitIgnoreLanguage GitIgnore   = new();
 
     private static readonly FrozenDictionary<string, ILanguage> ByExtension =
         new Dictionary<string, ILanguage>(StringComparer.OrdinalIgnoreCase)
@@ -82,26 +82,29 @@ internal static class LanguageMap
     private static readonly FrozenDictionary<string, ILanguage> ByFilename =
         new Dictionary<string, ILanguage>(StringComparer.OrdinalIgnoreCase)
         {
-            [".gitignore"]     = Gitignore,
-            [".dockerignore"]  = Gitignore,
-            [".npmignore"]     = Gitignore,
-            [".prettierignore"] = Gitignore,
-            [".eslintignore"]  = Gitignore,
+            [".gitignore"]     = GitIgnore,
+            [".dockerignore"]  = GitIgnore,
+            [".npmignore"]     = GitIgnore,
+            [".prettierignore"] = GitIgnore,
+            [".eslintignore"]  = GitIgnore,
+            [".gitattributes"] = GitIgnore,
         }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
     public static ILanguage? GetLanguage(string filePath)
     {
+        string name = Path.GetFileName(filePath);
+
+        // Check by full filename first (handles dotfiles like .gitignore where
+        // Path.GetExtension returns the entire filename)
+        if (ByFilename.TryGetValue(name, out var filenameLang))
+        {
+            return filenameLang;
+        }
+
         string ext = Path.GetExtension(filePath);
         if (ext.Length > 0)
         {
             return ByExtension.TryGetValue(ext, out var lang) ? lang : null;
-        }
-
-        string name = Path.GetFileName(filePath);
-
-        if (ByFilename.TryGetValue(name, out var filenameLang))
-        {
-            return filenameLang;
         }
 
         return NoExtensionShellNames.Contains(name) ? Shell : null;
