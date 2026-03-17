@@ -216,10 +216,35 @@ public class PreviewProviderTests
     public class TextPreviewProviderTests
     {
         [Fact]
-        public void CanPreview_NonCloudFile_ReturnsTrue()
+        public void CanPreview_TextFile_ReturnsTrue()
         {
-            var provider = new TextPreviewProvider();
-            Assert.True(provider.CanPreview("anything.xyz", DefaultContext()));
+            string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".txt");
+            File.WriteAllText(path, "Hello World");
+            try
+            {
+                var provider = new TextPreviewProvider();
+                Assert.True(provider.CanPreview(path, DefaultContext()));
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        [Fact]
+        public void CanPreview_BinaryFile_ReturnsFalse()
+        {
+            string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".exe");
+            File.WriteAllBytes(path, [0x4D, 0x5A, 0x00, 0x00]);
+            try
+            {
+                var provider = new TextPreviewProvider();
+                Assert.False(provider.CanPreview(path, DefaultContext()));
+            }
+            finally
+            {
+                File.Delete(path);
+            }
         }
 
         [Fact]
@@ -299,10 +324,35 @@ public class PreviewProviderTests
     public class HexPreviewProviderTests
     {
         [Fact]
-        public void CanPreview_NonCloudFile_ReturnsTrue()
+        public void CanPreview_BinaryFile_ReturnsTrue()
         {
-            var provider = new HexPreviewProvider();
-            Assert.True(provider.CanPreview("anything.bin", DefaultContext()));
+            string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".bin");
+            File.WriteAllBytes(path, [0x4D, 0x5A, 0x00, 0x00]);
+            try
+            {
+                var provider = new HexPreviewProvider();
+                Assert.True(provider.CanPreview(path, DefaultContext()));
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        [Fact]
+        public void CanPreview_TextFile_ReturnsFalse()
+        {
+            string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".txt");
+            File.WriteAllText(path, "Hello World");
+            try
+            {
+                var provider = new HexPreviewProvider();
+                Assert.False(provider.CanPreview(path, DefaultContext()));
+            }
+            finally
+            {
+                File.Delete(path);
+            }
         }
 
         [Fact]

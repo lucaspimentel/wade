@@ -51,13 +51,6 @@ Detect whether a drive is SSD, HDD, or network. Some features (like directory si
 - **OpenDocument** (`.odt`, `.ods`, `.odp`) — title, author, dates, page/sheet count. Extract from `meta.xml` inside the ODF zip archive (similar to Office OOXML approach).
 - **EPUB** (`.epub`) — title, author, publisher, language, identifier. Extract from `content.opf` metadata inside the zip archive.
 
-### Hide empty preview providers from "Change preview" menu
-
-Some files (e.g. binary files) have no meaningful "Source" preview but the option still appears in the Change preview menu. If a provider would return nothing useful (placeholder like `[binary file]`), it should be excluded from the list.
-
-- `TextPreviewProvider.CanPreview` (`src/Wade/Preview/PreviewProviders.cs:153`) always returns `true` — needs a pre-check or the registry should filter based on placeholder results
-- `PreviewProviderRegistry` builds the provider list in `GetProviders()`
-
 ### Zip — other archive formats
 
 Support additional archive formats in the preview pane (`.tar`, `.gz`, `.tar.gz`). Zip preview is already implemented via `System.IO.Compression.ZipFile`.

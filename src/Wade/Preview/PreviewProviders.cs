@@ -150,7 +150,7 @@ internal sealed class TextPreviewProvider : IPreviewProvider
 {
     public string Label => "Text";
 
-    public bool CanPreview(string path, PreviewContext context) => true;
+    public bool CanPreview(string path, PreviewContext context) => !FilePreview.IsBinary(path);
 
     public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct)
     {
@@ -189,7 +189,7 @@ internal sealed class HexPreviewProvider : IPreviewProvider
 {
     public string Label => "Hex dump";
 
-    public bool CanPreview(string path, PreviewContext context) => true;
+    public bool CanPreview(string path, PreviewContext context) => FilePreview.IsBinary(path);
 
     public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct)
     {

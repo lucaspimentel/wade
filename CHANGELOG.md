@@ -9,6 +9,7 @@
 - `MetadataProviderRegistry` for file-type-based metadata provider matching
 
 ### Changed
+- "Change preview" menu hides Text for binary files and Hex for text files
 - Migrated `ExecutablePreviewProvider`, `OfficePreviewProvider`, `MediaPreviewProvider`, `NuGetPreviewProvider` to metadata providers (`IMetadataProvider`)
 - `PreviewLoader` supports combined metadata + preview loading via new `BeginLoad` overload
 - `PropertiesOverlay` renders extracted metadata sections below file system properties
