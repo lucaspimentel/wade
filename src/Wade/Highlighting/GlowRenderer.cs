@@ -194,6 +194,7 @@ internal static class GlowRenderer
         bool dim = current.Dim;
         bool underline = current.Underline;
         bool inverse = current.Inverse;
+        bool strikethrough = current.Strikethrough;
 
         for (int p = 0; p < parameters.Count; p++)
         {
@@ -207,6 +208,7 @@ internal static class GlowRenderer
                     dim = false;
                     underline = false;
                     inverse = false;
+                    strikethrough = false;
                     break;
                 case 1:
                     bold = true;
@@ -220,6 +222,9 @@ internal static class GlowRenderer
                 case 7:
                     inverse = true;
                     break;
+                case 9:
+                    strikethrough = true;
+                    break;
                 case 22:
                     bold = false;
                     dim = false;
@@ -229,6 +234,9 @@ internal static class GlowRenderer
                     break;
                 case 27:
                     inverse = false;
+                    break;
+                case 29:
+                    strikethrough = false;
                     break;
 
                 // FG standard colors 30-37
@@ -279,7 +287,7 @@ internal static class GlowRenderer
             }
         }
 
-        return new CellStyle(fg, bg, bold, dim, inverse, underline);
+        return new CellStyle(fg, bg, bold, dim, inverse, underline, strikethrough);
     }
 
     private static Color? Color256(int index)
