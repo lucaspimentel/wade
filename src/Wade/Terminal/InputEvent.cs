@@ -49,6 +49,8 @@ internal sealed record MetadataReadyEvent(
     MetadataSection[] Sections,
     string? FileTypeLabel) : InputEvent;
 
+internal sealed record PreviewLoadingCompleteEvent(string Path) : InputEvent;
+
 internal sealed record DirectorySizeReadyEvent(string Path, long TotalBytes) : InputEvent;
 
 internal sealed record FileFinderScanCompleteEvent(string BasePath, List<FileSystemEntry> Entries) : InputEvent;

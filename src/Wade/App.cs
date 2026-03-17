@@ -263,6 +263,10 @@ internal sealed class App
                         buffer.ForceFullRedraw();
                     }
                 }
+                else if (extra is PreviewLoadingCompleteEvent loadingCompleteExtra)
+                {
+                    HandlePreviewLoadingComplete(loadingCompleteExtra);
+                }
                 else if (extra is MetadataReadyEvent metadataExtra)
                 {
                     HandleMetadataReady(metadataExtra);
@@ -358,6 +362,12 @@ internal sealed class App
                     buffer.ForceFullRedraw();
                 }
 
+                continue;
+            }
+
+            if (inputEvent is PreviewLoadingCompleteEvent loadingCompleteEvt)
+            {
+                HandlePreviewLoadingComplete(loadingCompleteEvt);
                 continue;
             }
 
@@ -1063,7 +1073,12 @@ internal sealed class App
                     }
                     else
                     {
+                        bool wasImage = _isImagePreview || _isCombinedPreview;
                         ReloadActiveProvider(selected.FullPath, _previewLoader!);
+                        if (wasImage)
+                        {
+                            buffer.ForceFullRedraw();
+                        }
                     }
                 }
 
@@ -1239,6 +1254,17 @@ internal sealed class App
         _isImagePreview = false;
         _isCombinedPreview = true;
         _isRenderedPreview = evt.IsRendered;
+        _previewLoading = false;
+    }
+
+    private void HandlePreviewLoadingComplete(PreviewLoadingCompleteEvent evt)
+    {
+        if (evt.Path != _pendingPreviewPath)
+        {
+            return;
+        }
+
+        _cachedPreviewPath = evt.Path;
         _previewLoading = false;
     }
 
@@ -1424,8 +1450,18 @@ internal sealed class App
 
         _pendingPreviewPath = path;
         _previewLoading = true;
+        _cachedStyledLines = null;
+        _cachedSixelData = null;
+        _cachedImagePath = null;
+        _cachedPreviewFileTypeLabel = null;
+        _cachedPreviewEncoding = null;
+        _cachedPreviewLineEnding = null;
         _cachedMetadataSections = null;
         _cachedMetadataFileTypeLabel = null;
+        _isImagePreview = false;
+        _isCombinedPreview = false;
+        _isRenderedPreview = false;
+        _isPlaceholderPreview = false;
         loader.BeginLoad(path, _activeMetadataProvider, previewProvider, _activePreviewContext);
     }
 
@@ -3834,7 +3870,7 @@ internal sealed class App
 
                 break;
             case 8:
-                if (_configPreviewPane && _configImagePreviews)
+                if (_configPreviewPane)
                 {
                     ToggleDisabledTool("pdfinfo");
                 }
@@ -3940,7 +3976,7 @@ internal sealed class App
 
     private void RenderConfigDialog(ScreenBuffer buffer, int width, int height)
     {
-        const int ContentWidth = 40;
+        const int ContentWidth = 47;
         int contentHeight = OperatingSystem.IsWindows() ? 20 : 19;
         const string Footer = "[Space] Toggle [◄►] Cycle [Enter] Save [Esc] Cancel";
 
@@ -3969,7 +4005,7 @@ internal sealed class App
         itemList.Add(("Show Preview Pane", FormatBool(_configPreviewPane), true));
         itemList.Add(("  Image Previews", FormatBool(_configImagePreviews), _configPreviewPane));
         itemList.Add(("    pdftopng (PDF imgs)", FormatToolBool("pdftopng"), _configPreviewPane && _configImagePreviews));
-        itemList.Add(("    pdfinfo (PDF meta)", FormatToolBool("pdfinfo"), _configPreviewPane && _configImagePreviews));
+        itemList.Add(("  pdfinfo (PDF meta)", FormatToolBool("pdfinfo"), _configPreviewPane));
         itemList.Add(("  glow (Markdown)", FormatToolBool("glow"), _configPreviewPane));
         itemList.Add(("  ffprobe (media meta)", FormatToolBool("ffprobe"), _configPreviewPane));
         itemList.Add(("  mediainfo (media alt)", FormatToolBool("mediainfo"), _configPreviewPane));
@@ -3999,8 +4035,9 @@ internal sealed class App
 
             int row = content.Top + i;
 
-            buffer.WriteString(row, content.Left, label, style, 22);
-            buffer.WriteString(row, content.Left + 22, value, vStyle, content.Width - 22);
+            const int labelWidth = 26;
+            buffer.WriteString(row, content.Left, label, style, labelWidth);
+            buffer.WriteString(row, content.Left + labelWidth, value, vStyle, content.Width - labelWidth);
         }
     }
 

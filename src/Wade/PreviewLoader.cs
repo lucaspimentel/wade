@@ -84,6 +84,11 @@ internal sealed class PreviewLoader
             {
                 LoadWithProvider(path, previewProvider, context, ct);
             }
+            else if (!ct.IsCancellationRequested)
+            {
+                // No preview provider — signal that loading is complete
+                _pipeline.Inject(new PreviewLoadingCompleteEvent(path));
+            }
         }
         catch (OperationCanceledException)
         {
