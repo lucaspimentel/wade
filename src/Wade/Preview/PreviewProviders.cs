@@ -189,7 +189,7 @@ internal sealed class HexPreviewProvider : IPreviewProvider
 {
     public string Label => "Hex dump";
 
-    public bool CanPreview(string path, PreviewContext context) => FilePreview.IsBinary(path);
+    public bool CanPreview(string path, PreviewContext context) => true;
 
     public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct)
     {
@@ -206,6 +206,20 @@ internal sealed class HexPreviewProvider : IPreviewProvider
             FileTypeLabel = FilePreview.GetFileTypeLabel(path) ?? "Binary",
         };
     }
+}
+
+internal sealed class NonePreviewProvider : IPreviewProvider
+{
+    public string Label => "None";
+
+    public bool CanPreview(string path, PreviewContext context) => true;
+
+    public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct) =>
+        new PreviewResult
+        {
+            TextLines = [],
+            IsPlaceholder = true,
+        };
 }
 
 internal sealed class DiffPreviewProvider : IPreviewProvider

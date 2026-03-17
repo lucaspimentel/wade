@@ -340,14 +340,14 @@ public class PreviewProviderTests
         }
 
         [Fact]
-        public void CanPreview_TextFile_ReturnsFalse()
+        public void CanPreview_TextFile_ReturnsTrue()
         {
             string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".txt");
             File.WriteAllText(path, "Hello World");
             try
             {
                 var provider = new HexPreviewProvider();
-                Assert.False(provider.CanPreview(path, DefaultContext()));
+                Assert.True(provider.CanPreview(path, DefaultContext()));
             }
             finally
             {
@@ -380,6 +380,36 @@ public class PreviewProviderTests
         public void Label_IsHexDump()
         {
             Assert.Equal("Hex dump", new HexPreviewProvider().Label);
+        }
+    }
+
+    // --- NonePreviewProvider ---
+
+    public class NonePreviewProviderTests
+    {
+        [Fact]
+        public void CanPreview_AnyFile_ReturnsTrue()
+        {
+            var provider = new NonePreviewProvider();
+            Assert.True(provider.CanPreview("file.cs", DefaultContext()));
+            Assert.True(provider.CanPreview("file.exe", DefaultContext()));
+            Assert.True(provider.CanPreview("file.png", DefaultContext()));
+        }
+
+        [Fact]
+        public void GetPreview_ReturnsPlaceholder()
+        {
+            var provider = new NonePreviewProvider();
+            var result = provider.GetPreview("file.cs", DefaultContext(), CancellationToken.None);
+
+            Assert.NotNull(result);
+            Assert.True(result.IsPlaceholder);
+        }
+
+        [Fact]
+        public void Label_IsNone()
+        {
+            Assert.Equal("None", new NonePreviewProvider().Label);
         }
     }
 

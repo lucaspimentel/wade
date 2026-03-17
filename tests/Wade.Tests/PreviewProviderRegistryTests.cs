@@ -53,33 +53,37 @@ public class PreviewProviderRegistryTests : IDisposable
             ImagePreviewsEnabled: imagePreviewsEnabled);
 
     [Fact]
-    public void TextFile_ReturnsTextOnly()
+    public void TextFile_DefaultsToText_WithNoneAndHex()
     {
         string path = CreateTempFile(".cs");
         var providers = PreviewProviderRegistry.GetApplicableProviders(path, MakeContext());
 
-        Assert.Single(providers);
+        Assert.Equal(3, providers.Count);
         Assert.IsType<TextPreviewProvider>(providers[0]);
+        Assert.IsType<NonePreviewProvider>(providers[1]);
+        Assert.IsType<HexPreviewProvider>(providers[2]);
     }
 
     [Fact]
-    public void ZipFile_ReturnsZipContentsThenHex()
+    public void ZipFile_ReturnsZipContentsThenNoneThenHex()
     {
         var providers = PreviewProviderRegistry.GetApplicableProviders("file.zip", MakeContext());
 
-        Assert.Equal(2, providers.Count);
+        Assert.Equal(3, providers.Count);
         Assert.IsType<ZipContentsPreviewProvider>(providers[0]);
-        Assert.IsType<HexPreviewProvider>(providers[1]);
+        Assert.IsType<NonePreviewProvider>(providers[1]);
+        Assert.IsType<HexPreviewProvider>(providers[2]);
     }
 
     [Fact]
-    public void ImageFile_ReturnsImageThenHex()
+    public void ImageFile_ReturnsImageThenNoneThenHex()
     {
         var providers = PreviewProviderRegistry.GetApplicableProviders("file.png", MakeContext());
 
-        Assert.Equal(2, providers.Count);
+        Assert.Equal(3, providers.Count);
         Assert.IsType<ImagePreviewProvider>(providers[0]);
-        Assert.IsType<HexPreviewProvider>(providers[1]);
+        Assert.IsType<NonePreviewProvider>(providers[1]);
+        Assert.IsType<HexPreviewProvider>(providers[2]);
     }
 
     [Fact]
@@ -99,56 +103,62 @@ public class PreviewProviderRegistryTests : IDisposable
     }
 
     [Fact]
-    public void GitModifiedTextFile_ReturnsTextThenDiff()
+    public void GitModifiedTextFile_ReturnsTextThenDiffThenNoneThenHex()
     {
         string path = CreateTempFile(".cs");
         var context = MakeContext(gitStatus: GitFileStatus.Modified, repoRoot: "/repo");
         var providers = PreviewProviderRegistry.GetApplicableProviders(path, context);
 
-        Assert.Equal(2, providers.Count);
+        Assert.Equal(4, providers.Count);
         Assert.IsType<TextPreviewProvider>(providers[0]);
         Assert.IsType<DiffPreviewProvider>(providers[1]);
+        Assert.IsType<NonePreviewProvider>(providers[2]);
+        Assert.IsType<HexPreviewProvider>(providers[3]);
     }
 
     [Fact]
-    public void GitModifiedNupkgFile_ReturnsZipContentsThenHexThenDiff()
+    public void GitModifiedNupkgFile_ReturnsZipContentsThenDiffThenNoneThenHex()
     {
         var context = MakeContext(gitStatus: GitFileStatus.Modified, repoRoot: "/repo");
         var providers = PreviewProviderRegistry.GetApplicableProviders("file.nupkg", context);
 
-        Assert.Equal(3, providers.Count);
+        Assert.Equal(4, providers.Count);
         Assert.IsType<ZipContentsPreviewProvider>(providers[0]);
-        Assert.IsType<HexPreviewProvider>(providers[1]);
-        Assert.IsType<DiffPreviewProvider>(providers[2]);
+        Assert.IsType<DiffPreviewProvider>(providers[1]);
+        Assert.IsType<NonePreviewProvider>(providers[2]);
+        Assert.IsType<HexPreviewProvider>(providers[3]);
     }
 
     [Fact]
-    public void NupkgFile_ReturnsZipContentsThenHex()
+    public void NupkgFile_ReturnsZipContentsThenNoneThenHex()
     {
         var providers = PreviewProviderRegistry.GetApplicableProviders("package.nupkg", MakeContext());
 
-        Assert.Equal(2, providers.Count);
+        Assert.Equal(3, providers.Count);
         Assert.IsType<ZipContentsPreviewProvider>(providers[0]);
-        Assert.IsType<HexPreviewProvider>(providers[1]);
+        Assert.IsType<NonePreviewProvider>(providers[1]);
+        Assert.IsType<HexPreviewProvider>(providers[2]);
     }
 
     [Fact]
-    public void DocxFile_ReturnsZipContentsThenHex()
+    public void DocxFile_ReturnsZipContentsThenNoneThenHex()
     {
         var providers = PreviewProviderRegistry.GetApplicableProviders("report.docx", MakeContext());
 
-        Assert.Equal(2, providers.Count);
+        Assert.Equal(3, providers.Count);
         Assert.IsType<ZipContentsPreviewProvider>(providers[0]);
-        Assert.IsType<HexPreviewProvider>(providers[1]);
+        Assert.IsType<NonePreviewProvider>(providers[1]);
+        Assert.IsType<HexPreviewProvider>(providers[2]);
     }
 
     [Fact]
-    public void ExeFile_ReturnsHexOnly()
+    public void ExeFile_DefaultsToNone_WithHexAvailable()
     {
         var providers = PreviewProviderRegistry.GetApplicableProviders("app.exe", MakeContext());
 
-        Assert.Single(providers);
-        Assert.IsType<HexPreviewProvider>(providers[0]);
+        Assert.Equal(2, providers.Count);
+        Assert.IsType<NonePreviewProvider>(providers[0]);
+        Assert.IsType<HexPreviewProvider>(providers[1]);
     }
 
     [Fact]
@@ -157,6 +167,7 @@ public class PreviewProviderRegistryTests : IDisposable
         var providers = PreviewProviderRegistry.GetApplicableProviders("file.png", MakeContext(imagePreviewsEnabled: false));
 
         Assert.DoesNotContain(providers, p => p is ImagePreviewProvider);
+        Assert.Contains(providers, p => p is NonePreviewProvider);
         Assert.Contains(providers, p => p is HexPreviewProvider);
     }
 
@@ -166,6 +177,7 @@ public class PreviewProviderRegistryTests : IDisposable
         var providers = PreviewProviderRegistry.GetApplicableProviders("file.zip", MakeContext(zipPreviewEnabled: false));
 
         Assert.DoesNotContain(providers, p => p is ZipContentsPreviewProvider);
+        Assert.Contains(providers, p => p is NonePreviewProvider);
         Assert.Contains(providers, p => p is HexPreviewProvider);
     }
 
@@ -177,6 +189,8 @@ public class PreviewProviderRegistryTests : IDisposable
         var providers = PreviewProviderRegistry.GetApplicableProviders(path, context);
 
         Assert.Contains(providers, p => p is DiffPreviewProvider);
+        Assert.Contains(providers, p => p is NonePreviewProvider);
+        Assert.Contains(providers, p => p is HexPreviewProvider);
     }
 
     [Fact]
@@ -187,5 +201,21 @@ public class PreviewProviderRegistryTests : IDisposable
         var providers = PreviewProviderRegistry.GetApplicableProviders(path, context);
 
         Assert.DoesNotContain(providers, p => p is DiffPreviewProvider);
+        Assert.Contains(providers, p => p is NonePreviewProvider);
+        Assert.Contains(providers, p => p is HexPreviewProvider);
+    }
+
+    [Fact]
+    public void NoneAndHex_AlwaysPresent()
+    {
+        string path = CreateTempFile(".cs");
+        var providers = PreviewProviderRegistry.GetApplicableProviders(path, MakeContext());
+
+        Assert.Contains(providers, p => p is NonePreviewProvider);
+        Assert.Contains(providers, p => p is HexPreviewProvider);
+        // None comes before Hex
+        int noneIdx = providers.FindIndex(p => p is NonePreviewProvider);
+        int hexIdx = providers.FindIndex(p => p is HexPreviewProvider);
+        Assert.True(noneIdx < hexIdx);
     }
 }

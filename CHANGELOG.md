@@ -9,6 +9,8 @@
 - `MetadataProviderRegistry` for file-type-based metadata provider matching
 
 ### Changed
+- Add "None" preview option available for all files; binary files now default to "None" instead of hex dump
+- Hex dump preview is always available but must be explicitly selected from the "Change preview" menu
 - "Change preview" menu hides Text for binary files and Hex for text files
 - Migrated `ExecutablePreviewProvider`, `OfficePreviewProvider`, `MediaPreviewProvider`, `NuGetPreviewProvider` to metadata providers (`IMetadataProvider`)
 - `PreviewLoader` supports combined metadata + preview loading via new `BeginLoad` overload

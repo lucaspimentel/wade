@@ -1375,7 +1375,7 @@ internal sealed class App
         RefreshGitStatus();
     }
 
-    private void HandleSelectPreviewProvider(int index, PreviewLoader previewLoader)
+    private void HandleSelectPreviewProvider(int index, PreviewLoader previewLoader, ScreenBuffer buffer)
     {
         if (_applicableProviders is null || index < 0 || index >= _applicableProviders.Count)
         {
@@ -1394,8 +1394,14 @@ internal sealed class App
             return;
         }
 
+        bool wasImage = _isImagePreview || _isCombinedPreview;
         _activeProviderIndex = index;
         ReloadActiveProvider(selected.FullPath, previewLoader);
+
+        if (wasImage)
+        {
+            buffer.ForceFullRedraw();
+        }
     }
 
     private PreviewContext BuildPreviewContext(int paneWidth, int paneHeight)
@@ -3200,7 +3206,7 @@ internal sealed class App
                 break;
 
             case AppAction.SelectPreviewProvider:
-                HandleSelectPreviewProvider(actionData, previewLoader);
+                HandleSelectPreviewProvider(actionData, previewLoader, buffer);
                 break;
 
             case AppAction.ToggleHiddenFiles:
