@@ -1845,16 +1845,22 @@ internal sealed class App
         _sixelPending = true;
     }
 
+    private static readonly CellStyle s_metaSeparatorStyle = new(new Color(60, 60, 80), null);
+
     private void RenderMetadataWithText(ScreenBuffer buffer, Rect pane)
     {
         StyledLine[] metadataLines = MetadataRenderer.Render(_cachedMetadataSections!, pane.Width);
 
-        // Metadata at top, preview text below
-        int metadataRows = Math.Min(metadataLines.Length + 1, pane.Height / 2); // +1 for blank separator
+        // Metadata at top, separator row, preview text below
+        int metadataRows = Math.Min(metadataLines.Length + 1, pane.Height / 2); // +1 for separator row
         int previewRows = pane.Height - metadataRows;
 
         var metadataRect = new Rect(pane.Left, pane.Top, pane.Width, metadataRows);
         PaneRenderer.RenderPreview(buffer, metadataRect, metadataLines, showLineNumbers: false);
+
+        // Draw separator line on the last row of the metadata rect
+        int separatorRow = pane.Top + metadataRows - 1;
+        buffer.FillRow(separatorRow, pane.Left, pane.Width, '\u2500', s_metaSeparatorStyle);
 
         if (previewRows > 0)
         {
@@ -1867,11 +1873,14 @@ internal sealed class App
     {
         StyledLine[] metadataLines = MetadataRenderer.Render(_cachedMetadataSections!, pane.Width);
 
-        int metadataRows = Math.Min(metadataLines.Length + 1, pane.Height / 2);
+        int metadataRows = Math.Min(metadataLines.Length + 1, pane.Height / 2); // +1 for separator row
         int imageRows = pane.Height - metadataRows;
 
         var metadataRect = new Rect(pane.Left, pane.Top, pane.Width, metadataRows);
         PaneRenderer.RenderPreview(buffer, metadataRect, metadataLines, showLineNumbers: false);
+
+        // Draw separator line on the last row of the metadata rect
+        buffer.FillRow(pane.Top + metadataRows - 1, pane.Left, pane.Width, '\u2500', s_metaSeparatorStyle);
 
         // Fill image area with spaces for Sixel rendering
         int imageTop = pane.Top + metadataRows;

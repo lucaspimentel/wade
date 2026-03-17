@@ -23,35 +23,32 @@ public class MetadataProviderRegistryTests
     [Theory]
     [InlineData("app.exe")]
     [InlineData("lib.dll")]
-    public void ExeOrDll_ReturnsExecutableMetadataProvider(string path)
+    public void ExeOrDll_IncludesExecutableMetadataProvider(string path)
     {
         var providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
 
-        var provider = Assert.Single(providers);
-        Assert.IsType<ExecutableMetadataProvider>(provider);
+        Assert.Contains(providers, p => p is ExecutableMetadataProvider);
     }
 
     [Theory]
     [InlineData("report.docx")]
     [InlineData("data.xlsx")]
     [InlineData("slides.pptx")]
-    public void OfficeFile_ReturnsOfficeMetadataProvider(string path)
+    public void OfficeFile_IncludesOfficeMetadataProvider(string path)
     {
         var providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
 
-        var provider = Assert.Single(providers);
-        Assert.IsType<OfficeMetadataProvider>(provider);
+        Assert.Contains(providers, p => p is OfficeMetadataProvider);
     }
 
     [Theory]
     [InlineData("package.nupkg")]
     [InlineData("symbols.snupkg")]
-    public void NupkgFile_ReturnsNuGetMetadataProvider(string path)
+    public void NupkgFile_IncludesNuGetMetadataProvider(string path)
     {
         var providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
 
-        var provider = Assert.Single(providers);
-        Assert.IsType<NuGetMetadataProvider>(provider);
+        Assert.Contains(providers, p => p is NuGetMetadataProvider);
     }
 
     [Theory]
@@ -59,11 +56,12 @@ public class MetadataProviderRegistryTests
     [InlineData("file.zip")]
     [InlineData("file.png")]
     [InlineData("readme.txt")]
-    public void NonMetadataFile_ReturnsEmptyList(string path)
+    public void AnyFile_AlwaysIncludesFileMetadataProvider(string path)
     {
         var providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
 
-        Assert.Empty(providers);
+        var provider = Assert.Single(providers);
+        Assert.IsType<FileMetadataProvider>(provider);
     }
 
     [Fact]
@@ -83,18 +81,32 @@ public class MetadataProviderRegistryTests
     }
 
     [Fact]
+    public void FileMetadataProvider_IsAlwaysFirst()
+    {
+        // FileMetadataProvider must be first so the filename section appears at the top
+        foreach (string path in (string[])["app.exe", "report.docx", "package.nupkg", "file.txt"])
+        {
+            var providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
+            Assert.IsType<FileMetadataProvider>(providers[0]);
+        }
+    }
+
+    [Fact]
     public void RegistryPreservesProviderOrder()
     {
-        // exe/dll matches ExecutableMetadataProvider (first in registry)
+        // exe/dll: FileMetadataProvider first, then ExecutableMetadataProvider
         var exeProviders = MetadataProviderRegistry.GetApplicableProviders("app.exe", MakeContext());
-        Assert.IsType<ExecutableMetadataProvider>(exeProviders[0]);
+        Assert.IsType<FileMetadataProvider>(exeProviders[0]);
+        Assert.IsType<ExecutableMetadataProvider>(exeProviders[1]);
 
-        // docx matches OfficeMetadataProvider (second in registry)
+        // docx: FileMetadataProvider first, then OfficeMetadataProvider
         var docxProviders = MetadataProviderRegistry.GetApplicableProviders("report.docx", MakeContext());
-        Assert.IsType<OfficeMetadataProvider>(docxProviders[0]);
+        Assert.IsType<FileMetadataProvider>(docxProviders[0]);
+        Assert.IsType<OfficeMetadataProvider>(docxProviders[1]);
 
-        // nupkg matches NuGetMetadataProvider (fourth in registry)
+        // nupkg: FileMetadataProvider first, then NuGetMetadataProvider
         var nupkgProviders = MetadataProviderRegistry.GetApplicableProviders("package.nupkg", MakeContext());
-        Assert.IsType<NuGetMetadataProvider>(nupkgProviders[0]);
+        Assert.IsType<FileMetadataProvider>(nupkgProviders[0]);
+        Assert.IsType<NuGetMetadataProvider>(nupkgProviders[1]);
     }
 }

@@ -162,8 +162,7 @@ public class ExecutableMetadataProviderTests
     {
         var providers = MetadataProviderRegistry.GetApplicableProviders("app.exe", MakeContext());
 
-        var provider = Assert.Single(providers);
-        Assert.IsType<ExecutableMetadataProvider>(provider);
+        Assert.Contains(providers, p => p is ExecutableMetadataProvider);
     }
 
     private static string FlattenSections(MetadataSection[] sections)

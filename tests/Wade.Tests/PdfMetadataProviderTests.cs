@@ -132,8 +132,7 @@ public class PdfMetadataProviderTests
 
         var providers = MetadataProviderRegistry.GetApplicableProviders("doc.pdf", MakeContext());
 
-        var provider = Assert.Single(providers);
-        Assert.IsType<PdfMetadataProvider>(provider);
+        Assert.Contains(providers, p => p is PdfMetadataProvider);
     }
 
     private static string FlattenSections(MetadataSection[] sections)

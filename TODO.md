@@ -186,14 +186,9 @@ Research and implement image previews for Office Open XML formats (`.docx`, `.xl
 ~~- On Windows, `WindowsInputSource` passes `(ConsoleKey)k.wVirtualKeyCode` directly — `VK_F5 = 0x74` maps to `ConsoleKey.F5` automatically~~
 ~~- One-liner addition next to the `Ctrl+R` check in `InputReader.cs`~~
 
-### Show filename in metadata header
+### ~~Show filename in metadata header~~ ✓
 
-When displaying file metadata in the right pane (above a preview, if any), include the filename as a header entry so it's immediately visible without looking at the file list.
-
-- `MetadataRenderer.Render` in `src/Wade/UI/MetadataRenderer.cs` renders `MetadataSection[]` — add a filename entry either as a dedicated top section or as part of every metadata result
-- Alternatively, inject it in `App.cs` before passing sections to `MetadataRenderer`
-- Consider styling the filename prominently (e.g., bold, lighter color) to distinguish it from regular label/value entries
-- Also show for the metadata-only display path (`_cachedMetadataSections` is not null, no preview provider) at `App.cs:1100`
+~~When displaying file metadata in the right pane (above a preview, if any), include the filename as a header entry so it's immediately visible without looking at the file list. Implemented via FileMetadataProvider which also shows size, modified date, and git status for ALL files.~~
 
 ### Image metadata provider
 

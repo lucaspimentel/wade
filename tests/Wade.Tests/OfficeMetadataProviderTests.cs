@@ -229,8 +229,7 @@ public class OfficeMetadataProviderTests
     {
         var providers = MetadataProviderRegistry.GetApplicableProviders("report.docx", MakeContext());
 
-        var provider = Assert.Single(providers);
-        Assert.IsType<OfficeMetadataProvider>(provider);
+        Assert.Contains(providers, p => p is OfficeMetadataProvider);
     }
 
     private static string FlattenSections(MetadataSection[] sections)

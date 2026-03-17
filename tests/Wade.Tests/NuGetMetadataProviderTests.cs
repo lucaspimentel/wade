@@ -144,8 +144,7 @@ public class NuGetMetadataProviderTests
     {
         var providers = MetadataProviderRegistry.GetApplicableProviders("package.nupkg", MakeContext());
 
-        var provider = Assert.Single(providers);
-        Assert.IsType<NuGetMetadataProvider>(provider);
+        Assert.Contains(providers, p => p is NuGetMetadataProvider);
     }
 
     [Fact]

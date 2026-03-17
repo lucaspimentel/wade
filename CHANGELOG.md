@@ -5,6 +5,7 @@
 ### Added
 - Separate `IMetadataProvider` system for structured file metadata (NuGet, Executable, Office, Media, PDF)
 - Metadata displayed as styled header above preview pane and in properties overlay
+- Add `FileMetadataProvider` showing filename, size, modified date, and git status for all files and directories
 - Add PDF metadata provider showing document properties (title, author, page count) via pdfinfo
 - Add 'Download cloud file' action for OneDrive/Dropbox placeholder files (Windows)
 - Add 'p' keybinding to open 'Change preview' submenu directly
@@ -23,6 +24,7 @@
 - Support combining sections from multiple metadata providers per file
 - Rename 'Source' preview label to 'Text'
 - Hide unavailable preview providers from 'Change preview' menu
+- Draw horizontal separator line between metadata header and preview content
 
 ### Fixed
 - Fix PDF preview image overlapping metadata in preview pane

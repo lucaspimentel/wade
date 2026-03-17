@@ -293,8 +293,7 @@ public class MediaMetadataProviderTests
 
         var providers = MetadataProviderRegistry.GetApplicableProviders("video.mp4", MakeContext());
 
-        var provider = Assert.Single(providers);
-        Assert.IsType<MediaMetadataProvider>(provider);
+        Assert.Contains(providers, p => p is MediaMetadataProvider);
     }
 
     private static string FlattenSections(MetadataSection[] sections)

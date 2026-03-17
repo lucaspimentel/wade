@@ -4,6 +4,7 @@ internal static class MetadataProviderRegistry
 {
     private static readonly IMetadataProvider[] s_providers =
     [
+        new FileMetadataProvider(),
         new ExecutableMetadataProvider(),
         new OfficeMetadataProvider(),
         new MediaMetadataProvider(),
