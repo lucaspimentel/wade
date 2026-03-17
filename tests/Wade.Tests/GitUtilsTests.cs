@@ -279,6 +279,7 @@ public class GitUtilsTests
             RunGit(tempDir, "init");
             RunGit(tempDir, "config user.email test@test.com");
             RunGit(tempDir, "config user.name Test");
+            RunGit(tempDir, "config commit.gpgsign false");
 
             string filePath = Path.Combine(tempDir, "test.txt");
             File.WriteAllText(filePath, "line1\nline2\n");
@@ -311,6 +312,7 @@ public class GitUtilsTests
             RunGit(tempDir, "init");
             RunGit(tempDir, "config user.email test@test.com");
             RunGit(tempDir, "config user.name Test");
+            RunGit(tempDir, "config commit.gpgsign false");
 
             string filePath = Path.Combine(tempDir, "test.txt");
             File.WriteAllText(filePath, "original\n");
@@ -344,6 +346,7 @@ public class GitUtilsTests
             RunGit(tempDir, "init");
             RunGit(tempDir, "config user.email test@test.com");
             RunGit(tempDir, "config user.name Test");
+            RunGit(tempDir, "config commit.gpgsign false");
 
             string filePath = Path.Combine(tempDir, "test.txt");
             File.WriteAllText(filePath, "clean\n");
@@ -387,6 +390,7 @@ public class GitUtilsTests
             RunGit(tempDir, "init");
             RunGit(tempDir, "config user.email test@test.com");
             RunGit(tempDir, "config user.name Test");
+            RunGit(tempDir, "config commit.gpgsign false");
 
             string filePath = Path.Combine(tempDir, "test.txt");
             File.WriteAllText(filePath, "original\n");
@@ -422,6 +426,7 @@ public class GitUtilsTests
             RunGit(tempDir, "init");
             RunGit(tempDir, "config user.email test@test.com");
             RunGit(tempDir, "config user.name Test");
+            RunGit(tempDir, "config commit.gpgsign false");
 
             // Need an initial commit so git status works properly
             string readmePath = Path.Combine(tempDir, "README.md");
@@ -459,6 +464,7 @@ public class GitUtilsTests
             RunGit(tempDir, "init");
             RunGit(tempDir, "config user.email test@test.com");
             RunGit(tempDir, "config user.name Test");
+            RunGit(tempDir, "config commit.gpgsign false");
 
             string filePath = Path.Combine(tempDir, "test.txt");
             File.WriteAllText(filePath, "original\n");
@@ -495,6 +501,7 @@ public class GitUtilsTests
             RunGit(tempDir, "init");
             RunGit(tempDir, "config user.email test@test.com");
             RunGit(tempDir, "config user.name Test");
+            RunGit(tempDir, "config commit.gpgsign false");
 
             string readmePath = Path.Combine(tempDir, "README.md");
             File.WriteAllText(readmePath, "readme\n");
@@ -532,6 +539,7 @@ public class GitUtilsTests
             RunGit(tempDir, "init");
             RunGit(tempDir, "config user.email test@test.com");
             RunGit(tempDir, "config user.name Test");
+            RunGit(tempDir, "config commit.gpgsign false");
 
             string file1 = Path.Combine(tempDir, "file1.txt");
             File.WriteAllText(file1, "original\n");
@@ -569,6 +577,7 @@ public class GitUtilsTests
             RunGit(tempDir, "init");
             RunGit(tempDir, "config user.email test@test.com");
             RunGit(tempDir, "config user.name Test");
+            RunGit(tempDir, "config commit.gpgsign false");
 
             string file1 = Path.Combine(tempDir, "a.txt");
             string file2 = Path.Combine(tempDir, "b.txt");
@@ -640,6 +649,7 @@ public class GitUtilsTests
             RunGit(tempDir, "init");
             RunGit(tempDir, "config user.email test@test.com");
             RunGit(tempDir, "config user.name Test");
+            RunGit(tempDir, "config commit.gpgsign false");
 
             string file1 = Path.Combine(tempDir, "file1.txt");
             string file2 = Path.Combine(tempDir, "file2.txt");
@@ -682,6 +692,7 @@ public class GitUtilsTests
             RunGit(tempDir, "init");
             RunGit(tempDir, "config user.email test@test.com");
             RunGit(tempDir, "config user.name Test");
+            RunGit(tempDir, "config commit.gpgsign false");
 
             string filePath = Path.Combine(tempDir, "test.txt");
             File.WriteAllText(filePath, "content\n");
@@ -711,6 +722,7 @@ public class GitUtilsTests
             RunGit(tempDir, "init");
             RunGit(tempDir, "config user.email test@test.com");
             RunGit(tempDir, "config user.name Test");
+            RunGit(tempDir, "config commit.gpgsign false");
 
             string filePath = Path.Combine(tempDir, "test.txt");
             File.WriteAllText(filePath, "content\n");
@@ -736,6 +748,7 @@ public class GitUtilsTests
             RunGit(tempDir, "init");
             RunGit(tempDir, "config user.email test@test.com");
             RunGit(tempDir, "config user.name Test");
+            RunGit(tempDir, "config commit.gpgsign false");
 
             // Initial commit so repo is valid
             string filePath = Path.Combine(tempDir, "test.txt");
@@ -764,6 +777,7 @@ public class GitUtilsTests
             RunGit(tempDir, "init");
             RunGit(tempDir, "config user.email test@test.com");
             RunGit(tempDir, "config user.name Test");
+            RunGit(tempDir, "config commit.gpgsign false");
             File.WriteAllText(Path.Combine(tempDir, "test.txt"), "content\n");
             RunGit(tempDir, "add .");
             RunGit(tempDir, "commit -m initial");
@@ -788,6 +802,7 @@ public class GitUtilsTests
             RunGit(tempDir, "init");
             RunGit(tempDir, "config user.email test@test.com");
             RunGit(tempDir, "config user.name Test");
+            RunGit(tempDir, "config commit.gpgsign false");
             File.WriteAllText(Path.Combine(tempDir, "test.txt"), "content\n");
             RunGit(tempDir, "add .");
             RunGit(tempDir, "commit -m initial");
@@ -870,6 +885,7 @@ public class GitUtilsTests
             RunGit(tempDir, "init");
             RunGit(tempDir, "config user.email test@test.com");
             RunGit(tempDir, "config user.name Test");
+            RunGit(tempDir, "config commit.gpgsign false");
             File.WriteAllText(Path.Combine(tempDir, "test.txt"), "content\n");
             RunGit(tempDir, "add .");
             RunGit(tempDir, "commit -m initial");
@@ -899,6 +915,7 @@ public class GitUtilsTests
             RunGit(Path.GetTempPath(), $"clone \"{remoteDir}\" \"{localDir}\"");
             RunGit(localDir, "config user.email test@test.com");
             RunGit(localDir, "config user.name Test");
+            RunGit(localDir, "config commit.gpgsign false");
 
             // Create initial commit and push
             File.WriteAllText(Path.Combine(localDir, "test.txt"), "content\n");
