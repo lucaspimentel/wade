@@ -84,6 +84,15 @@ internal sealed class PreviewLoader
                 if (allSections.Count > 0 && !ct.IsCancellationRequested)
                 {
                     _pipeline.Inject(new MetadataReadyEvent(path, [.. allSections], fileTypeLabel));
+
+                    // Reduce available height for preview so image providers don't size to the full pane
+                    var renderedMetadata = Wade.UI.MetadataRenderer.Render([.. allSections], context.PaneWidthCells);
+                    int metadataRows = Math.Min(renderedMetadata.Length + 1, context.PaneHeightCells / 2); // +1 for separator row
+                    int availableRows = context.PaneHeightCells - metadataRows;
+                    if (availableRows > 0)
+                    {
+                        context = context with { PaneHeightCells = availableRows };
+                    }
                 }
             }
 

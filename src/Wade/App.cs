@@ -1436,7 +1436,7 @@ internal sealed class App
             ImagePreviewsEnabled: _imagePreviewsEffective);
     }
 
-    private void ReloadActiveProvider(string path, PreviewLoader loader)
+    private void ReloadActiveProvider(string path, PreviewLoader loader, bool includeMetadata = true)
     {
         if (_activePreviewContext is null)
         {
@@ -1450,7 +1450,9 @@ internal sealed class App
             previewProvider = _applicableProviders[index];
         }
 
-        if (previewProvider is null && _applicableMetadataProviders is null or { Count: 0 })
+        var metadataProviders = includeMetadata ? _applicableMetadataProviders : null;
+
+        if (previewProvider is null && metadataProviders is null or { Count: 0 })
         {
             return;
         }
@@ -1463,13 +1465,17 @@ internal sealed class App
         _cachedPreviewFileTypeLabel = null;
         _cachedPreviewEncoding = null;
         _cachedPreviewLineEnding = null;
-        _cachedMetadataSections = null;
-        _cachedMetadataFileTypeLabel = null;
+        if (includeMetadata)
+        {
+            _cachedMetadataSections = null;
+            _cachedMetadataFileTypeLabel = null;
+        }
+
         _isImagePreview = false;
         _isCombinedPreview = false;
         _isRenderedPreview = false;
         _isPlaceholderPreview = false;
-        loader.BeginLoad(path, _applicableMetadataProviders, previewProvider, _activePreviewContext);
+        loader.BeginLoad(path, metadataProviders, previewProvider, _activePreviewContext);
     }
 
     private void ClearPreviewCache(PreviewLoader loader, ScreenBuffer? buffer = null)
@@ -1670,7 +1676,7 @@ internal sealed class App
             _sixelPending = false;
             _cachedStyledLines = null;
             _activePreviewContext = BuildPreviewContext(_layout.ExpandedPane.Width, _layout.ExpandedPane.Height);
-            ReloadActiveProvider(path, previewLoader);
+            ReloadActiveProvider(path, previewLoader, includeMetadata: false);
         }
 
         buffer.ForceFullRedraw();
