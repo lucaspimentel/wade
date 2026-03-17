@@ -218,7 +218,7 @@ internal sealed class App
             {
                 _sixelPending = false;
                 var sixelPane = _inputMode == InputMode.ExpandedPreview ? _layout.ExpandedPane : _layout.RightPane;
-                int cursorRow = _isCombinedPreview ? _sixelImageTop : sixelPane.Top;
+                int cursorRow = _sixelImageTop > 0 ? _sixelImageTop : sixelPane.Top;
                 int cursorCol = sixelPane.Left;
 
                 if (!_isCombinedPreview && _inputMode == InputMode.ExpandedPreview && _cachedImagePixelWidth > 0 && _cachedImagePixelHeight > 0)
@@ -1122,6 +1122,7 @@ internal sealed class App
                         buffer.FillRow(row, _layout.RightPane.Left, _layout.RightPane.Width, ' ', CellStyle.Default);
                     }
 
+                    _sixelImageTop = 0;
                     _sixelPending = true;
                 }
                 else if (_cachedStyledLines is not null)
@@ -1896,6 +1897,7 @@ internal sealed class App
                 buffer.FillRow(row, pane.Left, pane.Width, ' ', CellStyle.Default);
             }
 
+            _sixelImageTop = 0;
             _sixelPending = true;
         }
         else if (_cachedStyledLines is not null)
