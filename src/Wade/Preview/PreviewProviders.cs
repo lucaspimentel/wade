@@ -131,10 +131,12 @@ internal sealed class ZipContentsPreviewProvider : IPreviewProvider
             return null;
         }
 
-        var styledLines = new StyledLine[zipLines.Length];
+        var styledLines = new StyledLine[zipLines.Length + 2];
+        styledLines[0] = new StyledLine("  Archive Contents", null);
+        styledLines[1] = new StyledLine("  " + new string('\u2500', 16), null);
         for (int i = 0; i < zipLines.Length; i++)
         {
-            styledLines[i] = new StyledLine(zipLines[i], null);
+            styledLines[i + 2] = new StyledLine(zipLines[i], null);
         }
 
         return new PreviewResult
