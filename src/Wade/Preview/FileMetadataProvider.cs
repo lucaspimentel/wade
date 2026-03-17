@@ -40,6 +40,11 @@ internal sealed class FileMetadataProvider : IMetadataProvider
             string modified = fsInfo.LastWriteTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
             entries.Add(new MetadataEntry("Modified", modified));
 
+            if (context.IsCloudPlaceholder)
+            {
+                entries.Add(new MetadataEntry("Cloud", "not downloaded"));
+            }
+
             if (context.GitStatus is { } status && status != GitFileStatus.None)
             {
                 entries.Add(new MetadataEntry("Git", PropertiesOverlay.FormatGitStatus(status)));
