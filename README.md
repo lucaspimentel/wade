@@ -118,10 +118,11 @@ disabled_tools = glow,pdftopng  # comma-separated list of disabled external tool
 ### CLI flags
 
 ```bash
-wade --show-config                    # print current config as JSON and exit
-wade --config-file=/path/to/config    # use a custom config file
-wade --help                           # print usage info and exit
-wade -h                               # same as --help
+wade --version                         # print version and exit
+wade --show-config                     # print current config as JSON and exit
+wade --config-file=/path/to/config     # use a custom config file
+wade --help                            # print usage info and exit
+wade -h                                # same as --help
 ```
 
 ## Shell integration (cd on exit)

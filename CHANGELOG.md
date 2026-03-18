@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Added
+- Add `--version` CLI flag
+
 ### Changed
 - Remove redundant size and modified date from `FileMetadataProvider` — already shown in detail columns and properties overlay
 

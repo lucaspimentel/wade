@@ -1,6 +1,13 @@
+using System.Reflection;
 using Wade;
 
 var config = WadeConfig.Load(args);
+
+if (config.ShowVersion)
+{
+    PrintVersion();
+    return;
+}
 
 if (config.ShowHelp)
 {
@@ -22,6 +29,15 @@ if (config.CwdFilePath is not null && finalPath is not null)
     catch { /* silently ignore */ }
 }
 
+static void PrintVersion()
+{
+    var version = typeof(App).Assembly.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()?.InformationalVersion
+               ?? typeof(App).Assembly.GetName().Version?.ToString()
+               ?? "unknown";
+
+    Console.WriteLine($"wade {version}");
+}
+
 static void PrintHelp()
 {
     Console.WriteLine(
@@ -32,6 +48,7 @@ static void PrintHelp()
 
         Options:
           -h, --help                      Show this help and exit
+          --version                       Show version and exit
           --show-config                   Print resolved config as JSON and exit
           --config-file=<path>            Use a custom config file
 

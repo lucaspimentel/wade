@@ -25,6 +25,7 @@ internal sealed class WadeConfig
     public string StartPath { get; set; } = Directory.GetCurrentDirectory();
     public bool ShowConfig { get; set; } = false;
     public bool ShowHelp { get; set; } = false;
+    public bool ShowVersion { get; set; } = false;
     public string ConfigFilePath { get; private set; } = "";
     public string? CwdFilePath { get; set; }
 
@@ -181,6 +182,9 @@ internal sealed class WadeConfig
                     break;
                 case "--help" or "-h":
                     config.ShowHelp = true;
+                    break;
+                case "--version":
+                    config.ShowVersion = true;
                     break;
             }
         }
