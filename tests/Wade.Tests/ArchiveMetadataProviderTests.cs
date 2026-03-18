@@ -17,7 +17,8 @@ public class ArchiveMetadataProviderTests
             RepoRoot: null,
             DisabledTools: new HashSet<string>(),
             ZipPreviewEnabled: true,
-            ImagePreviewsEnabled: true);
+            ImagePreviewsEnabled: true,
+            ArchiveMetadataEnabled: true);
 
     private readonly ArchiveMetadataProvider _provider = new();
 

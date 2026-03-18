@@ -71,23 +71,7 @@ internal sealed class App
     private CancellationTokenSource? _fileFinderCts;
 
     // Config dialog state
-    private int _configSelectedIndex;
-    private bool _configShowIcons;
-    private bool _configImagePreviews;
-    private bool _configShowHidden;
-    private bool _configShowSystem;
-    private SortMode _configSortMode;
-    private bool _configSortAscending;
-    private bool _configConfirmDelete;
-    private bool _configPreviewPane;
-    private bool _configSizeColumn;
-    private bool _configDateColumn;
-    private bool _configZipPreview;
-    private HashSet<string> _configDisabledTools = [];
-    private bool _configCopySymlinksAsLinks;
-    private bool _configTerminalTitle;
-    private bool _configGitStatus;
-    private bool _configFileMetadata;
+    private ConfigDialogState? _configDialogState;
 
     // Git status state
     private GitStatusLoader? _gitStatusLoader;
@@ -1066,7 +1050,9 @@ internal sealed class App
                     _applicableMetadataProviders = _config.FileMetadataEnabled
                         ? MetadataProviderRegistry.GetApplicableProviders(selected.FullPath, _activePreviewContext)
                         : null;
-                    _applicableProviders = PreviewProviderRegistry.GetApplicableProviders(selected.FullPath, _activePreviewContext);
+                    _applicableProviders = _config.FilePreviewsEnabled
+                        ? PreviewProviderRegistry.GetApplicableProviders(selected.FullPath, _activePreviewContext)
+                        : [];
 
                     if (_applicableProviders.Count == 0 && _applicableMetadataProviders is { Count: 0 })
                     {
@@ -1436,7 +1422,8 @@ internal sealed class App
             RepoRoot: _currentRepoRoot,
             DisabledTools: _config.DisabledTools,
             ZipPreviewEnabled: _config.ZipPreviewEnabled,
-            ImagePreviewsEnabled: _imagePreviewsEffective);
+            ImagePreviewsEnabled: _imagePreviewsEffective,
+            ArchiveMetadataEnabled: _config.ArchiveMetadataEnabled);
     }
 
     private void ReloadActiveProvider(string path, PreviewLoader loader, bool includeMetadata = true)
@@ -3824,64 +3811,24 @@ internal sealed class App
     private void ShowConfigDialog()
     {
         _inputMode = InputMode.Config;
-        _configSelectedIndex = 0;
-        _configShowIcons = _config.ShowIconsEnabled;
-        _configImagePreviews = _config.ImagePreviewsEnabled;
-        _configShowHidden = _config.ShowHiddenFiles;
-        _configShowSystem = _config.ShowSystemFiles;
-        _configSortMode = _config.SortMode;
-        _configSortAscending = _config.SortAscending;
-        _configConfirmDelete = _config.ConfirmDeleteEnabled;
-        _configPreviewPane = _config.PreviewPaneEnabled;
-        _configSizeColumn = _config.SizeColumnEnabled;
-        _configDateColumn = _config.DateColumnEnabled;
-        _configZipPreview = _config.ZipPreviewEnabled;
-        _configDisabledTools = new HashSet<string>(_config.DisabledTools);
-        _configCopySymlinksAsLinks = _config.CopySymlinksAsLinksEnabled;
-        _configTerminalTitle = _config.TerminalTitleEnabled;
-        _configGitStatus = _config.GitStatusEnabled;
-        _configFileMetadata = _config.FileMetadataEnabled;
+        _configDialogState = ConfigDialogState.FromConfig(_config);
     }
 
     private void HandleConfigKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer)
     {
+        var state = _configDialogState!;
         switch (key.Key)
         {
             case ConsoleKey.UpArrow or ConsoleKey.K:
-            {
-                int prev = _configSelectedIndex - 1;
-                while (prev >= 0 && !IsConfigItemEnabled(prev))
-                {
-                    prev--;
-                }
-
-                if (prev >= 0)
-                {
-                    _configSelectedIndex = prev;
-                }
-
+                state.MoveUp();
                 break;
-            }
 
             case ConsoleKey.DownArrow or ConsoleKey.J:
-            {
-                int maxIndex = OperatingSystem.IsWindows() ? 19 : 18;
-                int next = _configSelectedIndex + 1;
-                while (next <= maxIndex && !IsConfigItemEnabled(next))
-                {
-                    next++;
-                }
-
-                if (next <= maxIndex)
-                {
-                    _configSelectedIndex = next;
-                }
-
+                state.MoveDown();
                 break;
-            }
 
             case ConsoleKey.Spacebar:
-                ToggleConfigOption();
+                state.ToggleSelected();
                 break;
 
             case ConsoleKey.Enter:
@@ -3893,155 +3840,18 @@ internal sealed class App
                 break;
 
             case ConsoleKey.LeftArrow or ConsoleKey.H:
-            {
-                int sortModeIndex = OperatingSystem.IsWindows() ? 3 : 2;
-                if (_configSelectedIndex == sortModeIndex)
-                {
-                    _configSortMode = CycleSortModePrev(_configSortMode);
-                }
-
+                state.CyclePrevSelected();
                 break;
-            }
 
             case ConsoleKey.RightArrow or ConsoleKey.L:
-            {
-                int sortModeIndex = OperatingSystem.IsWindows() ? 3 : 2;
-                if (_configSelectedIndex == sortModeIndex)
-                {
-                    _configSortMode = CycleSortModeNext(_configSortMode);
-                }
-
+                state.CycleNextSelected();
                 break;
-            }
         }
-    }
-
-    private void ToggleConfigOption()
-    {
-        // On Windows, "Show System Files" is inserted at index 2, shifting everything after by 1
-        int idx = _configSelectedIndex;
-
-        switch (idx)
-        {
-            case 0: _configShowIcons = !_configShowIcons; return;
-            case 1: _configShowHidden = !_configShowHidden; return;
-            case 2 when OperatingSystem.IsWindows():
-                if (_configShowHidden)
-                {
-                    _configShowSystem = !_configShowSystem;
-                }
-
-                return;
-        }
-
-        // Items after the Windows-only row: on Windows the extra row shifts indices up by 1
-        int adjusted = idx + (OperatingSystem.IsWindows() ? -1 : 0);
-        switch (adjusted)
-        {
-            case 2: _configSortMode = CycleSortModeNext(_configSortMode); break;
-            case 3: _configSortAscending = !_configSortAscending; break;
-            case 4: _configConfirmDelete = !_configConfirmDelete; break;
-            case 5: _configPreviewPane = !_configPreviewPane; break;
-            case 6:
-                if (_configPreviewPane)
-                {
-                    _configImagePreviews = !_configImagePreviews;
-                }
-
-                break;
-            case 7:
-                if (_configPreviewPane && _configImagePreviews)
-                {
-                    ToggleDisabledTool("pdftopng");
-                }
-
-                break;
-            case 8:
-                if (_configPreviewPane)
-                {
-                    ToggleDisabledTool("pdfinfo");
-                }
-
-                break;
-            case 9:
-                if (_configPreviewPane)
-                {
-                    ToggleDisabledTool("glow");
-                }
-
-                break;
-            case 10:
-                if (_configPreviewPane)
-                {
-                    ToggleDisabledTool("ffprobe");
-                }
-
-                break;
-            case 11:
-                if (_configPreviewPane)
-                {
-                    ToggleDisabledTool("mediainfo");
-                }
-
-                break;
-            case 12:
-                if (_configPreviewPane)
-                {
-                    _configZipPreview = !_configZipPreview;
-                }
-
-                break;
-            case 13: _configSizeColumn = !_configSizeColumn; break;
-            case 14: _configDateColumn = !_configDateColumn; break;
-            case 15: _configCopySymlinksAsLinks = !_configCopySymlinksAsLinks; break;
-            case 16: _configTerminalTitle = !_configTerminalTitle; break;
-            case 17: _configGitStatus = !_configGitStatus; break;
-            case 18: _configFileMetadata = !_configFileMetadata; break;
-        }
-    }
-
-    private bool IsConfigItemEnabled(int index)
-    {
-        if (index <= 1)
-        {
-            return true;
-        }
-
-        if (OperatingSystem.IsWindows() && index == 2)
-        {
-            return _configShowHidden;
-        }
-
-        int adjusted = index + (OperatingSystem.IsWindows() ? -1 : 0);
-        return adjusted switch
-        {
-            <= 5 => true,
-            6 => _configPreviewPane,
-            7 => _configPreviewPane && _configImagePreviews,
-            >= 8 and <= 12 => _configPreviewPane,
-            _ => true,
-        };
     }
 
     private void ApplyConfigChanges(PreviewLoader previewLoader, ScreenBuffer buffer)
     {
-        _config.ShowIconsEnabled = _configShowIcons;
-        _config.ImagePreviewsEnabled = _configImagePreviews;
-        _config.ShowHiddenFiles = _configShowHidden;
-        _config.ShowSystemFiles = _configShowHidden && _configShowSystem;
-        _configShowSystem = _config.ShowSystemFiles;
-        _config.SortMode = _configSortMode;
-        _config.SortAscending = _configSortAscending;
-        _config.ConfirmDeleteEnabled = _configConfirmDelete;
-        _config.PreviewPaneEnabled = _configPreviewPane;
-        _config.SizeColumnEnabled = _configSizeColumn;
-        _config.DateColumnEnabled = _configDateColumn;
-        _config.ZipPreviewEnabled = _configZipPreview;
-        _config.DisabledTools = new HashSet<string>(_configDisabledTools);
-        _config.CopySymlinksAsLinksEnabled = _configCopySymlinksAsLinks;
-        _config.TerminalTitleEnabled = _configTerminalTitle;
-        _config.GitStatusEnabled = _configGitStatus;
-        _config.FileMetadataEnabled = _configFileMetadata;
+        _configDialogState!.ApplyTo(_config);
 
         _directoryContents.ShowHiddenFiles = _config.ShowHiddenFiles;
         _directoryContents.ShowSystemFiles = _config.ShowSystemFiles;
@@ -4068,29 +3878,12 @@ internal sealed class App
         _inputMode = InputMode.Normal;
     }
 
-    private static SortMode CycleSortModeNext(SortMode current) =>
-        current switch
-        {
-            SortMode.Name => SortMode.Modified,
-            SortMode.Modified => SortMode.Size,
-            SortMode.Size => SortMode.Extension,
-            _ => SortMode.Name,
-        };
-
-    private static SortMode CycleSortModePrev(SortMode current) =>
-        current switch
-        {
-            SortMode.Name => SortMode.Extension,
-            SortMode.Modified => SortMode.Name,
-            SortMode.Size => SortMode.Modified,
-            _ => SortMode.Size,
-        };
-
     private void RenderConfigDialog(ScreenBuffer buffer, int width, int height)
     {
+        var state = _configDialogState!;
         const int ContentWidth = 47;
-        int contentHeight = OperatingSystem.IsWindows() ? 21 : 20;
-        const string Footer = "[Space] Toggle [◄►] Cycle [Enter] Save [Esc] Cancel";
+        int contentHeight = state.Items.Count + 1;
+        const string Footer = "[Space] Toggle [\u25c4\u25ba] Cycle [Enter] Save [Esc] Cancel";
 
         var content = DialogBox.Render(buffer, width, height, Math.Max(ContentWidth, Footer.Length), contentHeight, title: "Configuration", footer: Footer);
 
@@ -4100,42 +3893,13 @@ internal sealed class App
         var valueSelectedStyle = new CellStyle(new Color(20, 20, 35), new Color(200, 200, 200));
         var disabledStyle = new CellStyle(new Color(80, 80, 80), DialogBox.BgColor);
 
-        var itemList = new List<(string label, string value, bool enabled)>
+        for (int i = 0; i < state.Items.Count; i++)
         {
-            ("Show Icons", FormatBool(_configShowIcons), true),
-            ("Show Hidden Files", FormatBool(_configShowHidden), true),
-        };
-
-        if (OperatingSystem.IsWindows())
-        {
-            itemList.Add(("  Show System Files", FormatBool(_configShowSystem), _configShowHidden));
-        }
-
-        itemList.Add(("Sort Mode", $"\u25c4 {_configSortMode.ToString().ToLowerInvariant()} \u25ba", true));
-        itemList.Add(("Sort Ascending", FormatBool(_configSortAscending), true));
-        itemList.Add(("Confirm Delete", FormatBool(_configConfirmDelete), true));
-        itemList.Add(("Show Preview Pane", FormatBool(_configPreviewPane), true));
-        itemList.Add(("  Image Previews", FormatBool(_configImagePreviews), _configPreviewPane));
-        itemList.Add(("    pdftopng (PDF imgs)", FormatToolBool("pdftopng"), _configPreviewPane && _configImagePreviews));
-        itemList.Add(("  pdfinfo (PDF meta)", FormatToolBool("pdfinfo"), _configPreviewPane));
-        itemList.Add(("  glow (Markdown)", FormatToolBool("glow"), _configPreviewPane));
-        itemList.Add(("  ffprobe (media meta)", FormatToolBool("ffprobe"), _configPreviewPane));
-        itemList.Add(("  mediainfo (media alt)", FormatToolBool("mediainfo"), _configPreviewPane));
-        itemList.Add(("  Zip Preview", FormatBool(_configZipPreview), _configPreviewPane));
-        itemList.Add(("Show Size Column", FormatBool(_configSizeColumn), true));
-        itemList.Add(("Show Date Column", FormatBool(_configDateColumn), true));
-        itemList.Add(("Copy Symlinks as Link", FormatBool(_configCopySymlinksAsLinks), true));
-        itemList.Add(("Change Terminal Title", FormatBool(_configTerminalTitle), true));
-        itemList.Add(("Show Git Status", FormatBool(_configGitStatus), true));
-        itemList.Add(("Show File Metadata", FormatBool(_configFileMetadata), true));
-
-        for (int i = 0; i < itemList.Count; i++)
-        {
-            bool selected = i == _configSelectedIndex;
-            var (label, value, enabled) = itemList[i];
+            var item = state.Items[i];
+            bool selected = i == state.SelectedIndex;
             CellStyle style, vStyle;
 
-            if (!enabled)
+            if (!item.IsEnabled)
             {
                 style = disabledStyle;
                 vStyle = disabledStyle;
@@ -4147,22 +3911,13 @@ internal sealed class App
             }
 
             int row = content.Top + i;
+            string label = item.Indent > 0
+                ? new string(' ', item.Indent * 2) + item.Label
+                : item.Label;
 
-            const int labelWidth = 26;
+            const int labelWidth = 34;
             buffer.WriteString(row, content.Left, label, style, labelWidth);
-            buffer.WriteString(row, content.Left + labelWidth, value, vStyle, content.Width - labelWidth);
-        }
-    }
-
-    private static string FormatBool(bool value) => value ? "[X]" : "[ ]";
-
-    private string FormatToolBool(string toolName) => FormatBool(!_configDisabledTools.Contains(toolName));
-
-    private void ToggleDisabledTool(string toolName)
-    {
-        if (!_configDisabledTools.Remove(toolName))
-        {
-            _configDisabledTools.Add(toolName);
+            buffer.WriteString(row, content.Left + labelWidth, item.FormatValue(), vStyle, content.Width - labelWidth);
         }
     }
 

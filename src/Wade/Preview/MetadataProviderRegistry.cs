@@ -30,6 +30,11 @@ internal static class MetadataProviderRegistry
                 continue;
             }
 
+            if (!context.ArchiveMetadataEnabled && provider is ArchiveMetadataProvider)
+            {
+                continue;
+            }
+
             if (provider.CanProvideMetadata(path, context))
             {
                 result.Add(provider);

@@ -18,7 +18,8 @@ public class ImageMetadataProviderTests
             RepoRoot: null,
             DisabledTools: new HashSet<string>(),
             ZipPreviewEnabled: true,
-            ImagePreviewsEnabled: true);
+            ImagePreviewsEnabled: true,
+            ArchiveMetadataEnabled: true);
 
     private static string CreateTempPng(int width, int height)
     {

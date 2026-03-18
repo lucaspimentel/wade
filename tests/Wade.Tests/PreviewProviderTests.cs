@@ -25,7 +25,8 @@ public class PreviewProviderTests
             RepoRoot: repoRoot,
             DisabledTools: disabledTools ?? new HashSet<string>(),
             ZipPreviewEnabled: zipPreviewEnabled,
-            ImagePreviewsEnabled: imagePreviewsEnabled);
+            ImagePreviewsEnabled: imagePreviewsEnabled,
+            ArchiveMetadataEnabled: true);
 
     // --- ImagePreviewProvider ---
 

@@ -18,7 +18,8 @@ public class OfficeMetadataProviderTests
             RepoRoot: null,
             DisabledTools: new HashSet<string>(),
             ZipPreviewEnabled: true,
-            ImagePreviewsEnabled: true);
+            ImagePreviewsEnabled: true,
+            ArchiveMetadataEnabled: true);
 
     [Theory]
     [InlineData("report.docx")]

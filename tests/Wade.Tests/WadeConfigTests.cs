@@ -36,6 +36,8 @@ public class WadeConfigTests
         Assert.Empty(config.DisabledTools);
         Assert.True(config.TerminalTitleEnabled);
         Assert.True(config.FileMetadataEnabled);
+        Assert.True(config.FilePreviewsEnabled);
+        Assert.True(config.ArchiveMetadataEnabled);
         Assert.Equal(Directory.GetCurrentDirectory(), config.StartPath);
     }
 
@@ -83,6 +85,10 @@ public class WadeConfigTests
     [InlineData("terminal_title_enabled", false)]
     [InlineData("file_metadata_enabled", true)]
     [InlineData("file_metadata_enabled", false)]
+    [InlineData("file_previews_enabled", true)]
+    [InlineData("file_previews_enabled", false)]
+    [InlineData("archive_metadata_enabled", true)]
+    [InlineData("archive_metadata_enabled", false)]
     public void ConfigFile_ParsesNewBoolSettings(string key, bool value)
     {
         var path = WriteTempConfig($"{key} = {(value ? "true" : "false")}");
@@ -100,6 +106,8 @@ public class WadeConfigTests
                 "zip_preview_enabled" => config.ZipPreviewEnabled,
                 "terminal_title_enabled" => config.TerminalTitleEnabled,
                 "file_metadata_enabled" => config.FileMetadataEnabled,
+                "file_previews_enabled" => config.FilePreviewsEnabled,
+                "archive_metadata_enabled" => config.ArchiveMetadataEnabled,
                 _ => throw new ArgumentException($"Unknown key: {key}"),
             };
             Assert.Equal(value, actual);
@@ -397,6 +405,8 @@ public class WadeConfigTests
             original.DisabledTools = new HashSet<string> { "pdftopng", "pdfinfo" };
             original.TerminalTitleEnabled = false;
             original.FileMetadataEnabled = false;
+            original.FilePreviewsEnabled = false;
+            original.ArchiveMetadataEnabled = false;
             original.Save();
 
             var loaded = WadeConfig.Load([], configFilePath: configPath);
@@ -416,6 +426,8 @@ public class WadeConfigTests
             Assert.Contains("pdfinfo", loaded.DisabledTools);
             Assert.False(loaded.TerminalTitleEnabled);
             Assert.False(loaded.FileMetadataEnabled);
+            Assert.False(loaded.FilePreviewsEnabled);
+            Assert.False(loaded.ArchiveMetadataEnabled);
         }
         finally
         {

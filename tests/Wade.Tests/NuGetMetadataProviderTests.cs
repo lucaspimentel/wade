@@ -18,7 +18,8 @@ public class NuGetMetadataProviderTests
             RepoRoot: null,
             DisabledTools: new HashSet<string>(),
             ZipPreviewEnabled: true,
-            ImagePreviewsEnabled: true);
+            ImagePreviewsEnabled: true,
+            ArchiveMetadataEnabled: true);
 
     [Theory]
     [InlineData("package.nupkg")]

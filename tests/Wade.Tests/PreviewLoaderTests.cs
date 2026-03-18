@@ -30,7 +30,8 @@ public class PreviewLoaderTests
             RepoRoot: null,
             DisabledTools: new HashSet<string>(),
             ZipPreviewEnabled: true,
-            ImagePreviewsEnabled: true);
+            ImagePreviewsEnabled: true,
+            ArchiveMetadataEnabled: true);
 
     [Fact]
     public void BeginLoad_PostsPreviewReadyEvent()

@@ -17,7 +17,8 @@ public class FileMetadataProviderTests
             RepoRoot: null,
             DisabledTools: new HashSet<string>(),
             ZipPreviewEnabled: true,
-            ImagePreviewsEnabled: true);
+            ImagePreviewsEnabled: true,
+            ArchiveMetadataEnabled: true);
 
     [Theory]
     [InlineData("some/file.txt")]
@@ -135,7 +136,8 @@ public class FileMetadataProviderTests
                 RepoRoot: null,
                 DisabledTools: new HashSet<string>(),
                 ZipPreviewEnabled: true,
-                ImagePreviewsEnabled: true);
+                ImagePreviewsEnabled: true,
+            ArchiveMetadataEnabled: true);
 
             var provider = new FileMetadataProvider();
             MetadataResult? result = provider.GetMetadata(tempPath, context, CancellationToken.None);

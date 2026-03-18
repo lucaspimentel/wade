@@ -18,7 +18,8 @@ public class MetadataProviderRegistryTests
             RepoRoot: null,
             DisabledTools: new HashSet<string>(),
             ZipPreviewEnabled: true,
-            ImagePreviewsEnabled: true);
+            ImagePreviewsEnabled: true,
+            ArchiveMetadataEnabled: true);
 
     [Theory]
     [InlineData("app.exe")]

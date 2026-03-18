@@ -50,7 +50,8 @@ public class PreviewProviderRegistryTests : IDisposable
             RepoRoot: repoRoot,
             DisabledTools: disabledTools ?? new HashSet<string>(),
             ZipPreviewEnabled: zipPreviewEnabled,
-            ImagePreviewsEnabled: imagePreviewsEnabled);
+            ImagePreviewsEnabled: imagePreviewsEnabled,
+            ArchiveMetadataEnabled: true);
 
     [Fact]
     public void TextFile_DefaultsToText_WithNoneAndHex()

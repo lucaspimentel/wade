@@ -23,7 +23,8 @@ internal record PreviewContext(
     string? RepoRoot,
     HashSet<string> DisabledTools,
     bool ZipPreviewEnabled,
-    bool ImagePreviewsEnabled);
+    bool ImagePreviewsEnabled,
+    bool ArchiveMetadataEnabled);
 
 internal record PreviewResult
 {

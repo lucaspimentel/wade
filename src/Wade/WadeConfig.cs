@@ -19,6 +19,8 @@ internal sealed class WadeConfig
     public bool TerminalTitleEnabled { get; set; } = true;
     public bool GitStatusEnabled { get; set; } = true;
     public bool FileMetadataEnabled { get; set; } = true;
+    public bool FilePreviewsEnabled { get; set; } = true;
+    public bool ArchiveMetadataEnabled { get; set; } = true;
     public HashSet<string> DisabledTools { get; set; } = [];
     public string StartPath { get; set; } = Directory.GetCurrentDirectory();
     public bool ShowConfig { get; set; } = false;
@@ -123,6 +125,12 @@ internal sealed class WadeConfig
                         break;
                     case "file_metadata_enabled":
                         config.FileMetadataEnabled = ParseBool(value, config.FileMetadataEnabled);
+                        break;
+                    case "file_previews_enabled":
+                        config.FilePreviewsEnabled = ParseBool(value, config.FilePreviewsEnabled);
+                        break;
+                    case "archive_metadata_enabled":
+                        config.ArchiveMetadataEnabled = ParseBool(value, config.ArchiveMetadataEnabled);
                         break;
                     case "disabled_tools":
                         foreach (string tool in value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
@@ -237,6 +245,8 @@ internal sealed class WadeConfig
             terminal_title_enabled = {(TerminalTitleEnabled ? "true" : "false")}
             git_status_enabled = {(GitStatusEnabled ? "true" : "false")}
             file_metadata_enabled = {(FileMetadataEnabled ? "true" : "false")}
+            file_previews_enabled = {(FilePreviewsEnabled ? "true" : "false")}
+            archive_metadata_enabled = {(ArchiveMetadataEnabled ? "true" : "false")}
             """;
 
         if (DisabledTools.Count > 0)
@@ -272,6 +282,8 @@ internal sealed class WadeConfig
             $"\"terminal_title_enabled\":{(TerminalTitleEnabled ? "true" : "false")}," +
             $"\"git_status_enabled\":{(GitStatusEnabled ? "true" : "false")}," +
             $"\"file_metadata_enabled\":{(FileMetadataEnabled ? "true" : "false")}," +
+            $"\"file_previews_enabled\":{(FilePreviewsEnabled ? "true" : "false")}," +
+            $"\"archive_metadata_enabled\":{(ArchiveMetadataEnabled ? "true" : "false")}," +
             $"\"start_path\":\"{escapedPath}\"" +
             "}";
     }
