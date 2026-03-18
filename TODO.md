@@ -111,16 +111,9 @@ Separate archive summary info (total size, compressed size, ratio, file count) f
 - New `src/Wade/Preview/ArchiveMetadataProvider.cs` — implement `IMetadataProvider` for pure archive types
 - `src/Wade/Preview/MetadataProviderRegistry.cs` — register the new provider
 
-### Reduce hotkey listings in help dialog
+### ~~Reduce hotkey listings in help dialog~~ ✓
 
-Simplify the help dialog by removing most hardcoded hotkey references and instead directing users to the action list (accessible via `?` or action palette), which already displays hotkeys for every action.
-
-- Help dialog duplicates hotkey information that's already available in the action list
-- Users don't need a separate help reference if they can search/browse actions with keybindings shown inline
-- Keep only the essential discovery info in help: "Press `?` to open the action list" with a brief summary of major modes/contexts
-- Remove static hotkey tables from `HelpOverlay.cs` (`src/Wade/UI/HelpOverlay.cs`)
-- Test UX: new user should be able to discover hotkeys by opening action palette (`?`) rather than reading a separate help page
-- This also reduces maintenance burden when hotkeys change
+~~Simplify the help dialog by removing most hardcoded hotkey references and instead directing users to the action list (accessible via `?` or action palette), which already displays hotkeys for every action.~~
 
 ### Add config option to show/hide file metadata
 
