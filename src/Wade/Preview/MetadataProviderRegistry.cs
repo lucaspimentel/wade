@@ -10,6 +10,7 @@ internal static class MetadataProviderRegistry
         new OfficeMetadataProvider(),
         new MediaMetadataProvider(),
         new NuGetMetadataProvider(),
+        new MsiMetadataProvider(),
         new ArchiveMetadataProvider(),
         new PdfMetadataProvider(),
     ];

@@ -5,6 +5,8 @@
 ### Added
 - Add filesystem auto-refresh via `FileSystemWatcher` — file list updates automatically when files are created, deleted, or renamed externally
 - Add `--version` CLI flag
+- Add MSI metadata provider showing ProductName, Version, Manufacturer, ProductCode, UpgradeCode, and summary info via Windows Installer database API (Windows only)
+- Add MSI preview provider showing installer file table listing with sizes (Windows only)
 
 ### Changed
 - Remove redundant size and modified date from `FileMetadataProvider` — already shown in detail columns and properties overlay

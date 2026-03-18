@@ -10,6 +10,7 @@ internal static class PreviewProviderRegistry
         new PdfPreviewProvider(),
         new GlowMarkdownPreviewProvider(),
         new ZipContentsPreviewProvider(),
+        new MsiPreviewProvider(),
         new TextPreviewProvider(),
         new DiffPreviewProvider(),
         new NonePreviewProvider(),

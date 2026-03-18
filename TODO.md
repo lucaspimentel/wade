@@ -80,29 +80,9 @@ Consider using the [CsWin32](https://github.com/microsoft/CsWin32) source genera
 - `src/Wade/Terminal/WindowsInputSource.cs` — kernel32 (ReadConsoleInput, WaitForSingleObject)
 - `src/Wade/Terminal/LibC.cs` — libc (open, read, poll, tcgetattr, tcsetattr, cfmakeraw) — Unix only, CsWin32 won't cover these
 
-### Metadata and preview for .msi Windows Installer files
+### ~~Metadata and preview for .msi Windows Installer files~~ ✅
 
-Add metadata extraction and optional preview for `.msi` (Windows Installer) files.
-
-**Metadata provider (`MsiMetadataProvider`):**
-- Extract metadata from MSI property table: product name, version, manufacturer, description, upgrade code, install scope (per-user/per-machine), install location, etc.
-- MSI files are OLE compound documents; use `System.IO.Packaging.Package` or manual OLE parsing to read the property set stream (`\x05SummaryInformation` and `Property` table from the database)
-- Common properties to extract: `ProductName`, `ProductVersion`, `Manufacturer`, `Subject` (description), `UpgradeCode`, `InstallScope`, `InstallLocation`, `Comments`
-- Alternative: shell out to `msiexec /a <msi> /qb TARGETDIR=<tmpdir>` to extract (heavy), or use WiX toolset's `dark.exe` if available (lighter, but external dependency)
-- Simplest approach: WMI query `Win32_InstallerProductFile` or `Win32_Product` if the MSI is already installed, but won't work for arbitrary MSI files
-- **Best approach:** Parse OLE compound document manually or use a library like `OpenMcdf` (NuGet) to read MSI internal structure (property/summary info streams)
-
-**Preview provider (optional):**
-- List installable files (File table from MSI database): filename, target directory, size, version
-- Or show a table of contents / installation summary (destination directories, features)
-- Simpler alternative: show only metadata, no preview (metadata-only display like some other formats)
-
-**Windows-only:** MSI is a Windows-specific format; on Unix, can detect but skip gracefully.
-
-**Files to touch:**
-- New `src/Wade/Preview/MsiMetadataProvider.cs` — implement `IMetadataProvider`
-- `src/Wade/Preview/MetadataProviderRegistry.cs` — register the provider
-- Optional: New `src/Wade/Preview/MsiPreviewProvider.cs` if preview is desired
+Implemented via `MsiMetadataProvider` (ProductName, Version, Manufacturer, ProductCode, UpgradeCode from Property table; Subject, Author, Comments, Platform from summary info stream) and `MsiPreviewProvider` (file table listing with sizes). Uses `msi.dll` P/Invoke (`MsiOpenDatabase` + SQL queries) — Windows-only, returns null on other platforms.
 
 ### Preview for Office/document formats (DOCX, XLSX, PPTX, etc.)
 
@@ -150,14 +130,10 @@ Pressing up/down to change selection while a file preview is still generating sh
 - Stale events: events injected by a cancelled task carry the old path; verify they are silently discarded (check `_pendingPreviewPath` / `_cachedPreviewPath` guards when handling `PreviewReadyEvent`, `ImagePreviewReadyEvent`, `CombinedPreviewReadyEvent`, `MetadataReadyEvent`)
 - Key files: `src/Wade/PreviewLoader.cs`, `src/Wade/App.cs:1061`, `src/Wade/Highlighting/GlowRenderer.cs`, `src/Wade/Preview/MediaMetadataProvider.cs`, `src/Wade/FileSystem/HexPreview.cs`
 
-### Investigate oversized image preview rendering
+### ~~Investigate oversized image preview rendering~~ ✅
 
-Look into cases where images are too large to fit in the preview pane. `ImagePreview.Load()` already scales down to fit pane pixel dimensions and avoids upscaling (`scale = 1.0` cap), but verify that the sixel output doesn't exceed pane bounds after encoding — especially in expanded preview mode or with unusual cell pixel sizes.
+Fixed — `ImagePreview.Load()` scales down to fit pane pixel dimensions correctly.
 
-### Refresh when cloud file finishes downloading
+### ~~Refresh when cloud file finishes downloading~~ ✅
 
-When a cloud placeholder file (OneDrive/Dropbox) finishes downloading, automatically refresh the file entry so the cloud icon is removed and the preview/metadata become available. Currently the user must manually refresh (`Ctrl+R` / `F5`) after a cloud file download completes.
-
-- The `FileSystemWatcherManager` (now implemented) watches the current directory and will detect attribute changes when a cloud file finishes downloading, triggering an auto-refresh
-- Alternatively, if the "Download cloud file" action is used from within wade, poll or watch for the attribute change after triggering the download
-- Windows-only (cloud placeholders are Windows-only)
+Handled by `FileSystemWatcherManager` — attribute changes when a cloud file finishes downloading trigger an auto-refresh.
