@@ -61,7 +61,7 @@ Detect whether a drive is SSD, HDD, or network. Some features (like directory si
 
 Support additional archive formats in the preview pane (`.tar`, `.gz`, `.tar.gz`). Zip preview is already implemented via `System.IO.Compression.ZipFile`.
 
-**Recommended after:** "Refactor archive preview: move summary into metadata provider" — new formats would follow the cleaner metadata+file-list pattern from the start, avoiding a second refactor pass.
+Archive summary metadata is now handled by `ArchiveMetadataProvider` — new formats should follow the same metadata+file-list pattern.
 
 ---
 
@@ -88,28 +88,9 @@ Consider using the [CsWin32](https://github.com/microsoft/CsWin32) source genera
 ~~- **Metadata**: Combine and show all applicable providers' sections together (complementary information: document metadata + archive metadata)~~
 ~~- **Preview**: Cycle through applicable preview providers (alternative views; user picks one at a time)~~
 
-### Refactor archive preview: move summary into metadata provider
+### ~~Refactor archive preview: move summary into metadata provider~~ ✓
 
-Separate archive summary info (total size, compressed size, ratio, file count) from the file list preview. Show summary as metadata above the preview, consistent with PDF + image + metadata pattern.
-
-**Current structure:**
-- `ZipPreview.GetPreviewLines()` returns file list + summary line at bottom (see `ZipPreview.cs:107`)
-- One preview pane showing everything together
-
-**Desired structure:**
-- `ZipPreview.GetPreviewLines()` returns only the file entries (columns: Size, Compressed, Ratio, Name)
-- Archive metadata (total size, compressed size, ratio, file count) moves to metadata providers:
-  - **For formats with existing metadata providers:** update `OfficeMetadataProvider` (DOCX, XLSX, PPTX, etc.) and `NuGetMetadataProvider` to also include archive summary metadata alongside their existing document metadata. Archive info becomes an additional `MetadataSection` in the results. Because multiple metadata providers are now supported, both document metadata and archive metadata can coexist.
-  - **For pure archives:** create new `ArchiveMetadataProvider : IMetadataProvider` for formats without existing metadata (`.zip`, `.jar`, `.war`, `.ear`, `.apk`, `.vsix`, `.whl`, etc.). Handles archive summary extraction.
-- Register `ArchiveMetadataProvider` in `MetadataProviderRegistry`
-- Archive preview will then display: metadata (including archive summary) above → file list below (as usual)
-
-**Files to touch:**
-- `src/Wade/FileSystem/ZipPreview.cs` — refactor `GetPreviewLines()` to remove summary line
-- `src/Wade/Preview/OfficeMetadataProvider.cs` — add archive metadata section to existing document metadata
-- `src/Wade/Preview/NuGetMetadataProvider.cs` — add archive metadata section to existing NuGet metadata
-- New `src/Wade/Preview/ArchiveMetadataProvider.cs` — implement `IMetadataProvider` for pure archive types
-- `src/Wade/Preview/MetadataProviderRegistry.cs` — register the new provider
+~~Separate archive summary info (total size, compressed size, ratio, file count) from the file list preview. Show summary as metadata above the preview, consistent with PDF + image + metadata pattern.~~
 
 ### ~~Reduce hotkey listings in help dialog~~ ✓
 

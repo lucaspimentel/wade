@@ -71,15 +71,12 @@ internal static class ZipPreview
             }
 
             int take = Math.Min(files.Count, MaxEntries);
-            List<string> lines = new(take + 4);
+            List<string> lines = new(take + 2);
             Span<char> sizeBuf = stackalloc char[16];
             Span<char> compBuf = stackalloc char[16];
 
             //         "  nnnnnnnnnn  nnnnnnnnnn  nnnnn  filename"
             lines.Add("        Size  Compressed  Ratio  Name");
-
-            long totalSize = 0;
-            long totalCompressed = 0;
 
             for (int i = 0; i < take; i++)
             {
@@ -107,25 +104,6 @@ internal static class ZipPreview
             {
                 lines.Add($"... and {files.Count - MaxEntries} more entries");
             }
-
-            // Totals across all files (not just displayed ones)
-            foreach (var entry in files)
-            {
-                totalSize += entry.Length;
-                totalCompressed += entry.CompressedLength;
-            }
-
-            string totalRatio = totalSize > 0
-                ? $"{(double)totalCompressed / totalSize:P0}"
-                : "---";
-
-            int tsn = FormatHelpers.FormatSize(sizeBuf, totalSize);
-            int tcn = FormatHelpers.FormatSize(compBuf, totalCompressed);
-
-            lines.Add("  ──────────  ──────────  ─────");
-            string totalSizeStr = sizeBuf[..tsn].ToString();
-            string totalCompStr = compBuf[..tcn].ToString();
-            lines.Add($"  {totalSizeStr,10}  {totalCompStr,10}  {totalRatio,5}  {files.Count} files");
 
             return [.. lines];
         }

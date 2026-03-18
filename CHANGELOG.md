@@ -15,6 +15,7 @@
 - Extend zip archive preview to .docx, .xlsx, .pptx, .odt, .ods, .odp, .apk, .vsix, .whl, .epub, and other zip-based formats
 - Show 'Reproducible build' label for executables with zeroed PE timestamps
 - Add cloud file metadata display (filename, size, modified date, "Cloud: not downloaded")
+- Add archive metadata provider showing file count, total/compressed size, and compression ratio for all zip-based archives
 - Add strikethrough (SGR 9) rendering support
 
 ### Changed
@@ -28,6 +29,7 @@
 - Rename 'Source' preview label to 'Text'
 - Hide unavailable preview providers from 'Change preview' menu
 - Default secondary archive formats (.docx, .nupkg, etc.) to "None" preview instead of "Archive Contents"
+- Move archive summary (total size, compressed size, ratio, file count) from preview pane to metadata provider
 - Simplify help dialog to reference action palette instead of listing all hotkeys
 - Draw horizontal separator line between metadata header and preview content
 

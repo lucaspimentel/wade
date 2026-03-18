@@ -53,7 +53,6 @@ public class MetadataProviderRegistryTests
 
     [Theory]
     [InlineData("file.cs")]
-    [InlineData("file.zip")]
     [InlineData("readme.txt")]
     public void NonSpecializedFile_ReturnsOnlyFileMetadataProvider(string path)
     {
@@ -61,6 +60,16 @@ public class MetadataProviderRegistryTests
 
         var provider = Assert.Single(providers);
         Assert.IsType<FileMetadataProvider>(provider);
+    }
+
+    [Theory]
+    [InlineData("archive.zip")]
+    [InlineData("lib.jar")]
+    public void ZipFile_IncludesArchiveMetadataProvider(string path)
+    {
+        var providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
+
+        Assert.Contains(providers, p => p is ArchiveMetadataProvider);
     }
 
     [Theory]
@@ -115,14 +124,21 @@ public class MetadataProviderRegistryTests
         Assert.IsType<FileMetadataProvider>(exeProviders[0]);
         Assert.IsType<ExecutableMetadataProvider>(exeProviders[1]);
 
-        // docx: FileMetadataProvider first, then OfficeMetadataProvider
+        // docx: FileMetadataProvider, OfficeMetadataProvider, ArchiveMetadataProvider
         var docxProviders = MetadataProviderRegistry.GetApplicableProviders("report.docx", MakeContext());
         Assert.IsType<FileMetadataProvider>(docxProviders[0]);
         Assert.IsType<OfficeMetadataProvider>(docxProviders[1]);
+        Assert.IsType<ArchiveMetadataProvider>(docxProviders[2]);
 
-        // nupkg: FileMetadataProvider first, then NuGetMetadataProvider
+        // nupkg: FileMetadataProvider, NuGetMetadataProvider, ArchiveMetadataProvider
         var nupkgProviders = MetadataProviderRegistry.GetApplicableProviders("package.nupkg", MakeContext());
         Assert.IsType<FileMetadataProvider>(nupkgProviders[0]);
         Assert.IsType<NuGetMetadataProvider>(nupkgProviders[1]);
+        Assert.IsType<ArchiveMetadataProvider>(nupkgProviders[2]);
+
+        // zip: FileMetadataProvider, ArchiveMetadataProvider
+        var zipProviders = MetadataProviderRegistry.GetApplicableProviders("archive.zip", MakeContext());
+        Assert.IsType<FileMetadataProvider>(zipProviders[0]);
+        Assert.IsType<ArchiveMetadataProvider>(zipProviders[1]);
     }
 }
