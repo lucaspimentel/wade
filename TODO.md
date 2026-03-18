@@ -133,19 +133,9 @@ When switching preview providers (e.g., from Glow-rendered Markdown to None, or 
 - Reproduce: select a Markdown file → switch to Glow preview → switch to None → observe residual rendered lines
 - Key files: `App.cs` (render dispatch ~line 1096), `src/Wade/UI/PaneRenderer.cs` (`RenderPreview`), sixel write path (~line 215)
 
-### Filesystem-change event subscription (auto-refresh)
+### ~~Filesystem-change event subscription (auto-refresh)~~ ✅
 
-Subscribe to filesystem-change events and auto-refresh the view when files are created, modified, deleted, or renamed.
-
-- Use `FileSystemWatcher` on the current directory to detect changes (Created, Changed, Deleted, Renamed events)
-- On change, invalidate the affected path in `DirectoryContents` (see `Invalidate`/`InvalidateAll` in `src/Wade/FileSystem/DirectoryContents.cs`)
-- Trigger re-render of the file listing pane so new/removed/renamed entries appear immediately
-- Also refresh metadata and preview for the currently selected file if it was modified
-- Debounce rapid events (e.g. bulk file operations) to avoid excessive re-renders
-- Re-subscribe watcher when navigating to a different directory
-- Consider watching subdirectories (for preview pane directory listings) but be mindful of performance on large trees
-- Handle watcher buffer overflow (`Error` event) gracefully — fall back to full directory re-read
-- NativeAOT-compatible (`FileSystemWatcher` is supported in NativeAOT)
+Implemented via `FileSystemWatcherManager` — watches current directory with 300ms debounce, injects `FileSystemChangedEvent` into the input pipeline. Selection preserved by name across refreshes. Buffer overflow falls back to full cache invalidation. Watcher automatically re-subscribes on directory navigation.
 
 ### Cancel in-flight preview when navigating to another file
 
@@ -168,6 +158,6 @@ Look into cases where images are too large to fit in the preview pane. `ImagePre
 
 When a cloud placeholder file (OneDrive/Dropbox) finishes downloading, automatically refresh the file entry so the cloud icon is removed and the preview/metadata become available. Currently the user must manually refresh (`Ctrl+R` / `F5`) after a cloud file download completes.
 
-- Could leverage `FileSystemWatcher` (see "Filesystem-change event subscription" task) to detect when the file attributes change (cloud recall attributes are cleared once downloaded)
+- The `FileSystemWatcherManager` (now implemented) watches the current directory and will detect attribute changes when a cloud file finishes downloading, triggering an auto-refresh
 - Alternatively, if the "Download cloud file" action is used from within wade, poll or watch for the attribute change after triggering the download
 - Windows-only (cloud placeholders are Windows-only)

@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Add filesystem auto-refresh via `FileSystemWatcher` — file list updates automatically when files are created, deleted, or renamed externally
 - Add `--version` CLI flag
 
 ### Changed

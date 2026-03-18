@@ -81,6 +81,9 @@ internal sealed class App
     private string? _aheadBehindText;
     private Dictionary<string, GitFileStatus>? _gitStatuses;
 
+    // Filesystem watcher state
+    private FileSystemWatcherManager? _fsWatcher;
+
     // Directory size calculation state
     private DirectorySizeLoader? _dirSizeLoader;
     private string? _propertiesDirSizePath;
@@ -164,6 +167,7 @@ internal sealed class App
         _dirSizeLoader = new DirectorySizeLoader(pipeline);
         _gitStatusLoader = new GitStatusLoader(pipeline);
         _gitActionRunner = new GitActionRunner(pipeline);
+        _fsWatcher = new FileSystemWatcherManager(pipeline);
         var previewLoader = _previewLoader;
 
         var caps = terminal.Capabilities;
@@ -191,6 +195,9 @@ internal sealed class App
             {
                 _notification = null;
             }
+
+            // Ensure filesystem watcher tracks the current directory
+            _fsWatcher?.Watch(_currentPath);
 
             // Render
             buffer.Clear();
@@ -267,6 +274,10 @@ internal sealed class App
                 else if (extra is GitActionCompleteEvent gitActionExtra)
                 {
                     HandleGitActionComplete(gitActionExtra);
+                }
+                else if (extra is FileSystemChangedEvent fsChangedExtra)
+                {
+                    HandleFileSystemChanged(fsChangedExtra, previewLoader, buffer);
                 }
                 else if (extra is FileFinderScanCompleteEvent scanExtra)
                 {
@@ -377,6 +388,12 @@ internal sealed class App
             if (inputEvent is GitActionCompleteEvent gitActionEvt)
             {
                 HandleGitActionComplete(gitActionEvt);
+                continue;
+            }
+
+            if (inputEvent is FileSystemChangedEvent fsChangedEvt)
+            {
+                HandleFileSystemChanged(fsChangedEvt, previewLoader, buffer);
                 continue;
             }
 
@@ -780,6 +797,7 @@ internal sealed class App
             AdjustScroll(VisibleFileListHeight);
         }
 
+        _fsWatcher?.Dispose();
         return writeCwd ? _currentPath : null;
     }
 
@@ -1362,6 +1380,58 @@ internal sealed class App
         }
 
         RefreshGitStatus();
+    }
+
+    private void HandleFileSystemChanged(FileSystemChangedEvent evt, PreviewLoader previewLoader, ScreenBuffer buffer)
+    {
+        if (!string.Equals(evt.DirectoryPath, _currentPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return; // Stale event for a directory we've navigated away from
+        }
+
+        // Preserve selection by name
+        var entries = GetVisibleEntries();
+        string? selectedName = _selectedIndex < entries.Count ? entries[_selectedIndex].Name : null;
+
+        // Invalidate cache
+        if (evt.FullRefresh)
+        {
+            _directoryContents.InvalidateAll();
+        }
+        else
+        {
+            _directoryContents.Invalidate(_currentPath);
+        }
+
+        // Restore selection
+        var newEntries = GetVisibleEntries();
+        bool selectedSurvived = false;
+        if (selectedName is not null && newEntries.Count > 0)
+        {
+            int idx = newEntries.FindIndex(e => e.Name.Equals(selectedName, StringComparison.OrdinalIgnoreCase));
+            if (idx >= 0)
+            {
+                _selectedIndex = idx;
+                selectedSurvived = true;
+            }
+            else
+            {
+                _selectedIndex = Math.Min(_selectedIndex, newEntries.Count - 1);
+            }
+        }
+        else
+        {
+            _selectedIndex = Math.Min(_selectedIndex, Math.Max(0, newEntries.Count - 1));
+        }
+
+        // Only clear preview if the selected file was deleted/renamed away
+        if (!selectedSurvived)
+        {
+            ClearPreviewCache(previewLoader, buffer);
+        }
+
+        RefreshGitStatus();
+        buffer.ForceFullRedraw();
     }
 
     private void HandleSelectPreviewProvider(int index, PreviewLoader previewLoader, ScreenBuffer buffer)

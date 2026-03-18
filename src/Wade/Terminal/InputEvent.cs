@@ -64,6 +64,8 @@ internal sealed record GitStatusReadyEvent(
 
 internal sealed record GitActionCompleteEvent(bool Success, string? ErrorMessage) : InputEvent;
 
+internal sealed record FileSystemChangedEvent(string DirectoryPath, bool FullRefresh = false) : InputEvent;
+
 internal enum MouseButton
 {
     Left,
