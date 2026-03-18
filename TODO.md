@@ -53,10 +53,6 @@ Detect whether a drive is SSD, HDD, or network. Some features (like directory si
 - **Windows shortcuts** (`.lnk`) — target path, working directory, arguments, timestamps, icon location, hotkey, file attributes, volume info, extra data (environment variables, known folder, tracker info). Reuse existing parser from [lucaspimentel/windows-shortcut-parser](https://github.com/lucaspimentel/windows-shortcut-parser) — pure C#, NativeAOT-safe, zero dependencies. Entry point: `LnkFile.Parse(path)` → `GetTargetPath()`, `Header` (timestamps, size, attributes), `StringData` (name, relative path, working dir, args, icon location), `LinkInfo` (local/network path, volume info), `ExtraDataBlocks`. Add as a project reference or publish as NuGet package. Preview could show the resolved target path prominently, with metadata sections for shortcut properties. Windows-only (`.lnk` is a Windows format; on Unix, detect but skip gracefully).
 - **URL shortcuts** (`.url`) — URL and icon location. Reuse `UrlFile.Parse(path)` from [lucaspimentel/windows-shortcut-parser](https://github.com/lucaspimentel/windows-shortcut-parser). Simple INI-style format; metadata section showing the target URL prominently. Cross-platform (plain text format, works on Unix too).
 
-### ~~Default preview for secondary-archive file types~~ ✓
-
-~~Files that are archives as a secondary file type (e.g. `.docx`, `.nupkg`) should not default to the "Archive Contents" preview. Only primary archive types (`.zip`, `.jar`, `.war`, `.ear`, etc.) should default to archive contents.~~
-
 ### Zip — other archive formats
 
 Support additional archive formats in the preview pane (`.tar`, `.gz`, `.tar.gz`). Zip preview is already implemented via `System.IO.Compression.ZipFile`.
@@ -67,9 +63,13 @@ Archive summary metadata is now handled by `ArchiveMetadataProvider` — new for
 
 ## Backlog
 
-### ~~Detect UTF-16 and BOM-prefixed text encodings~~ ✓
+### Uncouple "Show Image Previews" and "Show PDF Previews" configs
 
-~~The text preview currently assumes UTF-8 without BOM. Detect and handle other text encodings so these files render correctly in the preview pane instead of appearing as binary.~~
+Currently "Show PDF Previews (pdftopng)" is gated by `FilePreviewsEnabled` only. It should not depend on `ImagePreviewsEnabled`. The PDF preview pipeline converts PDF→image→Sixel, so the code currently shares the image preview path, but the config toggle should be independent — a user may want PDF previews without image previews or vice versa.
+
+### Remove file size and modified date from default file metadata
+
+`FileMetadataProvider` shows filename, size, and modified date for every file. Size and modified date are already visible in the center pane's detail columns and in the properties overlay — showing them again in the metadata header is redundant. Remove them from `FileMetadataProvider` output so the metadata section only contains information not shown elsewhere (filename as header, git status).
 
 ### Replace hand-coded P/Invoke with Microsoft.Windows.CsWin32
 
@@ -79,26 +79,6 @@ Consider using the [CsWin32](https://github.com/microsoft/CsWin32) source genera
 - `src/Wade/Terminal/TerminalSetup.cs` — kernel32 (GetStdHandle, Get/SetConsoleMode)
 - `src/Wade/Terminal/WindowsInputSource.cs` — kernel32 (ReadConsoleInput, WaitForSingleObject)
 - `src/Wade/Terminal/LibC.cs` — libc (open, read, poll, tcgetattr, tcsetattr, cfmakeraw) — Unix only, CsWin32 won't cover these
-
-### ~~Support multiple metadata providers per file~~ ✓
-
-~~Refactor the metadata provider system to allow multiple applicable metadata providers per file. Currently `MetadataProviderRegistry.GetProvider()` returns only the first match; refactor to return all applicable providers and **combine their metadata sections into a single view**.~~
-
-~~**Key difference from preview providers:**~~
-~~- **Metadata**: Combine and show all applicable providers' sections together (complementary information: document metadata + archive metadata)~~
-~~- **Preview**: Cycle through applicable preview providers (alternative views; user picks one at a time)~~
-
-### ~~Refactor archive preview: move summary into metadata provider~~ ✓
-
-~~Separate archive summary info (total size, compressed size, ratio, file count) from the file list preview. Show summary as metadata above the preview, consistent with PDF + image + metadata pattern.~~
-
-### ~~Reduce hotkey listings in help dialog~~ ✓
-
-~~Simplify the help dialog by removing most hardcoded hotkey references and instead directing users to the action list (accessible via `?` or action palette), which already displays hotkeys for every action.~~
-
-### ~~Add config option to show/hide file metadata~~ ✓
-
-~~Add `file_metadata_enabled` config flag to toggle file metadata display. Implemented with `file_metadata_enabled`, `file_previews_enabled`, and `archive_metadata_enabled` config keys, all toggleable via the config dialog's hierarchical layout.~~
 
 ### Metadata and preview for .msi Windows Installer files
 
@@ -141,23 +121,6 @@ Research and implement image previews for Office Open XML formats (`.docx`, `.xl
 - Preview registry order: insert after `PdfPreviewProvider` so Office files are attempted
 - Performance concern: LibreOffice startup is slow (~1-2s); consider debouncing or async user feedback
 - Start with DOCX (most common); extend to XLSX/PPTX after proving the concept
-
-### ~~F5 as alias for Ctrl+R (refresh)~~ ✓
-
-~~Add F5 as a second keybinding for `AppAction.Refresh`, alongside the existing `Ctrl+R`.~~
-
-~~- `InputReader.cs:132` handles `Ctrl+R → AppAction.Refresh`; add `ConsoleKey.F5 → AppAction.Refresh` in the same file~~
-~~- On Unix, F5 is already decoded as `ConsoleKey.F5` in `UnixInputSource.cs:275` (VT sequence `\e[15~`)~~
-~~- On Windows, `WindowsInputSource` passes `(ConsoleKey)k.wVirtualKeyCode` directly — `VK_F5 = 0x74` maps to `ConsoleKey.F5` automatically~~
-~~- One-liner addition next to the `Ctrl+R` check in `InputReader.cs`~~
-
-### ~~Show filename in metadata header~~ ✓
-
-~~When displaying file metadata in the right pane (above a preview, if any), include the filename as a header entry so it's immediately visible without looking at the file list. Implemented via FileMetadataProvider which also shows size, modified date, and git status for ALL files.~~
-
-### ~~Image metadata provider~~ ✓
-
-~~Show image metadata (resolution, format, color depth, EXIF) above the image preview, like PDF does.~~
 
 ### Fix stale/leftover content when switching preview types
 
