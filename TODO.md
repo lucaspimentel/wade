@@ -67,9 +67,9 @@ Archive summary metadata is now handled by `ArchiveMetadataProvider` — new for
 
 Currently "Show PDF Previews (pdftopng)" is gated by `FilePreviewsEnabled` only. It should not depend on `ImagePreviewsEnabled`. The PDF preview pipeline converts PDF→image→Sixel, so the code currently shares the image preview path, but the config toggle should be independent — a user may want PDF previews without image previews or vice versa.
 
-### Remove file size and modified date from default file metadata
+### ~~Remove file size and modified date from default file metadata~~ ✅
 
-`FileMetadataProvider` shows filename, size, and modified date for every file. Size and modified date are already visible in the center pane's detail columns and in the properties overlay — showing them again in the metadata header is redundant. Remove them from `FileMetadataProvider` output so the metadata section only contains information not shown elsewhere (filename as header, git status).
+Removed Size and Modified entries from `FileMetadataProvider` — they were redundant with the center pane detail columns and properties overlay. Metadata section now only contains filename (header), cloud status, and git status.
 
 ### Replace hand-coded P/Invoke with Microsoft.Windows.CsWin32
 

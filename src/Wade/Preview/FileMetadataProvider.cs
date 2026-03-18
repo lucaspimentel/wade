@@ -1,4 +1,3 @@
-using System.Globalization;
 using Wade.FileSystem;
 using Wade.UI;
 
@@ -19,26 +18,14 @@ internal sealed class FileMetadataProvider : IMetadataProvider
 
         try
         {
-            var fileInfo = new FileInfo(path);
-            bool isFile = fileInfo.Exists;
-            var fsInfo = isFile ? (FileSystemInfo)fileInfo : new DirectoryInfo(path);
+            bool isFile = File.Exists(path);
 
-            if (!fsInfo.Exists)
+            if (!isFile && !Directory.Exists(path))
             {
                 return null;
             }
 
             var entries = new List<MetadataEntry>();
-
-            if (isFile)
-            {
-                Span<char> sizeBuf = stackalloc char[32];
-                int n = FormatHelpers.FormatSize(sizeBuf, fileInfo.Length);
-                entries.Add(new MetadataEntry("Size", sizeBuf[..n].ToString()));
-            }
-
-            string modified = fsInfo.LastWriteTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
-            entries.Add(new MetadataEntry("Modified", modified));
 
             if (context.IsCloudPlaceholder)
             {

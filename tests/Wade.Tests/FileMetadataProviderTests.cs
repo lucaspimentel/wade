@@ -31,7 +31,7 @@ public class FileMetadataProviderTests
     }
 
     [Fact]
-    public void GetMetadata_Directory_ReturnsNameAndModifiedWithoutSize()
+    public void GetMetadata_Directory_ReturnsNameWithoutSizeOrModified()
     {
         string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(tempDir);
@@ -43,8 +43,8 @@ public class FileMetadataProviderTests
             Assert.NotNull(result);
             var section = Assert.Single(result.Sections);
             Assert.Equal(Path.GetFileName(tempDir), section.Header);
-            Assert.Contains(section.Entries, e => e.Label == "Modified");
             Assert.DoesNotContain(section.Entries, e => e.Label == "Size");
+            Assert.DoesNotContain(section.Entries, e => e.Label == "Modified");
         }
         finally
         {
@@ -74,7 +74,7 @@ public class FileMetadataProviderTests
     }
 
     [Fact]
-    public void GetMetadata_ReturnsSizeAndModified()
+    public void GetMetadata_File_DoesNotIncludeSizeOrModified()
     {
         string tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.txt");
         try
@@ -86,8 +86,8 @@ public class FileMetadataProviderTests
 
             Assert.NotNull(result);
             string flat = FlattenSections(result.Sections);
-            Assert.Contains("Size", flat);
-            Assert.Contains("Modified", flat);
+            Assert.DoesNotContain("Size", flat);
+            Assert.DoesNotContain("Modified", flat);
         }
         finally
         {
@@ -109,7 +109,6 @@ public class FileMetadataProviderTests
             Assert.NotNull(result);
             string flat = FlattenSections(result.Sections);
             Assert.Contains("Git", flat);
-            Assert.Contains("Modified", flat);
         }
         finally
         {

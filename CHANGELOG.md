@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- Remove redundant size and modified date from `FileMetadataProvider` — already shown in detail columns and properties overlay
+
 ## [1.3.0] - 2026-03-18
 
 ### Added
