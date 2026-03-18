@@ -18,6 +18,7 @@ internal sealed class WadeConfig
     public bool ZipPreviewEnabled { get; set; } = true;
     public bool TerminalTitleEnabled { get; set; } = true;
     public bool GitStatusEnabled { get; set; } = true;
+    public bool FileMetadataEnabled { get; set; } = true;
     public HashSet<string> DisabledTools { get; set; } = [];
     public string StartPath { get; set; } = Directory.GetCurrentDirectory();
     public bool ShowConfig { get; set; } = false;
@@ -119,6 +120,9 @@ internal sealed class WadeConfig
                         break;
                     case "git_status_enabled":
                         config.GitStatusEnabled = ParseBool(value, config.GitStatusEnabled);
+                        break;
+                    case "file_metadata_enabled":
+                        config.FileMetadataEnabled = ParseBool(value, config.FileMetadataEnabled);
                         break;
                     case "disabled_tools":
                         foreach (string tool in value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
@@ -232,6 +236,7 @@ internal sealed class WadeConfig
             zip_preview_enabled = {(ZipPreviewEnabled ? "true" : "false")}
             terminal_title_enabled = {(TerminalTitleEnabled ? "true" : "false")}
             git_status_enabled = {(GitStatusEnabled ? "true" : "false")}
+            file_metadata_enabled = {(FileMetadataEnabled ? "true" : "false")}
             """;
 
         if (DisabledTools.Count > 0)
@@ -266,6 +271,7 @@ internal sealed class WadeConfig
             $"\"disabled_tools\":{disabledToolsJson}," +
             $"\"terminal_title_enabled\":{(TerminalTitleEnabled ? "true" : "false")}," +
             $"\"git_status_enabled\":{(GitStatusEnabled ? "true" : "false")}," +
+            $"\"file_metadata_enabled\":{(FileMetadataEnabled ? "true" : "false")}," +
             $"\"start_path\":\"{escapedPath}\"" +
             "}";
     }

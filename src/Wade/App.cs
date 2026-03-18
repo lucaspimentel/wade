@@ -87,6 +87,7 @@ internal sealed class App
     private bool _configCopySymlinksAsLinks;
     private bool _configTerminalTitle;
     private bool _configGitStatus;
+    private bool _configFileMetadata;
 
     // Git status state
     private GitStatusLoader? _gitStatusLoader;
@@ -1062,7 +1063,9 @@ internal sealed class App
                 {
                     _activeProviderIndex = 0;
                     _activePreviewContext = BuildPreviewContext(_layout.RightPane.Width, _layout.RightPane.Height);
-                    _applicableMetadataProviders = MetadataProviderRegistry.GetApplicableProviders(selected.FullPath, _activePreviewContext);
+                    _applicableMetadataProviders = _config.FileMetadataEnabled
+                        ? MetadataProviderRegistry.GetApplicableProviders(selected.FullPath, _activePreviewContext)
+                        : null;
                     _applicableProviders = PreviewProviderRegistry.GetApplicableProviders(selected.FullPath, _activePreviewContext);
 
                     if (_applicableProviders.Count == 0 && _applicableMetadataProviders is { Count: 0 })
@@ -3837,6 +3840,7 @@ internal sealed class App
         _configCopySymlinksAsLinks = _config.CopySymlinksAsLinksEnabled;
         _configTerminalTitle = _config.TerminalTitleEnabled;
         _configGitStatus = _config.GitStatusEnabled;
+        _configFileMetadata = _config.FileMetadataEnabled;
     }
 
     private void HandleConfigKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer)
@@ -3844,21 +3848,37 @@ internal sealed class App
         switch (key.Key)
         {
             case ConsoleKey.UpArrow or ConsoleKey.K:
-                if (_configSelectedIndex > 0)
+            {
+                int prev = _configSelectedIndex - 1;
+                while (prev >= 0 && !IsConfigItemEnabled(prev))
                 {
-                    _configSelectedIndex--;
+                    prev--;
+                }
+
+                if (prev >= 0)
+                {
+                    _configSelectedIndex = prev;
                 }
 
                 break;
+            }
 
             case ConsoleKey.DownArrow or ConsoleKey.J:
-                int maxIndex = OperatingSystem.IsWindows() ? 17 : 16;
-                if (_configSelectedIndex < maxIndex)
+            {
+                int maxIndex = OperatingSystem.IsWindows() ? 19 : 18;
+                int next = _configSelectedIndex + 1;
+                while (next <= maxIndex && !IsConfigItemEnabled(next))
                 {
-                    _configSelectedIndex++;
+                    next++;
+                }
+
+                if (next <= maxIndex)
+                {
+                    _configSelectedIndex = next;
                 }
 
                 break;
+            }
 
             case ConsoleKey.Spacebar:
                 ToggleConfigOption();
@@ -3976,7 +3996,31 @@ internal sealed class App
             case 15: _configCopySymlinksAsLinks = !_configCopySymlinksAsLinks; break;
             case 16: _configTerminalTitle = !_configTerminalTitle; break;
             case 17: _configGitStatus = !_configGitStatus; break;
+            case 18: _configFileMetadata = !_configFileMetadata; break;
         }
+    }
+
+    private bool IsConfigItemEnabled(int index)
+    {
+        if (index <= 1)
+        {
+            return true;
+        }
+
+        if (OperatingSystem.IsWindows() && index == 2)
+        {
+            return _configShowHidden;
+        }
+
+        int adjusted = index + (OperatingSystem.IsWindows() ? -1 : 0);
+        return adjusted switch
+        {
+            <= 5 => true,
+            6 => _configPreviewPane,
+            7 => _configPreviewPane && _configImagePreviews,
+            >= 8 and <= 12 => _configPreviewPane,
+            _ => true,
+        };
     }
 
     private void ApplyConfigChanges(PreviewLoader previewLoader, ScreenBuffer buffer)
@@ -3997,6 +4041,7 @@ internal sealed class App
         _config.CopySymlinksAsLinksEnabled = _configCopySymlinksAsLinks;
         _config.TerminalTitleEnabled = _configTerminalTitle;
         _config.GitStatusEnabled = _configGitStatus;
+        _config.FileMetadataEnabled = _configFileMetadata;
 
         _directoryContents.ShowHiddenFiles = _config.ShowHiddenFiles;
         _directoryContents.ShowSystemFiles = _config.ShowSystemFiles;
@@ -4044,7 +4089,7 @@ internal sealed class App
     private void RenderConfigDialog(ScreenBuffer buffer, int width, int height)
     {
         const int ContentWidth = 47;
-        int contentHeight = OperatingSystem.IsWindows() ? 20 : 19;
+        int contentHeight = OperatingSystem.IsWindows() ? 21 : 20;
         const string Footer = "[Space] Toggle [◄►] Cycle [Enter] Save [Esc] Cancel";
 
         var content = DialogBox.Render(buffer, width, height, Math.Max(ContentWidth, Footer.Length), contentHeight, title: "Configuration", footer: Footer);
@@ -4082,6 +4127,7 @@ internal sealed class App
         itemList.Add(("Copy Symlinks as Link", FormatBool(_configCopySymlinksAsLinks), true));
         itemList.Add(("Change Terminal Title", FormatBool(_configTerminalTitle), true));
         itemList.Add(("Show Git Status", FormatBool(_configGitStatus), true));
+        itemList.Add(("Show File Metadata", FormatBool(_configFileMetadata), true));
 
         for (int i = 0; i < itemList.Count; i++)
         {

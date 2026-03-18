@@ -35,6 +35,7 @@ public class WadeConfigTests
         Assert.True(config.ZipPreviewEnabled);
         Assert.Empty(config.DisabledTools);
         Assert.True(config.TerminalTitleEnabled);
+        Assert.True(config.FileMetadataEnabled);
         Assert.Equal(Directory.GetCurrentDirectory(), config.StartPath);
     }
 
@@ -80,6 +81,8 @@ public class WadeConfigTests
     [InlineData("zip_preview_enabled", false)]
     [InlineData("terminal_title_enabled", true)]
     [InlineData("terminal_title_enabled", false)]
+    [InlineData("file_metadata_enabled", true)]
+    [InlineData("file_metadata_enabled", false)]
     public void ConfigFile_ParsesNewBoolSettings(string key, bool value)
     {
         var path = WriteTempConfig($"{key} = {(value ? "true" : "false")}");
@@ -96,6 +99,7 @@ public class WadeConfigTests
                 "copy_symlinks_as_links_enabled" => config.CopySymlinksAsLinksEnabled,
                 "zip_preview_enabled" => config.ZipPreviewEnabled,
                 "terminal_title_enabled" => config.TerminalTitleEnabled,
+                "file_metadata_enabled" => config.FileMetadataEnabled,
                 _ => throw new ArgumentException($"Unknown key: {key}"),
             };
             Assert.Equal(value, actual);
@@ -392,6 +396,7 @@ public class WadeConfigTests
             original.ZipPreviewEnabled = false;
             original.DisabledTools = new HashSet<string> { "pdftopng", "pdfinfo" };
             original.TerminalTitleEnabled = false;
+            original.FileMetadataEnabled = false;
             original.Save();
 
             var loaded = WadeConfig.Load([], configFilePath: configPath);
@@ -410,6 +415,7 @@ public class WadeConfigTests
             Assert.Contains("pdftopng", loaded.DisabledTools);
             Assert.Contains("pdfinfo", loaded.DisabledTools);
             Assert.False(loaded.TerminalTitleEnabled);
+            Assert.False(loaded.FileMetadataEnabled);
         }
         finally
         {
