@@ -63,9 +63,9 @@ Archive summary metadata is now handled by `ArchiveMetadataProvider` — new for
 
 ## Backlog
 
-### Uncouple "Show Image Previews" and "Show PDF Previews" configs
+### ~~Uncouple "Show Image Previews" and "Show PDF Previews" configs~~ ✅
 
-Currently "Show PDF Previews (pdftopng)" is gated by `FilePreviewsEnabled` only. It should not depend on `ImagePreviewsEnabled`. The PDF preview pipeline converts PDF→image→Sixel, so the code currently shares the image preview path, but the config toggle should be independent — a user may want PDF previews without image previews or vice versa.
+PDF preview now gates on `SixelSupported` (terminal capability) instead of `ImagePreviewsEnabled` (user preference). Disabling image previews no longer disables PDF previews.
 
 ### ~~Remove file size and modified date from default file metadata~~ ✅
 

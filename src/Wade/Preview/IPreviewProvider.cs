@@ -24,6 +24,7 @@ internal record PreviewContext(
     HashSet<string> DisabledTools,
     bool ZipPreviewEnabled,
     bool ImagePreviewsEnabled,
+    bool SixelSupported,
     bool ArchiveMetadataEnabled);
 
 internal record PreviewResult

@@ -5,6 +5,9 @@
 ### Changed
 - Remove redundant size and modified date from `FileMetadataProvider` — already shown in detail columns and properties overlay
 
+### Fixed
+- Fix PDF preview being disabled when "Show Image Previews" is toggled off — PDF preview now only requires Sixel terminal support
+
 ## [1.3.0] - 2026-03-18
 
 ### Added

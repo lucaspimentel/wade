@@ -19,6 +19,7 @@ public class ImageMetadataProviderTests
             DisabledTools: new HashSet<string>(),
             ZipPreviewEnabled: true,
             ImagePreviewsEnabled: true,
+            SixelSupported: true,
             ArchiveMetadataEnabled: true);
 
     private static string CreateTempPng(int width, int height)

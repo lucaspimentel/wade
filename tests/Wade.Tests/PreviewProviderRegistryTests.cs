@@ -38,7 +38,8 @@ public class PreviewProviderRegistryTests : IDisposable
         string? repoRoot = null,
         HashSet<string>? disabledTools = null,
         bool zipPreviewEnabled = true,
-        bool imagePreviewsEnabled = true) =>
+        bool imagePreviewsEnabled = true,
+        bool sixelSupported = true) =>
         new(
             PaneWidthCells: 40,
             PaneHeightCells: 30,
@@ -51,6 +52,7 @@ public class PreviewProviderRegistryTests : IDisposable
             DisabledTools: disabledTools ?? new HashSet<string>(),
             ZipPreviewEnabled: zipPreviewEnabled,
             ImagePreviewsEnabled: imagePreviewsEnabled,
+            SixelSupported: sixelSupported,
             ArchiveMetadataEnabled: true);
 
     [Fact]

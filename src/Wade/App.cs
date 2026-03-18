@@ -1423,6 +1423,7 @@ internal sealed class App
             DisabledTools: _config.DisabledTools,
             ZipPreviewEnabled: _config.ZipPreviewEnabled,
             ImagePreviewsEnabled: _imagePreviewsEffective,
+            SixelSupported: _sixelSupported,
             ArchiveMetadataEnabled: _config.ArchiveMetadataEnabled);
     }
 

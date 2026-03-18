@@ -42,7 +42,7 @@ internal sealed class PdfPreviewProvider : IPreviewProvider
 
     public bool CanPreview(string path, PreviewContext context) =>
         !context.DisabledTools.Contains("pdftopng")
-        && context.ImagePreviewsEnabled
+        && context.SixelSupported
         && ImageConverter.CanConvert(path);
 
     public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct)

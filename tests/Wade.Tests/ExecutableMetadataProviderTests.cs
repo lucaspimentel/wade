@@ -17,6 +17,7 @@ public class ExecutableMetadataProviderTests
             DisabledTools: new HashSet<string>(),
             ZipPreviewEnabled: true,
             ImagePreviewsEnabled: true,
+            SixelSupported: true,
             ArchiveMetadataEnabled: true);
 
     [Theory]

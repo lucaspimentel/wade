@@ -18,6 +18,7 @@ public class FileMetadataProviderTests
             DisabledTools: new HashSet<string>(),
             ZipPreviewEnabled: true,
             ImagePreviewsEnabled: true,
+            SixelSupported: true,
             ArchiveMetadataEnabled: true);
 
     [Theory]
@@ -136,6 +137,7 @@ public class FileMetadataProviderTests
                 DisabledTools: new HashSet<string>(),
                 ZipPreviewEnabled: true,
                 ImagePreviewsEnabled: true,
+                SixelSupported: true,
             ArchiveMetadataEnabled: true);
 
             var provider = new FileMetadataProvider();

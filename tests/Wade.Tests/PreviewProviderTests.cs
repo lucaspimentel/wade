@@ -13,7 +13,8 @@ public class PreviewProviderTests
         string? repoRoot = null,
         HashSet<string>? disabledTools = null,
         bool zipPreviewEnabled = true,
-        bool imagePreviewsEnabled = true) =>
+        bool imagePreviewsEnabled = true,
+        bool sixelSupported = true) =>
         new(
             PaneWidthCells: 40,
             PaneHeightCells: 30,
@@ -26,6 +27,7 @@ public class PreviewProviderTests
             DisabledTools: disabledTools ?? new HashSet<string>(),
             ZipPreviewEnabled: zipPreviewEnabled,
             ImagePreviewsEnabled: imagePreviewsEnabled,
+            SixelSupported: sixelSupported,
             ArchiveMetadataEnabled: true);
 
     // --- ImagePreviewProvider ---
@@ -80,10 +82,18 @@ public class PreviewProviderTests
         }
 
         [Fact]
-        public void CanPreview_ImagePreviewsDisabled_ReturnsFalse()
+        public void CanPreview_ImagePreviewsDisabled_StillReturnsTrue()
         {
             var provider = new PdfPreviewProvider();
-            Assert.False(provider.CanPreview("file.pdf", DefaultContext(imagePreviewsEnabled: false)));
+            // PDF preview is independent of image previews — only requires Sixel support
+            Assert.True(provider.CanPreview("file.pdf", DefaultContext(imagePreviewsEnabled: false)));
+        }
+
+        [Fact]
+        public void CanPreview_SixelNotSupported_ReturnsFalse()
+        {
+            var provider = new PdfPreviewProvider();
+            Assert.False(provider.CanPreview("file.pdf", DefaultContext(sixelSupported: false)));
         }
 
         [Theory]
