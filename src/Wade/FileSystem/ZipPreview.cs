@@ -8,11 +8,20 @@ internal static class ZipPreview
 {
     private const int MaxEntries = 100;
 
+    // Primary archive types: archive contents is the default preview
+    private static readonly FrozenSet<string> s_primaryArchiveExtensions =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".zip", ".jar", ".war", ".ear", ".apk", ".vsix", ".whl",
+        }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+
+    // All zip-based extensions (primary + secondary)
     private static readonly FrozenSet<string> s_zipExtensions =
         new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             ".zip", ".nupkg", ".snupkg", ".jar", ".war", ".ear",
-            ".docx", ".xlsx", ".pptx", ".odt", ".ods", ".odp",
+            ".docx", ".xlsx", ".pptx", ".dotx", ".xltx", ".potx",
+            ".odt", ".ods", ".odp",
             ".apk", ".vsix", ".whl", ".epub",
         }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
@@ -20,6 +29,18 @@ internal static class ZipPreview
     {
         string ext = Path.GetExtension(path);
         return ext.Length > 0 && s_zipExtensions.Contains(ext);
+    }
+
+    /// <summary>
+    /// Returns true if the file is a primary archive type where archive contents
+    /// should be the default preview (e.g. .zip, .jar). Returns false for
+    /// secondary archive types like .docx or .nupkg where archive contents
+    /// is available but not the default.
+    /// </summary>
+    public static bool IsPrimaryArchive(string path)
+    {
+        string ext = Path.GetExtension(path);
+        return ext.Length > 0 && s_primaryArchiveExtensions.Contains(ext);
     }
 
     public static string[]? GetPreviewLines(string path, CancellationToken ct)

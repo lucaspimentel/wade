@@ -41,6 +41,37 @@ public class ZipPreviewTests
         Assert.False(ZipPreview.IsZipFile($"file{ext}"));
     }
 
+    [Theory]
+    [InlineData(".zip")]
+    [InlineData(".jar")]
+    [InlineData(".war")]
+    [InlineData(".ear")]
+    [InlineData(".apk")]
+    [InlineData(".vsix")]
+    [InlineData(".whl")]
+    public void IsPrimaryArchive_PrimaryTypes_ReturnsTrue(string ext)
+    {
+        Assert.True(ZipPreview.IsPrimaryArchive($"file{ext}"));
+    }
+
+    [Theory]
+    [InlineData(".nupkg")]
+    [InlineData(".snupkg")]
+    [InlineData(".docx")]
+    [InlineData(".xlsx")]
+    [InlineData(".pptx")]
+    [InlineData(".dotx")]
+    [InlineData(".xltx")]
+    [InlineData(".potx")]
+    [InlineData(".odt")]
+    [InlineData(".ods")]
+    [InlineData(".odp")]
+    [InlineData(".epub")]
+    public void IsPrimaryArchive_SecondaryTypes_ReturnsFalse(string ext)
+    {
+        Assert.False(ZipPreview.IsPrimaryArchive($"file{ext}"));
+    }
+
     [Fact]
     public void GetPreviewLines_ValidZip_ReturnsHeaderAndEntries()
     {

@@ -117,37 +117,37 @@ public class PreviewProviderRegistryTests : IDisposable
     }
 
     [Fact]
-    public void GitModifiedNupkgFile_ReturnsZipContentsThenDiffThenNoneThenHex()
+    public void GitModifiedNupkgFile_DefaultsToNone_ArchiveContentsAvailable()
     {
         var context = MakeContext(gitStatus: GitFileStatus.Modified, repoRoot: "/repo");
         var providers = PreviewProviderRegistry.GetApplicableProviders("file.nupkg", context);
 
         Assert.Equal(4, providers.Count);
-        Assert.IsType<ZipContentsPreviewProvider>(providers[0]);
-        Assert.IsType<DiffPreviewProvider>(providers[1]);
-        Assert.IsType<NonePreviewProvider>(providers[2]);
+        Assert.IsType<DiffPreviewProvider>(providers[0]);
+        Assert.IsType<NonePreviewProvider>(providers[1]);
+        Assert.IsType<ZipContentsPreviewProvider>(providers[2]);
         Assert.IsType<HexPreviewProvider>(providers[3]);
     }
 
     [Fact]
-    public void NupkgFile_ReturnsZipContentsThenNoneThenHex()
+    public void NupkgFile_DefaultsToNone_ArchiveContentsAvailable()
     {
         var providers = PreviewProviderRegistry.GetApplicableProviders("package.nupkg", MakeContext());
 
         Assert.Equal(3, providers.Count);
-        Assert.IsType<ZipContentsPreviewProvider>(providers[0]);
-        Assert.IsType<NonePreviewProvider>(providers[1]);
+        Assert.IsType<NonePreviewProvider>(providers[0]);
+        Assert.IsType<ZipContentsPreviewProvider>(providers[1]);
         Assert.IsType<HexPreviewProvider>(providers[2]);
     }
 
     [Fact]
-    public void DocxFile_ReturnsZipContentsThenNoneThenHex()
+    public void DocxFile_DefaultsToNone_ArchiveContentsAvailable()
     {
         var providers = PreviewProviderRegistry.GetApplicableProviders("report.docx", MakeContext());
 
         Assert.Equal(3, providers.Count);
-        Assert.IsType<ZipContentsPreviewProvider>(providers[0]);
-        Assert.IsType<NonePreviewProvider>(providers[1]);
+        Assert.IsType<NonePreviewProvider>(providers[0]);
+        Assert.IsType<ZipContentsPreviewProvider>(providers[1]);
         Assert.IsType<HexPreviewProvider>(providers[2]);
     }
 

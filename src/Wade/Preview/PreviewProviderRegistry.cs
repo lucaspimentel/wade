@@ -1,3 +1,5 @@
+using Wade.FileSystem;
+
 namespace Wade.Preview;
 
 internal static class PreviewProviderRegistry
@@ -28,6 +30,23 @@ internal static class PreviewProviderRegistry
             if (provider.CanPreview(path, context))
             {
                 result.Add(provider);
+            }
+        }
+
+        // For secondary archive types (e.g. .docx, .nupkg), move archive contents
+        // after "None" so it's available via the preview switcher but not the default.
+        if (ZipPreview.IsZipFile(path) && !ZipPreview.IsPrimaryArchive(path))
+        {
+            int zipIndex = result.FindIndex(p => p is ZipContentsPreviewProvider);
+            int noneIndex = result.FindIndex(p => p is NonePreviewProvider);
+
+            if (zipIndex >= 0 && noneIndex >= 0 && zipIndex < noneIndex)
+            {
+                var zip = result[zipIndex];
+                result.RemoveAt(zipIndex);
+                // noneIndex shifted left by 1 after removal
+                int insertAt = noneIndex; // insert after None (which is now at noneIndex - 1)
+                result.Insert(insertAt, zip);
             }
         }
 
