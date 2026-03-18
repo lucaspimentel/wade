@@ -7,12 +7,15 @@
 - Metadata displayed as styled header above preview pane and in properties overlay
 - Add `FileMetadataProvider` showing filename, size, modified date, and git status for all files and directories
 - Add PDF metadata provider showing document properties (title, author, page count) via pdfinfo
+- Add image metadata provider showing resolution, format, color depth, frame count, and EXIF data (camera, exposure, GPS)
 - Add 'Download cloud file' action for OneDrive/Dropbox placeholder files (Windows)
 - Add 'p' keybinding to open 'Change preview' submenu directly
 - Add F5 as alias for Ctrl+R to refresh the current directory
 - Add action palette submenu support for grouped actions (used by 'Change preview')
 - Extend zip archive preview to .docx, .xlsx, .pptx, .odt, .ods, .odp, .apk, .vsix, .whl, .epub, and other zip-based formats
 - Show 'Reproducible build' label for executables with zeroed PE timestamps
+- Add cloud file metadata display (filename, size, modified date, "Cloud: not downloaded")
+- Add strikethrough (SGR 9) rendering support
 
 ### Changed
 - Add "None" preview option available for all files; binary files now default to "None" instead of hex dump
@@ -24,6 +27,8 @@
 - Support combining sections from multiple metadata providers per file
 - Rename 'Source' preview label to 'Text'
 - Hide unavailable preview providers from 'Change preview' menu
+- Default secondary archive formats (.docx, .nupkg, etc.) to "None" preview instead of "Archive Contents"
+- Simplify help dialog to reference action palette instead of listing all hotkeys
 - Draw horizontal separator line between metadata header and preview content
 
 ### Fixed
@@ -31,6 +36,7 @@
 - Fix stale preview content when switching files
 - Fix stale content when scrolling in preview pane
 - Fix syntax highlighting for dotfiles (e.g. .bashrc, .zshrc)
+- Fix UTF-16 files incorrectly detected as binary
 
 ## [1.2.0] - 2026-03-15
 

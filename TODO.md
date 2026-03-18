@@ -191,15 +191,9 @@ Research and implement image previews for Office Open XML formats (`.docx`, `.xl
 
 ~~When displaying file metadata in the right pane (above a preview, if any), include the filename as a header entry so it's immediately visible without looking at the file list. Implemented via FileMetadataProvider which also shows size, modified date, and git status for ALL files.~~
 
-### Image metadata provider
+### ~~Image metadata provider~~ ✓
 
-Show image metadata (resolution, format, color depth, EXIF) above the image preview, like PDF does.
-
-- Add `ImageMetadataProvider : IMetadataProvider` and register it in `src/Wade/Preview/MetadataProviderRegistry.cs`
-- `SixLabors.ImageSharp` is already a dependency for image rendering — use `Image.Identify()` (non-decoding) to read `IImageInfo` for width, height, pixel format, and metadata without loading pixel data
-- For EXIF: `ImageSharp` exposes `ExifProfile` via `IImageInfo.Metadata.ExifProfile`; extract useful tags (e.g., Camera make/model, DateTimeOriginal, ISO, exposure, focal length, GPS coordinates)
-- Hook into the existing `RenderMetadataWithImage` path in `App.cs:1866` — metadata will appear above the Sixel image automatically
-- File types to handle: common raster formats already supported by `ImagePreviewProvider` (`.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.webp`, `.tiff`, etc.)
+~~Show image metadata (resolution, format, color depth, EXIF) above the image preview, like PDF does.~~
 
 ### Fix stale/leftover content when switching preview types
 

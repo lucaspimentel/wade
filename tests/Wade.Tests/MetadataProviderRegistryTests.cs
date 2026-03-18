@@ -54,14 +54,24 @@ public class MetadataProviderRegistryTests
     [Theory]
     [InlineData("file.cs")]
     [InlineData("file.zip")]
-    [InlineData("file.png")]
     [InlineData("readme.txt")]
-    public void AnyFile_AlwaysIncludesFileMetadataProvider(string path)
+    public void NonSpecializedFile_ReturnsOnlyFileMetadataProvider(string path)
     {
         var providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
 
         var provider = Assert.Single(providers);
         Assert.IsType<FileMetadataProvider>(provider);
+    }
+
+    [Theory]
+    [InlineData("photo.png")]
+    [InlineData("photo.jpg")]
+    [InlineData("photo.gif")]
+    public void ImageFile_IncludesImageMetadataProvider(string path)
+    {
+        var providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
+
+        Assert.Contains(providers, p => p is ImageMetadataProvider);
     }
 
     [Fact]
@@ -85,7 +95,7 @@ public class MetadataProviderRegistryTests
     public void FileMetadataProvider_IsAlwaysFirst()
     {
         // FileMetadataProvider must be first so the filename section appears at the top
-        foreach (string path in (string[])["app.exe", "report.docx", "package.nupkg", "file.txt"])
+        foreach (string path in (string[])["app.exe", "report.docx", "package.nupkg", "photo.png", "file.txt"])
         {
             var providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
             Assert.IsType<FileMetadataProvider>(providers[0]);
@@ -95,6 +105,11 @@ public class MetadataProviderRegistryTests
     [Fact]
     public void RegistryPreservesProviderOrder()
     {
+        // image: FileMetadataProvider first, then ImageMetadataProvider
+        var imgProviders = MetadataProviderRegistry.GetApplicableProviders("photo.png", MakeContext());
+        Assert.IsType<FileMetadataProvider>(imgProviders[0]);
+        Assert.IsType<ImageMetadataProvider>(imgProviders[1]);
+
         // exe/dll: FileMetadataProvider first, then ExecutableMetadataProvider
         var exeProviders = MetadataProviderRegistry.GetApplicableProviders("app.exe", MakeContext());
         Assert.IsType<FileMetadataProvider>(exeProviders[0]);
