@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.3.0] - 2026-03-18
 
 ### Added
 - Separate `IMetadataProvider` system for structured file metadata (NuGet, Executable, Office, Media, PDF)
