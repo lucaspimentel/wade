@@ -217,3 +217,11 @@ Pressing up/down to change selection while a file preview is still generating sh
 ### Investigate oversized image preview rendering
 
 Look into cases where images are too large to fit in the preview pane. `ImagePreview.Load()` already scales down to fit pane pixel dimensions and avoids upscaling (`scale = 1.0` cap), but verify that the sixel output doesn't exceed pane bounds after encoding — especially in expanded preview mode or with unusual cell pixel sizes.
+
+### Refresh when cloud file finishes downloading
+
+When a cloud placeholder file (OneDrive/Dropbox) finishes downloading, automatically refresh the file entry so the cloud icon is removed and the preview/metadata become available. Currently the user must manually refresh (`Ctrl+R` / `F5`) after a cloud file download completes.
+
+- Could leverage `FileSystemWatcher` (see "Filesystem-change event subscription" task) to detect when the file attributes change (cloud recall attributes are cleared once downloaded)
+- Alternatively, if the "Download cloud file" action is used from within wade, poll or watch for the attribute change after triggering the download
+- Windows-only (cloud placeholders are Windows-only)
