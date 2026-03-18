@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using Wade.FileSystem;
+using Wade.Imaging;
 using Wade.Preview;
 
 namespace Wade.Tests;
@@ -84,6 +85,12 @@ public class PreviewProviderTests
         [Fact]
         public void CanPreview_ImagePreviewsDisabled_StillReturnsTrue()
         {
+            // Requires pdftopng on PATH — skip if not available
+            if (!ImageConverter.CanConvert("file.pdf"))
+            {
+                return;
+            }
+
             var provider = new PdfPreviewProvider();
             // PDF preview is independent of image previews — only requires Sixel support
             Assert.True(provider.CanPreview("file.pdf", DefaultContext(imagePreviewsEnabled: false)));
@@ -92,6 +99,12 @@ public class PreviewProviderTests
         [Fact]
         public void CanPreview_SixelNotSupported_ReturnsFalse()
         {
+            // Requires pdftopng on PATH — skip if not available
+            if (!ImageConverter.CanConvert("file.pdf"))
+            {
+                return;
+            }
+
             var provider = new PdfPreviewProvider();
             Assert.False(provider.CanPreview("file.pdf", DefaultContext(sixelSupported: false)));
         }
