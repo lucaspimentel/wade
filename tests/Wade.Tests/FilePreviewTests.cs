@@ -282,4 +282,76 @@ public class FilePreviewTests
         finally { File.Delete(tempFile); }
     }
 
+    [Fact]
+    public void DetectFileMetadata_Utf16LeBom_ReturnsUtf16LeEncoding()
+    {
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(tempFile, "Hello UTF-16", System.Text.Encoding.Unicode);
+            var metadata = FilePreview.DetectFileMetadata(tempFile);
+            Assert.False(metadata.IsBinary);
+            Assert.Equal("UTF-16 LE", metadata.Encoding);
+        }
+        finally { File.Delete(tempFile); }
+    }
+
+    [Fact]
+    public void DetectFileMetadata_Utf16BeBom_ReturnsUtf16BeEncoding()
+    {
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(tempFile, "Hello UTF-16", System.Text.Encoding.BigEndianUnicode);
+            var metadata = FilePreview.DetectFileMetadata(tempFile);
+            Assert.False(metadata.IsBinary);
+            Assert.Equal("UTF-16 BE", metadata.Encoding);
+        }
+        finally { File.Delete(tempFile); }
+    }
+
+    [Fact]
+    public void IsBinary_Utf16LeFile_ReturnsFalse()
+    {
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(tempFile, "Hello UTF-16", System.Text.Encoding.Unicode);
+            Assert.False(FilePreview.IsBinary(tempFile));
+        }
+        finally { File.Delete(tempFile); }
+    }
+
+    [Fact]
+    public void GetPreviewLines_Utf16LeFile_ReturnsDecodedText()
+    {
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(tempFile, "line1\nline2\nline3", System.Text.Encoding.Unicode);
+            var lines = FilePreview.GetPreviewLines(tempFile, out var metadata);
+            Assert.Equal(3, lines.Length);
+            Assert.Equal("line1", lines[0]);
+            Assert.Equal("line2", lines[1]);
+            Assert.Equal("line3", lines[2]);
+        }
+        finally { File.Delete(tempFile); }
+    }
+
+    [Fact]
+    public void GetPreviewLines_Utf16BeFile_ReturnsDecodedText()
+    {
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(tempFile, "line1\nline2\nline3", System.Text.Encoding.BigEndianUnicode);
+            var lines = FilePreview.GetPreviewLines(tempFile, out var metadata);
+            Assert.Equal(3, lines.Length);
+            Assert.Equal("line1", lines[0]);
+            Assert.Equal("line2", lines[1]);
+            Assert.Equal("line3", lines[2]);
+        }
+        finally { File.Delete(tempFile); }
+    }
+
 }

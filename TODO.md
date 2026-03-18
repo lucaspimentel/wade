@@ -67,6 +67,10 @@ Support additional archive formats in the preview pane (`.tar`, `.gz`, `.tar.gz`
 
 ## Backlog
 
+### ~~Detect UTF-16 and BOM-prefixed text encodings~~ ✓
+
+~~The text preview currently assumes UTF-8 without BOM. Detect and handle other text encodings so these files render correctly in the preview pane instead of appearing as binary.~~
+
 ### Replace hand-coded P/Invoke with Microsoft.Windows.CsWin32
 
 Consider using the [CsWin32](https://github.com/microsoft/CsWin32) source generator to auto-generate P/Invoke signatures instead of hand-coding `[DllImport]` declarations. Files with manual P/Invoke:

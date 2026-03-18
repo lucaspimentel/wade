@@ -240,13 +240,14 @@ internal static class FilePreview
             }
             else if (bytesRead >= 2 && buffer[0] == 0xFF && buffer[1] == 0xFE)
             {
-                encoding = "UTF-16 LE";
-                dataStart = 2;
+                // UTF-16 LE BOM — unambiguously text; skip null-byte scan
+                // (UTF-16 content naturally contains 0x00 bytes)
+                return new FileMetadata(IsBinary: false, Encoding: "UTF-16 LE", LineEnding: null);
             }
             else if (bytesRead >= 2 && buffer[0] == 0xFE && buffer[1] == 0xFF)
             {
-                encoding = "UTF-16 BE";
-                dataStart = 2;
+                // UTF-16 BE BOM — unambiguously text; skip null-byte scan
+                return new FileMetadata(IsBinary: false, Encoding: "UTF-16 BE", LineEnding: null);
             }
 
             // Scan for null bytes (binary) and line endings
