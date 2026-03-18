@@ -96,26 +96,9 @@ Consider using the [CsWin32](https://github.com/microsoft/CsWin32) source genera
 
 ~~Simplify the help dialog by removing most hardcoded hotkey references and instead directing users to the action list (accessible via `?` or action palette), which already displays hotkeys for every action.~~
 
-### Add config option to show/hide file metadata
+### ~~Add config option to show/hide file metadata~~ ✓
 
-**Note:** If "Support multiple metadata providers per file" lands first, the toggle should hide/show all combined metadata sections, not just the first provider's output. Either order works, but be aware of the interaction.
-
-Add a `file_metadata_enabled` config flag (like `file_preview_enabled`) to allow users to toggle the file metadata display in the right column.
-
-- New config key: `file_metadata_enabled` (default: `true`)
-- Add toggle keybinding (similar to preview toggle): suggest `Alt+M` or `Ctrl+Shift+M` (avoid reserved `Ctrl+Shift+<key>` in Windows Terminal)
-- Toggle action: `AppAction.ToggleFileMetadata`
-- When disabled: right column shows nothing (or falls back to preview-only if preview is enabled)
-- Implementation: check `_config.FileMetadataEnabled` before rendering metadata in the right pane (similar to `_config.PreviewPaneEnabled` in `App.cs`)
-- Status bar may show a visual indicator (like it does for preview pane)
-- Keyboard help/action menu should list this toggle
-
-**Files to touch:**
-- `src/Wade/Config.cs` — add `bool FileMetadataEnabled { get; set; }` property
-- `src/Wade/ConfigSchema.cs` — add YAML schema entry with default
-- `src/Wade/App.cs` — add toggle action, check flag before rendering metadata
-- `src/Wade/Terminal/InputReader.cs` — add keybinding for toggle
-- Optional: `src/Wade/UI/StatusBar.cs` — show indicator if metadata display is off
+~~Add `file_metadata_enabled` config flag to toggle file metadata display. Implemented with `file_metadata_enabled`, `file_previews_enabled`, and `archive_metadata_enabled` config keys, all toggleable via the config dialog's hierarchical layout.~~
 
 ### Metadata and preview for .msi Windows Installer files
 

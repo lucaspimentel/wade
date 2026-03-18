@@ -17,6 +17,9 @@
 - Add cloud file metadata display (filename, size, modified date, "Cloud: not downloaded")
 - Add archive metadata provider showing file count, total/compressed size, and compression ratio for all zip-based archives
 - Add strikethrough (SGR 9) rendering support
+- Add `file_metadata_enabled` config toggle for file metadata display in the right pane
+- Add `file_previews_enabled` config toggle for file preview display in the right pane
+- Add `archive_metadata_enabled` config toggle for archive metadata (file count, sizes, compression ratio)
 
 ### Changed
 - Add "None" preview option available for all files; binary files now default to "None" instead of hex dump
@@ -32,6 +35,9 @@
 - Move archive summary (total size, compressed size, ratio, file count) from preview pane to metadata provider
 - Simplify help dialog to reference action palette instead of listing all hotkeys
 - Draw horizontal separator line between metadata header and preview content
+- Refactor config dialog to data-driven model (`ConfigItem`/`ConfigDialogState` in `Wade.UI`) — eliminates hardcoded index math
+- Reorganize config dialog: rename "Show Preview Pane" to "Show Right Pane", group file details and file previews as nested sub-items with independent enable/disable
+- Replace per-tool config booleans (`glow_markdown_preview_enabled`, `pdf_preview_enabled`) with unified `disabled_tools` list
 
 ### Fixed
 - Fix PDF preview image overlapping metadata in preview pane

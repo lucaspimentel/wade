@@ -38,7 +38,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Mouse support** — click to select entries in any pane, scroll wheel to navigate; left/right pane clicks navigate directories
 - **File properties** — press `i` to open a properties overlay showing detailed metadata: name, full path, type (extension-based labels like "PDF" or "C#", symlink-aware labels like "Symlink → File"), link target, formatted size with raw bytes (directories calculate size asynchronously), created/modified/accessed timestamps, file attributes, read-only status, git status (colored: modified=yellow, staged=cyan, untracked=green, conflict=red), and extracted file metadata when available (NuGet package info, PE/assembly details, Office document properties, media info)
 - **Glow markdown preview** — renders markdown files using the [glow](https://github.com/charmbracelet/glow) CLI for rich preview with styled headings, lists, code blocks, etc. (requires `glow` on PATH; disabled by default; enable with `glow_markdown_preview_enabled = true` in config or toggle in config dialog)
-- **In-app configuration** — press `,` to open a config dialog with toggleable options: icons, hidden files, system files (Windows), sort mode, sort direction, delete confirmation, preview pane, image previews, PDF preview, glow markdown preview, zip preview, size column, date column, copy-symlinks-as-links, terminal title, and git status; changes are saved directly to the config file
+- **In-app configuration** — press `,` to open a config dialog with toggleable options organized in a hierarchy: icons, hidden/system files, sort mode/direction, columns, delete confirmation, copy-symlinks-as-links, terminal title, git status, right pane (with nested file details and file previews sub-groups controlling metadata providers and preview providers independently); changes are saved directly to the config file
 - **Bookmarks** — press `b` to open a filterable bookmarks dialog; press `B` to toggle the current directory as a bookmark; quick-jump with `1`-`9`, `Enter` to navigate, `d`/`Delete` to remove; bookmarks persist to `~/.config/wade/bookmarks` in MRU order
 - **File finder** — press `Ctrl+F` to recursively search for files by name in the current directory tree; type to filter, Up/Down to navigate, Enter to open the file. Automatically skips `.git` directories and respects hidden/system file visibility settings
 - **Action palette** — press `Ctrl+P` or `Ctrl+K` to open a searchable action palette listing all available commands; type to filter, Up/Down to navigate, Enter to execute; supports submenus (e.g., "Change preview" opens a submenu of available preview modes for the selected file)
@@ -96,8 +96,6 @@ wade C:\Users     # open in a specific directory
 
 ```toml
 show_icons_enabled = true
-image_previews_enabled = true
-glow_markdown_preview_enabled = false
 show_hidden_files = false
 show_system_files = false       # Windows only; requires show_hidden_files
 sort_mode = name                # name, modified, size, extension
@@ -107,10 +105,14 @@ preview_pane_enabled = true
 size_column_enabled = true
 date_column_enabled = true
 copy_symlinks_as_links_enabled = true
-zip_preview_enabled = true
-pdf_preview_enabled = true
 terminal_title_enabled = true
 git_status_enabled = true
+file_metadata_enabled = true
+archive_metadata_enabled = true
+file_previews_enabled = true
+image_previews_enabled = true
+zip_preview_enabled = true
+disabled_tools = glow,pdftopng  # comma-separated list of disabled external tools
 ```
 
 ### CLI flags
