@@ -1174,7 +1174,14 @@ internal sealed class App
                 if (selectedEntry is not null)
                 {
                     GitFileStatus? propGitStatus = _gitStatuses?.TryGetValue(selectedEntry.FullPath, out var gs) == true ? gs : null;
-                    PropertiesOverlay.Render(buffer, width, height, selectedEntry, _propertiesDirSizeText, propGitStatus, _cachedMetadataSections);
+                    // Filter out FileMetadataProvider sections (header = filename) — properties overlay already shows that info
+                    MetadataSection[]? propMetadata = _cachedMetadataSections?.Where(s => s.Header != selectedEntry.Name).ToArray();
+                    if (propMetadata is { Length: 0 })
+                    {
+                        propMetadata = null;
+                    }
+
+                    PropertiesOverlay.Render(buffer, width, height, selectedEntry, _propertiesDirSizeText, propGitStatus, propMetadata);
                 }
                 break;
             case InputMode.ActionPalette:

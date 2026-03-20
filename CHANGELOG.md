@@ -10,6 +10,7 @@
 
 ### Changed
 - Remove redundant size and modified date from `FileMetadataProvider` — already shown in detail columns and properties overlay
+- Hide `FileMetadataProvider` sections from properties overlay — information is already shown in the overlay's own fields
 
 ### Fixed
 - Fix in-flight preview subprocesses (glow, ffprobe, pdftopng, pdfinfo, git diff) not being killed on cancellation — processes are now terminated immediately when navigating away, eliminating preview lag during rapid scrolling
