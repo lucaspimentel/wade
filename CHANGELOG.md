@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.4.0] - 2026-03-20
 
 ### Added
 - Add scrollable properties overlay — arrow keys, Page Up/Down, Home/End for vertical scrolling when content exceeds screen height
