@@ -89,6 +89,19 @@ internal sealed class ConfigDialogState
         {
             SelectedIndex = prev;
         }
+        else
+        {
+            int last = Items.Count - 1;
+            while (last > SelectedIndex && !Items[last].IsEnabled)
+            {
+                last--;
+            }
+
+            if (last > SelectedIndex)
+            {
+                SelectedIndex = last;
+            }
+        }
     }
 
     public void MoveDown()
@@ -103,6 +116,19 @@ internal sealed class ConfigDialogState
         if (next <= maxIndex)
         {
             SelectedIndex = next;
+        }
+        else
+        {
+            int first = 0;
+            while (first < SelectedIndex && !Items[first].IsEnabled)
+            {
+                first++;
+            }
+
+            if (first < SelectedIndex)
+            {
+                SelectedIndex = first;
+            }
         }
     }
 

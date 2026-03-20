@@ -8,7 +8,7 @@
 - Add `--version` CLI flag
 - Add MSI metadata provider showing ProductName, Version, Manufacturer, ProductCode, UpgradeCode, and summary info via Windows Installer database API (Windows only)
 - Add MSI preview provider showing installer file table listing with sizes (Windows only)
-- Add wrap-around navigation — pressing Up at the top of the file list jumps to the bottom, and Down at the bottom jumps to the top
+- Add wrap-around navigation in file list and settings dialog — pressing Up at the top jumps to the bottom, and Down at the bottom jumps to the top
 
 ### Changed
 - Remove redundant size and modified date from `FileMetadataProvider` — already shown in detail columns and properties overlay

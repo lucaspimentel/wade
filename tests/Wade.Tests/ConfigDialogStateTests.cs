@@ -161,22 +161,34 @@ public class ConfigDialogStateTests
     }
 
     [Fact]
-    public void MoveUp_AtTop_StaysAtZero()
+    public void MoveUp_AtTop_WrapsToLastEnabledItem()
     {
         var state = CreateDefaultState();
+        int lastEnabled = state.Items.Count - 1;
+        while (lastEnabled > 0 && !state.Items[lastEnabled].IsEnabled)
+        {
+            lastEnabled--;
+        }
+
         state.MoveUp();
 
-        Assert.Equal(0, state.SelectedIndex);
+        Assert.Equal(lastEnabled, state.SelectedIndex);
     }
 
     [Fact]
-    public void MoveDown_AtBottom_StaysAtMax()
+    public void MoveDown_AtBottom_WrapsToFirstEnabledItem()
     {
         var state = CreateDefaultState();
-        state.SelectedIndex = state.Items.Count - 1;
+        int lastEnabled = state.Items.Count - 1;
+        while (lastEnabled > 0 && !state.Items[lastEnabled].IsEnabled)
+        {
+            lastEnabled--;
+        }
+
+        state.SelectedIndex = lastEnabled;
 
         state.MoveDown();
-        Assert.Equal(state.Items.Count - 1, state.SelectedIndex);
+        Assert.Equal(0, state.SelectedIndex);
     }
 
     [Fact]
