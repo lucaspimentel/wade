@@ -522,18 +522,11 @@ internal sealed class App
             switch (action)
             {
                 case AppAction.NavigateUp:
-                    if (_selectedIndex > 0)
-                    {
-                        _selectedIndex--;
-                    }
-
+                    _selectedIndex = _selectedIndex > 0 ? _selectedIndex - 1 : entries.Count - 1;
                     break;
 
                 case AppAction.NavigateDown:
-                    if (_selectedIndex < entries.Count - 1)
-                    {
-                        _selectedIndex++;
-                    }
+                    _selectedIndex = _selectedIndex < entries.Count - 1 ? _selectedIndex + 1 : 0;
 
                     break;
 
@@ -2482,20 +2475,16 @@ internal sealed class App
                 break;
 
             case ConsoleKey.UpArrow:
-                if (_selectedIndex > 0)
-                {
-                    _selectedIndex--;
-                }
-
+            {
+                var entries = GetVisibleEntries();
+                _selectedIndex = _selectedIndex > 0 ? _selectedIndex - 1 : entries.Count - 1;
                 break;
+            }
 
             case ConsoleKey.DownArrow:
             {
                 var entries = GetVisibleEntries();
-                if (_selectedIndex < entries.Count - 1)
-                {
-                    _selectedIndex++;
-                }
+                _selectedIndex = _selectedIndex < entries.Count - 1 ? _selectedIndex + 1 : 0;
 
                 break;
             }
