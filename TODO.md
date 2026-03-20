@@ -117,18 +117,9 @@ When switching preview providers (e.g., from Glow-rendered Markdown to None, or 
 
 Implemented via `FileSystemWatcherManager` — watches current directory with 300ms debounce, injects `FileSystemChangedEvent` into the input pipeline. Selection preserved by name across refreshes. Buffer overflow falls back to full cache invalidation. Watcher automatically re-subscribes on directory navigation.
 
-### Cancel in-flight preview when navigating to another file
+### ~~Cancel in-flight preview when navigating to another file~~ ✅
 
-**Related to:** "Fix stale/leftover content when switching preview types" — both address stale preview artifacts from different angles (cancellation vs rendering cleanup). "Preview for Office/document formats" also benefits from this since it shells out to slow subprocesses (LibreOffice).
-
-Pressing up/down to change selection while a file preview is still generating should cancel the in-progress load immediately and respond to the navigation without delay.
-
-- The cancellation infrastructure already exists: `PreviewLoader` holds a `CancellationTokenSource`; each `BeginLoad()` call (`src/Wade/PreviewLoader.cs:20`) cancels the previous token before starting a new background task
-- Selection change (`NavigateUp`/`NavigateDown` in `App.cs:523-537`) updates `_selectedIndex` immediately, and the next render frame calls `ReloadActiveProvider` (`App.cs:1077`) which triggers `BeginLoad` and cancels the old CTS
-- Issue: subprocess-based providers (Glow, ffprobe/mediainfo, pdftopng) may ignore the cancellation token because the `Process` is not explicitly killed when the token fires — add `ct.Register(() => process.Kill())` in each subprocess helper
-- Also audit `TextPreviewProvider` and `HexPreviewProvider` for large files — ensure they check `ct.IsCancellationRequested` between chunks, not just at the top of the method
-- Stale events: events injected by a cancelled task carry the old path; verify they are silently discarded (check `_pendingPreviewPath` / `_cachedPreviewPath` guards when handling `PreviewReadyEvent`, `ImagePreviewReadyEvent`, `CombinedPreviewReadyEvent`, `MetadataReadyEvent`)
-- Key files: `src/Wade/PreviewLoader.cs`, `src/Wade/App.cs:1061`, `src/Wade/Highlighting/GlowRenderer.cs`, `src/Wade/Preview/MediaMetadataProvider.cs`, `src/Wade/FileSystem/HexPreview.cs`
+Implemented — subprocess-based providers (Glow, ffprobe/mediainfo, pdftopng) now kill the process on cancellation token fire. Text/hex providers check cancellation between chunks. Stale events are discarded via path guards.
 
 ### ~~Investigate oversized image preview rendering~~ ✅
 
