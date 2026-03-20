@@ -32,12 +32,36 @@ internal static class PropertiesOverlay
 
     private const int LabelWidth = 12;
 
-    public static void Render(ScreenBuffer buffer, int screenWidth, int screenHeight,
+    /// <summary>
+    /// Renders the properties overlay with scroll support. Returns the total content row count.
+    /// </summary>
+    public static int Render(ScreenBuffer buffer, int screenWidth, int screenHeight,
         FileSystemEntry entry, string? directorySizeText, GitFileStatus? gitStatus = null,
-        MetadataSection[]? metadataSections = null)
+        MetadataSection[]? metadataSections = null, int scrollOffset = 0)
     {
         string[] values = BuildValues(entry, directorySizeText, gitStatus);
 
+        // Build flat list of all renderable rows
+        var rows = new List<Row>();
+
+        // System property rows
+        var labelStyle = new CellStyle(LabelColor, DialogBox.BgColor, Dim: true);
+        var valueStyle = new CellStyle(ValueColor, DialogBox.BgColor);
+
+        for (int i = 0; i < Labels.Length; i++)
+        {
+            CellStyle rowValueStyle = valueStyle;
+
+            // Git status row gets colored
+            if (i == Labels.Length - 1 && gitStatus is { } s && s != GitFileStatus.None)
+            {
+                rowValueStyle = new CellStyle(GetGitStatusColor(s), DialogBox.BgColor);
+            }
+
+            rows.Add(new Row(RowKind.LabelValue, Labels[i], values[i], labelStyle, rowValueStyle));
+        }
+
+        // Metadata rows
         int maxValueLen = 0;
         for (int i = 0; i < values.Length; i++)
         {
@@ -47,31 +71,29 @@ internal static class PropertiesOverlay
             }
         }
 
-        // Compute metadata rows
-        int metadataRowCount = 0;
-        List<(string Label, string Value)>? metadataRows = null;
-
         if (metadataSections is { Length: > 0 })
         {
-            metadataRows = [];
+            var headerStyle = new CellStyle(new Color(180, 180, 200), DialogBox.BgColor, Bold: true);
+
+            // Blank separator between system props and metadata
+            rows.Add(new Row(RowKind.Blank, "", "", labelStyle, valueStyle));
 
             foreach (MetadataSection section in metadataSections)
             {
-                // Blank line before section
-                if (metadataRows.Count > 0)
+                // Blank line before section (except first metadata section, already has separator)
+                if (rows[^1].Kind != RowKind.Blank)
                 {
-                    metadataRows.Add(("", ""));
+                    rows.Add(new Row(RowKind.Blank, "", "", labelStyle, valueStyle));
                 }
 
-                // Section header
                 if (section.Header is not null)
                 {
-                    metadataRows.Add(("", section.Header));
+                    rows.Add(new Row(RowKind.Header, "", section.Header, headerStyle, headerStyle));
                 }
 
                 foreach (MetadataEntry metaEntry in section.Entries)
                 {
-                    metadataRows.Add((metaEntry.Label, metaEntry.Value));
+                    rows.Add(new Row(RowKind.LabelValue, metaEntry.Label, metaEntry.Value, labelStyle, valueStyle));
 
                     int rowLen = metaEntry.Label.Length > 0 ? LabelWidth + metaEntry.Value.Length : metaEntry.Value.Length + 2;
                     if (rowLen > maxValueLen + LabelWidth)
@@ -80,84 +102,79 @@ internal static class PropertiesOverlay
                     }
                 }
             }
-
-            metadataRowCount = 1 + metadataRows.Count; // 1 blank separator + rows
         }
 
-        int contentWidth = LabelWidth + maxValueLen;
+        int totalContentHeight = rows.Count;
 
-        // Clamp to screen width minus some padding
+        // Compute content width
+        int contentWidth = LabelWidth + maxValueLen;
         int maxContentWidth = screenWidth - 8;
         if (contentWidth > maxContentWidth)
         {
             contentWidth = maxContentWidth;
         }
 
-        int contentHeight = Labels.Length + metadataRowCount;
+        // Compute visible height — leave room for borders, title, footer
+        // DialogBox uses: top border(1) + title(1) + separator(1) + content + blank(1) + footer(1) + bottom border(1) = content + 6
+        int maxVisibleHeight = Math.Max(1, screenHeight - 8);
+        bool scrollable = totalContentHeight > maxVisibleHeight;
+        int visibleHeight = scrollable ? maxVisibleHeight : totalContentHeight;
+
+        // Clamp scroll offset
+        int maxScroll = Math.Max(0, totalContentHeight - visibleHeight);
+        scrollOffset = Math.Clamp(scrollOffset, 0, maxScroll);
+
+        string footer = scrollable
+            ? "\u2191\u2193 scroll \u00b7 any key to close"
+            : "Press any key to close";
 
         var content = DialogBox.Render(
             buffer, screenWidth, screenHeight,
-            contentWidth, contentHeight,
+            contentWidth, visibleHeight,
             title: "Properties",
-            footer: "Press any key to close");
-
-        var labelStyle = new CellStyle(LabelColor, DialogBox.BgColor, Dim: true);
-        var valueStyle = new CellStyle(ValueColor, DialogBox.BgColor);
+            footer: footer);
 
         int valueMaxWidth = contentWidth - LabelWidth;
 
-        for (int i = 0; i < Labels.Length; i++)
+        // Render visible slice
+        for (int i = 0; i < visibleHeight; i++)
         {
-            int y = content.Top + i;
-            buffer.WriteString(y, content.Left, Labels[i], labelStyle, LabelWidth);
-            buffer.WriteString(y, content.Left + LabelWidth, values[i], valueStyle, valueMaxWidth);
-        }
-
-        // Overwrite git status row with colored value if applicable
-        if (gitStatus is { } s && s != GitFileStatus.None)
-        {
-            int gitRowIndex = Labels.Length - 1; // last row
-            int gitY = content.Top + gitRowIndex;
-            Color gitColor = GetGitStatusColor(s);
-            var gitValueStyle = new CellStyle(gitColor, DialogBox.BgColor);
-            buffer.WriteString(gitY, content.Left + LabelWidth, values[gitRowIndex], gitValueStyle, valueMaxWidth);
-        }
-
-        // Render metadata sections below file system properties
-        if (metadataRows is { Count: > 0 })
-        {
-            int metaStartY = content.Top + Labels.Length + 1; // +1 for blank separator
-            var headerStyle = new CellStyle(new Color(180, 180, 200), DialogBox.BgColor, Bold: true);
-
-            for (int i = 0; i < metadataRows.Count; i++)
+            int rowIndex = scrollOffset + i;
+            if (rowIndex >= rows.Count)
             {
-                int y = metaStartY + i;
-                (string label, string value) = metadataRows[i];
+                break;
+            }
 
-                if (label.Length == 0 && value.Length == 0)
-                {
-                    // Blank separator row
-                    continue;
-                }
+            Row row = rows[rowIndex];
+            int y = content.Top + i;
 
-                if (label.Length == 0 && metadataRows.Count > i + 1 && (i == 0 || metadataRows[i - 1] is { Label: "", Value: "" }))
-                {
-                    // Section header
-                    buffer.WriteString(y, content.Left, value, headerStyle, contentWidth);
-                }
-                else if (label.Length > 0)
-                {
-                    buffer.WriteString(y, content.Left, label, labelStyle, LabelWidth);
-                    buffer.WriteString(y, content.Left + LabelWidth, value, valueStyle, valueMaxWidth);
-                }
-                else
-                {
-                    // List item
-                    buffer.WriteString(y, content.Left + 2, value, valueStyle, valueMaxWidth);
-                }
+            switch (row.Kind)
+            {
+                case RowKind.Blank:
+                    break;
+
+                case RowKind.Header:
+                    buffer.WriteString(y, content.Left, row.Value, row.ValueStyle, contentWidth);
+                    break;
+
+                case RowKind.LabelValue when row.Label.Length > 0:
+                    buffer.WriteString(y, content.Left, row.Label, row.LabelStyle, LabelWidth);
+                    buffer.WriteString(y, content.Left + LabelWidth, row.Value, row.ValueStyle, valueMaxWidth);
+                    break;
+
+                default:
+                    // List item (label is empty but has value)
+                    buffer.WriteString(y, content.Left + 2, row.Value, row.ValueStyle, valueMaxWidth);
+                    break;
             }
         }
+
+        return totalContentHeight;
     }
+
+    private enum RowKind { Blank, Header, LabelValue }
+
+    private readonly record struct Row(RowKind Kind, string Label, string Value, CellStyle LabelStyle, CellStyle ValueStyle);
 
     private static string[] BuildValues(FileSystemEntry entry, string? directorySizeText, GitFileStatus? gitStatus)
     {

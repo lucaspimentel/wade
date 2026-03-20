@@ -88,6 +88,8 @@ internal sealed class App
     private DirectorySizeLoader? _dirSizeLoader;
     private string? _propertiesDirSizePath;
     private string? _propertiesDirSizeText;
+    private int _propertiesScrollOffset;
+    private int _propertiesContentHeight;
 
     private string? _cachedPreviewPath;
     private StyledLine[]? _cachedStyledLines;
@@ -459,10 +461,7 @@ internal sealed class App
                 case InputMode.Properties:
                     if (!keyEvent.IsModifierOnly)
                     {
-                        _inputMode = InputMode.Normal;
-                        _dirSizeLoader?.Cancel();
-                        _propertiesDirSizePath = null;
-                        _propertiesDirSizeText = null;
+                        HandlePropertiesKey(keyEvent);
                     }
                     continue;
                 case InputMode.Search:
@@ -655,6 +654,7 @@ internal sealed class App
                     if (entries.Count > 0 && _selectedIndex < entries.Count)
                     {
                         _inputMode = InputMode.Properties;
+                        _propertiesScrollOffset = 0;
                         var propsEntry = entries[_selectedIndex];
                         if (propsEntry.IsDirectory && !propsEntry.IsDrive)
                         {
@@ -1181,7 +1181,11 @@ internal sealed class App
                         propMetadata = null;
                     }
 
-                    PropertiesOverlay.Render(buffer, width, height, selectedEntry, _propertiesDirSizeText, propGitStatus, propMetadata);
+                    _propertiesContentHeight = PropertiesOverlay.Render(buffer, width, height, selectedEntry, _propertiesDirSizeText, propGitStatus, propMetadata, _propertiesScrollOffset);
+                    // Clamp scroll offset in case content changed
+                    int propsVisibleRows = Math.Max(1, height - 8);
+                    int propsMaxScroll = Math.Max(0, _propertiesContentHeight - propsVisibleRows);
+                    _propertiesScrollOffset = Math.Clamp(_propertiesScrollOffset, 0, propsMaxScroll);
                 }
                 break;
             case InputMode.ActionPalette:
@@ -1767,6 +1771,65 @@ internal sealed class App
 
         Console.Write(AnsiCodes.ClearScreen);
         buffer.ForceFullRedraw();
+    }
+
+    private void HandlePropertiesKey(KeyEvent key)
+    {
+        switch (key.Key)
+        {
+            case ConsoleKey.Escape:
+            case ConsoleKey.Enter:
+            case ConsoleKey.I:
+            case ConsoleKey.Q:
+                _inputMode = InputMode.Normal;
+                _dirSizeLoader?.Cancel();
+                _propertiesDirSizePath = null;
+                _propertiesDirSizeText = null;
+                break;
+
+            case ConsoleKey.UpArrow:
+            case ConsoleKey.K:
+                if (_propertiesScrollOffset > 0)
+                {
+                    _propertiesScrollOffset--;
+                }
+                break;
+
+            case ConsoleKey.DownArrow:
+            case ConsoleKey.J:
+                _propertiesScrollOffset++;
+                break;
+
+            case ConsoleKey.PageUp:
+            {
+                int pageSize = Math.Max(1, _propertiesContentHeight / 2);
+                _propertiesScrollOffset = Math.Max(0, _propertiesScrollOffset - pageSize);
+                break;
+            }
+
+            case ConsoleKey.PageDown:
+            {
+                int pageSize = Math.Max(1, _propertiesContentHeight / 2);
+                _propertiesScrollOffset += pageSize;
+                break;
+            }
+
+            case ConsoleKey.Home:
+                _propertiesScrollOffset = 0;
+                break;
+
+            case ConsoleKey.End:
+                _propertiesScrollOffset = int.MaxValue; // clamped during render
+                break;
+
+            default:
+                // Any other non-modifier key closes the overlay
+                _inputMode = InputMode.Normal;
+                _dirSizeLoader?.Cancel();
+                _propertiesDirSizePath = null;
+                _propertiesDirSizeText = null;
+                break;
+        }
     }
 
     private void HandleExpandedPreviewKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer)
@@ -3272,6 +3335,7 @@ internal sealed class App
                 if (entries.Count > 0 && _selectedIndex < entries.Count)
                 {
                     _inputMode = InputMode.Properties;
+                    _propertiesScrollOffset = 0;
                     var propsEntry2 = entries[_selectedIndex];
                     if (propsEntry2.IsDirectory && !propsEntry2.IsDrive)
                     {

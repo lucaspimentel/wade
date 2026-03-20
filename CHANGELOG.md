@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Add scrollable properties overlay — arrow keys, Page Up/Down, Home/End for vertical scrolling when content exceeds screen height
 - Add filesystem auto-refresh via `FileSystemWatcher` — file list updates automatically when files are created, deleted, or renamed externally
 - Add `--version` CLI flag
 - Add MSI metadata provider showing ProductName, Version, Manufacturer, ProductCode, UpgradeCode, and summary info via Windows Installer database API (Windows only)
