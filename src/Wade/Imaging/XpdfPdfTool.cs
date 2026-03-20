@@ -12,6 +12,7 @@ internal sealed class XpdfPdfTool : IPdfTool
         Directory.CreateDirectory(tempDir);
 
         string tempRoot = Path.Combine(tempDir, "page");
+        bool success = false;
 
         try
         {
@@ -39,6 +40,8 @@ internal sealed class XpdfPdfTool : IPdfTool
                 return null;
             }
 
+            using var reg = ct.Register(() => { try { process.Kill(); } catch { /* best effort */ } });
+
             process.WaitForExit(TimeSpan.FromSeconds(10));
             ct.ThrowIfCancellationRequested();
 
@@ -51,6 +54,7 @@ internal sealed class XpdfPdfTool : IPdfTool
             string expectedPath = $"{tempRoot}-{pageNumber:D6}.png";
             if (File.Exists(expectedPath))
             {
+                success = true;
                 return expectedPath;
             }
 
@@ -62,9 +66,14 @@ internal sealed class XpdfPdfTool : IPdfTool
         }
         catch
         {
-            // Clean up temp dir on failure
-            try { Directory.Delete(tempDir, recursive: true); } catch { }
             return null;
+        }
+        finally
+        {
+            if (!success)
+            {
+                try { Directory.Delete(tempDir, recursive: true); } catch { }
+            }
         }
     }
 }

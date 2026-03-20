@@ -20,7 +20,7 @@ internal sealed class PdfMetadataProvider : IMetadataProvider
 
         try
         {
-            string? output = CliTool.Run("pdfinfo", [path]);
+            string? output = CliTool.Run("pdfinfo", [path], ct: ct);
 
             if (output is null)
             {

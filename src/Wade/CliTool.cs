@@ -59,7 +59,7 @@ internal static class CliTool
     /// <summary>
     /// Runs a CLI tool and returns its stdout on success, or null on failure/timeout.
     /// </summary>
-    public static string? Run(string fileName, string[] args, int timeoutMs = 5000)
+    public static string? Run(string fileName, string[] args, int timeoutMs = 5000, CancellationToken ct = default)
     {
         var psi = new ProcessStartInfo
         {
@@ -75,14 +75,14 @@ internal static class CliTool
             psi.ArgumentList.Add(arg);
         }
 
-        return Run(psi, timeoutMs);
+        return Run(psi, timeoutMs, ct);
     }
 
     /// <summary>
     /// Runs a process with a custom <see cref="ProcessStartInfo"/> and returns its stdout on success, or null on failure/timeout.
     /// Enforces redirect flags on the provided PSI.
     /// </summary>
-    public static string? Run(ProcessStartInfo psi, int timeoutMs = 5000)
+    public static string? Run(ProcessStartInfo psi, int timeoutMs = 5000, CancellationToken ct = default)
     {
         psi.RedirectStandardOutput = true;
         psi.RedirectStandardError = true;
@@ -98,6 +98,8 @@ internal static class CliTool
                 return null;
             }
 
+            using var reg = ct.Register(() => { try { process.Kill(); } catch { /* best effort */ } });
+
             string output = process.StandardOutput.ReadToEnd();
 
             if (!process.WaitForExit(timeoutMs))
@@ -106,7 +108,13 @@ internal static class CliTool
                 return null;
             }
 
+            ct.ThrowIfCancellationRequested();
+
             return process.ExitCode == 0 ? output : null;
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
         }
         catch
         {

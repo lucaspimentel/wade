@@ -47,9 +47,9 @@ internal sealed class MediaMetadataProvider : IMetadataProvider
             bool useMediainfo = !useFfprobe && !context.DisabledTools.Contains("mediainfo") && MediainfoAvailable;
 
             string? json = useFfprobe
-                ? CliTool.Run("ffprobe", ["-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", path])
+                ? CliTool.Run("ffprobe", ["-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", path], ct: ct)
                 : useMediainfo
-                    ? CliTool.Run("mediainfo", ["--Output=JSON", path])
+                    ? CliTool.Run("mediainfo", ["--Output=JSON", path], ct: ct)
                     : null;
 
             if (json is null)

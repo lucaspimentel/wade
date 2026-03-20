@@ -12,6 +12,7 @@
 - Remove redundant size and modified date from `FileMetadataProvider` — already shown in detail columns and properties overlay
 
 ### Fixed
+- Fix in-flight preview subprocesses (glow, ffprobe, pdftopng, pdfinfo, git diff) not being killed on cancellation — processes are now terminated immediately when navigating away, eliminating preview lag during rapid scrolling
 - Fix PDF preview being disabled when "Show Image Previews" is toggled off — PDF preview now only requires Sixel terminal support
 
 ## [1.3.0] - 2026-03-18

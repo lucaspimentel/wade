@@ -38,4 +38,44 @@ public class CliToolTests
         Assert.NotNull(output);
         Assert.Contains("git version", output);
     }
+
+    [Fact]
+    public void Run_WithCancelledToken_ReturnsNull()
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        string? result = CliTool.Run("git", ["--version"], ct: cts.Token);
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void Run_CancellationDuringExecution_ReturnsQuickly()
+    {
+        using var cts = new CancellationTokenSource();
+
+        string fileName;
+        string[] args;
+
+        if (OperatingSystem.IsWindows())
+        {
+            fileName = "ping";
+            args = ["-n", "100", "localhost"];
+        }
+        else
+        {
+            fileName = "sleep";
+            args = ["60"];
+        }
+
+        // Cancel after 500ms
+        cts.CancelAfter(TimeSpan.FromMilliseconds(500));
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        string? result = CliTool.Run(fileName, args, timeoutMs: 60_000, ct: cts.Token);
+        sw.Stop();
+
+        Assert.Null(result);
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(5), $"Expected quick return but took {sw.Elapsed}");
+    }
 }

@@ -1,3 +1,4 @@
+using Wade.Highlighting;
 using Wade.Preview;
 using Wade.Terminal;
 
@@ -101,6 +102,74 @@ public class PreviewLoaderTests
 
             Assert.NotNull(lastPreview);
             Assert.Equal(tempFile2, lastPreview.Path);
+        }
+        finally
+        {
+            File.Delete(tempFile1);
+            File.Delete(tempFile2);
+        }
+    }
+
+    private sealed class SlowPreviewProvider : IPreviewProvider
+    {
+        public string Label => "Slow";
+
+        public bool CanPreview(string path, PreviewContext context) => true;
+
+        public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct)
+        {
+            // Simulate a slow subprocess-based provider
+            try
+            {
+                Task.Delay(TimeSpan.FromSeconds(30), ct).Wait(ct);
+            }
+            catch (OperationCanceledException)
+            {
+                return null;
+            }
+
+            return new PreviewResult { TextLines = [new StyledLine("slow result", null)] };
+        }
+    }
+
+    [Fact]
+    public void BeginLoad_WithSlowProvider_CancelsOnSecondLoad()
+    {
+        var source = new FakeInputSource();
+        using var pipeline = new InputPipeline(source);
+        var loader = new PreviewLoader(pipeline);
+        var slowProvider = new SlowPreviewProvider();
+        var fastProvider = new TextPreviewProvider();
+        var context = DefaultContext();
+
+        var tempFile1 = Path.GetTempFileName();
+        var tempFile2 = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(tempFile1, "first");
+            File.WriteAllText(tempFile2, "second");
+
+            // Start slow load, then immediately start fast load (cancels the slow one)
+            loader.BeginLoad(tempFile1, slowProvider, context);
+            Thread.Sleep(50); // let slow provider start
+            loader.BeginLoad(tempFile2, fastProvider, context);
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+            // The second (fast) load should complete promptly
+            PreviewReadyEvent? secondPreview = null;
+            while (true)
+            {
+                var evt = pipeline.Take(cts.Token);
+                if (evt is PreviewReadyEvent p && p.Path == tempFile2)
+                {
+                    secondPreview = p;
+                    break;
+                }
+            }
+
+            Assert.NotNull(secondPreview);
+            Assert.Equal(tempFile2, secondPreview.Path);
         }
         finally
         {

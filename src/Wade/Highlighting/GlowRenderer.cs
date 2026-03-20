@@ -39,7 +39,7 @@ internal static class GlowRenderer
             };
             psi.Environment["CLICOLOR_FORCE"] = "1";
 
-            string? output = CliTool.Run(psi, 5000);
+            string? output = CliTool.Run(psi, 5000, ct);
 
             if (output is null)
             {

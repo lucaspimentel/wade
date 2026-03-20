@@ -342,18 +342,17 @@ internal static class GitUtils
                 return null;
             }
 
+            using var reg = ct.Register(() => { try { process.Kill(); } catch { /* best effort */ } });
+
             string output = process.StandardOutput.ReadToEnd();
 
             if (!process.WaitForExit(10_000))
             {
-                process.Kill();
+                try { process.Kill(); } catch { /* best effort */ }
                 return null;
             }
 
-            if (ct.IsCancellationRequested)
-            {
-                return null;
-            }
+            ct.ThrowIfCancellationRequested();
 
             if (process.ExitCode != 0 || string.IsNullOrEmpty(output))
             {
