@@ -33,15 +33,27 @@ Windows file clipboard interop is implemented. Remaining: Unix/macOS file clipbo
 
 ### Drive type detection
 
-Detect whether a drive is SSD, HDD, or network. Some features (like directory size in the file browser) should behave differently based on drive speed.
+Detect whether a drive is SSD, HDD, or network. Infrastructure for gating features by drive speed.
 
-- On Windows, use WMI or `DeviceIoControl` / `IOCTL_STORAGE_QUERY_PROPERTY` to distinguish SSD vs HDD; `DriveInfo.DriveType == Network` for network drives
+- On Windows, use `DeviceIoControl` / `IOCTL_STORAGE_QUERY_PROPERTY` to distinguish SSD vs HDD; `DriveInfo.DriveType == Network` for network drives
+- On Linux, use `/sys/block/<dev>/queue/rotational` (0 = SSD, 1 = HDD)
 - `DriveInfo` is already used in `DirectoryContents.GetDriveEntries()` and `PropertiesOverlay`
-- If feasible, add per-drive-type settings for showing directory size inline in the file list:
+- Store detected drive type on `FileSystemEntry` or as a lookup available to consumers
+- Must be NativeAOT-compatible (no reflection-heavy WMI wrappers)
+
+### Inline directory sizes in file list
+
+Show computed directory sizes in the size column of the center pane file list. Gated per drive type so slow drives don't trigger expensive recursive scans.
+
+- **Depends on:** Drive type detection
+- Background async computation following the `GitStatusLoader` / `DirectorySizeLoader` pattern
+- Per-drive-type config settings:
   - Show directory size for SSD (default true)
   - Show directory size for HDD (default false)
   - Show directory size for network drives (default false)
-- Must be NativeAOT-compatible (no reflection-heavy WMI wrappers)
+- Add settings to `WadeConfig` and `ConfigDialogState`
+- Cancel/restart computation on directory navigation
+- Sizes displayed in the existing size column (`SizeColumnEnabled`)
 
 ### Format-specific metadata providers
 
