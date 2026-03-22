@@ -1,3 +1,4 @@
+using System.Text;
 using Wade.FileSystem;
 using Wade.Highlighting;
 using Wade.Terminal;
@@ -6,6 +7,24 @@ namespace Wade.UI;
 
 internal static class PaneRenderer
 {
+    // Column widths
+    private const int SizeWidth = 8;
+    private const int GapWidth = 2;
+    private const int StatusColWidth = 2;
+    private const int FullDateWidth = 19;
+    private const int DateOnlyWidth = 10;
+    private const int ShortDateWidth = 6;
+
+    // Tier thresholds: nameWidth must be >= the widest detail column in that tier
+    private const int Tier1Detail = SizeWidth + GapWidth + FullDateWidth + GapWidth; // 31
+    private const int Tier2Detail = SizeWidth + GapWidth + DateOnlyWidth + GapWidth; // 22
+    private const int Tier3Detail = SizeWidth + GapWidth + ShortDateWidth + GapWidth; // 18
+    private const int Tier4Detail = SizeWidth + GapWidth; // 10
+
+    private const int Tier1MinWidth = 30 + Tier1Detail; // 61 — name >= 30
+    private const int Tier2MinWidth = 22 + Tier2Detail; // 44 — name >= 22
+    private const int Tier3MinWidth = 14 + Tier3Detail; // 32 — name >= 14
+    private const int Tier4MinWidth = SizeWidth + Tier4Detail; // 18 — name >= Size(8)
     private static readonly char DirSeparatorChar = Path.DirectorySeparatorChar;
 
     private static readonly Color DirColor = new(80, 160, 255);
@@ -57,25 +76,6 @@ internal static class PaneRenderer
     private static readonly CellStyle MarkedGitStagedStyle = new(GitStagedColor, MarkedBg);
     private static readonly CellStyle MarkedGitUntrackedStyle = new(GitUntrackedColor, MarkedBg);
     private static readonly CellStyle MarkedGitConflictStyle = new(GitConflictColor, MarkedBg);
-
-    // Column widths
-    private const int SizeWidth = 8;
-    private const int GapWidth = 2;
-    private const int StatusColWidth = 2;
-    private const int FullDateWidth = 19;
-    private const int DateOnlyWidth = 10;
-    private const int ShortDateWidth = 6;
-
-    // Tier thresholds: nameWidth must be >= the widest detail column in that tier
-    private const int Tier1Detail = SizeWidth + GapWidth + FullDateWidth + GapWidth;   // 31
-    private const int Tier2Detail = SizeWidth + GapWidth + DateOnlyWidth + GapWidth;   // 22
-    private const int Tier3Detail = SizeWidth + GapWidth + ShortDateWidth + GapWidth;  // 18
-    private const int Tier4Detail = SizeWidth + GapWidth;                              // 10
-
-    private const int Tier1MinWidth = 30 + Tier1Detail;  // 61 — name >= 30
-    private const int Tier2MinWidth = 22 + Tier2Detail;  // 44 — name >= 22
-    private const int Tier3MinWidth = 14 + Tier3Detail;  // 32 — name >= 14
-    private const int Tier4MinWidth = SizeWidth + Tier4Detail;      // 18 — name >= Size(8)
 
     public static void RenderFileList(
         ScreenBuffer buffer,
@@ -157,7 +157,7 @@ internal static class PaneRenderer
             }
         }
 
-        int statusColWidth = (gitStatuses is not null || hasCloudEntries) ? StatusColWidth : 0;
+        int statusColWidth = gitStatuses is not null || hasCloudEntries ? StatusColWidth : 0;
         int nameWidth = pane.Width - detailWidth - statusColWidth;
 
         Span<char> sizeBuf = stackalloc char[SizeWidth];
@@ -174,11 +174,11 @@ internal static class PaneRenderer
                 continue;
             }
 
-            var entry = entries[entryIndex];
+            FileSystemEntry entry = entries[entryIndex];
             bool isSelected = entryIndex == selectedIndex;
             bool isMarked = markedPaths?.Contains(entry.FullPath) == true;
 
-            var gitStatus = GetGitStatus(entry.FullPath, gitStatuses);
+            GitFileStatus gitStatus = GetGitStatus(entry.FullPath, gitStatuses);
 
             CellStyle style;
             if (isSelected && isMarked && isActive)
@@ -284,7 +284,7 @@ internal static class PaneRenderer
                 int remaining = nameWidth - nameCharsUsed;
                 if (remaining > 4) // need room for at least " → X"
                 {
-                    CellStyle suffixStyle = isSelected ? style : (entry.IsBrokenSymlink ? BrokenSymlinkStyle : DetailStyle);
+                    CellStyle suffixStyle = isSelected ? style : entry.IsBrokenSymlink ? BrokenSymlinkStyle : DetailStyle;
                     string arrow = " → ";
                     int suffixCol = entryCol + nameCharsUsed;
                     buffer.WriteString(screenRow, suffixCol, arrow, suffixStyle, remaining);
@@ -309,12 +309,12 @@ internal static class PaneRenderer
             {
                 if (gitStatus != GitFileStatus.None)
                 {
-                    var gitIconStyle = isSelected ? style : GetGitIconStyle(gitStatus, isMarked);
+                    CellStyle gitIconStyle = isSelected ? style : GetGitIconStyle(gitStatus, isMarked);
                     buffer.Put(screenRow, entryCol + nameWidth, FileIcons.GetGitStatusIcon(gitStatus), gitIconStyle);
                 }
                 else if (entry.IsCloudPlaceholder)
                 {
-                    var cloudIconStyle = isSelected ? style : new CellStyle(CloudPlaceholderColor, isMarked ? MarkedBg : null);
+                    CellStyle cloudIconStyle = isSelected ? style : new CellStyle(CloudPlaceholderColor, isMarked ? MarkedBg : null);
                     buffer.Put(screenRow, entryCol + nameWidth, FileIcons.GetCloudIcon(), cloudIconStyle);
                 }
             }
@@ -393,7 +393,7 @@ internal static class PaneRenderer
                 break;
             }
 
-            var styledLine = lines[lineIndex];
+            StyledLine styledLine = lines[lineIndex];
 
             contentLineNumber++;
 
@@ -462,7 +462,7 @@ internal static class PaneRenderer
         {
             // Find which span covers pos (if any)
             CellStyle style = defaultStyle;
-            foreach (var span in orderedSpans)
+            foreach (StyledSpan span in orderedSpans)
             {
                 if (span.Start <= pos && pos < span.Start + span.Length)
                 {
@@ -471,11 +471,11 @@ internal static class PaneRenderer
                 }
             }
 
-            var rune = new System.Text.Rune(text[pos]);
+            var rune = new Rune(text[pos]);
             // Handle surrogate pairs
             if (char.IsHighSurrogate(text[pos]) && pos + 1 < textLen && char.IsLowSurrogate(text[pos + 1]))
             {
-                rune = new System.Text.Rune(text[pos], text[pos + 1]);
+                rune = new Rune(text[pos], text[pos + 1]);
                 pos++;
             }
 
@@ -508,12 +508,12 @@ internal static class PaneRenderer
         int pos = 0;
         while (pos < text.Length && charsWritten < maxWidth)
         {
-            var style = styleIndex < charStyles.Length ? charStyles[styleIndex] : defaultStyle;
+            CellStyle style = styleIndex < charStyles.Length ? charStyles[styleIndex] : defaultStyle;
 
-            var rune = new System.Text.Rune(text[pos]);
+            var rune = new Rune(text[pos]);
             if (char.IsHighSurrogate(text[pos]) && pos + 1 < text.Length && char.IsLowSurrogate(text[pos + 1]))
             {
-                rune = new System.Text.Rune(text[pos], text[pos + 1]);
+                rune = new Rune(text[pos], text[pos + 1]);
                 pos++;
                 styleIndex++;
             }
@@ -542,7 +542,7 @@ internal static class PaneRenderer
     }
 
     private static GitFileStatus GetGitStatus(string path, Dictionary<string, GitFileStatus>? statuses)
-        => statuses is not null && statuses.TryGetValue(path, out var s) ? s : GitFileStatus.None;
+        => statuses is not null && statuses.TryGetValue(path, out GitFileStatus s) ? s : GitFileStatus.None;
 
     private static CellStyle? GetGitStyle(GitFileStatus status, bool isDirectory)
     {

@@ -15,55 +15,25 @@ internal sealed class GitActionRunner
         _pipeline = pipeline;
     }
 
-    public void RunStage(string repoRoot, IReadOnlyList<string> paths)
-    {
-        StartAction(ct => GitUtils.Stage(repoRoot, paths, ct));
-    }
+    public void RunStage(string repoRoot, IReadOnlyList<string> paths) => StartAction(ct => GitUtils.Stage(repoRoot, paths, ct));
 
-    public void RunUnstage(string repoRoot, IReadOnlyList<string> paths)
-    {
-        StartAction(ct => GitUtils.Unstage(repoRoot, paths, ct));
-    }
+    public void RunUnstage(string repoRoot, IReadOnlyList<string> paths) => StartAction(ct => GitUtils.Unstage(repoRoot, paths, ct));
 
-    public void RunStageAll(string repoRoot)
-    {
-        StartAction(ct => GitUtils.StageAll(repoRoot, ct));
-    }
+    public void RunStageAll(string repoRoot) => StartAction(ct => GitUtils.StageAll(repoRoot, ct));
 
-    public void RunUnstageAll(string repoRoot)
-    {
-        StartAction(ct => GitUtils.UnstageAll(repoRoot, ct));
-    }
+    public void RunUnstageAll(string repoRoot) => StartAction(ct => GitUtils.UnstageAll(repoRoot, ct));
 
-    public void RunCommit(string repoRoot, string message)
-    {
-        StartAction(ct => GitUtils.Commit(repoRoot, message, ct));
-    }
+    public void RunCommit(string repoRoot, string message) => StartAction(ct => GitUtils.Commit(repoRoot, message, ct));
 
-    public void RunPush(string repoRoot)
-    {
-        StartAction(ct => GitUtils.Push(repoRoot, ct));
-    }
+    public void RunPush(string repoRoot) => StartAction(ct => GitUtils.Push(repoRoot, ct));
 
-    public void RunPushForceWithLease(string repoRoot)
-    {
-        StartAction(ct => GitUtils.PushForceWithLease(repoRoot, ct));
-    }
+    public void RunPushForceWithLease(string repoRoot) => StartAction(ct => GitUtils.PushForceWithLease(repoRoot, ct));
 
-    public void RunPull(string repoRoot)
-    {
-        StartAction(ct => GitUtils.Pull(repoRoot, ct));
-    }
+    public void RunPull(string repoRoot) => StartAction(ct => GitUtils.Pull(repoRoot, ct));
 
-    public void RunPullRebase(string repoRoot)
-    {
-        StartAction(ct => GitUtils.PullRebase(repoRoot, ct));
-    }
+    public void RunPullRebase(string repoRoot) => StartAction(ct => GitUtils.PullRebase(repoRoot, ct));
 
-    public void RunFetch(string repoRoot)
-    {
-        StartAction(ct => GitUtils.Fetch(repoRoot, ct));
-    }
+    public void RunFetch(string repoRoot) => StartAction(ct => GitUtils.Fetch(repoRoot, ct));
 
     public void Cancel()
     {
@@ -77,14 +47,14 @@ internal sealed class GitActionRunner
         _cts?.Cancel();
         _cts?.Dispose();
         _cts = new CancellationTokenSource();
-        var token = _cts.Token;
+        CancellationToken token = _cts.Token;
 
         Task.Run(
             () =>
             {
                 try
                 {
-                    var result = action(token);
+                    (bool Success, string? Error) result = action(token);
 
                     if (token.IsCancellationRequested)
                     {

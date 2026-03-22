@@ -16,14 +16,14 @@ public class YamlLanguageTests
     [Fact]
     public void KeyValue_PlainValue_KeyClassified()
     {
-        var spans = Tokenize("key: value");
+        StyledSpan[] spans = Tokenize("key: value");
         Assert.Contains(spans, s => s.Kind == TokenKind.Key);
     }
 
     [Fact]
     public void KeyValue_QuotedValue_StringClassified()
     {
-        var spans = Tokenize("key: \"quoted\"");
+        StyledSpan[] spans = Tokenize("key: \"quoted\"");
         Assert.Contains(spans, s => s.Kind == TokenKind.Key);
         Assert.Contains(spans, s => s.Kind == TokenKind.String);
     }
@@ -31,7 +31,7 @@ public class YamlLanguageTests
     [Fact]
     public void KeyValue_NumberValue_NumberClassified()
     {
-        var spans = Tokenize("count: 42");
+        StyledSpan[] spans = Tokenize("count: 42");
         Assert.Contains(spans, s => s.Kind == TokenKind.Key);
         Assert.Contains(spans, s => s.Kind == TokenKind.Number);
     }
@@ -39,14 +39,14 @@ public class YamlLanguageTests
     [Fact]
     public void Comment_Classified()
     {
-        var spans = Tokenize("# comment");
+        StyledSpan[] spans = Tokenize("# comment");
         Assert.Contains(spans, s => s.Kind == TokenKind.Comment && s.Start == 0);
     }
 
     [Fact]
     public void ListItem_PunctuationClassified()
     {
-        var spans = Tokenize("- item");
+        StyledSpan[] spans = Tokenize("- item");
         Assert.Contains(spans, s => s.Kind == TokenKind.Punctuation);
     }
 }

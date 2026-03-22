@@ -21,19 +21,25 @@ if (config.ShowConfig)
     return;
 }
 
-var finalPath = new App(config).Run();
+string? finalPath = new App(config).Run();
 
 if (config.CwdFilePath is not null && finalPath is not null)
 {
-    try { File.WriteAllText(config.CwdFilePath, finalPath); }
-    catch { /* silently ignore */ }
+    try
+    {
+        File.WriteAllText(config.CwdFilePath, finalPath);
+    }
+    catch
+    {
+        /* silently ignore */
+    }
 }
 
 static void PrintVersion()
 {
-    var version = typeof(App).Assembly.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()?.InformationalVersion
-               ?? typeof(App).Assembly.GetName().Version?.ToString()
-               ?? "unknown";
+    string version = typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+                     ?? typeof(App).Assembly.GetName().Version?.ToString()
+                     ?? "unknown";
 
     Console.WriteLine($"wade {version}");
 }

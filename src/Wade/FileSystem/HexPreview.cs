@@ -9,12 +9,12 @@ internal static class HexPreview
     private const int BytesPerRow = 16;
 
     // Colors
-    private static readonly CellStyle s_offsetStyle = new(new Color(100, 120, 150), null, Dim: true);   // dim blue-gray
-    private static readonly CellStyle s_hexStyle = new(new Color(180, 180, 180), null);                  // light gray
-    private static readonly CellStyle s_nullByteStyle = new(new Color(100, 100, 100), null, Dim: true);  // dimmer for 0x00
-    private static readonly CellStyle s_asciiStyle = new(new Color(120, 200, 120), null);                // green
-    private static readonly CellStyle s_dotStyle = new(new Color(100, 100, 100), null, Dim: true);       // dim non-printable
-    private static readonly CellStyle s_separatorStyle = new(new Color(80, 80, 80), null, Dim: true);    // dim separators
+    private static readonly CellStyle s_offsetStyle = new(new Color(100, 120, 150), null, Dim: true); // dim blue-gray
+    private static readonly CellStyle s_hexStyle = new(new Color(180, 180, 180), null); // light gray
+    private static readonly CellStyle s_nullByteStyle = new(new Color(100, 100, 100), null, Dim: true); // dimmer for 0x00
+    private static readonly CellStyle s_asciiStyle = new(new Color(120, 200, 120), null); // green
+    private static readonly CellStyle s_dotStyle = new(new Color(100, 100, 100), null, Dim: true); // dim non-printable
+    private static readonly CellStyle s_separatorStyle = new(new Color(80, 80, 80), null, Dim: true); // dim separators
 
     public static StyledLine[]? GetPreviewLines(string path, CancellationToken ct)
     {
@@ -84,7 +84,7 @@ internal static class HexPreview
         // Offset(8) + "  " + hex left(24) + " " + hex right(24) + " " + "|" + ascii(16) + "|"
         // Total max: 8 + 2 + 24 + 1 + 24 + 1 + 1 + 16 + 1 = 78
 
-        var chars = new char[78];
+        char[] chars = new char[78];
         var styles = new CellStyle[78];
 
         // Fill with spaces
@@ -106,7 +106,7 @@ internal static class HexPreview
         for (int i = 0; i < count; i++)
         {
             byte b = data[offset + i];
-            int hexPos = 10 + (i * 3);
+            int hexPos = 10 + i * 3;
             if (i >= 8)
             {
                 hexPos++; // extra space between groups
@@ -116,7 +116,7 @@ internal static class HexPreview
             chars[hexPos] = hex[0];
             chars[hexPos + 1] = hex[1];
 
-            var style = b == 0 ? s_nullByteStyle : s_hexStyle;
+            CellStyle style = b == 0 ? s_nullByteStyle : s_hexStyle;
             styles[hexPos] = style;
             styles[hexPos + 1] = style;
         }

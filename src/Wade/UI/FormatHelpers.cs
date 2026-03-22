@@ -15,6 +15,7 @@ internal static class FormatHelpers
 
             return TryAppend(buf, n, " B");
         }
+
         if (bytes < 1024 * 1024)
         {
             if (!(bytes / 1024.0).TryFormat(buf, out int n, "F1"))
@@ -24,6 +25,7 @@ internal static class FormatHelpers
 
             return TryAppend(buf, n, " KB");
         }
+
         if (bytes < 1024L * 1024 * 1024)
         {
             if (!(bytes / (1024.0 * 1024.0)).TryFormat(buf, out int n, "F1"))
@@ -33,6 +35,7 @@ internal static class FormatHelpers
 
             return TryAppend(buf, n, " MB");
         }
+
         {
             if (!(bytes / (1024.0 * 1024.0 * 1024.0)).TryFormat(buf, out int n, "F1"))
             {
@@ -50,16 +53,19 @@ internal static class FormatHelpers
             // Full: "yyyy-MM-dd hh:mm tt"
             return dt.TryFormat(buf, out int n, "yyyy-MM-dd hh:mm tt", CultureInfo.InvariantCulture) ? n : 0;
         }
+
         if (maxWidth >= 10)
         {
             // Date only: "yyyy-MM-dd"
             return dt.TryFormat(buf, out int n, "yyyy-MM-dd", CultureInfo.InvariantCulture) ? n : 0;
         }
+
         if (maxWidth >= 6)
         {
             // Short: "MMM dd"
             return dt.TryFormat(buf, out int n, "MMM dd", CultureInfo.InvariantCulture) ? n : 0;
         }
+
         return 0;
     }
 

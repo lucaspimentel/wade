@@ -7,8 +7,8 @@ namespace Wade.Terminal;
 [UnsupportedOSPlatform("windows")]
 internal sealed class UnixInputSource : IInputSource
 {
-    private readonly int _fd;
     private readonly byte[] _buf = new byte[64];
+    private readonly int _fd;
     private readonly Queue<InputEvent> _pending = new();
     private PosixSignalRegistration? _sigwinchReg;
 
@@ -31,7 +31,7 @@ internal sealed class UnixInputSource : IInputSource
     {
         while (!ct.IsCancellationRequested)
         {
-            if (_pending.TryDequeue(out var queued))
+            if (_pending.TryDequeue(out InputEvent? queued))
             {
                 return queued;
             }
@@ -54,8 +54,8 @@ internal sealed class UnixInputSource : IInputSource
                 bytesRead += extra;
             }
 
-            var events = VtParser.Parse(_buf.AsSpan(0, bytesRead));
-            foreach (var evt in events)
+            List<InputEvent> events = VtParser.Parse(_buf.AsSpan(0, bytesRead));
+            foreach (InputEvent evt in events)
             {
                 _pending.Enqueue(evt);
             }
@@ -119,7 +119,7 @@ internal static class VtParser
                     i += 2;
                     if (i < data.Length)
                     {
-                        var key = data[i] switch
+                        ConsoleKey key = data[i] switch
                         {
                             (byte)'A' => ConsoleKey.UpArrow,
                             (byte)'B' => ConsoleKey.DownArrow,
@@ -131,7 +131,7 @@ internal static class VtParser
                             (byte)'S' => ConsoleKey.F4,
                             (byte)'H' => ConsoleKey.Home,
                             (byte)'F' => ConsoleKey.End,
-                            _ => (ConsoleKey)0,
+                            _ => 0,
                         };
                         if (key != 0)
                         {
@@ -183,7 +183,7 @@ internal static class VtParser
             else if (b is >= 0x20 and <= 0x7E) // Printable ASCII
             {
                 char c = (char)b;
-                var consoleKey = CharToConsoleKey(c);
+                ConsoleKey consoleKey = CharToConsoleKey(c);
                 events.Add(new KeyEvent(consoleKey, c, false, false, false));
                 i++;
             }
@@ -192,9 +192,9 @@ internal static class VtParser
                 int seqLen = Utf8SequenceLength(b);
                 if (i + seqLen <= data.Length)
                 {
-                    var charSpan = data.Slice(i, seqLen);
+                    ReadOnlySpan<byte> charSpan = data.Slice(i, seqLen);
                     char decoded = DecodeUtf8Char(charSpan);
-                    events.Add(new KeyEvent((ConsoleKey)0, decoded, false, false, false));
+                    events.Add(new KeyEvent(0, decoded, false, false, false));
                 }
 
                 i += seqLen;
@@ -229,7 +229,7 @@ internal static class VtParser
         byte finalByte = data[i];
         i++;
 
-        var paramSpan = data[paramStart..(i - 1)];
+        ReadOnlySpan<byte> paramSpan = data[paramStart..(i - 1)];
 
         // SGR mouse sequence: ESC [ < Cb ; Cx ; Cy M/m
         if (paramSpan.Length > 0 && paramSpan[0] == '<')
@@ -264,7 +264,7 @@ internal static class VtParser
                 events.Add(new KeyEvent(ConsoleKey.Tab, '\0', true, false, false));
                 break;
             case (byte)'~': // Extended keys with parameter
-                var key = param1 switch
+                ConsoleKey key = param1 switch
                 {
                     1 => ConsoleKey.Home,
                     2 => ConsoleKey.Insert,
@@ -280,7 +280,7 @@ internal static class VtParser
                     21 => ConsoleKey.F10,
                     23 => ConsoleKey.F11,
                     24 => ConsoleKey.F12,
-                    _ => (ConsoleKey)0,
+                    _ => 0,
                 };
                 if (key != 0)
                 {
@@ -395,7 +395,7 @@ internal static class VtParser
             '+' => ConsoleKey.OemPlus,
             '.' => ConsoleKey.OemPeriod,
             ',' => ConsoleKey.OemComma,
-            _ => (ConsoleKey)0,
+            _ => 0,
         };
     }
 

@@ -10,18 +10,20 @@ namespace Wade.Benchmarks;
 public class RenderBenchmarks
 {
     private static readonly FileSystemEntry CsFile =
-        new("Program.cs", @"C:\src\Program.cs", IsDirectory: false, Size: 1024, LastModified: default, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
+        new("Program.cs", @"C:\src\Program.cs", IsDirectory: false, Size: 1024, LastModified: default, LinkTarget: null, IsBrokenSymlink: false,
+            IsDrive: false);
 
     private static readonly FileSystemEntry UnknownFile =
-        new("binary.dat", @"C:\src\binary.dat", IsDirectory: false, Size: 512, LastModified: default, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
+        new("binary.dat", @"C:\src\binary.dat", IsDirectory: false, Size: 512, LastModified: default, LinkTarget: null, IsBrokenSymlink: false,
+            IsDrive: false);
 
     private static readonly FileSystemEntry Directory =
         new("src", @"C:\src", IsDirectory: true, Size: 0, LastModified: default, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
 
     private ScreenBuffer _buffer = null!;
-    private StringBuilder _sb = null!;
     private List<FileSystemEntry> _entries = null!;
     private TextWriter _originalOut = null!;
+    private StringBuilder _sb = null!;
 
     [GlobalSetup]
     public void GlobalSetup()
@@ -34,10 +36,7 @@ public class RenderBenchmarks
     }
 
     [GlobalCleanup]
-    public void GlobalCleanup()
-    {
-        Console.SetOut(_originalOut);
-    }
+    public void GlobalCleanup() => Console.SetOut(_originalOut);
 
     [IterationSetup(Target = nameof(Flush_FullRedraw))]
     public void SetupFlush()
@@ -46,7 +45,7 @@ public class RenderBenchmarks
         var style2 = new CellStyle(null, new Color(40, 40, 40), Bold: true);
         for (int row = 0; row < 5; row++)
         {
-            var style = row % 2 == 0 ? style1 : style2;
+            CellStyle style = row % 2 == 0 ? style1 : style2;
             _buffer.WriteString(row, 0, "Program.cs  binary.dat  src  README.md  Makefile", style, 120);
         }
 
@@ -73,7 +72,7 @@ public class RenderBenchmarks
     [Benchmark]
     public void WriteEntry_WithIcon()
     {
-        var icon = FileIcons.GetIcon(CsFile);
+        Rune icon = FileIcons.GetIcon(CsFile);
         var style = new CellStyle(null, null);
         _buffer.Put(0, 0, icon, style);
         _buffer.Put(0, 1, ' ', style);
@@ -90,10 +89,7 @@ public class RenderBenchmarks
     }
 
     [Benchmark]
-    public void Flush_FullRedraw()
-    {
-        _buffer.Flush(_sb);
-    }
+    public void Flush_FullRedraw() => _buffer.Flush(_sb);
 
     [Benchmark]
     public void RenderFileList_WithIcons()

@@ -58,13 +58,6 @@ internal static class MsiInterop
     private const int PID_COMMENTS = 6;
     private const int PID_WORDCOUNT = 15;
 
-    [StructLayout(LayoutKind.Sequential)]
-    private struct FILETIME
-    {
-        public uint dwLowDateTime;
-        public uint dwHighDateTime;
-    }
-
     // Summary info property types
     private const int VT_LPSTR = 30;
     private const int VT_I4 = 3;
@@ -248,7 +241,7 @@ internal static class MsiInterop
     private static string? GetRecordString(nint record, uint field)
     {
         uint size = 256;
-        var buffer = new char[size];
+        char[] buffer = new char[size];
         uint result = MsiRecordGetString(record, field, buffer, ref size);
 
         if (result == 234) // ERROR_MORE_DATA
@@ -264,7 +257,7 @@ internal static class MsiInterop
     private static string? GetSummaryStringProperty(nint summaryInfo, int propertyId)
     {
         uint size = 256;
-        var buffer = new char[size];
+        char[] buffer = new char[size];
         uint result = MsiSummaryInfoGetProperty(
             summaryInfo, (uint)propertyId,
             out uint dataType, out _, out _, buffer, ref size);
@@ -300,5 +293,12 @@ internal static class MsiInterop
         }
 
         return intValue;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct FILETIME
+    {
+        public uint dwLowDateTime;
+        public uint dwHighDateTime;
     }
 }

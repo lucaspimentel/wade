@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 
 namespace Wade.Preview;
@@ -12,13 +13,13 @@ internal sealed class MediaMetadataProvider : IMetadataProvider
         ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".webm", ".flv", ".m4v", ".ts", ".mpg", ".mpeg",
     };
 
-    public string Label => "Media info";
-
     internal static bool FfprobeAvailable => CliTool.IsAvailable("ffprobe", "-version", requireZeroExitCode: true);
 
     internal static bool MediainfoAvailable => CliTool.IsAvailable("mediainfo", "--version");
 
     internal static bool IsAvailable => FfprobeAvailable || MediainfoAvailable;
+
+    public string Label => "Media info";
 
     public bool CanProvideMetadata(string path, PreviewContext context)
     {
@@ -229,7 +230,7 @@ internal sealed class MediaMetadataProvider : IMetadataProvider
     {
         string? value = GetString(element, property);
 
-        if (value is not null && double.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out double seconds) && seconds > 0)
+        if (value is not null && double.TryParse(value, CultureInfo.InvariantCulture, out double seconds) && seconds > 0)
         {
             entries.Add(new MetadataEntry("Duration", FormatDuration(seconds)));
         }
@@ -278,14 +279,14 @@ internal sealed class MediaMetadataProvider : IMetadataProvider
         string[] parts = value.Split('/');
 
         if (parts.Length == 2
-            && double.TryParse(parts[0], System.Globalization.CultureInfo.InvariantCulture, out double num)
-            && double.TryParse(parts[1], System.Globalization.CultureInfo.InvariantCulture, out double den)
+            && double.TryParse(parts[0], CultureInfo.InvariantCulture, out double num)
+            && double.TryParse(parts[1], CultureInfo.InvariantCulture, out double den)
             && den > 0)
         {
             double fps = num / den;
             entries.Add(new MetadataEntry("Frame rate", $"{fps:F3} fps"));
         }
-        else if (double.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out double directFps))
+        else if (double.TryParse(value, CultureInfo.InvariantCulture, out double directFps))
         {
             entries.Add(new MetadataEntry("Frame rate", $"{directFps:F3} fps"));
         }

@@ -22,7 +22,7 @@ public class DialogBoxTests
     {
         var buf = new ScreenBuffer(80, 24);
 
-        var content = DialogBox.Render(buf, 80, 24, 20, 5, title: "Test", footer: "Footer");
+        Rect content = DialogBox.Render(buf, 80, 24, 20, 5, title: "Test", footer: "Footer");
 
         Assert.Equal(20, content.Width);
         Assert.Equal(5, content.Height);
@@ -34,7 +34,7 @@ public class DialogBoxTests
         var buf = new ScreenBuffer(80, 24);
 
         // box width = contentWidth + 4 = 24; content.Left = (80 - 24)/2 + 2 = 30
-        var content = DialogBox.Render(buf, 80, 24, 20, 5, title: "Test", footer: "Footer");
+        Rect content = DialogBox.Render(buf, 80, 24, 20, 5, title: "Test", footer: "Footer");
 
         Assert.Equal(30, content.Left);
     }
@@ -46,7 +46,7 @@ public class DialogBoxTests
 
         DialogBox.Render(buf, 60, 20, 10, 3, title: "T", footer: "F");
 
-        var output = Flush(buf);
+        string output = Flush(buf);
         Assert.Contains("┌", output);
         Assert.Contains("┐", output);
         Assert.Contains("└", output);
@@ -63,7 +63,7 @@ public class DialogBoxTests
 
         DialogBox.Render(buf, 60, 20, 20, 3, title: "My Title");
 
-        var output = Flush(buf);
+        string output = Flush(buf);
         Assert.Contains("My Title", output);
     }
 
@@ -74,7 +74,7 @@ public class DialogBoxTests
 
         DialogBox.Render(buf, 60, 20, 20, 3, footer: "Press ESC");
 
-        var output = Flush(buf);
+        string output = Flush(buf);
         Assert.Contains("Press ESC", output);
     }
 
@@ -83,9 +83,9 @@ public class DialogBoxTests
     {
         var buf = new ScreenBuffer(60, 20);
 
-        var content = DialogBox.Render(buf, 60, 20, 10, 3);
+        Rect content = DialogBox.Render(buf, 60, 20, 10, 3);
 
-        var output = Flush(buf);
+        string output = Flush(buf);
         Assert.Contains("┌", output);
         Assert.Contains("┘", output);
         Assert.Equal(10, content.Width);
@@ -103,13 +103,13 @@ public class DialogBoxTests
         string? title = hasTitle ? "Title" : null;
         string? footer = hasFooter ? "Footer" : null;
 
-        var content = DialogBox.Render(buf, 80, 24, 30, 5, title: title, footer: footer);
+        Rect content = DialogBox.Render(buf, 80, 24, 30, 5, title: title, footer: footer);
 
         // Write into the content area
         var style = new CellStyle(new Color(255, 255, 255), DialogBox.BgColor);
         buf.WriteString(content.Top, content.Left, "Hello World", style);
 
-        var output = Flush(buf);
+        string output = Flush(buf);
         Assert.Contains("Hello World", output);
     }
 
@@ -120,7 +120,7 @@ public class DialogBoxTests
 
         HelpOverlay.Render(buf, 120, 40);
 
-        var output = Flush(buf);
+        string output = Flush(buf);
         Assert.Contains("Help", output);
         Assert.Contains("Press any key to close", output);
         Assert.Contains("Ctrl+P", output);

@@ -9,31 +9,21 @@ namespace Wade.Highlighting.Languages;
 internal abstract class RegexLanguage : ILanguage
 {
     // State constants shared by all subclasses
-    protected const byte StateNormal       = 0;
+    protected const byte StateNormal = 0;
     protected const byte StateBlockComment = 1;
-    protected const byte StateMultiString  = 2;
+    protected const byte StateMultiString = 2;
 
-    protected abstract FrozenSet<string> Keywords  { get; }
+    protected abstract FrozenSet<string> Keywords { get; }
+
     protected abstract FrozenSet<string> Constants { get; }
-    protected abstract FrozenSet<string> Builtins  { get; }
+
+    protected abstract FrozenSet<string> Builtins { get; }
 
     /// <summary>Single-line comment prefix (e.g. "//"). Null if unsupported.</summary>
     protected virtual string? LineCommentPrefix => "//";
 
     /// <summary>Block comment open/close (e.g. "/*", "*/"). Null if unsupported.</summary>
     protected virtual (string Open, string Close)? BlockComment => ("/*", "*/");
-
-    /// <summary>
-    /// Called before the main scan loop on each line. Subclasses may emit spans and
-    /// return the new position to continue scanning from, or -1 to skip main loop entirely.
-    /// </summary>
-    protected virtual int TryMatchLinePrefix(string line, List<StyledSpan> spans, ref byte state) => 0;
-
-    /// <summary>
-    /// Called when a character is not handled by the base scanner.
-    /// Returns length of span consumed (0 = not handled).
-    /// </summary>
-    protected virtual int TryMatchExtension(string line, int pos, List<StyledSpan> spans) => 0;
 
     public virtual StyledLine TokenizeLine(string line, ref byte state)
     {
@@ -47,7 +37,7 @@ internal abstract class RegexLanguage : ILanguage
         // Handle continuation of block comment from previous line
         if (state == StateBlockComment)
         {
-            var (_, close) = BlockComment!.Value;
+            (_, string close) = BlockComment!.Value;
             int end = line.IndexOf(close, StringComparison.Ordinal);
             if (end < 0)
             {
@@ -55,6 +45,7 @@ internal abstract class RegexLanguage : ILanguage
                 spans.Add(new StyledSpan(0, line.Length, TokenKind.Comment));
                 return MakeResult(line, spans);
             }
+
             int closeEnd = end + close.Length;
             spans.Add(new StyledSpan(0, closeEnd, TokenKind.Comment));
             state = StateNormal;
@@ -84,6 +75,18 @@ internal abstract class RegexLanguage : ILanguage
         ScanLine(line, prefixEnd, spans, ref state);
         return MakeResult(line, spans);
     }
+
+    /// <summary>
+    /// Called before the main scan loop on each line. Subclasses may emit spans and
+    /// return the new position to continue scanning from, or -1 to skip main loop entirely.
+    /// </summary>
+    protected virtual int TryMatchLinePrefix(string line, List<StyledSpan> spans, ref byte state) => 0;
+
+    /// <summary>
+    /// Called when a character is not handled by the base scanner.
+    /// Returns length of span consumed (0 = not handled).
+    /// </summary>
+    protected virtual int TryMatchExtension(string line, int pos, List<StyledSpan> spans) => 0;
 
     /// <summary>
     /// When state == StateMultiString, try to find the end of the multi-line string
@@ -129,6 +132,7 @@ internal abstract class RegexLanguage : ILanguage
                     pos = commentEnd;
                     continue;
                 }
+
                 // Multi-line block comment
                 spans.Add(new StyledSpan(pos, len - pos, TokenKind.Comment));
                 state = StateBlockComment;
@@ -207,6 +211,7 @@ internal abstract class RegexLanguage : ILanguage
             end = ScanQuotedString(line, pos, ch, spans);
             return true;
         }
+
         end = pos;
         return false;
     }
@@ -218,8 +223,18 @@ internal abstract class RegexLanguage : ILanguage
         while (pos < line.Length)
         {
             char c = line[pos];
-            if (c == '\\') { pos += 2; continue; }
-            if (c == quote) { pos++; break; }
+            if (c == '\\')
+            {
+                pos += 2;
+                continue;
+            }
+
+            if (c == quote)
+            {
+                pos++;
+                break;
+            }
+
             pos++;
         }
 
@@ -255,13 +270,19 @@ internal abstract class RegexLanguage : ILanguage
         while (pos < line.Length)
         {
             char c = line[pos];
-            if (char.IsDigit(c) || c == '_') { pos++; continue; }
+            if (char.IsDigit(c) || c == '_')
+            {
+                pos++;
+                continue;
+            }
+
             if (c == '.' && !hasDot && pos + 1 < line.Length && char.IsDigit(line[pos + 1]))
             {
                 hasDot = true;
                 pos++;
                 continue;
             }
+
             break;
         }
 
@@ -310,6 +331,7 @@ internal abstract class RegexLanguage : ILanguage
             end = pos + 1;
             return true;
         }
+
         if (ch is '=' or '+' or '-' or '*' or '/' or '%' or '<' or '>' or '!' or '&' or '|' or '^' or '~' or '?' or '@')
         {
             // Multi-char operators: ->, =>, !=, ==, <=, >=, &&, ||, ++, --
@@ -339,6 +361,7 @@ internal abstract class RegexLanguage : ILanguage
             end = pos + 1;
             return true;
         }
+
         end = pos;
         return false;
     }

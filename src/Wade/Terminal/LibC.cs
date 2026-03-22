@@ -43,7 +43,7 @@ internal static class LibC
     public static nint Read(int fd, byte[] buf, int offset, int count)
     {
         // Create a temporary buffer for the offset read, then copy back
-        var tmp = new byte[count];
+        byte[] tmp = new byte[count];
         nint n = read(fd, tmp, count);
         if (n > 0)
         {

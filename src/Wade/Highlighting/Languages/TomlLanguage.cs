@@ -22,6 +22,7 @@ internal sealed class TomlLanguage : ILanguage
                 spans.Add(new StyledSpan(0, len, TokenKind.String));
                 return MakeResult(line, spans);
             }
+
             int closeEnd = closeIdx + 3;
             spans.Add(new StyledSpan(0, closeEnd, TokenKind.String));
             state = 0;
@@ -30,7 +31,11 @@ internal sealed class TomlLanguage : ILanguage
 
         while (pos < len)
         {
-            if (char.IsWhiteSpace(line[pos])) { pos++; continue; }
+            if (char.IsWhiteSpace(line[pos]))
+            {
+                pos++;
+                continue;
+            }
 
             char ch = line[pos];
 
@@ -119,6 +124,7 @@ internal sealed class TomlLanguage : ILanguage
                     ScanValue(line, pos, len, spans, ref state);
                     break;
                 }
+
                 // Not a key=value pattern
                 continue;
             }
@@ -153,6 +159,7 @@ internal sealed class TomlLanguage : ILanguage
                 spans.Add(new StyledSpan(pos, closeIdx + 3 - pos, TokenKind.String));
                 return;
             }
+
             spans.Add(new StyledSpan(pos, len - pos, TokenKind.String));
             state = 2;
             return;
@@ -165,8 +172,18 @@ internal sealed class TomlLanguage : ILanguage
             int p = pos + 1;
             while (p < len)
             {
-                if (line[p] == '\\' && quote == '"') { p += 2; continue; }
-                if (line[p] == quote) { p++; break; }
+                if (line[p] == '\\' && quote == '"')
+                {
+                    p += 2;
+                    continue;
+                }
+
+                if (line[p] == quote)
+                {
+                    p++;
+                    break;
+                }
+
                 p++;
             }
 
@@ -175,8 +192,17 @@ internal sealed class TomlLanguage : ILanguage
         }
 
         // Boolean / null
-        if (line.AsSpan(pos).StartsWith("true"))  { spans.Add(new StyledSpan(pos, 4, TokenKind.Constant)); return; }
-        if (line.AsSpan(pos).StartsWith("false")) { spans.Add(new StyledSpan(pos, 5, TokenKind.Constant)); return; }
+        if (line.AsSpan(pos).StartsWith("true"))
+        {
+            spans.Add(new StyledSpan(pos, 4, TokenKind.Constant));
+            return;
+        }
+
+        if (line.AsSpan(pos).StartsWith("false"))
+        {
+            spans.Add(new StyledSpan(pos, 5, TokenKind.Constant));
+            return;
+        }
 
         // Number or date
         if (char.IsDigit(ch) || ch == '-' || ch == '+')

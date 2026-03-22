@@ -30,7 +30,7 @@ internal sealed class MsiMetadataProvider : IMetadataProvider
             try
             {
                 var sections = new List<MetadataSection>();
-                var properties = MsiInterop.QueryPropertyTable(db);
+                Dictionary<string, string> properties = MsiInterop.QueryPropertyTable(db);
 
                 // Installer section from Property table
                 var installerEntries = new List<MetadataEntry>();

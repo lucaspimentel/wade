@@ -126,7 +126,7 @@ public class ImageMetadataProviderTests
     [Fact]
     public void Registry_ImageFile_ReturnsProvider()
     {
-        var providers = MetadataProviderRegistry.GetApplicableProviders("photo.jpg", MakeContext());
+        List<IMetadataProvider> providers = MetadataProviderRegistry.GetApplicableProviders("photo.jpg", MakeContext());
 
         Assert.Contains(providers, p => p is ImageMetadataProvider);
     }
@@ -139,8 +139,6 @@ public class ImageMetadataProviderTests
     [InlineData(null, "EOS R5", "EOS R5")]
     [InlineData("Canon", null, "Canon")]
     [InlineData(null, null, null)]
-    public void FormatCamera_CombinesMakeAndModel(string? make, string? model, string? expected)
-    {
+    public void FormatCamera_CombinesMakeAndModel(string? make, string? model, string? expected) =>
         Assert.Equal(expected, ImageMetadataProvider.FormatCamera(make, model));
-    }
 }

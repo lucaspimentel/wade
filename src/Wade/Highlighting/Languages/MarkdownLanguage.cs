@@ -4,20 +4,8 @@ namespace Wade.Highlighting.Languages;
 
 internal sealed partial class MarkdownLanguage : ILanguage
 {
-    private const byte StateNormal    = 0;
+    private const byte StateNormal = 0;
     private const byte StateCodeFence = 1;
-
-    [GeneratedRegex(@"\[([^\]]+)\]\(([^)]+)\)", RegexOptions.None)]
-    private static partial Regex LinkPattern();
-
-    [GeneratedRegex(@"(`+)(.+?)\1", RegexOptions.None)]
-    private static partial Regex CodeSpanPattern();
-
-    [GeneratedRegex(@"\*\*(.+?)\*\*|__(.+?)__", RegexOptions.None)]
-    private static partial Regex BoldPattern();
-
-    [GeneratedRegex(@"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)|(?<!_)_(?!_)(.+?)(?<!_)_(?!_)", RegexOptions.None)]
-    private static partial Regex ItalicPattern();
 
     public StyledLine TokenizeLine(string line, ref byte state)
     {
@@ -104,6 +92,18 @@ internal sealed partial class MarkdownLanguage : ILanguage
 
         return spans.Count == 0 ? new StyledLine(line, null) : new StyledLine(line, [.. spans]);
     }
+
+    [GeneratedRegex(@"\[([^\]]+)\]\(([^)]+)\)", RegexOptions.None)]
+    private static partial Regex LinkPattern();
+
+    [GeneratedRegex(@"(`+)(.+?)\1", RegexOptions.None)]
+    private static partial Regex CodeSpanPattern();
+
+    [GeneratedRegex(@"\*\*(.+?)\*\*|__(.+?)__", RegexOptions.None)]
+    private static partial Regex BoldPattern();
+
+    [GeneratedRegex(@"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)|(?<!_)_(?!_)(.+?)(?<!_)_(?!_)", RegexOptions.None)]
+    private static partial Regex ItalicPattern();
 
     private static void ApplyInlinePatterns(string line, List<StyledSpan> spans)
     {

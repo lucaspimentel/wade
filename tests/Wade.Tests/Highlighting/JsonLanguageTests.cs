@@ -16,7 +16,7 @@ public class JsonLanguageTests
     [Fact]
     public void KeyStringValue_Classified()
     {
-        var spans = Tokenize("\"key\": \"value\"");
+        StyledSpan[] spans = Tokenize("\"key\": \"value\"");
         Assert.Contains(spans, s => s.Kind == TokenKind.Key);
         Assert.Contains(spans, s => s.Kind == TokenKind.String);
     }
@@ -24,18 +24,18 @@ public class JsonLanguageTests
     [Fact]
     public void KeyNumberValue_Classified()
     {
-        var spans = Tokenize("\"key\": 42");
+        StyledSpan[] spans = Tokenize("\"key\": 42");
         Assert.Contains(spans, s => s.Kind == TokenKind.Key);
         Assert.Contains(spans, s => s.Kind == TokenKind.Number);
     }
 
     [Theory]
-    [InlineData("\"key\": true",  TokenKind.Constant)]
+    [InlineData("\"key\": true", TokenKind.Constant)]
     [InlineData("\"key\": false", TokenKind.Constant)]
-    [InlineData("\"key\": null",  TokenKind.Constant)]
+    [InlineData("\"key\": null", TokenKind.Constant)]
     public void KeyBooleanValue_Classified(string line, TokenKind expected)
     {
-        var spans = Tokenize(line);
+        StyledSpan[] spans = Tokenize(line);
         Assert.Contains(spans, s => s.Kind == TokenKind.Key);
         Assert.Contains(spans, s => s.Kind == expected);
     }
@@ -43,22 +43,22 @@ public class JsonLanguageTests
     [Fact]
     public void Punctuation_Classified()
     {
-        var spans = Tokenize("{ \"a\": 1 }");
+        StyledSpan[] spans = Tokenize("{ \"a\": 1 }");
         Assert.Contains(spans, s => s.Kind == TokenKind.Punctuation);
     }
 
     [Fact]
     public void NestedObject_KeysClassified()
     {
-        var spans = Tokenize("{ \"a\": { \"b\": 1 } }");
-        var keys = spans.Where(s => s.Kind == TokenKind.Key).ToArray();
+        StyledSpan[] spans = Tokenize("{ \"a\": { \"b\": 1 } }");
+        StyledSpan[] keys = spans.Where(s => s.Kind == TokenKind.Key).ToArray();
         Assert.Equal(2, keys.Length);
     }
 
     [Fact]
     public void EmptyLine_ReturnsNullSpans()
     {
-        var spans = Tokenize("");
+        StyledSpan[] spans = Tokenize("");
         Assert.Empty(spans);
     }
 }

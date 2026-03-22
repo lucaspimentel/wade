@@ -23,7 +23,7 @@ internal static class MetadataProviderRegistry
         }
 
         var result = new List<IMetadataProvider>();
-        foreach (var provider in s_providers)
+        foreach (IMetadataProvider provider in s_providers)
         {
             // Cloud placeholders: only FileMetadataProvider (reads fs attrs only, no file I/O)
             if (context.IsCloudPlaceholder && provider is not FileMetadataProvider)

@@ -48,7 +48,7 @@ public class MsiMetadataProviderTests
     [Fact]
     public void Registry_MsiFile_ReturnsMsiMetadataProvider()
     {
-        var providers = MetadataProviderRegistry.GetApplicableProviders("installer.msi", MakeContext());
+        List<IMetadataProvider> providers = MetadataProviderRegistry.GetApplicableProviders("installer.msi", MakeContext());
         Assert.Contains(providers, p => p is MsiMetadataProvider);
     }
 }

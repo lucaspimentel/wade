@@ -31,6 +31,24 @@ public class PreviewProviderTests
             SixelSupported: sixelSupported,
             ArchiveMetadataEnabled: true);
 
+    // --- Helpers ---
+
+    private static string CreateTempZip(params (string Name, string Content)[] entries)
+    {
+        string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".zip");
+        using FileStream stream = File.Create(path);
+        using var archive = new ZipArchive(stream, ZipArchiveMode.Create);
+
+        foreach ((string name, string content) in entries)
+        {
+            ZipArchiveEntry entry = archive.CreateEntry(name);
+            using var writer = new StreamWriter(entry.Open());
+            writer.Write(content);
+        }
+
+        return path;
+    }
+
     // --- ImagePreviewProvider ---
 
     public class ImagePreviewProviderTests
@@ -65,10 +83,7 @@ public class PreviewProviderTests
         }
 
         [Fact]
-        public void Label_IsImage()
-        {
-            Assert.Equal("Image", new ImagePreviewProvider().Label);
-        }
+        public void Label_IsImage() => Assert.Equal("Image", new ImagePreviewProvider().Label);
     }
 
     // --- PdfPreviewProvider ---
@@ -120,10 +135,7 @@ public class PreviewProviderTests
         }
 
         [Fact]
-        public void Label_IsPdf()
-        {
-            Assert.Equal("PDF", new PdfPreviewProvider().Label);
-        }
+        public void Label_IsPdf() => Assert.Equal("PDF", new PdfPreviewProvider().Label);
     }
 
     // --- GlowMarkdownPreviewProvider ---
@@ -148,10 +160,7 @@ public class PreviewProviderTests
         }
 
         [Fact]
-        public void Label_IsRenderedMarkdown()
-        {
-            Assert.Equal("Rendered markdown", new GlowMarkdownPreviewProvider().Label);
-        }
+        public void Label_IsRenderedMarkdown() => Assert.Equal("Rendered markdown", new GlowMarkdownPreviewProvider().Label);
     }
 
     // --- ZipContentsPreviewProvider ---
@@ -193,7 +202,7 @@ public class PreviewProviderTests
             try
             {
                 var provider = new ZipContentsPreviewProvider();
-                var result = provider.GetPreview(zipPath, DefaultContext(), CancellationToken.None);
+                PreviewResult? result = provider.GetPreview(zipPath, DefaultContext(), CancellationToken.None);
 
                 Assert.NotNull(result);
                 Assert.NotNull(result.TextLines);
@@ -215,7 +224,7 @@ public class PreviewProviderTests
             try
             {
                 var provider = new ZipContentsPreviewProvider();
-                var result = provider.GetPreview(path, DefaultContext(), CancellationToken.None);
+                PreviewResult? result = provider.GetPreview(path, DefaultContext(), CancellationToken.None);
 
                 Assert.NotNull(result);
                 Assert.NotNull(result.TextLines);
@@ -235,7 +244,7 @@ public class PreviewProviderTests
             try
             {
                 var provider = new ZipContentsPreviewProvider();
-                var result = provider.GetPreview(zipPath, DefaultContext(), CancellationToken.None);
+                PreviewResult? result = provider.GetPreview(zipPath, DefaultContext(), CancellationToken.None);
 
                 Assert.NotNull(result);
                 Assert.NotNull(result.TextLines);
@@ -249,10 +258,7 @@ public class PreviewProviderTests
         }
 
         [Fact]
-        public void Label_IsArchiveContents()
-        {
-            Assert.Equal("Archive contents", new ZipContentsPreviewProvider().Label);
-        }
+        public void Label_IsArchiveContents() => Assert.Equal("Archive contents", new ZipContentsPreviewProvider().Label);
     }
 
     // --- TextPreviewProvider ---
@@ -299,7 +305,7 @@ public class PreviewProviderTests
             try
             {
                 var provider = new TextPreviewProvider();
-                var result = provider.GetPreview(path, DefaultContext(), CancellationToken.None);
+                PreviewResult? result = provider.GetPreview(path, DefaultContext(), CancellationToken.None);
 
                 Assert.NotNull(result);
                 Assert.NotNull(result.TextLines);
@@ -323,7 +329,7 @@ public class PreviewProviderTests
             try
             {
                 var provider = new TextPreviewProvider();
-                var result = provider.GetPreview(path, DefaultContext(), CancellationToken.None);
+                PreviewResult? result = provider.GetPreview(path, DefaultContext(), CancellationToken.None);
 
                 Assert.NotNull(result);
                 Assert.NotNull(result.TextLines);
@@ -345,7 +351,7 @@ public class PreviewProviderTests
             try
             {
                 var provider = new TextPreviewProvider();
-                var result = provider.GetPreview(path, DefaultContext(), CancellationToken.None);
+                PreviewResult? result = provider.GetPreview(path, DefaultContext(), CancellationToken.None);
 
                 Assert.NotNull(result);
                 Assert.True(result.IsPlaceholder);
@@ -357,10 +363,7 @@ public class PreviewProviderTests
         }
 
         [Fact]
-        public void Label_IsText()
-        {
-            Assert.Equal("Text", new TextPreviewProvider().Label);
-        }
+        public void Label_IsText() => Assert.Equal("Text", new TextPreviewProvider().Label);
     }
 
     // --- HexPreviewProvider ---
@@ -407,7 +410,7 @@ public class PreviewProviderTests
             try
             {
                 var provider = new HexPreviewProvider();
-                var result = provider.GetPreview(path, DefaultContext(), CancellationToken.None);
+                PreviewResult? result = provider.GetPreview(path, DefaultContext(), CancellationToken.None);
 
                 Assert.NotNull(result);
                 Assert.NotNull(result.TextLines);
@@ -421,10 +424,7 @@ public class PreviewProviderTests
         }
 
         [Fact]
-        public void Label_IsHexDump()
-        {
-            Assert.Equal("Hex dump", new HexPreviewProvider().Label);
-        }
+        public void Label_IsHexDump() => Assert.Equal("Hex dump", new HexPreviewProvider().Label);
     }
 
     // --- NonePreviewProvider ---
@@ -444,17 +444,14 @@ public class PreviewProviderTests
         public void GetPreview_ReturnsPlaceholder()
         {
             var provider = new NonePreviewProvider();
-            var result = provider.GetPreview("file.cs", DefaultContext(), CancellationToken.None);
+            PreviewResult? result = provider.GetPreview("file.cs", DefaultContext(), CancellationToken.None);
 
             Assert.NotNull(result);
             Assert.True(result.IsPlaceholder);
         }
 
         [Fact]
-        public void Label_IsNone()
-        {
-            Assert.Equal("None", new NonePreviewProvider().Label);
-        }
+        public void Label_IsNone() => Assert.Equal("None", new NonePreviewProvider().Label);
     }
 
     // --- DiffPreviewProvider ---
@@ -465,7 +462,7 @@ public class PreviewProviderTests
         public void CanPreview_ModifiedFile_ReturnsTrue()
         {
             var provider = new DiffPreviewProvider();
-            var context = DefaultContext(gitStatus: GitFileStatus.Modified, repoRoot: "/repo");
+            PreviewContext context = DefaultContext(gitStatus: GitFileStatus.Modified, repoRoot: "/repo");
             Assert.True(provider.CanPreview("file.cs", context));
         }
 
@@ -473,7 +470,7 @@ public class PreviewProviderTests
         public void CanPreview_StagedFile_ReturnsTrue()
         {
             var provider = new DiffPreviewProvider();
-            var context = DefaultContext(gitStatus: GitFileStatus.Staged, repoRoot: "/repo");
+            PreviewContext context = DefaultContext(gitStatus: GitFileStatus.Staged, repoRoot: "/repo");
             Assert.True(provider.CanPreview("file.cs", context));
         }
 
@@ -481,7 +478,7 @@ public class PreviewProviderTests
         public void CanPreview_UntrackedFile_ReturnsFalse()
         {
             var provider = new DiffPreviewProvider();
-            var context = DefaultContext(gitStatus: GitFileStatus.Untracked, repoRoot: "/repo");
+            PreviewContext context = DefaultContext(gitStatus: GitFileStatus.Untracked, repoRoot: "/repo");
             Assert.False(provider.CanPreview("file.cs", context));
         }
 
@@ -489,7 +486,7 @@ public class PreviewProviderTests
         public void CanPreview_NoRepoRoot_ReturnsFalse()
         {
             var provider = new DiffPreviewProvider();
-            var context = DefaultContext(gitStatus: GitFileStatus.Modified, repoRoot: null);
+            PreviewContext context = DefaultContext(gitStatus: GitFileStatus.Modified, repoRoot: null);
             Assert.False(provider.CanPreview("file.cs", context));
         }
 
@@ -497,7 +494,7 @@ public class PreviewProviderTests
         public void CanPreview_NoGitStatus_ReturnsFalse()
         {
             var provider = new DiffPreviewProvider();
-            var context = DefaultContext(gitStatus: null, repoRoot: "/repo");
+            PreviewContext context = DefaultContext(gitStatus: null, repoRoot: "/repo");
             Assert.False(provider.CanPreview("file.cs", context));
         }
 
@@ -505,32 +502,11 @@ public class PreviewProviderTests
         public void CanPreview_CleanFile_ReturnsFalse()
         {
             var provider = new DiffPreviewProvider();
-            var context = DefaultContext(gitStatus: GitFileStatus.None, repoRoot: "/repo");
+            PreviewContext context = DefaultContext(gitStatus: GitFileStatus.None, repoRoot: "/repo");
             Assert.False(provider.CanPreview("file.cs", context));
         }
 
         [Fact]
-        public void Label_IsGitDiff()
-        {
-            Assert.Equal("Git diff", new DiffPreviewProvider().Label);
-        }
-    }
-
-    // --- Helpers ---
-
-    private static string CreateTempZip(params (string Name, string Content)[] entries)
-    {
-        string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".zip");
-        using var stream = File.Create(path);
-        using var archive = new ZipArchive(stream, ZipArchiveMode.Create);
-
-        foreach (var (name, content) in entries)
-        {
-            var entry = archive.CreateEntry(name);
-            using var writer = new StreamWriter(entry.Open());
-            writer.Write(content);
-        }
-
-        return path;
+        public void Label_IsGitDiff() => Assert.Equal("Git diff", new DiffPreviewProvider().Label);
     }
 }

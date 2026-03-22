@@ -51,10 +51,10 @@ internal static class StatusBar
         {
             var branchStyle = new CellStyle(new Color(180, 140, 220), StatusBg);
             // "  <branch-icon> <name>"
-            buffer.Put(rect.Top, infoCol,     ' ',               branchStyle);
-            buffer.Put(rect.Top, infoCol + 1, ' ',               branchStyle);
-            buffer.Put(rect.Top, infoCol + 2, new Rune(0xE0A0),  branchStyle);  // nf-pl-branch
-            buffer.Put(rect.Top, infoCol + 3, ' ',               branchStyle);
+            buffer.Put(rect.Top, infoCol, ' ', branchStyle);
+            buffer.Put(rect.Top, infoCol + 1, ' ', branchStyle);
+            buffer.Put(rect.Top, infoCol + 2, new Rune(0xE0A0), branchStyle); // nf-pl-branch
+            buffer.Put(rect.Top, infoCol + 3, ' ', branchStyle);
             int maxBranch = Math.Min(branchName.Length, infoMaxWidth - 4);
             if (maxBranch > 0)
             {
@@ -114,7 +114,8 @@ internal static class StatusBar
 
         // Right side: always show metadata right-aligned
         Span<char> rightBuf = stackalloc char[128];
-        int rightLen = BuildRightText(rightBuf, itemCount, selectedIndex, selectedEntry, fileTypeLabel, encoding, lineEnding, sortMode, sortAscending);
+        int rightLen = BuildRightText(rightBuf, itemCount, selectedIndex, selectedEntry, fileTypeLabel, encoding, lineEnding, sortMode,
+            sortAscending);
         ReadOnlySpan<char> right = rightBuf[..rightLen];
 
         int rightCol = rect.Width - rightLen - 1;
@@ -157,7 +158,8 @@ internal static class StatusBar
         }
     }
 
-    private static int BuildRightText(Span<char> buf, int itemCount, int selectedIndex, FileSystemEntry? selectedEntry, string? fileTypeLabel, string? encoding = null, string? lineEnding = null, SortMode sortMode = SortMode.Name, bool sortAscending = true)
+    private static int BuildRightText(Span<char> buf, int itemCount, int selectedIndex, FileSystemEntry? selectedEntry, string? fileTypeLabel,
+        string? encoding = null, string? lineEnding = null, SortMode sortMode = SortMode.Name, bool sortAscending = true)
     {
         int pos = 0;
 
@@ -236,5 +238,4 @@ internal static class StatusBar
         buf[pos++] = ' ';
         return pos;
     }
-
 }

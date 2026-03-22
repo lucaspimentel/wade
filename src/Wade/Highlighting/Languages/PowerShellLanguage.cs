@@ -27,6 +27,7 @@ internal sealed class PowerShellLanguage : RegexLanguage
     protected override FrozenSet<string> Builtins { get; } = FrozenSet<string>.Empty;
 
     protected override string? LineCommentPrefix => "#";
+
     protected override (string Open, string Close)? BlockComment => ("<#", "#>");
 
     protected override int TryMatchExtension(string line, int pos, List<StyledSpan> spans)

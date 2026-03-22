@@ -103,12 +103,12 @@ public class FileFinderTests : IDisposable
         File.WriteAllText(Path.Combine(_tempDir, "root.txt"), "");
         File.WriteAllText(Path.Combine(sub, "deep.txt"), "");
 
-        using var pipeline = CreateTestPipeline();
+        using InputPipeline pipeline = CreateTestPipeline();
         App.ScanFilesForFinder(_tempDir, showHidden: true, showSystem: true, pipeline, CancellationToken.None);
 
         InputEvent? evt = DrainPipeline(pipeline);
         Assert.NotNull(evt);
-        var scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
+        FileFinderScanCompleteEvent scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
         Assert.Equal(_tempDir, scanEvt.BasePath);
         Assert.True(scanEvt.Entries.Count >= 2);
         Assert.Contains(scanEvt.Entries, e => e.Name == "root.txt");
@@ -121,12 +121,12 @@ public class FileFinderTests : IDisposable
         File.WriteAllText(Path.Combine(_tempDir, ".hidden"), "");
         File.WriteAllText(Path.Combine(_tempDir, "visible.txt"), "");
 
-        using var pipeline = CreateTestPipeline();
+        using InputPipeline pipeline = CreateTestPipeline();
         App.ScanFilesForFinder(_tempDir, showHidden: false, showSystem: true, pipeline, CancellationToken.None);
 
         InputEvent? evt = DrainPipeline(pipeline);
         Assert.NotNull(evt);
-        var scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
+        FileFinderScanCompleteEvent scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
         Assert.DoesNotContain(scanEvt.Entries, e => e.Name == ".hidden");
         Assert.Contains(scanEvt.Entries, e => e.Name == "visible.txt");
     }
@@ -137,12 +137,12 @@ public class FileFinderTests : IDisposable
         File.WriteAllText(Path.Combine(_tempDir, ".hidden"), "");
         File.WriteAllText(Path.Combine(_tempDir, "visible.txt"), "");
 
-        using var pipeline = CreateTestPipeline();
+        using InputPipeline pipeline = CreateTestPipeline();
         App.ScanFilesForFinder(_tempDir, showHidden: true, showSystem: true, pipeline, CancellationToken.None);
 
         InputEvent? evt = DrainPipeline(pipeline);
         Assert.NotNull(evt);
-        var scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
+        FileFinderScanCompleteEvent scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
         Assert.Contains(scanEvt.Entries, e => e.Name == ".hidden");
         Assert.Contains(scanEvt.Entries, e => e.Name == "visible.txt");
     }
@@ -155,12 +155,12 @@ public class FileFinderTests : IDisposable
         File.WriteAllText(Path.Combine(gitDir, "abc123"), "");
         File.WriteAllText(Path.Combine(_tempDir, "readme.md"), "");
 
-        using var pipeline = CreateTestPipeline();
+        using InputPipeline pipeline = CreateTestPipeline();
         App.ScanFilesForFinder(_tempDir, showHidden: true, showSystem: true, pipeline, CancellationToken.None);
 
         InputEvent? evt = DrainPipeline(pipeline);
         Assert.NotNull(evt);
-        var scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
+        FileFinderScanCompleteEvent scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
         Assert.DoesNotContain(scanEvt.Entries, e => e.FullPath.Contains(".git"));
         Assert.Contains(scanEvt.Entries, e => e.Name == "readme.md");
     }
@@ -173,12 +173,12 @@ public class FileFinderTests : IDisposable
         File.WriteAllText(Path.Combine(hiddenDir, "secret.txt"), "");
         File.WriteAllText(Path.Combine(_tempDir, "visible.txt"), "");
 
-        using var pipeline = CreateTestPipeline();
+        using InputPipeline pipeline = CreateTestPipeline();
         App.ScanFilesForFinder(_tempDir, showHidden: false, showSystem: true, pipeline, CancellationToken.None);
 
         InputEvent? evt = DrainPipeline(pipeline);
         Assert.NotNull(evt);
-        var scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
+        FileFinderScanCompleteEvent scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
         Assert.DoesNotContain(scanEvt.Entries, e => e.Name == "secret.txt");
         Assert.Contains(scanEvt.Entries, e => e.Name == "visible.txt");
     }
@@ -191,12 +191,12 @@ public class FileFinderTests : IDisposable
         File.WriteAllText(Path.Combine(hiddenDir, "secret.txt"), "");
         File.WriteAllText(Path.Combine(_tempDir, "visible.txt"), "");
 
-        using var pipeline = CreateTestPipeline();
+        using InputPipeline pipeline = CreateTestPipeline();
         App.ScanFilesForFinder(_tempDir, showHidden: true, showSystem: true, pipeline, CancellationToken.None);
 
         InputEvent? evt = DrainPipeline(pipeline);
         Assert.NotNull(evt);
-        var scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
+        FileFinderScanCompleteEvent scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
         Assert.Contains(scanEvt.Entries, e => e.Name == "secret.txt");
         Assert.Contains(scanEvt.Entries, e => e.Name == "visible.txt");
     }
@@ -212,12 +212,12 @@ public class FileFinderTests : IDisposable
         Directory.CreateDirectory(hiddenDir);
         File.WriteAllText(Path.Combine(hiddenDir, "settings.json"), "");
 
-        using var pipeline = CreateTestPipeline();
+        using InputPipeline pipeline = CreateTestPipeline();
         App.ScanFilesForFinder(_tempDir, showHidden: true, showSystem: true, pipeline, CancellationToken.None);
 
         InputEvent? evt = DrainPipeline(pipeline);
         Assert.NotNull(evt);
-        var scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
+        FileFinderScanCompleteEvent scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
         Assert.DoesNotContain(scanEvt.Entries, e => e.FullPath.Contains(".git"));
         Assert.Contains(scanEvt.Entries, e => e.Name == "settings.json");
     }
@@ -230,7 +230,7 @@ public class FileFinderTests : IDisposable
         using var cts = new CancellationTokenSource();
         cts.Cancel(); // Cancel before scan
 
-        using var pipeline = CreateTestPipeline();
+        using InputPipeline pipeline = CreateTestPipeline();
         App.ScanFilesForFinder(_tempDir, showHidden: true, showSystem: true, pipeline, cts.Token);
 
         // No event should be injected
@@ -275,7 +275,9 @@ public class FileFinderTests : IDisposable
 
     private sealed class NullInputSource : IInputSource
     {
-        public void Dispose() { }
+        public void Dispose()
+        {
+        }
 
         public InputEvent? ReadNext(CancellationToken ct)
         {

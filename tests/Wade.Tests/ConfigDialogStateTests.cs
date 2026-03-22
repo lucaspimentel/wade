@@ -1,4 +1,3 @@
-using Wade;
 using Wade.FileSystem;
 using Wade.UI;
 
@@ -143,7 +142,7 @@ public class ConfigDialogStateTests
     [Fact]
     public void MoveDown_AdvancesToNextItem()
     {
-        var state = CreateDefaultState();
+        ConfigDialogState state = CreateDefaultState();
         Assert.Equal(0, state.SelectedIndex);
 
         state.MoveDown();
@@ -153,7 +152,7 @@ public class ConfigDialogStateTests
     [Fact]
     public void MoveUp_GoesToPreviousItem()
     {
-        var state = CreateDefaultState();
+        ConfigDialogState state = CreateDefaultState();
         state.SelectedIndex = 2;
 
         state.MoveUp();
@@ -163,7 +162,7 @@ public class ConfigDialogStateTests
     [Fact]
     public void MoveUp_AtTop_WrapsToLastEnabledItem()
     {
-        var state = CreateDefaultState();
+        ConfigDialogState state = CreateDefaultState();
         int lastEnabled = state.Items.Count - 1;
         while (lastEnabled > 0 && !state.Items[lastEnabled].IsEnabled)
         {
@@ -178,7 +177,7 @@ public class ConfigDialogStateTests
     [Fact]
     public void MoveDown_AtBottom_WrapsToFirstEnabledItem()
     {
-        var state = CreateDefaultState();
+        ConfigDialogState state = CreateDefaultState();
         int lastEnabled = state.Items.Count - 1;
         while (lastEnabled > 0 && !state.Items[lastEnabled].IsEnabled)
         {
@@ -194,7 +193,7 @@ public class ConfigDialogStateTests
     [Fact]
     public void MoveDown_SkipsDisabledItems()
     {
-        var state = CreateDefaultState();
+        ConfigDialogState state = CreateDefaultState();
 
         // Disable FileMetadata so detail sub-items are disabled,
         // but PreviewPane stays on so "Show File Previews" is still enabled
@@ -217,7 +216,7 @@ public class ConfigDialogStateTests
     [Fact]
     public void MoveUp_SkipsDisabledItems()
     {
-        var state = CreateDefaultState();
+        ConfigDialogState state = CreateDefaultState();
         state.PreviewPane = true;
         state.FileMetadata = false;
         state.BuildItems();
@@ -237,7 +236,7 @@ public class ConfigDialogStateTests
     [Fact]
     public void ToggleSelected_TogglesBoolean()
     {
-        var state = CreateDefaultState();
+        ConfigDialogState state = CreateDefaultState();
         bool original = state.ShowIcons;
 
         state.ToggleSelected(); // index 0 = "Show Icons"
@@ -248,7 +247,7 @@ public class ConfigDialogStateTests
     [Fact]
     public void ToggleSelected_ToolToggle_AddsToDisabledTools()
     {
-        var state = CreateDefaultState();
+        ConfigDialogState state = CreateDefaultState();
 
         // Navigate to a tool toggle item (e.g. pdfinfo)
         int pdfinfoIndex = state.Items.FindIndex(i => i.Label.Contains("pdfinfo"));
@@ -267,7 +266,7 @@ public class ConfigDialogStateTests
     [Fact]
     public void CycleNextSelected_OnSortMode_CyclesForward()
     {
-        var state = CreateDefaultState();
+        ConfigDialogState state = CreateDefaultState();
         int sortIndex = state.Items.FindIndex(i => i.Label == "Sort Mode");
         state.SelectedIndex = sortIndex;
 
@@ -289,7 +288,7 @@ public class ConfigDialogStateTests
     [Fact]
     public void CyclePrevSelected_OnSortMode_CyclesBackward()
     {
-        var state = CreateDefaultState();
+        ConfigDialogState state = CreateDefaultState();
         int sortIndex = state.Items.FindIndex(i => i.Label == "Sort Mode");
         state.SelectedIndex = sortIndex;
 
@@ -305,7 +304,7 @@ public class ConfigDialogStateTests
     [Fact]
     public void CycleNextSelected_OnNonCycleable_DoesNothing()
     {
-        var state = CreateDefaultState();
+        ConfigDialogState state = CreateDefaultState();
         // Index 0 is "Show Icons" — not cycleable
         bool original = state.ShowIcons;
 
@@ -321,11 +320,11 @@ public class ConfigDialogStateTests
     [InlineData("Show File Previews")]
     public void IndentedItems_DisabledWhenPreviewPaneOff(string label)
     {
-        var state = CreateDefaultState();
+        ConfigDialogState state = CreateDefaultState();
         state.PreviewPane = false;
         state.BuildItems();
 
-        var item = state.Items.Find(i => i.Label == label);
+        ConfigItem? item = state.Items.Find(i => i.Label == label);
         Assert.NotNull(item);
         Assert.False(item.IsEnabled);
     }
@@ -335,11 +334,11 @@ public class ConfigDialogStateTests
     [InlineData("Show File Previews")]
     public void IndentedItems_EnabledWhenPreviewPaneOn(string label)
     {
-        var state = CreateDefaultState();
+        ConfigDialogState state = CreateDefaultState();
         state.PreviewPane = true;
         state.BuildItems();
 
-        var item = state.Items.Find(i => i.Label == label);
+        ConfigItem? item = state.Items.Find(i => i.Label == label);
         Assert.NotNull(item);
         Assert.True(item.IsEnabled);
     }
@@ -351,12 +350,12 @@ public class ConfigDialogStateTests
     [InlineData("Show Media Details (mediainfo)")]
     public void DetailSubItems_DisabledWhenFileMetadataOff(string label)
     {
-        var state = CreateDefaultState();
+        ConfigDialogState state = CreateDefaultState();
         state.PreviewPane = true;
         state.FileMetadata = false;
         state.BuildItems();
 
-        var item = state.Items.Find(i => i.Label == label);
+        ConfigItem? item = state.Items.Find(i => i.Label == label);
         Assert.NotNull(item);
         Assert.False(item.IsEnabled);
     }
@@ -368,12 +367,12 @@ public class ConfigDialogStateTests
     [InlineData("Show Markdown Preview (glow)")]
     public void PreviewSubItems_DisabledWhenFilePreviewsOff(string label)
     {
-        var state = CreateDefaultState();
+        ConfigDialogState state = CreateDefaultState();
         state.PreviewPane = true;
         state.FilePreviews = false;
         state.BuildItems();
 
-        var item = state.Items.Find(i => i.Label == label);
+        ConfigItem? item = state.Items.Find(i => i.Label == label);
         Assert.NotNull(item);
         Assert.False(item.IsEnabled);
     }
@@ -385,12 +384,12 @@ public class ConfigDialogStateTests
     [InlineData("Show Markdown Preview (glow)")]
     public void PreviewSubItems_EnabledWhenFilePreviewsOn(string label)
     {
-        var state = CreateDefaultState();
+        ConfigDialogState state = CreateDefaultState();
         state.PreviewPane = true;
         state.FilePreviews = true;
         state.BuildItems();
 
-        var item = state.Items.Find(i => i.Label == label);
+        ConfigItem? item = state.Items.Find(i => i.Label == label);
         Assert.NotNull(item);
         Assert.True(item.IsEnabled);
     }
@@ -400,8 +399,8 @@ public class ConfigDialogStateTests
     [Fact]
     public void FormatValue_ReflectsCurrentState()
     {
-        var state = CreateDefaultState();
-        var showIcons = state.Items[0]; // "Show Icons"
+        ConfigDialogState state = CreateDefaultState();
+        ConfigItem showIcons = state.Items[0]; // "Show Icons"
 
         state.ShowIcons = true;
         Assert.Equal("[X]", showIcons.FormatValue());
@@ -413,8 +412,8 @@ public class ConfigDialogStateTests
     [Fact]
     public void FormatValue_SortMode_ShowsCurrentMode()
     {
-        var state = CreateDefaultState();
-        var sortItem = state.Items.Find(i => i.Label == "Sort Mode")!;
+        ConfigDialogState state = CreateDefaultState();
+        ConfigItem sortItem = state.Items.Find(i => i.Label == "Sort Mode")!;
 
         state.SortMode = SortMode.Extension;
         Assert.Contains("extension", sortItem.FormatValue());
@@ -423,8 +422,8 @@ public class ConfigDialogStateTests
     [Fact]
     public void FormatValue_ToolItem_ReflectsDisabledTools()
     {
-        var state = CreateDefaultState();
-        var pdfinfoItem = state.Items.Find(i => i.Label.Contains("pdfinfo"))!;
+        ConfigDialogState state = CreateDefaultState();
+        ConfigItem pdfinfoItem = state.Items.Find(i => i.Label.Contains("pdfinfo"))!;
 
         Assert.Equal("[X]", pdfinfoItem.FormatValue()); // enabled by default
         state.DisabledTools.Add("pdfinfo");
@@ -436,7 +435,7 @@ public class ConfigDialogStateTests
     [Fact]
     public void Items_HaveCorrectIndentation()
     {
-        var state = CreateDefaultState();
+        ConfigDialogState state = CreateDefaultState();
 
         Assert.Equal(0, state.Items.Find(i => i.Label == "Show Icons")!.Indent);
         Assert.Equal(1, state.Items.Find(i => i.Label == "Show File Details")!.Indent);
@@ -446,8 +445,8 @@ public class ConfigDialogStateTests
     [Fact]
     public void Items_SortMode_IsCycleable()
     {
-        var state = CreateDefaultState();
-        var sortItem = state.Items.Find(i => i.Label == "Sort Mode")!;
+        ConfigDialogState state = CreateDefaultState();
+        ConfigItem sortItem = state.Items.Find(i => i.Label == "Sort Mode")!;
 
         Assert.True(sortItem.IsCycleable);
     }
@@ -458,8 +457,8 @@ public class ConfigDialogStateTests
     [InlineData("Show File Details")]
     public void Items_BoolItems_AreNotCycleable(string label)
     {
-        var state = CreateDefaultState();
-        var item = state.Items.Find(i => i.Label == label)!;
+        ConfigDialogState state = CreateDefaultState();
+        ConfigItem item = state.Items.Find(i => i.Label == label)!;
 
         Assert.False(item.IsCycleable);
     }
@@ -469,10 +468,7 @@ public class ConfigDialogStateTests
     [Theory]
     [InlineData(true, "[X]")]
     [InlineData(false, "[ ]")]
-    public void FormatBool_ReturnsCheckbox(bool value, string expected)
-    {
-        Assert.Equal(expected, ConfigDialogState.FormatBool(value));
-    }
+    public void FormatBool_ReturnsCheckbox(bool value, string expected) => Assert.Equal(expected, ConfigDialogState.FormatBool(value));
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 

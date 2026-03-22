@@ -55,7 +55,7 @@ public class MsiPreviewProviderTests
     [Fact]
     public void Registry_MsiFile_OnWindows_ReturnsMsiPreviewProvider()
     {
-        var providers = PreviewProviderRegistry.GetApplicableProviders("installer.msi", MakeContext());
+        List<IPreviewProvider> providers = PreviewProviderRegistry.GetApplicableProviders("installer.msi", MakeContext());
 
         if (OperatingSystem.IsWindows())
         {

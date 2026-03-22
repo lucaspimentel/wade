@@ -16,7 +16,7 @@ internal static class SixelEncoder
         int pixelCount = width * height;
 
         // Step 1: Pack all pixels as RGB ints
-        var packedPixels = ArrayPool<int>.Shared.Rent(pixelCount);
+        int[] packedPixels = ArrayPool<int>.Shared.Rent(pixelCount);
         try
         {
             for (int i = 0; i < pixelCount; i++)
@@ -26,7 +26,7 @@ internal static class SixelEncoder
             }
 
             // Step 2: Deduplicate by sorting + compacting (avoids HashSet)
-            var uniqueColors = ArrayPool<int>.Shared.Rent(pixelCount);
+            int[] uniqueColors = ArrayPool<int>.Shared.Rent(pixelCount);
             try
             {
                 Array.Copy(packedPixels, uniqueColors, pixelCount);
@@ -41,10 +41,10 @@ internal static class SixelEncoder
                 }
 
                 // Step 3: In-place median cut
-                var palette = MedianCutInPlace(uniqueColors, uniqueCount, maxColors);
+                int[] palette = MedianCutInPlace(uniqueColors, uniqueCount, maxColors);
 
                 // Step 4: Map pixels to palette indices
-                var indexed = ArrayPool<byte>.Shared.Rent(pixelCount);
+                byte[] indexed = ArrayPool<byte>.Shared.Rent(pixelCount);
                 try
                 {
                     var colorMap = new Dictionary<int, byte>(uniqueCount);
@@ -109,7 +109,7 @@ internal static class SixelEncoder
                 break;
             }
 
-            var (start, length, _, channel) = boxes[bestIdx];
+            (int start, int length, _, int channel) = boxes[bestIdx];
 
             // Sort this range by dominant channel
             SortByChannel(colors, start, length, channel);
@@ -122,7 +122,7 @@ internal static class SixelEncoder
         }
 
         // Compute average color for each box
-        var palette = new int[boxCount];
+        int[] palette = new int[boxCount];
         for (int i = 0; i < boxCount; i++)
         {
             long rSum = 0, gSum = 0, bSum = 0;
@@ -202,7 +202,7 @@ internal static class SixelEncoder
 
     private static void SortByChannel(int[] colors, int start, int length, int channel)
     {
-        var span = colors.AsSpan(start, length);
+        Span<int> span = colors.AsSpan(start, length);
         switch (channel)
         {
             case 0: span.Sort((a, b) => ((a >> 16) & 0xFF) - ((b >> 16) & 0xFF)); break;
@@ -256,14 +256,14 @@ internal static class SixelEncoder
         {
             int c = palette[i];
             sb.Append('#').Append(i).Append(";2;")
-              .Append(((c >> 16) & 0xFF) * 100 / 255).Append(';')
-              .Append(((c >> 8) & 0xFF) * 100 / 255).Append(';')
-              .Append((c & 0xFF) * 100 / 255);
+                .Append(((c >> 16) & 0xFF) * 100 / 255).Append(';')
+                .Append(((c >> 8) & 0xFF) * 100 / 255).Append(';')
+                .Append((c & 0xFF) * 100 / 255);
         }
 
         // Precompute which colors appear in each band to skip empty ones
         int bandCount = (height + 5) / 6;
-        var sixelRow = new int[width];
+        int[] sixelRow = new int[width];
 
         for (int band = 0; band < bandCount; band++)
         {

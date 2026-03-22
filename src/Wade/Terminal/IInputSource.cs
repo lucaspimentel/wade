@@ -2,5 +2,5 @@ namespace Wade.Terminal;
 
 internal interface IInputSource : IDisposable
 {
-    InputEvent? ReadNext(CancellationToken ct);
+    public InputEvent? ReadNext(CancellationToken ct);
 }

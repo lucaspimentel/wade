@@ -1,5 +1,7 @@
+using Wade.Highlighting;
 using Wade.Preview;
 using Wade.Terminal;
+using Wade.UI;
 
 namespace Wade;
 
@@ -20,7 +22,7 @@ internal sealed class PreviewLoader
         _cts?.Cancel();
         _cts?.Dispose();
         _cts = new CancellationTokenSource();
-        var token = _cts.Token;
+        CancellationToken token = _cts.Token;
 
         Task.Run(() => LoadWithProvider(path, provider, context, token), token);
     }
@@ -34,7 +36,7 @@ internal sealed class PreviewLoader
         _cts?.Cancel();
         _cts?.Dispose();
         _cts = new CancellationTokenSource();
-        var token = _cts.Token;
+        CancellationToken token = _cts.Token;
 
         Task.Run(() => LoadMetadataAndPreview(path, metadataProviders, previewProvider, context, token), token);
     }
@@ -66,14 +68,14 @@ internal sealed class PreviewLoader
                 var allSections = new List<MetadataSection>();
                 string? fileTypeLabel = null;
 
-                foreach (var provider in metadataProviders)
+                foreach (IMetadataProvider provider in metadataProviders)
                 {
                     if (ct.IsCancellationRequested)
                     {
                         return;
                     }
 
-                    var result = provider.GetMetadata(path, context, ct);
+                    MetadataResult? result = provider.GetMetadata(path, context, ct);
                     if (result is not null)
                     {
                         allSections.AddRange(result.Sections);
@@ -86,7 +88,7 @@ internal sealed class PreviewLoader
                     _pipeline.Inject(new MetadataReadyEvent(path, [.. allSections], fileTypeLabel));
 
                     // Reduce available height for preview so image providers don't size to the full pane
-                    var renderedMetadata = Wade.UI.MetadataRenderer.Render([.. allSections], context.PaneWidthCells);
+                    StyledLine[] renderedMetadata = MetadataRenderer.Render([.. allSections], context.PaneWidthCells);
                     int metadataRows = Math.Min(renderedMetadata.Length + 1, context.PaneHeightCells / 2); // +1 for separator row
                     int availableRows = context.PaneHeightCells - metadataRows;
                     if (availableRows > 0)
@@ -131,7 +133,7 @@ internal sealed class PreviewLoader
                 return;
             }
 
-            var result = provider.GetPreview(path, context, ct);
+            PreviewResult? result = provider.GetPreview(path, context, ct);
             if (result is null || ct.IsCancellationRequested)
             {
                 return;

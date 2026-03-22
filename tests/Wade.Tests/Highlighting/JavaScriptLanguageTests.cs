@@ -16,7 +16,7 @@ public class JavaScriptLanguageTests
     [Fact]
     public void TemplateLiteral_Classified()
     {
-        var spans = Tokenize("`hello world`");
+        StyledSpan[] spans = Tokenize("`hello world`");
         Assert.Contains(spans, s => s.Kind == TokenKind.String && s.Start == 0);
     }
 
@@ -30,25 +30,25 @@ public class JavaScriptLanguageTests
     [InlineData("export")]
     public void JsKeywords_Classified(string keyword)
     {
-        var spans = Tokenize(keyword);
+        StyledSpan[] spans = Tokenize(keyword);
         Assert.Contains(spans, s => s.Kind == TokenKind.Keyword);
     }
 
     [Theory]
-    [InlineData("true",      TokenKind.Constant)]
-    [InlineData("false",     TokenKind.Constant)]
-    [InlineData("null",      TokenKind.Constant)]
+    [InlineData("true", TokenKind.Constant)]
+    [InlineData("false", TokenKind.Constant)]
+    [InlineData("null", TokenKind.Constant)]
     [InlineData("undefined", TokenKind.Constant)]
     public void JsConstants_Classified(string word, TokenKind expected)
     {
-        var spans = Tokenize(word);
+        StyledSpan[] spans = Tokenize(word);
         Assert.Contains(spans, s => s.Kind == expected);
     }
 
     [Fact]
     public void ArrowOperator_Classified()
     {
-        var spans = Tokenize("=>");
+        StyledSpan[] spans = Tokenize("=>");
         Assert.Contains(spans, s => s.Kind == TokenKind.Operator);
     }
 }

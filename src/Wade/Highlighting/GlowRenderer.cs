@@ -5,28 +5,28 @@ namespace Wade.Highlighting;
 
 internal static class GlowRenderer
 {
-    public static bool IsAvailable => CliTool.IsAvailable("glow", "--version", requireZeroExitCode: true);
-
     // Standard dark terminal 16-color palette (indices 0-15)
     private static readonly Color[] Palette =
     [
-        new(0, 0, 0),       // 0  Black
-        new(187, 0, 0),     // 1  Red
-        new(0, 187, 0),     // 2  Green
-        new(187, 187, 0),   // 3  Yellow
-        new(0, 0, 187),     // 4  Blue
-        new(187, 0, 187),   // 5  Magenta
-        new(0, 187, 187),   // 6  Cyan
+        new(0, 0, 0), // 0  Black
+        new(187, 0, 0), // 1  Red
+        new(0, 187, 0), // 2  Green
+        new(187, 187, 0), // 3  Yellow
+        new(0, 0, 187), // 4  Blue
+        new(187, 0, 187), // 5  Magenta
+        new(0, 187, 187), // 6  Cyan
         new(187, 187, 187), // 7  White
-        new(85, 85, 85),    // 8  Bright Black
-        new(255, 85, 85),   // 9  Bright Red
-        new(85, 255, 85),   // 10 Bright Green
-        new(255, 255, 85),  // 11 Bright Yellow
-        new(85, 85, 255),   // 12 Bright Blue
-        new(255, 85, 255),  // 13 Bright Magenta
-        new(85, 255, 255),  // 14 Bright Cyan
+        new(85, 85, 85), // 8  Bright Black
+        new(255, 85, 85), // 9  Bright Red
+        new(85, 255, 85), // 10 Bright Green
+        new(255, 255, 85), // 11 Bright Yellow
+        new(85, 85, 255), // 12 Bright Blue
+        new(255, 85, 255), // 13 Bright Magenta
+        new(85, 255, 255), // 14 Bright Cyan
         new(255, 255, 255), // 15 Bright White
     ];
+
+    public static bool IsAvailable => CliTool.IsAvailable("glow", "--version", requireZeroExitCode: true);
 
     public static StyledLine[]? Render(string filePath, int width, CancellationToken ct)
     {
@@ -74,9 +74,9 @@ internal static class GlowRenderer
 
             // Strip \r if present
             int lineEndTrim = lineEnd > pos && output[lineEnd - 1] == '\r' ? lineEnd - 1 : lineEnd;
-            var lineSpan = output.AsSpan(pos, lineEndTrim - pos);
+            ReadOnlySpan<char> lineSpan = output.AsSpan(pos, lineEndTrim - pos);
 
-            var (text, charStyles) = ParseAnsiLine(lineSpan);
+            (string text, CellStyle[]? charStyles) = ParseAnsiLine(lineSpan);
 
             // Right-trim trailing spaces
             int trimEnd = text.Length;
@@ -116,7 +116,7 @@ internal static class GlowRenderer
     {
         var textBuf = new List<char>();
         var styles = new List<CellStyle>();
-        var currentStyle = CellStyle.Default;
+        CellStyle currentStyle = CellStyle.Default;
         int i = 0;
 
         while (i < line.Length)
@@ -125,7 +125,7 @@ internal static class GlowRenderer
             {
                 // Parse CSI sequence
                 i += 2;
-                var parsedStyle = ParseSgr(line, ref i, currentStyle);
+                CellStyle parsedStyle = ParseSgr(line, ref i, currentStyle);
                 currentStyle = parsedStyle;
             }
             else
@@ -138,7 +138,7 @@ internal static class GlowRenderer
 
         string text = new(textBuf.ToArray());
         bool hasAnyStyle = false;
-        foreach (var s in styles)
+        foreach (CellStyle s in styles)
         {
             if (s != CellStyle.Default)
             {
@@ -302,7 +302,7 @@ internal static class GlowRenderer
             // 6x6x6 color cube
             int n = index - 16;
             int b = n % 6;
-            int g = (n / 6) % 6;
+            int g = n / 6 % 6;
             int r = n / 36;
             return new Color(
                 (byte)(r == 0 ? 0 : 55 + r * 40),

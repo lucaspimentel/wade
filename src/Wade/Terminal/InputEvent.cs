@@ -8,9 +8,9 @@ internal abstract record InputEvent;
 
 internal sealed record KeyEvent(ConsoleKey Key, char KeyChar, bool Shift, bool Alt, bool Control) : InputEvent
 {
-    public bool IsModifierOnly => Key is (ConsoleKey)16   // VK_SHIFT
-                                      or (ConsoleKey)17   // VK_CONTROL
-                                      or (ConsoleKey)18;  // VK_MENU (Alt)
+    public bool IsModifierOnly => Key is (ConsoleKey)16 // VK_SHIFT
+        or (ConsoleKey)17 // VK_CONTROL
+        or (ConsoleKey)18; // VK_MENU (Alt)
 }
 
 internal sealed record MouseEvent(MouseButton Button, int Row, int Col, bool IsRelease) : InputEvent;

@@ -7,16 +7,27 @@ internal sealed class FileSystemWatcherManager : IDisposable
     private const int DebounceMs = 300;
 
     private readonly InputPipeline _pipeline;
-    private FileSystemWatcher? _watcher;
     private Timer? _debounceTimer;
-    private string? _watchedPath;
     private bool _disposed;
+    private string? _watchedPath;
+    private FileSystemWatcher? _watcher;
 
 #pragma warning disable CSLINT221 // Consider using a primary constructor
     public FileSystemWatcherManager(InputPipeline pipeline)
 #pragma warning restore CSLINT221
     {
         _pipeline = pipeline;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        Stop();
     }
 
     public void Watch(string directoryPath)
@@ -41,9 +52,9 @@ internal sealed class FileSystemWatcherManager : IDisposable
             {
                 IncludeSubdirectories = false,
                 NotifyFilter = NotifyFilters.FileName
-                             | NotifyFilters.DirectoryName
-                             | NotifyFilters.LastWrite
-                             | NotifyFilters.Size,
+                               | NotifyFilters.DirectoryName
+                               | NotifyFilters.LastWrite
+                               | NotifyFilters.Size,
             };
 
             _watcher.Changed += OnFileSystemEvent;
@@ -79,21 +90,7 @@ internal sealed class FileSystemWatcherManager : IDisposable
         _watchedPath = null;
     }
 
-    public void Dispose()
-    {
-        if (_disposed)
-        {
-            return;
-        }
-
-        _disposed = true;
-        Stop();
-    }
-
-    private void OnFileSystemEvent(object sender, FileSystemEventArgs e)
-    {
-        ScheduleDebouncedEvent(fullRefresh: false);
-    }
+    private void OnFileSystemEvent(object sender, FileSystemEventArgs e) => ScheduleDebouncedEvent(fullRefresh: false);
 
     private void OnError(object sender, ErrorEventArgs e)
     {

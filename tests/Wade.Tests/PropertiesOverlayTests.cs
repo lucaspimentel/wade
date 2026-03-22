@@ -28,7 +28,7 @@ public class PropertiesOverlayTests
 
         PropertiesOverlay.Render(buf, 100, 30, entry, null);
 
-        var output = Flush(buf);
+        string output = Flush(buf);
         Assert.Contains("Properties", output);
         Assert.Contains("Press any key to close", output);
         Assert.Contains("Name", output);
@@ -56,7 +56,7 @@ public class PropertiesOverlayTests
 
         PropertiesOverlay.Render(buf, 100, 30, entry, null);
 
-        var output = Flush(buf);
+        string output = Flush(buf);
         Assert.Contains(expectedType, output);
         Assert.Contains(fileName, output);
     }
@@ -70,7 +70,7 @@ public class PropertiesOverlayTests
 
         PropertiesOverlay.Render(buf, 100, 30, entry, null);
 
-        var output = Flush(buf);
+        string output = Flush(buf);
         Assert.Contains("Directory", output);
         Assert.Contains("\u2014", output); // em dash for size
     }
@@ -84,7 +84,7 @@ public class PropertiesOverlayTests
 
         PropertiesOverlay.Render(buf, 100, 30, entry, null);
 
-        var output = Flush(buf);
+        string output = Flush(buf);
         Assert.Contains("Drive", output);
     }
 
@@ -100,7 +100,7 @@ public class PropertiesOverlayTests
 
         PropertiesOverlay.Render(buf, 120, 30, entry, null);
 
-        var output = Flush(buf);
+        string output = Flush(buf);
         Assert.Contains(expected, output);
         Assert.Contains("bytes", output);
     }
@@ -121,7 +121,7 @@ public class PropertiesOverlayTests
 
             PropertiesOverlay.Render(buf, 120, 30, entry, null);
 
-            var output = Flush(buf);
+            string output = Flush(buf);
             Assert.Contains("Symlink \u2192 File", output);
             Assert.Contains(targetPath, output);
         }
@@ -147,7 +147,7 @@ public class PropertiesOverlayTests
 
             PropertiesOverlay.Render(buf, 120, 30, entry, null);
 
-            var output = Flush(buf);
+            string output = Flush(buf);
             Assert.Contains("Symlink \u2192 Directory", output);
             Assert.Contains(targetPath, output);
         }
@@ -169,7 +169,7 @@ public class PropertiesOverlayTests
 
         PropertiesOverlay.Render(buf, 120, 30, entry, null);
 
-        var output = Flush(buf);
+        string output = Flush(buf);
         Assert.Contains("Broken Symlink", output);
         Assert.Contains(targetPath, output);
     }
@@ -184,7 +184,7 @@ public class PropertiesOverlayTests
 
         PropertiesOverlay.Render(buf, 120, 30, entry, null);
 
-        var output = Flush(buf);
+        string output = Flush(buf);
         Assert.Contains("File", output);
         Assert.Contains("\u2014", output); // em dash for target
     }
@@ -198,7 +198,7 @@ public class PropertiesOverlayTests
 
         PropertiesOverlay.Render(buf, 120, 30, entry, null, GitFileStatus.Modified);
 
-        var output = Flush(buf);
+        string output = Flush(buf);
         Assert.Contains("Git status", output);
         Assert.Contains("Modified", output);
     }
@@ -212,7 +212,7 @@ public class PropertiesOverlayTests
 
         PropertiesOverlay.Render(buf, 120, 30, entry, null, GitFileStatus.Staged);
 
-        var output = Flush(buf);
+        string output = Flush(buf);
         Assert.Contains("Git status", output);
         Assert.Contains("Staged", output);
     }
@@ -226,21 +226,15 @@ public class PropertiesOverlayTests
 
         PropertiesOverlay.Render(buf, 120, 30, entry, null, GitFileStatus.Modified | GitFileStatus.Staged);
 
-        var output = Flush(buf);
+        string output = Flush(buf);
         Assert.Contains("Staged, Modified", output);
     }
 
     [Fact]
-    public void FormatGitStatus_None_ReturnsEmDash()
-    {
-        Assert.Equal("\u2014", PropertiesOverlay.FormatGitStatus(GitFileStatus.None));
-    }
+    public void FormatGitStatus_None_ReturnsEmDash() => Assert.Equal("\u2014", PropertiesOverlay.FormatGitStatus(GitFileStatus.None));
 
     [Fact]
-    public void FormatGitStatus_Null_ReturnsEmDash()
-    {
-        Assert.Equal("\u2014", PropertiesOverlay.FormatGitStatus(null));
-    }
+    public void FormatGitStatus_Null_ReturnsEmDash() => Assert.Equal("\u2014", PropertiesOverlay.FormatGitStatus(null));
 
     [Fact]
     public void Render_ReturnsContentHeight()
@@ -264,7 +258,7 @@ public class PropertiesOverlayTests
 
         MetadataSection[] sections =
         [
-            new MetadataSection("Info", [new MetadataEntry("Key1", "Value1"), new MetadataEntry("Key2", "Value2")])
+            new("Info", [new MetadataEntry("Key1", "Value1"), new MetadataEntry("Key2", "Value2")]),
         ];
 
         int contentHeight = PropertiesOverlay.Render(buf, 100, 50, entry, null, metadataSections: sections);
@@ -282,7 +276,7 @@ public class PropertiesOverlayTests
 
         PropertiesOverlay.Render(buf, 100, 40, entry, null);
 
-        var output = Flush(buf);
+        string output = Flush(buf);
         Assert.Contains("Press any key to close", output);
         Assert.DoesNotContain("scroll", output);
     }
@@ -301,11 +295,11 @@ public class PropertiesOverlayTests
             entries[i] = new MetadataEntry($"Field{i}", $"Val{i}");
         }
 
-        MetadataSection[] sections = [new MetadataSection("Details", entries)];
+        MetadataSection[] sections = [new("Details", entries)];
 
         PropertiesOverlay.Render(buf, 100, 20, entry, null, metadataSections: sections);
 
-        var output = Flush(buf);
+        string output = Flush(buf);
         Assert.Contains("scroll", output);
     }
 
@@ -323,12 +317,12 @@ public class PropertiesOverlayTests
             metaEntries[i] = new MetadataEntry($"Field{i:D2}", $"MetaValue{i:D2}");
         }
 
-        MetadataSection[] sections = [new MetadataSection("Details", metaEntries)];
+        MetadataSection[] sections = [new("Details", metaEntries)];
 
         // Render with scroll offset that pushes "Name" label off screen
         PropertiesOverlay.Render(buf, 100, 20, entry, null, metadataSections: sections, scrollOffset: 5);
 
-        var output = Flush(buf);
+        string output = Flush(buf);
         // "Name" is the first system property row — should be scrolled off
         // We check that the label "Name" followed by the value doesn't appear as a property row
         // but the title "Properties" should still appear (it's in the dialog chrome, not content)

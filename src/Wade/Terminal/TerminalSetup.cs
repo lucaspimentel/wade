@@ -1,23 +1,34 @@
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace Wade.Terminal;
 
 internal sealed class TerminalSetup : IDisposable
 {
-    private readonly nint _stdoutHandle;
-    private readonly nint _stdinHandle;
-    private readonly uint _originalOutputMode;
+    // Windows console API constants
+    private const int StdOutputHandle = -11;
+    private const int StdInputHandle = -10;
+    private const uint EnableVirtualTerminalProcessing = 0x0004;
+    private const uint DisableNewlineAutoReturn = 0x0008;
+    private const uint EnableLineInput = 0x0002;
+    private const uint EnableEchoInput = 0x0004;
+    private const uint EnableProcessedInput = 0x0001;
+    private const uint EnableWindowInput = 0x0008;
+    private const uint EnableMouseInput = 0x0010;
+    private const uint EnableQuickEditMode = 0x0040;
+    private const uint EnableExtendedFlags = 0x0080;
     private readonly uint _originalInputMode;
-    private readonly int _ttyFd = -1;
+    private readonly uint _originalOutputMode;
     private readonly byte[]? _savedTermios;
+    private readonly nint _stdinHandle;
+    private readonly nint _stdoutHandle;
+    private readonly int _ttyFd = -1;
     private bool _disposed;
-
-    public TerminalCapabilities Capabilities { get; } = TerminalCapabilities.Default;
 
     public TerminalSetup()
     {
-        Console.OutputEncoding = System.Text.Encoding.UTF8;
-        Console.InputEncoding = System.Text.Encoding.UTF8;
+        Console.OutputEncoding = Encoding.UTF8;
+        Console.InputEncoding = Encoding.UTF8;
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
@@ -33,11 +44,11 @@ internal sealed class TerminalSetup : IDisposable
             // Disable line input and echo for raw mode, but do NOT enable
             // ENABLE_VIRTUAL_TERMINAL_INPUT — input uses Win32 ReadConsoleInput
             // which gives us structured key records, not VT sequences.
-            uint inputMode = _originalInputMode
-                             & ~EnableLineInput
-                             & ~EnableEchoInput
-                             & ~EnableProcessedInput
-                             & ~EnableQuickEditMode
+            uint inputMode = (_originalInputMode
+                              & ~EnableLineInput
+                              & ~EnableEchoInput
+                              & ~EnableProcessedInput
+                              & ~EnableQuickEditMode)
                              | EnableWindowInput
                              | EnableMouseInput
                              | EnableExtendedFlags;
@@ -83,6 +94,8 @@ internal sealed class TerminalSetup : IDisposable
             Console.Write(AnsiCodes.EnableSgrMouseMode);
         }
     }
+
+    public TerminalCapabilities Capabilities { get; } = TerminalCapabilities.Default;
 
     public void Dispose()
     {
@@ -134,7 +147,7 @@ internal sealed class TerminalSetup : IDisposable
             Console.Write("\x1b[c\x1b[16t");
             Console.Out.Flush();
 
-            var buf = new byte[256];
+            byte[] buf = new byte[256];
             int total = 0;
 
             // Read responses with a 200ms timeout using poll
@@ -168,19 +181,6 @@ internal sealed class TerminalSetup : IDisposable
             return TerminalCapabilities.Default;
         }
     }
-
-    // Windows console API constants
-    private const int StdOutputHandle = -11;
-    private const int StdInputHandle = -10;
-    private const uint EnableVirtualTerminalProcessing = 0x0004;
-    private const uint DisableNewlineAutoReturn = 0x0008;
-    private const uint EnableLineInput = 0x0002;
-    private const uint EnableEchoInput = 0x0004;
-    private const uint EnableProcessedInput = 0x0001;
-    private const uint EnableWindowInput = 0x0008;
-    private const uint EnableMouseInput = 0x0010;
-    private const uint EnableQuickEditMode = 0x0040;
-    private const uint EnableExtendedFlags = 0x0080;
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern nint GetStdHandle(int nStdHandle);

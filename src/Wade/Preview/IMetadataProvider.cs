@@ -2,16 +2,17 @@ namespace Wade.Preview;
 
 internal interface IMetadataProvider
 {
-    string Label { get; }
+    public string Label { get; }
 
-    bool CanProvideMetadata(string path, PreviewContext context);
+    public bool CanProvideMetadata(string path, PreviewContext context);
 
-    MetadataResult? GetMetadata(string path, PreviewContext context, CancellationToken ct);
+    public MetadataResult? GetMetadata(string path, PreviewContext context, CancellationToken ct);
 }
 
 internal record MetadataResult
 {
     public required MetadataSection[] Sections { get; init; }
+
     public string? FileTypeLabel { get; init; }
 }
 

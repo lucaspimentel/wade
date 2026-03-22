@@ -19,7 +19,10 @@ public class BookmarkStoreTests
             store.Load();
             Assert.Empty(store.Bookmarks);
         }
-        finally { File.Delete(path); }
+        finally
+        {
+            File.Delete(path);
+        }
     }
 
     [Fact]
@@ -42,7 +45,10 @@ public class BookmarkStoreTests
             Assert.Equal("/home/user", store.Bookmarks[0]);
             Assert.Equal("/var/log", store.Bookmarks[1]);
         }
-        finally { File.Delete(path); }
+        finally
+        {
+            File.Delete(path);
+        }
     }
 
     [Fact]
@@ -58,7 +64,10 @@ public class BookmarkStoreTests
             Assert.Equal("/second", store.Bookmarks[0]);
             Assert.Equal("/first", store.Bookmarks[1]);
         }
-        finally { File.Delete(path); }
+        finally
+        {
+            File.Delete(path);
+        }
     }
 
     [Fact]
@@ -76,7 +85,10 @@ public class BookmarkStoreTests
             Assert.Single(store2.Bookmarks);
             Assert.Equal("/persisted", store2.Bookmarks[0]);
         }
-        finally { File.Delete(path); }
+        finally
+        {
+            File.Delete(path);
+        }
     }
 
     [Fact]
@@ -94,7 +106,10 @@ public class BookmarkStoreTests
             Assert.Equal("/first", store.Bookmarks[0]);
             Assert.Equal("/second", store.Bookmarks[1]);
         }
-        finally { File.Delete(path); }
+        finally
+        {
+            File.Delete(path);
+        }
     }
 
     [Fact]
@@ -111,7 +126,10 @@ public class BookmarkStoreTests
             Assert.Single(store.Bookmarks);
             Assert.Equal("/a", store.Bookmarks[0]);
         }
-        finally { File.Delete(path); }
+        finally
+        {
+            File.Delete(path);
+        }
     }
 
     [Fact]
@@ -130,7 +148,10 @@ public class BookmarkStoreTests
             store.Toggle("/toggled");
             Assert.Empty(store.Bookmarks);
         }
-        finally { File.Delete(path); }
+        finally
+        {
+            File.Delete(path);
+        }
     }
 
     [Fact]
@@ -145,6 +166,9 @@ public class BookmarkStoreTests
             Assert.True(store.Contains("/exists"));
             Assert.False(store.Contains("/nope"));
         }
-        finally { File.Delete(path); }
+        finally
+        {
+            File.Delete(path);
+        }
     }
 }

@@ -64,35 +64,35 @@ public class MediaMetadataProviderTests
     public void ParseFfprobeJson_VideoAndAudio_ReturnsAllSections()
     {
         const string json = """
-            {
-              "streams": [
-                {
-                  "codec_type": "video",
-                  "codec_long_name": "H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10",
-                  "width": 1920,
-                  "height": 1080,
-                  "r_frame_rate": "30/1",
-                  "bit_rate": "3200000"
-                },
-                {
-                  "codec_type": "audio",
-                  "codec_long_name": "AAC (Advanced Audio Coding)",
-                  "channels": 2,
-                  "channel_layout": "stereo",
-                  "sample_rate": "48000",
-                  "bit_rate": "128000"
-                }
-              ],
-              "format": {
-                "format_long_name": "QuickTime / MOV",
-                "duration": "222.500000",
-                "size": "8912345",
-                "bit_rate": "3328000"
-              }
-            }
-            """;
+                            {
+                              "streams": [
+                                {
+                                  "codec_type": "video",
+                                  "codec_long_name": "H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10",
+                                  "width": 1920,
+                                  "height": 1080,
+                                  "r_frame_rate": "30/1",
+                                  "bit_rate": "3200000"
+                                },
+                                {
+                                  "codec_type": "audio",
+                                  "codec_long_name": "AAC (Advanced Audio Coding)",
+                                  "channels": 2,
+                                  "channel_layout": "stereo",
+                                  "sample_rate": "48000",
+                                  "bit_rate": "128000"
+                                }
+                              ],
+                              "format": {
+                                "format_long_name": "QuickTime / MOV",
+                                "duration": "222.500000",
+                                "size": "8912345",
+                                "bit_rate": "3328000"
+                              }
+                            }
+                            """;
 
-        var sections = MediaMetadataProvider.ParseFfprobeJson(json);
+        MetadataSection[]? sections = MediaMetadataProvider.ParseFfprobeJson(json);
 
         Assert.NotNull(sections);
         string allText = FlattenSections(sections!);
@@ -119,27 +119,27 @@ public class MediaMetadataProviderTests
     public void ParseFfprobeJson_AudioOnly_ReturnsGeneralAndAudio()
     {
         const string json = """
-            {
-              "streams": [
-                {
-                  "codec_type": "audio",
-                  "codec_long_name": "FLAC (Free Lossless Audio Codec)",
-                  "channels": 2,
-                  "channel_layout": "stereo",
-                  "sample_rate": "44100",
-                  "bit_rate": "880000"
-                }
-              ],
-              "format": {
-                "format_long_name": "raw FLAC",
-                "duration": "195.200000",
-                "size": "21504000",
-                "bit_rate": "880000"
-              }
-            }
-            """;
+                            {
+                              "streams": [
+                                {
+                                  "codec_type": "audio",
+                                  "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+                                  "channels": 2,
+                                  "channel_layout": "stereo",
+                                  "sample_rate": "44100",
+                                  "bit_rate": "880000"
+                                }
+                              ],
+                              "format": {
+                                "format_long_name": "raw FLAC",
+                                "duration": "195.200000",
+                                "size": "21504000",
+                                "bit_rate": "880000"
+                              }
+                            }
+                            """;
 
-        var sections = MediaMetadataProvider.ParseFfprobeJson(json);
+        MetadataSection[]? sections = MediaMetadataProvider.ParseFfprobeJson(json);
 
         Assert.NotNull(sections);
         string allText = FlattenSections(sections!);
@@ -154,13 +154,13 @@ public class MediaMetadataProviderTests
     public void ParseFfprobeJson_EmptyStreams_ReturnsNull()
     {
         const string json = """
-            {
-              "streams": [],
-              "format": {}
-            }
-            """;
+                            {
+                              "streams": [],
+                              "format": {}
+                            }
+                            """;
 
-        var sections = MediaMetadataProvider.ParseFfprobeJson(json);
+        MetadataSection[]? sections = MediaMetadataProvider.ParseFfprobeJson(json);
 
         Assert.Null(sections);
     }
@@ -171,37 +171,37 @@ public class MediaMetadataProviderTests
     public void ParseMediainfoJson_VideoAndAudio_ReturnsAllSections()
     {
         const string json = """
-            {
-              "media": {
-                "track": [
-                  {
-                    "@type": "General",
-                    "Format": "MPEG-4",
-                    "Duration": "222.500",
-                    "FileSize": "8912345",
-                    "OverallBitRate": "3328000"
-                  },
-                  {
-                    "@type": "Video",
-                    "Format": "AVC",
-                    "Width": "1920",
-                    "Height": "1080",
-                    "FrameRate": "30.000",
-                    "BitRate": "3200000"
-                  },
-                  {
-                    "@type": "Audio",
-                    "Format": "AAC",
-                    "Channels": "2",
-                    "SamplingRate": "48000",
-                    "BitRate": "128000"
-                  }
-                ]
-              }
-            }
-            """;
+                            {
+                              "media": {
+                                "track": [
+                                  {
+                                    "@type": "General",
+                                    "Format": "MPEG-4",
+                                    "Duration": "222.500",
+                                    "FileSize": "8912345",
+                                    "OverallBitRate": "3328000"
+                                  },
+                                  {
+                                    "@type": "Video",
+                                    "Format": "AVC",
+                                    "Width": "1920",
+                                    "Height": "1080",
+                                    "FrameRate": "30.000",
+                                    "BitRate": "3200000"
+                                  },
+                                  {
+                                    "@type": "Audio",
+                                    "Format": "AAC",
+                                    "Channels": "2",
+                                    "SamplingRate": "48000",
+                                    "BitRate": "128000"
+                                  }
+                                ]
+                              }
+                            }
+                            """;
 
-        var sections = MediaMetadataProvider.ParseMediainfoJson(json);
+        MetadataSection[]? sections = MediaMetadataProvider.ParseMediainfoJson(json);
 
         Assert.NotNull(sections);
         string allText = FlattenSections(sections!);
@@ -218,28 +218,28 @@ public class MediaMetadataProviderTests
     public void ParseMediainfoJson_AudioOnly_ReturnsGeneralAndAudio()
     {
         const string json = """
-            {
-              "media": {
-                "track": [
-                  {
-                    "@type": "General",
-                    "Format": "FLAC",
-                    "Duration": "195.200",
-                    "FileSize": "21504000"
-                  },
-                  {
-                    "@type": "Audio",
-                    "Format": "FLAC",
-                    "Channels": "2",
-                    "SamplingRate": "44100",
-                    "BitRate": "880000"
-                  }
-                ]
-              }
-            }
-            """;
+                            {
+                              "media": {
+                                "track": [
+                                  {
+                                    "@type": "General",
+                                    "Format": "FLAC",
+                                    "Duration": "195.200",
+                                    "FileSize": "21504000"
+                                  },
+                                  {
+                                    "@type": "Audio",
+                                    "Format": "FLAC",
+                                    "Channels": "2",
+                                    "SamplingRate": "44100",
+                                    "BitRate": "880000"
+                                  }
+                                ]
+                              }
+                            }
+                            """;
 
-        var sections = MediaMetadataProvider.ParseMediainfoJson(json);
+        MetadataSection[]? sections = MediaMetadataProvider.ParseMediainfoJson(json);
 
         Assert.NotNull(sections);
         string allText = FlattenSections(sections!);
@@ -254,7 +254,7 @@ public class MediaMetadataProviderTests
     {
         const string json = """{ }""";
 
-        var sections = MediaMetadataProvider.ParseMediainfoJson(json);
+        MetadataSection[]? sections = MediaMetadataProvider.ParseMediainfoJson(json);
 
         Assert.Null(sections);
     }
@@ -267,10 +267,8 @@ public class MediaMetadataProviderTests
     [InlineData(65, "1m 05s")]
     [InlineData(222.5, "3m 42s")]
     [InlineData(3661, "1h 01m 01s")]
-    public void FormatDuration_ReturnsExpected(double seconds, string expected)
-    {
+    public void FormatDuration_ReturnsExpected(double seconds, string expected) =>
         Assert.Equal(expected, MediaMetadataProvider.FormatDuration(seconds));
-    }
 
     [Theory]
     [InlineData(500, "500 B")]
@@ -278,10 +276,7 @@ public class MediaMetadataProviderTests
     [InlineData(1048576, "1.0 MB")]
     [InlineData(8912345, "8.5 MB")]
     [InlineData(1073741824, "1.0 GB")]
-    public void FormatFileSize_ReturnsExpected(long bytes, string expected)
-    {
-        Assert.Equal(expected, MediaMetadataProvider.FormatFileSize(bytes));
-    }
+    public void FormatFileSize_ReturnsExpected(long bytes, string expected) => Assert.Equal(expected, MediaMetadataProvider.FormatFileSize(bytes));
 
     // ── Registry ──────────────────────────────────────────────────────────────
 
@@ -293,7 +288,7 @@ public class MediaMetadataProviderTests
             return; // Skip if no CLI tool installed
         }
 
-        var providers = MetadataProviderRegistry.GetApplicableProviders("video.mp4", MakeContext());
+        List<IMetadataProvider> providers = MetadataProviderRegistry.GetApplicableProviders("video.mp4", MakeContext());
 
         Assert.Contains(providers, p => p is MediaMetadataProvider);
     }

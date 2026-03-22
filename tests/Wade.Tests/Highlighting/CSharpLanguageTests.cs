@@ -35,7 +35,7 @@ public class CSharpLanguageTests
     [InlineData("required")]
     public void CSharpKeywords_Classified(string keyword)
     {
-        var spans = Tokenize(keyword);
+        StyledSpan[] spans = Tokenize(keyword);
         Assert.Contains(spans, s => s.Kind == TokenKind.Keyword);
     }
 
@@ -45,7 +45,7 @@ public class CSharpLanguageTests
     [InlineData("[SerializeField]")]
     public void Attributes_Classified(string line)
     {
-        var spans = Tokenize(line);
+        StyledSpan[] spans = Tokenize(line);
         Assert.Contains(spans, s => s.Kind == TokenKind.Attribute && s.Start == 0);
     }
 
@@ -55,35 +55,35 @@ public class CSharpLanguageTests
     [InlineData("#nullable enable")]
     public void PreprocessorDirectives_ClassifiedAsDirective(string line)
     {
-        var spans = Tokenize(line);
+        StyledSpan[] spans = Tokenize(line);
         Assert.Contains(spans, s => s.Kind == TokenKind.Directive);
     }
 
     [Fact]
     public void RawStringLiteral_SingleLine_Classified()
     {
-        var spans = Tokenize("\"\"\"triple\"\"\"");
+        StyledSpan[] spans = Tokenize("\"\"\"triple\"\"\"");
         Assert.Contains(spans, s => s.Kind == TokenKind.String && s.Start == 0);
     }
 
     [Fact]
     public void RawStringLiteral_MultiLine_SpansAllLines()
     {
-        var lines = TokenizeLines("\"\"\"", "content", "\"\"\"");
+        StyledLine[] lines = TokenizeLines("\"\"\"", "content", "\"\"\"");
         Assert.All(lines, l => Assert.Contains(l.Spans ?? [], s => s.Kind == TokenKind.String));
     }
 
     [Fact]
     public void VerbatimString_Classified()
     {
-        var spans = Tokenize("@\"path\\to\"");
+        StyledSpan[] spans = Tokenize("@\"path\\to\"");
         Assert.Contains(spans, s => s.Kind == TokenKind.String && s.Start == 0);
     }
 
     [Fact]
     public void InterpolatedString_Classified()
     {
-        var spans = Tokenize("$\"hello {name}\"");
+        StyledSpan[] spans = Tokenize("$\"hello {name}\"");
         Assert.Contains(spans, s => s.Kind == TokenKind.String && s.Start == 0);
     }
 
@@ -94,7 +94,7 @@ public class CSharpLanguageTests
     [InlineData("void")]
     public void BuiltinTypes_ClassifiedAsBuiltin(string type)
     {
-        var spans = Tokenize(type);
+        StyledSpan[] spans = Tokenize(type);
         Assert.Contains(spans, s => s.Kind == TokenKind.BuiltinFunc);
     }
 }

@@ -5,11 +5,11 @@ namespace Wade.Preview;
 
 internal interface IPreviewProvider
 {
-    string Label { get; }
+    public string Label { get; }
 
-    bool CanPreview(string path, PreviewContext context);
+    public bool CanPreview(string path, PreviewContext context);
 
-    PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct);
+    public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct);
 }
 
 internal record PreviewContext(
@@ -32,11 +32,15 @@ internal record PreviewResult
     public StyledLine[]? TextLines { get; init; }
 
     public string? SixelData { get; init; }
+
     public int SixelPixelWidth { get; init; }
+
     public int SixelPixelHeight { get; init; }
 
     public string? FileTypeLabel { get; init; }
+
     public string? Encoding { get; init; }
+
     public string? LineEnding { get; init; }
 
     /// <summary>

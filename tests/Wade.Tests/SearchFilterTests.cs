@@ -8,137 +8,6 @@ namespace Wade.Tests;
 
 public class SearchFilterTests
 {
-    // ── Search harness ───────────────────────────────────────────────────────
-
-    private sealed class SearchHarness
-    {
-        private InputMode _inputMode = InputMode.Normal;
-        private TextInput? _searchInput;
-        private string _searchFilter = "";
-        private List<FileSystemEntry>? _filteredEntries;
-        private readonly List<FileSystemEntry> _allEntries;
-
-        public int SelectedIndex;
-
-        public SearchHarness(IEnumerable<string> fileNames)
-        {
-            _allEntries = fileNames
-                .Select(n => new FileSystemEntry(n, @"C:\" + n, false, 0, DateTime.MinValue, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false))
-                .ToList();
-        }
-
-        public InputMode Mode => _inputMode;
-        public string SearchFilter => _searchFilter;
-        public string? SearchInputValue => _searchInput?.Value;
-
-        public List<FileSystemEntry> GetVisibleEntries()
-        {
-            if (string.IsNullOrEmpty(_searchFilter))
-            {
-                _filteredEntries = null;
-                return _allEntries;
-            }
-
-            _filteredEntries ??= _allEntries
-                .Where(e => e.Name.Contains(_searchFilter, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-
-            return _filteredEntries;
-        }
-
-        public void StartSearch()
-        {
-            _inputMode = InputMode.Search;
-            _searchInput = new TextInput(_searchFilter);
-        }
-
-        public void ClearSearchFilter()
-        {
-            _searchFilter = "";
-            _filteredEntries = null;
-            _searchInput = null;
-            if (_inputMode == InputMode.Search)
-            {
-                _inputMode = InputMode.Normal;
-            }
-        }
-
-        public void HandleSearchKey(KeyEvent key)
-        {
-            switch (key.Key)
-            {
-                case ConsoleKey.Escape:
-                    ClearSearchFilter();
-                    SelectedIndex = 0;
-                    break;
-
-                case ConsoleKey.Enter:
-                    _inputMode = InputMode.Normal;
-                    _searchInput = null;
-                    break;
-
-                case ConsoleKey.UpArrow:
-                    if (SelectedIndex > 0)
-                    {
-                        SelectedIndex--;
-                    }
-
-                    break;
-
-                case ConsoleKey.DownArrow:
-                {
-                    var entries = GetVisibleEntries();
-                    if (SelectedIndex < entries.Count - 1)
-                    {
-                        SelectedIndex++;
-                    }
-
-                    break;
-                }
-
-                case ConsoleKey.LeftArrow:
-                    _searchInput!.MoveCursorLeft();
-                    break;
-
-                case ConsoleKey.RightArrow:
-                    _searchInput!.MoveCursorRight();
-                    break;
-
-                case ConsoleKey.Home:
-                    _searchInput!.MoveCursorHome();
-                    break;
-
-                case ConsoleKey.End:
-                    _searchInput!.MoveCursorEnd();
-                    break;
-
-                case ConsoleKey.Backspace:
-                    _searchInput!.DeleteBackward();
-                    _searchFilter = _searchInput.Value;
-                    _filteredEntries = null;
-                    SelectedIndex = 0;
-                    break;
-
-                case ConsoleKey.Delete:
-                    _searchInput!.DeleteForward();
-                    _searchFilter = _searchInput.Value;
-                    _filteredEntries = null;
-                    SelectedIndex = 0;
-                    break;
-
-                default:
-                    if (key.KeyChar >= ' ')
-                    {
-                        _searchInput!.InsertChar(key.KeyChar);
-                        _searchFilter = _searchInput.Value;
-                        _filteredEntries = null;
-                        SelectedIndex = 0;
-                    }
-                    break;
-            }
-        }
-    }
-
     // ── Entering search ──────────────────────────────────────────────────────
 
     [Fact]
@@ -163,7 +32,7 @@ public class SearchFilterTests
         TypeString(harness, "foo");
 
         Assert.Equal("foo", harness.SearchFilter);
-        var visible = harness.GetVisibleEntries();
+        List<FileSystemEntry> visible = harness.GetVisibleEntries();
         Assert.Equal(2, visible.Count);
         Assert.All(visible, e => Assert.Contains("foo", e.Name, StringComparison.OrdinalIgnoreCase));
     }
@@ -178,7 +47,7 @@ public class SearchFilterTests
 
         TypeString(harness, "foo");
 
-        var visible = harness.GetVisibleEntries();
+        List<FileSystemEntry> visible = harness.GetVisibleEntries();
         Assert.Single(visible);
         Assert.Equal("Foo.txt", visible[0].Name);
     }
@@ -327,4 +196,136 @@ public class SearchFilterTests
 
     private static string StripAnsi(string s) =>
         Regex.Replace(s, @"\x1b\[[^a-zA-Z]*[a-zA-Z]", "");
+    // ── Search harness ───────────────────────────────────────────────────────
+
+    private sealed class SearchHarness
+    {
+        private readonly List<FileSystemEntry> _allEntries;
+        private List<FileSystemEntry>? _filteredEntries;
+        private TextInput? _searchInput;
+
+        public int SelectedIndex;
+
+        public SearchHarness(IEnumerable<string> fileNames)
+        {
+            _allEntries = fileNames
+                .Select(n => new FileSystemEntry(n, @"C:\" + n, false, 0, DateTime.MinValue, LinkTarget: null, IsBrokenSymlink: false,
+                    IsDrive: false))
+                .ToList();
+        }
+
+        public InputMode Mode { get; private set; } = InputMode.Normal;
+
+        public string SearchFilter { get; private set; } = "";
+
+        public string? SearchInputValue => _searchInput?.Value;
+
+        public List<FileSystemEntry> GetVisibleEntries()
+        {
+            if (string.IsNullOrEmpty(SearchFilter))
+            {
+                _filteredEntries = null;
+                return _allEntries;
+            }
+
+            _filteredEntries ??= _allEntries
+                .Where(e => e.Name.Contains(SearchFilter, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            return _filteredEntries;
+        }
+
+        public void StartSearch()
+        {
+            Mode = InputMode.Search;
+            _searchInput = new TextInput(SearchFilter);
+        }
+
+        public void ClearSearchFilter()
+        {
+            SearchFilter = "";
+            _filteredEntries = null;
+            _searchInput = null;
+            if (Mode == InputMode.Search)
+            {
+                Mode = InputMode.Normal;
+            }
+        }
+
+        public void HandleSearchKey(KeyEvent key)
+        {
+            switch (key.Key)
+            {
+                case ConsoleKey.Escape:
+                    ClearSearchFilter();
+                    SelectedIndex = 0;
+                    break;
+
+                case ConsoleKey.Enter:
+                    Mode = InputMode.Normal;
+                    _searchInput = null;
+                    break;
+
+                case ConsoleKey.UpArrow:
+                    if (SelectedIndex > 0)
+                    {
+                        SelectedIndex--;
+                    }
+
+                    break;
+
+                case ConsoleKey.DownArrow:
+                {
+                    List<FileSystemEntry> entries = GetVisibleEntries();
+                    if (SelectedIndex < entries.Count - 1)
+                    {
+                        SelectedIndex++;
+                    }
+
+                    break;
+                }
+
+                case ConsoleKey.LeftArrow:
+                    _searchInput!.MoveCursorLeft();
+                    break;
+
+                case ConsoleKey.RightArrow:
+                    _searchInput!.MoveCursorRight();
+                    break;
+
+                case ConsoleKey.Home:
+                    _searchInput!.MoveCursorHome();
+                    break;
+
+                case ConsoleKey.End:
+                    _searchInput!.MoveCursorEnd();
+                    break;
+
+                case ConsoleKey.Backspace:
+                    _searchInput!.DeleteBackward();
+                    SearchFilter = _searchInput.Value;
+                    _filteredEntries = null;
+                    SelectedIndex = 0;
+                    break;
+
+                case ConsoleKey.Delete:
+                    _searchInput!.DeleteForward();
+                    SearchFilter = _searchInput.Value;
+                    _filteredEntries = null;
+                    SelectedIndex = 0;
+                    break;
+
+                default:
+                    if (key.KeyChar >= ' ')
+                    {
+                        _searchInput!.InsertChar(key.KeyChar);
+                        SearchFilter = _searchInput.Value;
+                        _filteredEntries = null;
+                        SelectedIndex = 0;
+                    }
+
+                    break;
+            }
+        }
+    }
 }

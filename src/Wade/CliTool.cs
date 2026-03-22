@@ -43,7 +43,15 @@ internal static class CliTool
 
                 if (!process.WaitForExit(timeoutMs))
                 {
-                    try { process.Kill(); } catch { /* best effort */ }
+                    try
+                    {
+                        process.Kill();
+                    }
+                    catch
+                    {
+                        /* best effort */
+                    }
+
                     return false;
                 }
 
@@ -98,13 +106,31 @@ internal static class CliTool
                 return null;
             }
 
-            using var reg = ct.Register(() => { try { process.Kill(); } catch { /* best effort */ } });
+            using CancellationTokenRegistration reg = ct.Register(() =>
+            {
+                try
+                {
+                    process.Kill();
+                }
+                catch
+                {
+                    /* best effort */
+                }
+            });
 
             string output = process.StandardOutput.ReadToEnd();
 
             if (!process.WaitForExit(timeoutMs))
             {
-                try { process.Kill(); } catch { /* best effort */ }
+                try
+                {
+                    process.Kill();
+                }
+                catch
+                {
+                    /* best effort */
+                }
+
                 return null;
             }
 

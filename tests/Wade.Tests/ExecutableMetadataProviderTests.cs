@@ -162,7 +162,7 @@ public class ExecutableMetadataProviderTests
     [Fact]
     public void Registry_ExeFile_ReturnsExecutableMetadataProvider()
     {
-        var providers = MetadataProviderRegistry.GetApplicableProviders("app.exe", MakeContext());
+        List<IMetadataProvider> providers = MetadataProviderRegistry.GetApplicableProviders("app.exe", MakeContext());
 
         Assert.Contains(providers, p => p is ExecutableMetadataProvider);
     }

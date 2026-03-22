@@ -15,7 +15,8 @@ internal sealed class CssLanguage : RegexLanguage
     }.ToFrozenSet();
 
     protected override FrozenSet<string> Constants { get; } = FrozenSet<string>.Empty;
-    protected override FrozenSet<string> Builtins  { get; } = FrozenSet<string>.Empty;
+
+    protected override FrozenSet<string> Builtins { get; } = FrozenSet<string>.Empty;
 
     protected override string? LineCommentPrefix => null; // CSS only has /* */
 
@@ -36,6 +37,7 @@ internal sealed class CssLanguage : RegexLanguage
                 spans.Add(new StyledSpan(0, line.Length, TokenKind.Comment));
                 return MakeResult(line, spans);
             }
+
             int closeEnd = closeIdx + 2;
             spans.Add(new StyledSpan(0, closeEnd, TokenKind.Comment));
             state = StateNormal;
@@ -54,7 +56,11 @@ internal sealed class CssLanguage : RegexLanguage
 
         while (pos < len)
         {
-            if (char.IsWhiteSpace(line[pos])) { pos++; continue; }
+            if (char.IsWhiteSpace(line[pos]))
+            {
+                pos++;
+                continue;
+            }
 
             // Block comment
             if (line.AsSpan(pos).StartsWith("/*"))
@@ -66,6 +72,7 @@ internal sealed class CssLanguage : RegexLanguage
                     pos = closeIdx + 2;
                     continue;
                 }
+
                 spans.Add(new StyledSpan(pos, len - pos, TokenKind.Comment));
                 state = StateBlockComment;
                 return;

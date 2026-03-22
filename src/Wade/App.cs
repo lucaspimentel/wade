@@ -10,134 +10,137 @@ namespace Wade;
 
 internal sealed class App
 {
-    private readonly WadeConfig _config;
-    private readonly DirectoryContents _directoryContents = new();
-    private readonly Layout _layout = new();
-    private readonly StringBuilder _flushBuffer = new(4096);
-
-    private string _currentPath = "";
-    private int _selectedIndex;
-    private int _scrollOffset;
-    // Modal input state
-    private InputMode _inputMode = InputMode.Normal;
-
-    // Confirm dialog state
-    private string? _confirmTitle;
-    private string? _confirmMessage;
-    private Action? _confirmYesAction;
-
-    // Text input dialog state
-    private TextInput? _activeTextInput;
-    private string? _textInputTitle;
-    private Action<string>? _textInputCompleteAction;
-
-    // Notification state
-    private Notification? _notification;
-
-    // Expanded preview state
-    private int _expandedPreviewScrollOffset;
-
-    // Multi-select state
-    private readonly HashSet<string> _markedPaths = new(StringComparer.OrdinalIgnoreCase);
-
-    // Clipboard state
-    private readonly List<string> _clipboardPaths = [];
-    private bool _clipboardIsCut;
-
-    // Search/filter state
-    private TextInput? _searchInput;
-    private string _searchFilter = "";
-    private List<FileSystemEntry>? _filteredEntries;
-
-    // Go-to-path state
-    private TextInput? _goToPathInput;
-    private string? _goToPathSuggestion;
+    private static readonly CellStyle MetaSeparatorStyle = new(new Color(60, 60, 80), null);
 
     // Action palette state
     private readonly Stack<ActionMenuLevel> _actionMenuStack = new();
 
     // Bookmark state
     private readonly BookmarkStore _bookmarkStore = new();
-    private int _bookmarkSelectedIndex;
+
+    // Clipboard state
+    private readonly List<string> _clipboardPaths = [];
+    private readonly WadeConfig _config;
+    private readonly DirectoryContents _directoryContents = new();
+    private readonly StringBuilder _flushBuffer = new(4096);
+    private readonly Layout _layout = new();
+
+    // Multi-select state
+    private readonly HashSet<string> _markedPaths = new(StringComparer.OrdinalIgnoreCase);
+
+    // Track selected index per directory so we restore position when navigating back
+    private readonly Dictionary<string, int> _selectedIndexPerDir = new(StringComparer.OrdinalIgnoreCase);
+    private PreviewContext? _activePreviewContext;
+    private int _activeProviderIndex;
+
+    // Text input dialog state
+    private TextInput? _activeTextInput;
+    private string? _aheadBehindText;
+    private List<IMetadataProvider>? _applicableMetadataProviders;
+    private List<IPreviewProvider>? _applicableProviders;
     private TextInput? _bookmarkInput;
     private int _bookmarkScrollOffset;
+    private int _bookmarkSelectedIndex;
+    private string? _cachedImagePath;
+    private int _cachedImagePixelHeight;
+    private int _cachedImagePixelWidth;
+    private string? _cachedMetadataFileTypeLabel;
 
-    // File finder state
-    private int _fileFinderSelectedIndex;
-    private TextInput? _fileFinderInput;
-    private int _fileFinderScrollOffset;
-    private List<FileSystemEntry>? _fileFinderAllEntries;
-    private bool _fileFinderScanning;
-    private CancellationTokenSource? _fileFinderCts;
+    // Metadata provider state
+    private MetadataSection[]? _cachedMetadataSections;
+    private string? _cachedPreviewEncoding;
+    private string? _cachedPreviewFileTypeLabel;
+    private string? _cachedPreviewLineEnding;
+
+    private string? _cachedPreviewPath;
+
+    // Image preview state
+    private string? _cachedSixelData;
+    private StyledLine[]? _cachedStyledLines;
+    private int _cellPixelHeight = 16;
+    private int _cellPixelWidth = 8;
+    private bool _clipboardIsCut;
 
     // Config dialog state
     private ConfigDialogState? _configDialogState;
+    private string? _confirmMessage;
 
-    // Git status state
-    private GitStatusLoader? _gitStatusLoader;
-    private GitActionRunner? _gitActionRunner;
-    private string? _currentRepoRoot;
+    // Confirm dialog state
+    private string? _confirmTitle;
+    private Action? _confirmYesAction;
     private string? _currentBranchName;
-    private string? _aheadBehindText;
-    private Dictionary<string, GitFileStatus>? _gitStatuses;
+    private DriveMediaType _currentDriveMediaType = DriveMediaType.Unknown;
 
-    // Filesystem watcher state
-    private FileSystemWatcherManager? _fsWatcher;
+    private string _currentPath = "";
+    private string? _currentRepoRoot;
 
     // Directory size calculation state
     private DirectorySizeLoader? _dirSizeLoader;
-    private string? _propertiesDirSizePath;
-    private string? _propertiesDirSizeText;
+
+    // Expanded preview state
+    private int _expandedPreviewScrollOffset;
+    private List<FileSystemEntry>? _fileFinderAllEntries;
+    private CancellationTokenSource? _fileFinderCts;
+    private TextInput? _fileFinderInput;
+    private bool _fileFinderScanning;
+    private int _fileFinderScrollOffset;
+
+    // File finder state
+    private int _fileFinderSelectedIndex;
+    private List<FileSystemEntry>? _filteredEntries;
+
+    // Filesystem watcher state
+    private FileSystemWatcherManager? _fsWatcher;
+    private GitActionRunner? _gitActionRunner;
+    private Dictionary<string, GitFileStatus>? _gitStatuses;
+
+    // Git status state
+    private GitStatusLoader? _gitStatusLoader;
+
+    // Go-to-path state
+    private TextInput? _goToPathInput;
+    private string? _goToPathSuggestion;
+
+    // Terminal capability state
+    private bool _imagePreviewsEffective;
 
     // Inline directory size state
     private InlineDirSizeLoader? _inlineDirSizeLoader;
     private Dictionary<string, long>? _inlineDirSizes;
-    private DriveMediaType _currentDriveMediaType = DriveMediaType.Unknown;
-    private int _propertiesScrollOffset;
-    private int _propertiesContentHeight;
 
-    private string? _cachedPreviewPath;
-    private StyledLine[]? _cachedStyledLines;
-    private string? _cachedPreviewFileTypeLabel;
-    private string? _cachedPreviewEncoding;
-    private string? _cachedPreviewLineEnding;
-    private bool _previewLoading;
-    private string? _pendingPreviewPath;
-    private PreviewLoader? _previewLoader;
-
-    // Image preview state
-    private string? _cachedSixelData;
-    private string? _cachedImagePath;
-    private int _cachedImagePixelWidth;
-    private int _cachedImagePixelHeight;
-    private bool _isImagePreview;
-    private bool _isRenderedPreview;
-    private bool _isPlaceholderPreview;
-    private int _activeProviderIndex;
-    private List<IPreviewProvider>? _applicableProviders;
-    private PreviewContext? _activePreviewContext;
+    // Modal input state
+    private InputMode _inputMode = InputMode.Normal;
     private bool _isCombinedPreview;
-    private int _sixelImageTop;
-    private bool _sixelPending;
-
-    // Metadata provider state
-    private MetadataSection[]? _cachedMetadataSections;
-    private string? _cachedMetadataFileTypeLabel;
-    private List<IMetadataProvider>? _applicableMetadataProviders;
-
-    // Terminal capability state
-    private bool _imagePreviewsEffective;
-    private bool _sixelSupported;
-    private int _cellPixelWidth = 8;
-    private int _cellPixelHeight = 16;
-
-    // Track selected index per directory so we restore position when navigating back
-    private readonly Dictionary<string, int> _selectedIndexPerDir = new(StringComparer.OrdinalIgnoreCase);
+    private bool _isImagePreview;
+    private bool _isPlaceholderPreview;
+    private bool _isRenderedPreview;
 
     // Left pane state cached during Render for mouse hit-testing
     private List<FileSystemEntry>? _leftPaneEntries;
     private int _leftPaneScroll;
     private int _leftPaneSelected;
+
+    // Notification state
+    private Notification? _notification;
+    private string? _pendingPreviewPath;
+    private PreviewLoader? _previewLoader;
+    private bool _previewLoading;
+    private int _propertiesContentHeight;
+    private string? _propertiesDirSizePath;
+    private string? _propertiesDirSizeText;
+    private int _propertiesScrollOffset;
+
+    private int _scrollOffset;
+    private string _searchFilter = "";
+
+    // Search/filter state
+    private TextInput? _searchInput;
+    private int _selectedIndex;
+    private int _sixelImageTop;
+    private bool _sixelPending;
+    private bool _sixelSupported;
+    private Action<string>? _textInputCompleteAction;
+    private string? _textInputTitle;
 
 #pragma warning disable CSLINT221 // Consider using a primary constructor
     public App(WadeConfig config)
@@ -145,6 +148,11 @@ internal sealed class App
     {
         _config = config;
     }
+
+    private int VisibleFileListHeight =>
+        _inputMode == InputMode.Search || !string.IsNullOrEmpty(_searchFilter)
+            ? _layout.CenterPane.Height - 1
+            : _layout.CenterPane.Height;
 
     private void UpdateTerminalTitle()
     {
@@ -168,7 +176,7 @@ internal sealed class App
         _bookmarkStore.Load();
 
         using var terminal = new TerminalSetup();
-        using var inputSource = InputPipeline.CreatePlatformSource();
+        using IInputSource inputSource = InputPipeline.CreatePlatformSource();
         using var pipeline = new InputPipeline(inputSource);
         _previewLoader = new PreviewLoader(pipeline);
         _dirSizeLoader = new DirectorySizeLoader(pipeline);
@@ -176,9 +184,9 @@ internal sealed class App
         _gitStatusLoader = new GitStatusLoader(pipeline);
         _gitActionRunner = new GitActionRunner(pipeline);
         _fsWatcher = new FileSystemWatcherManager(pipeline);
-        var previewLoader = _previewLoader;
+        PreviewLoader? previewLoader = _previewLoader;
 
-        var caps = terminal.Capabilities;
+        TerminalCapabilities caps = terminal.Capabilities;
         _sixelSupported = caps.SixelSupported;
         _imagePreviewsEffective = _config.ImagePreviewsEnabled && _sixelSupported;
         _cellPixelWidth = caps.CellPixelWidth;
@@ -217,24 +225,25 @@ internal sealed class App
                 && _inputMode is InputMode.Normal or InputMode.Search or InputMode.ExpandedPreview)
             {
                 _sixelPending = false;
-                var sixelPane = _inputMode == InputMode.ExpandedPreview ? _layout.ExpandedPane : _layout.RightPane;
+                Rect sixelPane = _inputMode == InputMode.ExpandedPreview ? _layout.ExpandedPane : _layout.RightPane;
                 int cursorRow = _sixelImageTop > 0 ? _sixelImageTop : sixelPane.Top;
                 int cursorCol = sixelPane.Left;
 
                 if (!_isCombinedPreview && _inputMode == InputMode.ExpandedPreview && _cachedImagePixelWidth > 0 && _cachedImagePixelHeight > 0)
                 {
-                    (cursorRow, cursorCol) = sixelPane.CenterContent(_cachedImagePixelWidth / _cellPixelWidth, _cachedImagePixelHeight / _cellPixelHeight);
+                    (cursorRow, cursorCol) =
+                        sixelPane.CenterContent(_cachedImagePixelWidth / _cellPixelWidth, _cachedImagePixelHeight / _cellPixelHeight);
                 }
 
-                var moveCursor = AnsiCodes.MoveCursor(cursorRow, cursorCol);
+                string moveCursor = AnsiCodes.MoveCursor(cursorRow, cursorCol);
                 buffer.WriteRaw(moveCursor + _cachedSixelData);
             }
 
             // Wait for next input event
-            var inputEvent = pipeline.Take();
+            InputEvent inputEvent = pipeline.Take();
 
             // Drain any additional queued events (e.g. rapid key repeats)
-            while (pipeline.TryTake(out var extra))
+            while (pipeline.TryTake(out InputEvent? extra))
             {
                 if (extra is PreviewReadyEvent previewReady)
                 {
@@ -322,7 +331,7 @@ internal sealed class App
                     lastHeight = resize.Height;
                     buffer.Resize(lastWidth, lastHeight);
                     _layout.Calculate(lastWidth, lastHeight, _config.PreviewPaneEnabled);
-                    var resizePane = _inputMode == InputMode.ExpandedPreview ? _layout.ExpandedPane : _layout.RightPane;
+                    Rect resizePane = _inputMode == InputMode.ExpandedPreview ? _layout.ExpandedPane : _layout.RightPane;
                     Console.Write(AnsiCodes.ClearScreen);
 
                     // Re-render preview at new size
@@ -446,16 +455,17 @@ internal sealed class App
                 }
 
                 // Discard mouse events while a modal dialog is open
-                if (_inputMode is InputMode.Help or InputMode.GoToPath or InputMode.TextInput or InputMode.Confirm or InputMode.Config or InputMode.Properties or InputMode.ActionPalette or InputMode.Bookmarks or InputMode.FileFinder)
+                if (_inputMode is InputMode.Help or InputMode.GoToPath or InputMode.TextInput or InputMode.Confirm or InputMode.Config
+                    or InputMode.Properties or InputMode.ActionPalette or InputMode.Bookmarks or InputMode.FileFinder)
                 {
                     continue;
                 }
 
-                var mouseEntries = GetVisibleEntries();
+                List<FileSystemEntry> mouseEntries = GetVisibleEntries();
                 HandleMouseEvent(mouseEvent, mouseEntries, previewLoader, buffer);
 
                 // Clamp and adjust scroll after mouse handling
-                var currentAfterMouse = GetVisibleEntries();
+                List<FileSystemEntry> currentAfterMouse = GetVisibleEntries();
                 if (currentAfterMouse.Count > 0)
                 {
                     _selectedIndex = Math.Clamp(_selectedIndex, 0, currentAfterMouse.Count - 1);
@@ -483,16 +493,18 @@ internal sealed class App
                     {
                         _inputMode = InputMode.Normal;
                     }
+
                     continue;
                 case InputMode.Properties:
                     if (!keyEvent.IsModifierOnly)
                     {
                         HandlePropertiesKey(keyEvent);
                     }
+
                     continue;
                 case InputMode.Search:
                     HandleSearchKey(keyEvent);
-                    var searchEntries = GetVisibleEntries();
+                    List<FileSystemEntry> searchEntries = GetVisibleEntries();
                     if (searchEntries.Count > 0)
                     {
                         _selectedIndex = Math.Clamp(_selectedIndex, 0, searchEntries.Count - 1);
@@ -542,8 +554,8 @@ internal sealed class App
                     break; // fall through to normal AppAction dispatch
             }
 
-            var action = InputReader.MapKey(keyEvent);
-            var entries = GetVisibleEntries();
+            AppAction action = InputReader.MapKey(keyEvent);
+            List<FileSystemEntry> entries = GetVisibleEntries();
 
             switch (action)
             {
@@ -580,6 +592,7 @@ internal sealed class App
                     {
                         EnterExpandedPreview(previewLoader, buffer);
                     }
+
                     break;
 
                 case AppAction.Back:
@@ -601,20 +614,20 @@ internal sealed class App
                         _currentPath = DirectoryContents.DrivesPath;
                         UpdateTerminalTitle();
                         RefreshGitStatus();
-                        var driveEntries = _directoryContents.GetEntries(_currentPath);
+                        List<FileSystemEntry> driveEntries = _directoryContents.GetEntries(_currentPath);
                         string root = Path.GetPathRoot(oldPath)!.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                         int idx = driveEntries.FindIndex(e => e.Name.Equals(root, StringComparison.OrdinalIgnoreCase));
                         _selectedIndex = idx >= 0 ? idx : 0;
                     }
                     else
                     {
-                        var parent = Directory.GetParent(_currentPath);
+                        DirectoryInfo? parent = Directory.GetParent(_currentPath);
                         if (parent is not null)
                         {
                             _currentPath = PathCompletion.CapitalizeDriveLetter(parent.FullName);
                             UpdateTerminalTitle();
                             RefreshGitStatus();
-                            var parentEntries = _directoryContents.GetEntries(_currentPath);
+                            List<FileSystemEntry> parentEntries = _directoryContents.GetEntries(_currentPath);
                             string oldName = Path.GetFileName(oldPath);
                             int idx = parentEntries.FindIndex(e => e.Name.Equals(oldName, StringComparison.OrdinalIgnoreCase));
                             _selectedIndex = idx >= 0 ? idx : _selectedIndexPerDir.GetValueOrDefault(_currentPath, 0);
@@ -653,6 +666,7 @@ internal sealed class App
                     {
                         quit = true;
                     }
+
                     break;
 
                 case AppAction.QuitNoCd:
@@ -674,7 +688,7 @@ internal sealed class App
                     {
                         _inputMode = InputMode.Properties;
                         _propertiesScrollOffset = 0;
-                        var propsEntry = entries[_selectedIndex];
+                        FileSystemEntry propsEntry = entries[_selectedIndex];
                         if (propsEntry.IsDirectory && !propsEntry.IsDrive)
                         {
                             _propertiesDirSizePath = propsEntry.FullPath;
@@ -687,6 +701,7 @@ internal sealed class App
                             _propertiesDirSizeText = null;
                         }
                     }
+
                     break;
 
                 case AppAction.ShowActionPalette:
@@ -740,6 +755,7 @@ internal sealed class App
                             _selectedIndex++;
                         }
                     }
+
                     break;
 
                 case AppAction.ToggleHiddenFiles:
@@ -797,12 +813,12 @@ internal sealed class App
                     {
                         ShowNotification($"Error: {ex.Message}", NotificationKind.Error);
                     }
-                    break;
 
+                    break;
             }
 
             // Clamp selection
-            var currentEntries = GetVisibleEntries();
+            List<FileSystemEntry> currentEntries = GetVisibleEntries();
             if (currentEntries.Count > 0)
             {
                 _selectedIndex = Math.Clamp(_selectedIndex, 0, currentEntries.Count - 1);
@@ -835,7 +851,7 @@ internal sealed class App
             catch
             {
                 // wt.exe not available — fall back to COMSPEC (cmd.exe)
-                var comspec = Environment.GetEnvironmentVariable("COMSPEC") ?? "cmd.exe";
+                string comspec = Environment.GetEnvironmentVariable("COMSPEC") ?? "cmd.exe";
                 Process.Start(new ProcessStartInfo(comspec)
                 {
                     WorkingDirectory = workingDirectory,
@@ -845,7 +861,7 @@ internal sealed class App
         }
         else
         {
-            var shell = Environment.GetEnvironmentVariable("SHELL") ?? "/bin/sh";
+            string shell = Environment.GetEnvironmentVariable("SHELL") ?? "/bin/sh";
             Process.Start(new ProcessStartInfo(shell)
             {
                 WorkingDirectory = workingDirectory,
@@ -938,7 +954,9 @@ internal sealed class App
                             success++;
                             continue;
                         }
-                        catch (UnauthorizedAccessException) { }
+                        catch (UnauthorizedAccessException)
+                        {
+                        }
                     }
 
                     if (Directory.Exists(sourcePath))
@@ -995,9 +1013,9 @@ internal sealed class App
         }
 
         // Current directory entries (filtered if search is active)
-        var entries = GetVisibleEntries();
+        List<FileSystemEntry> entries = GetVisibleEntries();
         bool showSearchBar = _inputMode == InputMode.Search || !string.IsNullOrEmpty(_searchFilter);
-        var fileListPane = showSearchBar
+        Rect fileListPane = showSearchBar
             ? _layout.CenterPane with { Height = _layout.CenterPane.Height - 1 }
             : _layout.CenterPane;
 
@@ -1033,12 +1051,12 @@ internal sealed class App
             }
             else
             {
-                var parentDir = Directory.GetParent(_currentPath);
+                DirectoryInfo? parentDir = Directory.GetParent(_currentPath);
                 parentKey = parentDir?.FullName ?? DirectoryContents.DrivesPath;
                 currentName = Path.GetFileName(_currentPath);
             }
 
-            var parentEntries = _directoryContents.GetEntries(parentKey);
+            List<FileSystemEntry> parentEntries = _directoryContents.GetEntries(parentKey);
             int parentSelected = -1;
             for (int i = 0; i < parentEntries.Count; i++)
             {
@@ -1055,7 +1073,8 @@ internal sealed class App
             }
 
             int parentScroll = CalculateScroll(parentSelected, _layout.LeftPane.Height, parentEntries.Count);
-            PaneRenderer.RenderFileList(buffer, _layout.LeftPane, parentEntries, parentSelected, parentScroll, isActive: false, showIcons: _config.ShowIconsEnabled);
+            PaneRenderer.RenderFileList(buffer, _layout.LeftPane, parentEntries, parentSelected, parentScroll, isActive: false,
+                showIcons: _config.ShowIconsEnabled);
 
             // Cache for mouse hit-testing
             _leftPaneEntries = parentEntries;
@@ -1066,13 +1085,14 @@ internal sealed class App
         // Right pane: preview
         if (_config.PreviewPaneEnabled && entries.Count > 0 && _selectedIndex < entries.Count)
         {
-            var selected = entries[_selectedIndex];
+            FileSystemEntry selected = entries[_selectedIndex];
             if (selected.IsDirectory)
             {
-                var previewEntries = _directoryContents.GetEntries(selected.FullPath);
+                List<FileSystemEntry> previewEntries = _directoryContents.GetEntries(selected.FullPath);
                 if (previewEntries.Count > 0)
                 {
-                    PaneRenderer.RenderFileList(buffer, _layout.RightPane, previewEntries, -1, 0, isActive: false, showIcons: _config.ShowIconsEnabled);
+                    PaneRenderer.RenderFileList(buffer, _layout.RightPane, previewEntries, -1, 0, isActive: false,
+                        showIcons: _config.ShowIconsEnabled);
                 }
                 else
                 {
@@ -1167,7 +1187,9 @@ internal sealed class App
             ? entries[_selectedIndex]
             : null;
         string displayPath = _currentPath == DirectoryContents.DrivesPath ? "Drives" : _currentPath;
-        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count, _directoryContents.SortMode, _directoryContents.SortAscending, _clipboardPaths.Count, _clipboardIsCut, _currentBranchName, _aheadBehindText);
+        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel,
+            _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count, _directoryContents.SortMode,
+            _directoryContents.SortAscending, _clipboardPaths.Count, _clipboardIsCut, _currentBranchName, _aheadBehindText);
 
         // Help overlay
         if (_inputMode == InputMode.Help)
@@ -1193,7 +1215,7 @@ internal sealed class App
             case InputMode.Properties:
                 if (selectedEntry is not null)
                 {
-                    GitFileStatus? propGitStatus = _gitStatuses?.TryGetValue(selectedEntry.FullPath, out var gs) == true ? gs : null;
+                    GitFileStatus? propGitStatus = _gitStatuses?.TryGetValue(selectedEntry.FullPath, out GitFileStatus gs) == true ? gs : null;
                     // Filter out FileMetadataProvider sections (header = filename) — properties overlay already shows that info
                     MetadataSection[]? propMetadata = _cachedMetadataSections?.Where(s => s.Header != selectedEntry.Name).ToArray();
                     if (propMetadata is { Length: 0 })
@@ -1201,12 +1223,14 @@ internal sealed class App
                         propMetadata = null;
                     }
 
-                    _propertiesContentHeight = PropertiesOverlay.Render(buffer, width, height, selectedEntry, _propertiesDirSizeText, propGitStatus, propMetadata, _propertiesScrollOffset);
+                    _propertiesContentHeight = PropertiesOverlay.Render(buffer, width, height, selectedEntry, _propertiesDirSizeText, propGitStatus,
+                        propMetadata, _propertiesScrollOffset);
                     // Clamp scroll offset in case content changed
                     int propsVisibleRows = Math.Max(1, height - 8);
                     int propsMaxScroll = Math.Max(0, _propertiesContentHeight - propsVisibleRows);
                     _propertiesScrollOffset = Math.Clamp(_propertiesScrollOffset, 0, propsMaxScroll);
                 }
+
                 break;
             case InputMode.ActionPalette:
                 RenderActionPalette(buffer, width, height);
@@ -1332,7 +1356,7 @@ internal sealed class App
         }
 
         Span<char> sizeBuf = stackalloc char[32];
-        int n = UI.FormatHelpers.FormatSize(sizeBuf, evt.TotalBytes);
+        int n = FormatHelpers.FormatSize(sizeBuf, evt.TotalBytes);
         string formatted = sizeBuf[..n].ToString();
         _propertiesDirSizeText = $"{formatted} ({evt.TotalBytes:N0} bytes)";
     }
@@ -1406,7 +1430,7 @@ internal sealed class App
         {
             foreach (string path in _markedPaths)
             {
-                if (_gitStatuses.TryGetValue(path, out var s) && (s & statusMask) != 0)
+                if (_gitStatuses.TryGetValue(path, out GitFileStatus s) && (s & statusMask) != 0)
                 {
                     return true;
                 }
@@ -1415,11 +1439,11 @@ internal sealed class App
             return false;
         }
 
-        var entries = GetVisibleEntries();
+        List<FileSystemEntry> entries = GetVisibleEntries();
         if (_selectedIndex < entries.Count)
         {
             string path = entries[_selectedIndex].FullPath;
-            return _gitStatuses.TryGetValue(path, out var s) && (s & statusMask) != 0;
+            return _gitStatuses.TryGetValue(path, out GitFileStatus s) && (s & statusMask) != 0;
         }
 
         return false;
@@ -1447,7 +1471,7 @@ internal sealed class App
         }
 
         // Preserve selection by name
-        var entries = GetVisibleEntries();
+        List<FileSystemEntry> entries = GetVisibleEntries();
         string? selectedName = _selectedIndex < entries.Count ? entries[_selectedIndex].Name : null;
 
         // Invalidate cache
@@ -1461,7 +1485,7 @@ internal sealed class App
         }
 
         // Restore selection
-        var newEntries = GetVisibleEntries();
+        List<FileSystemEntry> newEntries = GetVisibleEntries();
         bool selectedSurvived = false;
         if (selectedName is not null && newEntries.Count > 0)
         {
@@ -1498,13 +1522,13 @@ internal sealed class App
             return;
         }
 
-        var entries = GetVisibleEntries();
+        List<FileSystemEntry> entries = GetVisibleEntries();
         if (_selectedIndex >= entries.Count)
         {
             return;
         }
 
-        var selected = entries[_selectedIndex];
+        FileSystemEntry selected = entries[_selectedIndex];
         if (selected.IsDirectory)
         {
             return;
@@ -1523,10 +1547,10 @@ internal sealed class App
     private PreviewContext BuildPreviewContext(int paneWidth, int paneHeight)
     {
         GitFileStatus? gitStatus = null;
-        var entries = GetVisibleEntries();
+        List<FileSystemEntry> entries = GetVisibleEntries();
         if (_selectedIndex < entries.Count && _gitStatuses is not null)
         {
-            _gitStatuses.TryGetValue(entries[_selectedIndex].FullPath, out var status);
+            _gitStatuses.TryGetValue(entries[_selectedIndex].FullPath, out GitFileStatus status);
             gitStatus = status;
         }
 
@@ -1568,7 +1592,7 @@ internal sealed class App
             previewProvider = _applicableProviders[index];
         }
 
-        var metadataProviders = includeMetadata ? _applicableMetadataProviders : null;
+        List<IMetadataProvider>? metadataProviders = includeMetadata ? _applicableMetadataProviders : null;
 
         if (previewProvider is null && metadataProviders is null or { Count: 0 })
         {
@@ -1683,7 +1707,7 @@ internal sealed class App
             int entryIndex = _leftPaneScroll + (row - _layout.LeftPane.Top);
             if (entryIndex >= 0 && entryIndex < _leftPaneEntries.Count)
             {
-                var clicked = _leftPaneEntries[entryIndex];
+                FileSystemEntry clicked = _leftPaneEntries[entryIndex];
                 if (clicked.IsDirectory)
                 {
                     _selectedIndexPerDir[_currentPath] = _selectedIndex;
@@ -1700,13 +1724,13 @@ internal sealed class App
                 {
                     // File in parent dir — navigate to parent, select file
                     _selectedIndexPerDir[_currentPath] = _selectedIndex;
-                    var parentDir = Directory.GetParent(_currentPath);
+                    DirectoryInfo? parentDir = Directory.GetParent(_currentPath);
                     if (parentDir is not null)
                     {
                         _currentPath = PathCompletion.CapitalizeDriveLetter(parentDir.FullName);
                         UpdateTerminalTitle();
                         RefreshGitStatus();
-                        var parentEntries = _directoryContents.GetEntries(_currentPath);
+                        List<FileSystemEntry> parentEntries = _directoryContents.GetEntries(_currentPath);
                         int idx = parentEntries.FindIndex(e => e.Name.Equals(clicked.Name, StringComparison.OrdinalIgnoreCase));
                         _selectedIndex = idx >= 0 ? idx : 0;
                         _scrollOffset = 0;
@@ -1722,14 +1746,14 @@ internal sealed class App
             // Right pane click — only meaningful if selected entry is a directory
             if (entries.Count > 0 && _selectedIndex < entries.Count)
             {
-                var selected = entries[_selectedIndex];
+                FileSystemEntry selected = entries[_selectedIndex];
                 if (selected.IsDirectory)
                 {
-                    var previewEntries = _directoryContents.GetEntries(selected.FullPath);
+                    List<FileSystemEntry> previewEntries = _directoryContents.GetEntries(selected.FullPath);
                     int entryIndex = row - _layout.RightPane.Top; // scroll is always 0 for preview
                     if (entryIndex >= 0 && entryIndex < previewEntries.Count)
                     {
-                        var clicked = previewEntries[entryIndex];
+                        FileSystemEntry clicked = previewEntries[entryIndex];
                         if (clicked.IsDirectory)
                         {
                             _selectedIndexPerDir[_currentPath] = _selectedIndex;
@@ -1749,7 +1773,7 @@ internal sealed class App
                             _currentPath = PathCompletion.CapitalizeDriveLetter(selected.FullPath);
                             UpdateTerminalTitle();
                             RefreshGitStatus();
-                            var dirEntries = _directoryContents.GetEntries(_currentPath);
+                            List<FileSystemEntry> dirEntries = _directoryContents.GetEntries(_currentPath);
                             int idx = dirEntries.FindIndex(e => e.Name.Equals(clicked.Name, StringComparison.OrdinalIgnoreCase));
                             _selectedIndex = idx >= 0 ? idx : 0;
                             _scrollOffset = 0;
@@ -1766,7 +1790,7 @@ internal sealed class App
     private static bool HitTestPane(Rect pane, int row, int col)
     {
         return row >= pane.Top && row < pane.Bottom
-            && col >= pane.Left && col < pane.Right;
+                               && col >= pane.Left && col < pane.Right;
     }
 
     private static int CalculateScroll(int selectedIndex, int visibleHeight, int totalCount)
@@ -1839,6 +1863,7 @@ internal sealed class App
                 {
                     _propertiesScrollOffset--;
                 }
+
                 break;
 
             case ConsoleKey.DownArrow:
@@ -1909,6 +1934,7 @@ internal sealed class App
                         _expandedPreviewScrollOffset++;
                     }
                 }
+
                 break;
 
             case ConsoleKey.PageUp:
@@ -1921,6 +1947,7 @@ internal sealed class App
                     int maxScroll = Math.Max(0, _cachedStyledLines.Length - _layout.ExpandedPane.Height);
                     _expandedPreviewScrollOffset = Math.Min(maxScroll, _expandedPreviewScrollOffset + _layout.ExpandedPane.Height);
                 }
+
                 break;
 
             case ConsoleKey.Home:
@@ -1967,7 +1994,7 @@ internal sealed class App
                         else
                         {
                             string relativePath = Path.GetRelativePath(repoRoot, previewPath)
-                                                      .Replace('\\', '/');
+                                .Replace('\\', '/');
 
                             if (SystemClipboard.SetText(relativePath))
                             {
@@ -2028,8 +2055,6 @@ internal sealed class App
         _sixelPending = true;
     }
 
-    private static readonly CellStyle s_metaSeparatorStyle = new(new Color(60, 60, 80), null);
-
     private void RenderMetadataWithText(ScreenBuffer buffer, Rect pane)
     {
         StyledLine[] metadataLines = MetadataRenderer.Render(_cachedMetadataSections!, pane.Width);
@@ -2043,7 +2068,7 @@ internal sealed class App
 
         // Draw separator line on the last row of the metadata rect
         int separatorRow = pane.Top + metadataRows - 1;
-        buffer.FillRow(separatorRow, pane.Left, pane.Width, '\u2500', s_metaSeparatorStyle);
+        buffer.FillRow(separatorRow, pane.Left, pane.Width, '\u2500', MetaSeparatorStyle);
 
         if (previewRows > 0)
         {
@@ -2063,7 +2088,7 @@ internal sealed class App
         PaneRenderer.RenderPreview(buffer, metadataRect, metadataLines, showLineNumbers: false);
 
         // Draw separator line on the last row of the metadata rect
-        buffer.FillRow(pane.Top + metadataRows - 1, pane.Left, pane.Width, '\u2500', s_metaSeparatorStyle);
+        buffer.FillRow(pane.Top + metadataRows - 1, pane.Left, pane.Width, '\u2500', MetaSeparatorStyle);
 
         // Fill image area with spaces for Sixel rendering
         int imageTop = pane.Top + metadataRows;
@@ -2078,7 +2103,7 @@ internal sealed class App
 
     private void RenderExpandedPreview(ScreenBuffer buffer, int width, int height)
     {
-        var pane = _layout.ExpandedPane;
+        Rect pane = _layout.ExpandedPane;
 
         if (_previewLoading)
         {
@@ -2104,7 +2129,7 @@ internal sealed class App
         }
 
         // Status bar (expanded preview)
-        var entries = GetVisibleEntries();
+        List<FileSystemEntry> entries = GetVisibleEntries();
         FileSystemEntry? selectedEntry = entries.Count > 0 && _selectedIndex < entries.Count
             ? entries[_selectedIndex]
             : null;
@@ -2114,7 +2139,9 @@ internal sealed class App
             displayPath = "Drives";
         }
 
-        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel, _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count, _directoryContents.SortMode, _directoryContents.SortAscending, _clipboardPaths.Count, _clipboardIsCut, _currentBranchName, _aheadBehindText);
+        StatusBar.Render(buffer, _layout.StatusBar, displayPath, entries.Count, _selectedIndex, selectedEntry, _cachedPreviewFileTypeLabel,
+            _cachedPreviewEncoding, _cachedPreviewLineEnding, _notification, _markedPaths.Count, _directoryContents.SortMode,
+            _directoryContents.SortAscending, _clipboardPaths.Count, _clipboardIsCut, _currentBranchName, _aheadBehindText);
     }
 
     // ── Modal input handlers ────────────────────────────────────────────────
@@ -2217,6 +2244,7 @@ internal sealed class App
                     _goToPathInput = null;
                     _goToPathSuggestion = null;
                 }
+
                 break;
 
             case ConsoleKey.Enter:
@@ -2239,6 +2267,7 @@ internal sealed class App
                     _goToPathInput = new TextInput(accepted);
                     _goToPathSuggestion = GetPathSuggestion(accepted);
                 }
+
                 break;
 
             case ConsoleKey.Backspace:
@@ -2271,6 +2300,7 @@ internal sealed class App
                 {
                     _goToPathInput!.MoveCursorRight();
                 }
+
                 break;
 
             case ConsoleKey.Home:
@@ -2305,6 +2335,7 @@ internal sealed class App
                     _goToPathInput!.InsertChar(key.KeyChar);
                     _goToPathSuggestion = GetPathSuggestion(_goToPathInput.Value);
                 }
+
                 break;
         }
     }
@@ -2347,7 +2378,7 @@ internal sealed class App
                 _currentPath = PathCompletion.CapitalizeDriveLetter(parent);
                 UpdateTerminalTitle();
                 RefreshGitStatus();
-                var entries = _directoryContents.GetEntries(_currentPath);
+                List<FileSystemEntry> entries = _directoryContents.GetEntries(_currentPath);
                 string fileName = Path.GetFileName(path);
                 int idx = entries.FindIndex(e => e.Name.Equals(fileName, StringComparison.OrdinalIgnoreCase));
                 _selectedIndex = idx >= 0 ? idx : 0;
@@ -2374,7 +2405,7 @@ internal sealed class App
         }
         else
         {
-            var repoRoot = GitUtils.FindRepoRoot(_currentPath);
+            string? repoRoot = GitUtils.FindRepoRoot(_currentPath);
             _currentRepoRoot = repoRoot;
 
             if (repoRoot is not null)
@@ -2420,7 +2451,7 @@ internal sealed class App
             return;
         }
 
-        var entries = _directoryContents.GetEntries(_currentPath);
+        List<FileSystemEntry> entries = _directoryContents.GetEntries(_currentPath);
         var dirPaths = new List<string>();
 
         foreach (FileSystemEntry entry in entries)
@@ -2532,16 +2563,14 @@ internal sealed class App
 
     // ── Notification helpers ──────────────────────────────────────────────────
 
-    private void ShowNotification(string message, NotificationKind kind = NotificationKind.Info)
-    {
+    private void ShowNotification(string message, NotificationKind kind = NotificationKind.Info) =>
         _notification = new Notification(message, kind, Environment.TickCount64);
-    }
 
     // ── Search/filter helpers ────────────────────────────────────────────────
 
     private List<FileSystemEntry> GetVisibleEntries()
     {
-        var all = _directoryContents.GetEntries(_currentPath);
+        List<FileSystemEntry> all = _directoryContents.GetEntries(_currentPath);
         if (string.IsNullOrEmpty(_searchFilter))
         {
             _filteredEntries = null;
@@ -2566,15 +2595,7 @@ internal sealed class App
         }
     }
 
-    private void InvalidateFilteredEntries()
-    {
-        _filteredEntries = null;
-    }
-
-    private int VisibleFileListHeight =>
-        (_inputMode == InputMode.Search || !string.IsNullOrEmpty(_searchFilter))
-            ? _layout.CenterPane.Height - 1
-            : _layout.CenterPane.Height;
+    private void InvalidateFilteredEntries() => _filteredEntries = null;
 
     private void HandleSearchKey(KeyEvent key)
     {
@@ -2593,14 +2614,14 @@ internal sealed class App
 
             case ConsoleKey.UpArrow:
             {
-                var entries = GetVisibleEntries();
+                List<FileSystemEntry> entries = GetVisibleEntries();
                 _selectedIndex = _selectedIndex > 0 ? _selectedIndex - 1 : entries.Count - 1;
                 break;
             }
 
             case ConsoleKey.DownArrow:
             {
-                var entries = GetVisibleEntries();
+                List<FileSystemEntry> entries = GetVisibleEntries();
                 _selectedIndex = _selectedIndex < entries.Count - 1 ? _selectedIndex + 1 : 0;
 
                 break;
@@ -2647,6 +2668,7 @@ internal sealed class App
                     _selectedIndex = 0;
                     _scrollOffset = 0;
                 }
+
                 break;
         }
     }
@@ -2679,7 +2701,7 @@ internal sealed class App
         {
             string line = lines[i];
             int msgCol = content.Left + (content.Width - line.Length) / 2;
-            var style = i > 0 ? warnStyle : textStyle;
+            CellStyle style = i > 0 ? warnStyle : textStyle;
             buffer.WriteString(content.Top + i, msgCol, line, style);
         }
     }
@@ -2729,7 +2751,7 @@ internal sealed class App
         for (int i = 0; i < _applicableProviders.Count; i++)
         {
             string prefix = i == _activeProviderIndex ? "\u25cf " : "  ";
-            items[i] = new() { Label = prefix + _applicableProviders[i].Label, Action = AppAction.SelectPreviewProvider, Data = i };
+            items[i] = new ActionMenuItem { Label = prefix + _applicableProviders[i].Label, Action = AppAction.SelectPreviewProvider, Data = i };
         }
 
         return items;
@@ -2748,22 +2770,22 @@ internal sealed class App
 
         if (_clipboardPaths.Count > 0)
         {
-            items.Add(new() { Label = "Paste", Shortcut = "v", Action = AppAction.Paste });
+            items.Add(new ActionMenuItem { Label = "Paste", Shortcut = "v", Action = AppAction.Paste });
         }
 
-        items.Add(new() { Label = "Copy absolute path", Shortcut = "y", Action = AppAction.CopyAbsolutePath });
-        items.Add(new() { Label = "New file", Shortcut = "n", Action = AppAction.NewFile });
-        items.Add(new() { Label = "New directory", Shortcut = "Shift+N", Action = AppAction.NewDirectory });
-        items.Add(new() { Label = "Create symlink", Shortcut = "Ctrl+L", Action = AppAction.CreateSymlink });
-        items.Add(new() { Label = "Properties", Shortcut = "i", Action = AppAction.ShowProperties });
+        items.Add(new ActionMenuItem { Label = "Copy absolute path", Shortcut = "y", Action = AppAction.CopyAbsolutePath });
+        items.Add(new ActionMenuItem { Label = "New file", Shortcut = "n", Action = AppAction.NewFile });
+        items.Add(new ActionMenuItem { Label = "New directory", Shortcut = "Shift+N", Action = AppAction.NewDirectory });
+        items.Add(new ActionMenuItem { Label = "Create symlink", Shortcut = "Ctrl+L", Action = AppAction.CreateSymlink });
+        items.Add(new ActionMenuItem { Label = "Properties", Shortcut = "i", Action = AppAction.ShowProperties });
 
         // Cloud file download — only shown for cloud placeholders
         if (OperatingSystem.IsWindows())
         {
-            var visibleEntries = GetVisibleEntries();
+            List<FileSystemEntry> visibleEntries = GetVisibleEntries();
             if (_selectedIndex < visibleEntries.Count && visibleEntries[_selectedIndex].IsCloudPlaceholder)
             {
-                items.Add(new() { Label = "Download cloud file", Action = AppAction.DownloadCloudFile });
+                items.Add(new ActionMenuItem { Label = "Download cloud file", Action = AppAction.DownloadCloudFile });
             }
         }
 
@@ -2771,47 +2793,47 @@ internal sealed class App
         ActionMenuItem[]? previewSubItems = BuildPreviewMenuItems();
         if (previewSubItems is not null)
         {
-            items.Add(new() { Label = "Change preview", Shortcut = "p", SubItems = previewSubItems });
+            items.Add(new ActionMenuItem { Label = "Change preview", Shortcut = "p", SubItems = previewSubItems });
         }
 
-        items.Add(new() { Label = "Toggle hidden files", Shortcut = ".", Action = AppAction.ToggleHiddenFiles });
-        items.Add(new() { Label = "Cycle sort mode", Shortcut = "s", Action = AppAction.CycleSortMode });
-        items.Add(new() { Label = "Reverse sort direction", Shortcut = "S", Action = AppAction.ToggleSortDirection });
-        items.Add(new() { Label = "Bookmarks", Shortcut = "b", Action = AppAction.ShowBookmarks });
-        items.Add(new() { Label = "Toggle bookmark", Shortcut = "B", Action = AppAction.ToggleBookmark });
-        items.Add(new() { Label = "Go to path", Shortcut = "g", Action = AppAction.GoToPath });
-        items.Add(new() { Label = "Search / Find file", Shortcut = "Ctrl+F", Action = AppAction.ShowFileFinder });
-        items.Add(new() { Label = "Filter", Shortcut = "/", Action = AppAction.Search });
-        items.Add(new() { Label = "Open terminal here", Shortcut = "Ctrl+T", Action = AppAction.OpenTerminal });
-        items.Add(new() { Label = "Configuration", Shortcut = ",", Action = AppAction.ShowConfig });
-        items.Add(new() { Label = "Help", Shortcut = "?", Action = AppAction.ShowHelp });
-        items.Add(new() { Label = "Refresh", Shortcut = "Ctrl+R", Action = AppAction.Refresh });
+        items.Add(new ActionMenuItem { Label = "Toggle hidden files", Shortcut = ".", Action = AppAction.ToggleHiddenFiles });
+        items.Add(new ActionMenuItem { Label = "Cycle sort mode", Shortcut = "s", Action = AppAction.CycleSortMode });
+        items.Add(new ActionMenuItem { Label = "Reverse sort direction", Shortcut = "S", Action = AppAction.ToggleSortDirection });
+        items.Add(new ActionMenuItem { Label = "Bookmarks", Shortcut = "b", Action = AppAction.ShowBookmarks });
+        items.Add(new ActionMenuItem { Label = "Toggle bookmark", Shortcut = "B", Action = AppAction.ToggleBookmark });
+        items.Add(new ActionMenuItem { Label = "Go to path", Shortcut = "g", Action = AppAction.GoToPath });
+        items.Add(new ActionMenuItem { Label = "Search / Find file", Shortcut = "Ctrl+F", Action = AppAction.ShowFileFinder });
+        items.Add(new ActionMenuItem { Label = "Filter", Shortcut = "/", Action = AppAction.Search });
+        items.Add(new ActionMenuItem { Label = "Open terminal here", Shortcut = "Ctrl+T", Action = AppAction.OpenTerminal });
+        items.Add(new ActionMenuItem { Label = "Configuration", Shortcut = ",", Action = AppAction.ShowConfig });
+        items.Add(new ActionMenuItem { Label = "Help", Shortcut = "?", Action = AppAction.ShowHelp });
+        items.Add(new ActionMenuItem { Label = "Refresh", Shortcut = "Ctrl+R", Action = AppAction.Refresh });
 
         // Git actions — only shown when actionable
         if (_currentRepoRoot is not null)
         {
-            items.Add(new() { Label = "Git: Copy relative path", Shortcut = "Y", Action = AppAction.CopyGitRelativePath });
+            items.Add(new ActionMenuItem { Label = "Git: Copy relative path", Shortcut = "Y", Action = AppAction.CopyGitRelativePath });
 
             if (_gitStatuses is not null)
             {
-                var entries = GetVisibleEntries();
+                List<FileSystemEntry> entries = GetVisibleEntries();
                 if (_selectedIndex < entries.Count)
                 {
                     bool hasStageableStatus = HasStatusInSelection(GitFileStatus.Modified | GitFileStatus.Untracked);
                     if (hasStageableStatus)
                     {
-                        items.Add(new() { Label = "Git: Stage", Action = AppAction.StageFile });
+                        items.Add(new ActionMenuItem { Label = "Git: Stage", Action = AppAction.StageFile });
                     }
 
                     bool hasUnstageableStatus = HasStatusInSelection(GitFileStatus.Staged);
                     if (hasUnstageableStatus)
                     {
-                        items.Add(new() { Label = "Git: Unstage", Action = AppAction.UnstageFile });
+                        items.Add(new ActionMenuItem { Label = "Git: Unstage", Action = AppAction.UnstageFile });
                     }
                 }
 
                 bool hasAnyChanges = false;
-                foreach (var kvp in _gitStatuses)
+                foreach (KeyValuePair<string, GitFileStatus> kvp in _gitStatuses)
                 {
                     if ((kvp.Value & (GitFileStatus.Modified | GitFileStatus.Untracked)) != 0)
                     {
@@ -2822,11 +2844,11 @@ internal sealed class App
 
                 if (hasAnyChanges)
                 {
-                    items.Add(new() { Label = "Git: Stage all changes", Action = AppAction.StageAll });
+                    items.Add(new ActionMenuItem { Label = "Git: Stage all changes", Action = AppAction.StageAll });
                 }
 
                 bool hasAnyStagedChanges = false;
-                foreach (var kvp in _gitStatuses)
+                foreach (KeyValuePair<string, GitFileStatus> kvp in _gitStatuses)
                 {
                     if ((kvp.Value & GitFileStatus.Staged) != 0)
                     {
@@ -2837,16 +2859,16 @@ internal sealed class App
 
                 if (hasAnyStagedChanges)
                 {
-                    items.Add(new() { Label = "Git: Unstage all", Action = AppAction.UnstageAll });
-                    items.Add(new() { Label = "Git: Commit", Action = AppAction.GitCommit });
+                    items.Add(new ActionMenuItem { Label = "Git: Unstage all", Action = AppAction.UnstageAll });
+                    items.Add(new ActionMenuItem { Label = "Git: Commit", Action = AppAction.GitCommit });
                 }
             }
 
-            items.Add(new() { Label = "Git: Push", Action = AppAction.GitPush });
-            items.Add(new() { Label = "Git: Push (force with lease)", Action = AppAction.GitPushForceWithLease });
-            items.Add(new() { Label = "Git: Pull", Action = AppAction.GitPull });
-            items.Add(new() { Label = "Git: Pull (rebase)", Action = AppAction.GitPullRebase });
-            items.Add(new() { Label = "Git: Fetch", Action = AppAction.GitFetch });
+            items.Add(new ActionMenuItem { Label = "Git: Push", Action = AppAction.GitPush });
+            items.Add(new ActionMenuItem { Label = "Git: Push (force with lease)", Action = AppAction.GitPushForceWithLease });
+            items.Add(new ActionMenuItem { Label = "Git: Pull", Action = AppAction.GitPull });
+            items.Add(new ActionMenuItem { Label = "Git: Pull (rebase)", Action = AppAction.GitPullRebase });
+            items.Add(new ActionMenuItem { Label = "Git: Fetch", Action = AppAction.GitFetch });
         }
 
         return items.ToArray();
@@ -2869,8 +2891,8 @@ internal sealed class App
             return;
         }
 
-        var level = _actionMenuStack.Peek();
-        var filtered = level.GetFilteredItems();
+        ActionMenuLevel level = _actionMenuStack.Peek();
+        List<ActionMenuItem> filtered = level.GetFilteredItems();
 
         switch (key.Key)
         {
@@ -2886,7 +2908,7 @@ internal sealed class App
             case ConsoleKey.Enter:
                 if (filtered.Count > 0 && level.SelectedIndex < filtered.Count)
                 {
-                    var selected = filtered[level.SelectedIndex];
+                    ActionMenuItem selected = filtered[level.SelectedIndex];
                     if (selected.IsSubmenu)
                     {
                         _actionMenuStack.Push(new ActionMenuLevel(selected.Label, selected.SubItems!));
@@ -3020,14 +3042,14 @@ internal sealed class App
     /// </summary>
     private bool DispatchFileAction(AppAction action)
     {
-        var entries = GetVisibleEntries();
+        List<FileSystemEntry> entries = GetVisibleEntries();
 
         switch (action)
         {
             case AppAction.OpenExternal:
                 if (entries.Count > 0 && _selectedIndex < entries.Count)
                 {
-                    var entry = entries[_selectedIndex];
+                    FileSystemEntry entry = entries[_selectedIndex];
                     try
                     {
                         Process.Start(new ProcessStartInfo(entry.FullPath) { UseShellExecute = true });
@@ -3044,7 +3066,7 @@ internal sealed class App
             case AppAction.Rename:
                 if (entries.Count > 0 && _selectedIndex < entries.Count)
                 {
-                    var entry = entries[_selectedIndex];
+                    FileSystemEntry entry = entries[_selectedIndex];
                     ShowTextInputDialog("Rename", entry.Name, newName =>
                     {
                         if (string.IsNullOrWhiteSpace(newName) || newName == entry.Name)
@@ -3077,7 +3099,7 @@ internal sealed class App
                             RefreshGitStatus();
                             ShowNotification($"Renamed to '{newName}'", NotificationKind.Success);
 
-                            var updatedEntries = GetVisibleEntries();
+                            List<FileSystemEntry> updatedEntries = GetVisibleEntries();
                             for (int i = 0; i < updatedEntries.Count; i++)
                             {
                                 if (updatedEntries[i].Name.Equals(newName, StringComparison.OrdinalIgnoreCase))
@@ -3184,7 +3206,7 @@ internal sealed class App
             case AppAction.Paste:
                 if (OperatingSystem.IsWindows())
                 {
-                    var osFiles = SystemClipboard.GetFiles();
+                    (List<string> Paths, bool IsCut)? osFiles = SystemClipboard.GetFiles();
 
                     if (osFiles is not null && osFiles.Value.Paths.Count > 0)
                     {
@@ -3243,7 +3265,7 @@ internal sealed class App
                     else
                     {
                         string relativePath = Path.GetRelativePath(repoRoot, entries[_selectedIndex].FullPath)
-                                                  .Replace('\\', '/');
+                            .Replace('\\', '/');
 
                         if (SystemClipboard.SetText(relativePath))
                         {
@@ -3288,7 +3310,7 @@ internal sealed class App
                         RefreshGitStatus();
                         ShowNotification($"Created '{name}'", NotificationKind.Success);
 
-                        var updatedEntries = GetVisibleEntries();
+                        List<FileSystemEntry> updatedEntries = GetVisibleEntries();
                         for (int i = 0; i < updatedEntries.Count; i++)
                         {
                             if (updatedEntries[i].Name.Equals(name, StringComparison.OrdinalIgnoreCase))
@@ -3335,7 +3357,7 @@ internal sealed class App
                         RefreshGitStatus();
                         ShowNotification($"Created '{name}'", NotificationKind.Success);
 
-                        var updatedEntries = GetVisibleEntries();
+                        List<FileSystemEntry> updatedEntries = GetVisibleEntries();
                         for (int i = 0; i < updatedEntries.Count; i++)
                         {
                             if (updatedEntries[i].Name.Equals(name, StringComparison.OrdinalIgnoreCase))
@@ -3359,7 +3381,7 @@ internal sealed class App
                     return true;
                 }
 
-                var selectedEntry = entries[_selectedIndex];
+                FileSystemEntry selectedEntry = entries[_selectedIndex];
                 string target = selectedEntry.FullPath;
 
                 ShowTextInputDialog("Create Symlink", selectedEntry.Name + "_link", linkName =>
@@ -3399,7 +3421,7 @@ internal sealed class App
                         RefreshGitStatus();
                         ShowNotification($"Created symlink '{linkName}'", NotificationKind.Success);
 
-                        var updatedEntries = GetVisibleEntries();
+                        List<FileSystemEntry> updatedEntries = GetVisibleEntries();
                         for (int i = 0; i < updatedEntries.Count; i++)
                         {
                             if (updatedEntries[i].Name.Equals(linkName, StringComparison.OrdinalIgnoreCase))
@@ -3426,14 +3448,15 @@ internal sealed class App
         }
     }
 
-    private void DispatchActionPaletteAction(AppAction action, int actionData, PreviewLoader previewLoader, ScreenBuffer buffer, InputPipeline pipeline)
+    private void DispatchActionPaletteAction(AppAction action, int actionData, PreviewLoader previewLoader, ScreenBuffer buffer,
+        InputPipeline pipeline)
     {
         if (DispatchFileAction(action))
         {
             return;
         }
 
-        var entries = GetVisibleEntries();
+        List<FileSystemEntry> entries = GetVisibleEntries();
 
         switch (action)
         {
@@ -3442,7 +3465,7 @@ internal sealed class App
                 {
                     _inputMode = InputMode.Properties;
                     _propertiesScrollOffset = 0;
-                    var propsEntry2 = entries[_selectedIndex];
+                    FileSystemEntry propsEntry2 = entries[_selectedIndex];
                     if (propsEntry2.IsDirectory && !propsEntry2.IsDrive)
                     {
                         _propertiesDirSizePath = propsEntry2.FullPath;
@@ -3546,7 +3569,7 @@ internal sealed class App
             case AppAction.StageFile:
                 if (_currentRepoRoot is not null)
                 {
-                    var stagePaths = GetSelectedOrMarkedPaths(entries);
+                    List<string> stagePaths = GetSelectedOrMarkedPaths(entries);
                     if (stagePaths.Count > 0)
                     {
                         _gitActionRunner?.RunStage(_currentRepoRoot, stagePaths);
@@ -3558,7 +3581,7 @@ internal sealed class App
             case AppAction.UnstageFile:
                 if (_currentRepoRoot is not null)
                 {
-                    var unstagePaths = GetSelectedOrMarkedPaths(entries);
+                    List<string> unstagePaths = GetSelectedOrMarkedPaths(entries);
                     if (unstagePaths.Count > 0)
                     {
                         _gitActionRunner?.RunUnstage(_currentRepoRoot, unstagePaths);
@@ -3645,7 +3668,7 @@ internal sealed class App
             case AppAction.DownloadCloudFile:
                 if (entries.Count > 0 && _selectedIndex < entries.Count)
                 {
-                    var cloudEntry = entries[_selectedIndex];
+                    FileSystemEntry cloudEntry = entries[_selectedIndex];
                     if (cloudEntry.IsCloudPlaceholder)
                     {
                         DownloadCloudFile(cloudEntry.FullPath);
@@ -3653,20 +3676,21 @@ internal sealed class App
                 }
 
                 break;
-
         }
     }
 
     private void DownloadCloudFile(string path)
     {
-        ShowNotification("Downloading\u2026", NotificationKind.Info);
+        ShowNotification("Downloading\u2026");
 
         Task.Run(() =>
         {
             try
             {
                 // Opening the file triggers Windows Cloud Files recall (download)
-                using (File.OpenRead(path)) { }
+                using (File.OpenRead(path))
+                {
+                }
 
                 // Refresh directory to update the cloud placeholder status
                 _directoryContents.InvalidateAll();
@@ -3701,8 +3725,8 @@ internal sealed class App
             return;
         }
 
-        var level = _actionMenuStack.Peek();
-        var filtered = level.GetFilteredItems();
+        ActionMenuLevel level = _actionMenuStack.Peek();
+        List<ActionMenuItem> filtered = level.GetFilteredItems();
         int contentWidth = Math.Min(60, width - 8);
         int itemRows = Math.Min(filtered.Count, 18);
         int contentHeight = itemRows + 2; // 1 row for text input + 1 separator + item rows
@@ -3710,7 +3734,7 @@ internal sealed class App
             ? "[↑↓] Navigate  [Enter] Select  [Esc] Back"
             : "[↑↓] Navigate  [Enter] Select  [Esc] Cancel";
 
-        var content = DialogBox.Render(
+        Rect content = DialogBox.Render(
             buffer, width, height,
             Math.Max(contentWidth, footer.Length),
             contentHeight,
@@ -3749,7 +3773,7 @@ internal sealed class App
                 break;
             }
 
-            var item = filtered[itemIndex];
+            ActionMenuItem item = filtered[itemIndex];
             bool isSelected = itemIndex == level.SelectedIndex;
             int row = content.Top + 2 + i;
 
@@ -3813,7 +3837,7 @@ internal sealed class App
 
     private void HandleBookmarkKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer)
     {
-        var filtered = GetFilteredBookmarks();
+        List<string> filtered = GetFilteredBookmarks();
 
         switch (key.Key)
         {
@@ -3970,13 +3994,13 @@ internal sealed class App
 
     private void RenderBookmarks(ScreenBuffer buffer, int width, int height)
     {
-        var filtered = GetFilteredBookmarks();
+        List<string> filtered = GetFilteredBookmarks();
         int contentWidth = Math.Min(70, width - 8);
         int itemRows = Math.Min(filtered.Count, 18);
         int contentHeight = itemRows + 2; // 1 row for text input + 1 separator + item rows
         const string Footer = "[↑↓] Navigate [Enter] Open [d] Remove [1-9] Jump  [B] Add/Remove  [Esc] Close";
 
-        var content = DialogBox.Render(
+        Rect content = DialogBox.Render(
             buffer, width, height,
             Math.Max(contentWidth, Footer.Length),
             Math.Max(contentHeight, 3),
@@ -4028,8 +4052,10 @@ internal sealed class App
             int row = content.Top + 2 + i;
 
             CellStyle labelStyle = isSelected
-                ? (exists ? selectedStyle : dimSelectedStyle)
-                : (exists ? normalStyle : dimStyle);
+                ? exists ? selectedStyle : dimSelectedStyle
+                : exists
+                    ? normalStyle
+                    : dimStyle;
 
             CellStyle numStyle = isSelected ? numberSelectedStyle : numberStyle;
 
@@ -4064,7 +4090,7 @@ internal sealed class App
 
     private void HandleConfigKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer)
     {
-        var state = _configDialogState!;
+        ConfigDialogState state = _configDialogState!;
         switch (key.Key)
         {
             case ConsoleKey.UpArrow or ConsoleKey.K:
@@ -4128,12 +4154,13 @@ internal sealed class App
 
     private void RenderConfigDialog(ScreenBuffer buffer, int width, int height)
     {
-        var state = _configDialogState!;
+        ConfigDialogState state = _configDialogState!;
         const int ContentWidth = 47;
         int contentHeight = state.Items.Count + 1;
         const string Footer = "[Space] Toggle [\u25c4\u25ba] Cycle [Enter] Save [Esc] Cancel";
 
-        var content = DialogBox.Render(buffer, width, height, Math.Max(ContentWidth, Footer.Length), contentHeight, title: "Configuration", footer: Footer);
+        Rect content = DialogBox.Render(buffer, width, height, Math.Max(ContentWidth, Footer.Length), contentHeight, title: "Configuration",
+            footer: Footer);
 
         var normalStyle = new CellStyle(new Color(200, 200, 200), DialogBox.BgColor);
         var selectedStyle = new CellStyle(new Color(20, 20, 35), new Color(200, 200, 200));
@@ -4143,7 +4170,7 @@ internal sealed class App
 
         for (int i = 0; i < state.Items.Count; i++)
         {
-            var item = state.Items[i];
+            ConfigItem item = state.Items[i];
             bool selected = i == state.SelectedIndex;
             CellStyle style, vStyle;
 
@@ -4209,7 +4236,7 @@ internal sealed class App
         string basePath = _currentPath;
         bool showHidden = _directoryContents.ShowHiddenFiles;
         bool showSystem = _directoryContents.ShowSystemFiles;
-        var ct = _fileFinderCts.Token;
+        CancellationToken ct = _fileFinderCts.Token;
 
         Task.Run(() => ScanFilesForFinder(basePath, showHidden, showSystem, pipeline, ct), ct);
     }
@@ -4404,7 +4431,7 @@ internal sealed class App
 
     private void HandleFileFinderKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer)
     {
-        var filtered = GetFilteredFileFinderEntries(
+        List<FileSystemEntry> filtered = GetFilteredFileFinderEntries(
             _fileFinderAllEntries, _fileFinderInput?.Value ?? "", _currentPath);
 
         switch (key.Key)
@@ -4533,7 +4560,7 @@ internal sealed class App
 
     private void RenderFileFinder(ScreenBuffer buffer, int width, int height)
     {
-        var filtered = GetFilteredFileFinderEntries(
+        List<FileSystemEntry> filtered = GetFilteredFileFinderEntries(
             _fileFinderAllEntries, _fileFinderInput?.Value ?? "", _currentPath);
         int contentWidth = Math.Min(70, width - 8);
         int itemRows = Math.Min(filtered.Count, 18);
@@ -4541,7 +4568,7 @@ internal sealed class App
         const string Footer = "[↑↓] Navigate  [Enter] Open  [Esc] Cancel";
         string title = _fileFinderScanning ? "Find File [scanning...]" : "Find File";
 
-        var content = DialogBox.Render(
+        Rect content = DialogBox.Render(
             buffer, width, height,
             Math.Max(contentWidth, Footer.Length),
             Math.Max(contentHeight, 3),

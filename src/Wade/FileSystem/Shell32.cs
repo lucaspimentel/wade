@@ -15,20 +15,6 @@ internal static class Shell32
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     private static extern int SHFileOperation(ref SHFILEOPSTRUCT lpFileOp);
 
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    private struct SHFILEOPSTRUCT
-    {
-        public nint hwnd;
-        public int wFunc;
-        public string pFrom;
-        public string pTo;
-        public int fFlags;
-        [MarshalAs(UnmanagedType.Bool)]
-        public bool fAnyOperationsAborted;
-        public nint hNameMappings;
-        public string lpszProgressTitle;
-    }
-
     /// <summary>
     /// Sends the specified paths to the Recycle Bin via SHFileOperation.
     /// Returns 0 on success, non-zero on failure.
@@ -46,5 +32,18 @@ internal static class Shell32
         };
 
         return SHFileOperation(ref op);
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct SHFILEOPSTRUCT
+    {
+        public nint hwnd;
+        public int wFunc;
+        public string pFrom;
+        public string pTo;
+        public int fFlags;
+        [MarshalAs(UnmanagedType.Bool)] public bool fAnyOperationsAborted;
+        public nint hNameMappings;
+        public string lpszProgressTitle;
     }
 }

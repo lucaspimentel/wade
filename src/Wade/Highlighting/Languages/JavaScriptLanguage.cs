@@ -37,8 +37,18 @@ internal class JavaScriptLanguage : RegexLanguage
             int p = pos + 1;
             while (p < line.Length)
             {
-                if (line[p] == '\\') { p += 2; continue; }
-                if (line[p] == '`') { p++; break; }
+                if (line[p] == '\\')
+                {
+                    p += 2;
+                    continue;
+                }
+
+                if (line[p] == '`')
+                {
+                    p++;
+                    break;
+                }
+
                 p++;
             }
 

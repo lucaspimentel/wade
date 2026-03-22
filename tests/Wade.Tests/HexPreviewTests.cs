@@ -264,14 +264,14 @@ public class HexPreviewTests
     }
 
     [Theory]
-    [InlineData(0x00, '.')]  // null → dot
-    [InlineData(0x01, '.')]  // control → dot
-    [InlineData(0x1F, '.')]  // control → dot
-    [InlineData(0x20, ' ')]  // space → space
-    [InlineData(0x41, 'A')]  // printable → literal
-    [InlineData(0x7E, '~')]  // printable → literal
-    [InlineData(0x7F, '.')]  // DEL → dot
-    [InlineData(0xFF, '.')]  // high byte → dot
+    [InlineData(0x00, '.')] // null → dot
+    [InlineData(0x01, '.')] // control → dot
+    [InlineData(0x1F, '.')] // control → dot
+    [InlineData(0x20, ' ')] // space → space
+    [InlineData(0x41, 'A')] // printable → literal
+    [InlineData(0x7E, '~')] // printable → literal
+    [InlineData(0x7F, '.')] // DEL → dot
+    [InlineData(0xFF, '.')] // high byte → dot
     public void GetPreviewLines_AsciiColumn_MapsCorrectly(byte input, char expected)
     {
         string path = CreateTempFile([input]);

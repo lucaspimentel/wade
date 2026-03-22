@@ -14,10 +14,7 @@ public class ImagePreviewTests
     [InlineData(".tga")]
     [InlineData(".tiff")]
     [InlineData(".pbm")]
-    public void IsImageFile_ReturnsTrue_ForImageExtensions(string ext)
-    {
-        Assert.True(ImagePreview.IsImageFile($"test{ext}"));
-    }
+    public void IsImageFile_ReturnsTrue_ForImageExtensions(string ext) => Assert.True(ImagePreview.IsImageFile($"test{ext}"));
 
     [Theory]
     [InlineData(".txt")]
@@ -26,10 +23,7 @@ public class ImagePreviewTests
     [InlineData(".dll")]
     [InlineData(".json")]
     [InlineData("")]
-    public void IsImageFile_ReturnsFalse_ForNonImageExtensions(string ext)
-    {
-        Assert.False(ImagePreview.IsImageFile($"test{ext}"));
-    }
+    public void IsImageFile_ReturnsFalse_ForNonImageExtensions(string ext) => Assert.False(ImagePreview.IsImageFile($"test{ext}"));
 
     [Fact]
     public void IsImageFile_IsCaseInsensitive()
@@ -42,12 +36,12 @@ public class ImagePreviewTests
     public void Load_SmallBmp_ProducesValidSixelResult()
     {
         // Create a minimal 4x4 24-bit BMP (no compression, no palette)
-        var tempFile = Path.Combine(Path.GetTempPath(), $"wade_test_{Guid.NewGuid()}.bmp");
+        string tempFile = Path.Combine(Path.GetTempPath(), $"wade_test_{Guid.NewGuid()}.bmp");
         try
         {
             CreateTestBmp(tempFile, 4, 4, r: 255, g: 0, b: 0);
 
-            var result = ImagePreview.Load(tempFile, 40, 20, 8, 16, CancellationToken.None);
+            ImagePreviewResult? result = ImagePreview.Load(tempFile, 40, 20, 8, 16, CancellationToken.None);
 
             Assert.NotNull(result);
             Assert.StartsWith("\x1bPq", result.SixelData);
@@ -65,14 +59,14 @@ public class ImagePreviewTests
     [Fact]
     public void Load_NonExistentFile_ReturnsNull()
     {
-        var result = ImagePreview.Load("nonexistent.png", 40, 20, 8, 16, CancellationToken.None);
+        ImagePreviewResult? result = ImagePreview.Load("nonexistent.png", 40, 20, 8, 16, CancellationToken.None);
         Assert.Null(result);
     }
 
     [Fact]
     public void Load_CancelledToken_ThrowsOrReturnsNull()
     {
-        var tempFile = Path.Combine(Path.GetTempPath(), $"wade_test_{Guid.NewGuid()}.bmp");
+        string tempFile = Path.Combine(Path.GetTempPath(), $"wade_test_{Guid.NewGuid()}.bmp");
         try
         {
             CreateTestBmp(tempFile, 4, 4, r: 0, g: 0, b: 255);
@@ -82,7 +76,7 @@ public class ImagePreviewTests
 
             try
             {
-                var result = ImagePreview.Load(tempFile, 40, 20, 8, 16, cts.Token);
+                ImagePreviewResult? result = ImagePreview.Load(tempFile, 40, 20, 8, 16, cts.Token);
             }
             catch (OperationCanceledException)
             {
@@ -104,7 +98,7 @@ public class ImagePreviewTests
         int pixelDataSize = rowSize * height;
         int fileSize = 54 + pixelDataSize; // 14 (file header) + 40 (DIB header) + pixel data
 
-        using var stream = File.Create(path);
+        using FileStream stream = File.Create(path);
         using var writer = new BinaryWriter(stream);
 
         // BMP file header (14 bytes)
@@ -128,7 +122,7 @@ public class ImagePreviewTests
         writer.Write(0); // important colors
 
         // Pixel data (bottom-up, BGR)
-        var rowPadding = new byte[rowSize - width * 3];
+        byte[] rowPadding = new byte[rowSize - width * 3];
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)

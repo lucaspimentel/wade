@@ -1,16 +1,17 @@
 using System.Diagnostics;
+using System.Text;
 
 namespace Wade.FileSystem;
 
 [Flags]
 internal enum GitFileStatus
 {
-    None      = 0,
+    None = 0,
     Untracked = 1 << 0,
-    Modified  = 1 << 1,
-    Staged    = 1 << 2,
-    Ignored   = 1 << 3,
-    Conflict  = 1 << 4,
+    Modified = 1 << 1,
+    Staged = 1 << 2,
+    Ignored = 1 << 3,
+    Conflict = 1 << 4,
 }
 
 internal static class GitUtils
@@ -300,7 +301,7 @@ internal static class GitUtils
 
     private static string BuildPathArgs(string command, string repoRoot, IReadOnlyList<string> paths)
     {
-        var sb = new System.Text.StringBuilder(command);
+        var sb = new StringBuilder(command);
         sb.Append(" --");
         foreach (string path in paths)
         {
@@ -342,13 +343,31 @@ internal static class GitUtils
                 return null;
             }
 
-            using var reg = ct.Register(() => { try { process.Kill(); } catch { /* best effort */ } });
+            using CancellationTokenRegistration reg = ct.Register(() =>
+            {
+                try
+                {
+                    process.Kill();
+                }
+                catch
+                {
+                    /* best effort */
+                }
+            });
 
             string output = process.StandardOutput.ReadToEnd();
 
             if (!process.WaitForExit(10_000))
             {
-                try { process.Kill(); } catch { /* best effort */ }
+                try
+                {
+                    process.Kill();
+                }
+                catch
+                {
+                    /* best effort */
+                }
+
                 return null;
             }
 
@@ -426,7 +445,7 @@ internal static class GitUtils
     {
         var statuses = new Dictionary<string, GitFileStatus>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var line in output.AsSpan().EnumerateLines())
+        foreach (ReadOnlySpan<char> line in output.AsSpan().EnumerateLines())
         {
             if (line.Length < 4)
             {
@@ -436,7 +455,7 @@ internal static class GitUtils
             char indexStatus = line[0];
             char workTreeStatus = line[1];
             // Path starts at index 3 (after "XY ")
-            var relativePath = line[3..];
+            ReadOnlySpan<char> relativePath = line[3..];
 
             // Handle renames: "R  old -> new" — use the new path
             int arrowIdx = relativePath.IndexOf(" -> ");
@@ -451,7 +470,7 @@ internal static class GitUtils
                 relativePath = relativePath[1..^1];
             }
 
-            var status = GitFileStatus.None;
+            GitFileStatus status = GitFileStatus.None;
 
             // Conflict markers
             if (indexStatus == 'U' || workTreeStatus == 'U' ||
@@ -497,7 +516,7 @@ internal static class GitUtils
             string fullPath = Path.GetFullPath(
                 Path.Combine(repoRoot, relativePath.ToString().Replace('/', Path.DirectorySeparatorChar)));
 
-            if (statuses.TryGetValue(fullPath, out var existing))
+            if (statuses.TryGetValue(fullPath, out GitFileStatus existing))
             {
                 statuses[fullPath] = existing | status;
             }
@@ -516,11 +535,11 @@ internal static class GitUtils
     private static void AggregateDirectoryStatuses(Dictionary<string, GitFileStatus> statuses, string repoRoot)
     {
         // Snapshot keys to avoid modifying during enumeration
-        var filePaths = statuses.Keys.ToArray();
+        string[] filePaths = statuses.Keys.ToArray();
 
         foreach (string filePath in filePaths)
         {
-            var status = statuses[filePath] & ~GitFileStatus.Ignored;
+            GitFileStatus status = statuses[filePath] & ~GitFileStatus.Ignored;
             if (status == GitFileStatus.None)
             {
                 continue;
@@ -531,7 +550,7 @@ internal static class GitUtils
                    parentDir.Length >= repoRoot.Length &&
                    !string.Equals(parentDir, filePath, StringComparison.OrdinalIgnoreCase))
             {
-                if (statuses.TryGetValue(parentDir, out var dirStatus))
+                if (statuses.TryGetValue(parentDir, out GitFileStatus dirStatus))
                 {
                     statuses[parentDir] = dirStatus | status;
                 }

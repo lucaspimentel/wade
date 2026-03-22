@@ -21,9 +21,9 @@ public class VtParserTests
     [InlineData(' ', ConsoleKey.Spacebar)]
     public void Parse_PrintableAscii_ReturnsKeyEvent(char c, ConsoleKey expectedKey)
     {
-        var events = Parse((byte)c);
-        var key = Assert.Single(events);
-        var keyEvent = Assert.IsType<KeyEvent>(key);
+        List<InputEvent> events = Parse((byte)c);
+        InputEvent key = Assert.Single(events);
+        KeyEvent keyEvent = Assert.IsType<KeyEvent>(key);
         Assert.Equal(expectedKey, keyEvent.Key);
         Assert.Equal(c, keyEvent.KeyChar);
     }
@@ -39,10 +39,10 @@ public class VtParserTests
     [InlineData("F", ConsoleKey.End)]
     public void Parse_CsiSequence_ReturnsExpectedKey(string suffix, ConsoleKey expectedKey)
     {
-        var data = new byte[] { 0x1B, (byte)'[' }.Concat(Encoding.ASCII.GetBytes(suffix)).ToArray();
-        var events = Parse(data);
-        var key = Assert.Single(events);
-        var keyEvent = Assert.IsType<KeyEvent>(key);
+        byte[] data = new byte[] { 0x1B, (byte)'[' }.Concat(Encoding.ASCII.GetBytes(suffix)).ToArray();
+        List<InputEvent> events = Parse(data);
+        InputEvent key = Assert.Single(events);
+        KeyEvent keyEvent = Assert.IsType<KeyEvent>(key);
         Assert.Equal(expectedKey, keyEvent.Key);
     }
 
@@ -57,10 +57,10 @@ public class VtParserTests
     [InlineData("3~", ConsoleKey.Delete)]
     public void Parse_CsiTildeSequence_ReturnsExpectedKey(string params_, ConsoleKey expectedKey)
     {
-        var data = new byte[] { 0x1B, (byte)'[' }.Concat(Encoding.ASCII.GetBytes(params_)).ToArray();
-        var events = Parse(data);
-        var key = Assert.Single(events);
-        var keyEvent = Assert.IsType<KeyEvent>(key);
+        byte[] data = new byte[] { 0x1B, (byte)'[' }.Concat(Encoding.ASCII.GetBytes(params_)).ToArray();
+        List<InputEvent> events = Parse(data);
+        InputEvent key = Assert.Single(events);
+        KeyEvent keyEvent = Assert.IsType<KeyEvent>(key);
         Assert.Equal(expectedKey, keyEvent.Key);
     }
 
@@ -69,24 +69,24 @@ public class VtParserTests
     [Fact]
     public void Parse_StandaloneEsc_ReturnsEscapeKey()
     {
-        var events = Parse(0x1B);
-        var key = Assert.Single(events);
-        var keyEvent = Assert.IsType<KeyEvent>(key);
+        List<InputEvent> events = Parse(0x1B);
+        InputEvent key = Assert.Single(events);
+        KeyEvent keyEvent = Assert.IsType<KeyEvent>(key);
         Assert.Equal(ConsoleKey.Escape, keyEvent.Key);
     }
 
     // ── Control characters ──────────────────────────────────────────────────────
 
     [Theory]
-    [InlineData(0x01, ConsoleKey.A)]  // Ctrl+A
-    [InlineData(0x03, ConsoleKey.C)]  // Ctrl+C
-    [InlineData(0x04, ConsoleKey.D)]  // Ctrl+D
-    [InlineData(0x1A, ConsoleKey.Z)]  // Ctrl+Z
+    [InlineData(0x01, ConsoleKey.A)] // Ctrl+A
+    [InlineData(0x03, ConsoleKey.C)] // Ctrl+C
+    [InlineData(0x04, ConsoleKey.D)] // Ctrl+D
+    [InlineData(0x1A, ConsoleKey.Z)] // Ctrl+Z
     public void Parse_ControlChar_ReturnsCtrlKeyEvent(byte b, ConsoleKey expectedKey)
     {
-        var events = Parse(b);
-        var key = Assert.Single(events);
-        var keyEvent = Assert.IsType<KeyEvent>(key);
+        List<InputEvent> events = Parse(b);
+        InputEvent key = Assert.Single(events);
+        KeyEvent keyEvent = Assert.IsType<KeyEvent>(key);
         Assert.Equal(expectedKey, keyEvent.Key);
         Assert.True(keyEvent.Control);
     }
@@ -96,27 +96,27 @@ public class VtParserTests
     [Fact]
     public void Parse_Enter_ReturnsEnterKey()
     {
-        var events = Parse(0x0D);
-        var key = Assert.Single(events);
-        var keyEvent = Assert.IsType<KeyEvent>(key);
+        List<InputEvent> events = Parse(0x0D);
+        InputEvent key = Assert.Single(events);
+        KeyEvent keyEvent = Assert.IsType<KeyEvent>(key);
         Assert.Equal(ConsoleKey.Enter, keyEvent.Key);
     }
 
     [Fact]
     public void Parse_Tab_ReturnsTabKey()
     {
-        var events = Parse(0x09);
-        var key = Assert.Single(events);
-        var keyEvent = Assert.IsType<KeyEvent>(key);
+        List<InputEvent> events = Parse(0x09);
+        InputEvent key = Assert.Single(events);
+        KeyEvent keyEvent = Assert.IsType<KeyEvent>(key);
         Assert.Equal(ConsoleKey.Tab, keyEvent.Key);
     }
 
     [Fact]
     public void Parse_Backspace_ReturnsBackspaceKey()
     {
-        var events = Parse(0x7F);
-        var key = Assert.Single(events);
-        var keyEvent = Assert.IsType<KeyEvent>(key);
+        List<InputEvent> events = Parse(0x7F);
+        InputEvent key = Assert.Single(events);
+        KeyEvent keyEvent = Assert.IsType<KeyEvent>(key);
         Assert.Equal(ConsoleKey.Backspace, keyEvent.Key);
     }
 
@@ -126,9 +126,9 @@ public class VtParserTests
     public void Parse_SgrMousePress_ReturnsMouseEvent()
     {
         // ESC [ < 0 ; 10 ; 5 M → left press at row 4, col 9 (1-based → 0-based)
-        var events = Parse("\x1b[<0;10;5M");
-        var evt = Assert.Single(events);
-        var mouse = Assert.IsType<MouseEvent>(evt);
+        List<InputEvent> events = Parse("\x1b[<0;10;5M");
+        InputEvent evt = Assert.Single(events);
+        MouseEvent mouse = Assert.IsType<MouseEvent>(evt);
         Assert.Equal(MouseButton.Left, mouse.Button);
         Assert.Equal(4, mouse.Row);
         Assert.Equal(9, mouse.Col);
@@ -139,9 +139,9 @@ public class VtParserTests
     public void Parse_SgrMouseRelease_ReturnsMouseEvent()
     {
         // ESC [ < 0 ; 10 ; 5 m → left release at row 4, col 9
-        var events = Parse("\x1b[<0;10;5m");
-        var evt = Assert.Single(events);
-        var mouse = Assert.IsType<MouseEvent>(evt);
+        List<InputEvent> events = Parse("\x1b[<0;10;5m");
+        InputEvent evt = Assert.Single(events);
+        MouseEvent mouse = Assert.IsType<MouseEvent>(evt);
         Assert.Equal(MouseButton.Left, mouse.Button);
         Assert.Equal(4, mouse.Row);
         Assert.Equal(9, mouse.Col);
@@ -151,9 +151,9 @@ public class VtParserTests
     [Fact]
     public void Parse_SgrScrollUp_ReturnsMouseEvent()
     {
-        var events = Parse("\x1b[<64;10;5M");
-        var evt = Assert.Single(events);
-        var mouse = Assert.IsType<MouseEvent>(evt);
+        List<InputEvent> events = Parse("\x1b[<64;10;5M");
+        InputEvent evt = Assert.Single(events);
+        MouseEvent mouse = Assert.IsType<MouseEvent>(evt);
         Assert.Equal(MouseButton.ScrollUp, mouse.Button);
         Assert.Equal(4, mouse.Row);
         Assert.Equal(9, mouse.Col);
@@ -163,9 +163,9 @@ public class VtParserTests
     [Fact]
     public void Parse_SgrScrollDown_ReturnsMouseEvent()
     {
-        var events = Parse("\x1b[<65;10;5M");
-        var evt = Assert.Single(events);
-        var mouse = Assert.IsType<MouseEvent>(evt);
+        List<InputEvent> events = Parse("\x1b[<65;10;5M");
+        InputEvent evt = Assert.Single(events);
+        MouseEvent mouse = Assert.IsType<MouseEvent>(evt);
         Assert.Equal(MouseButton.ScrollDown, mouse.Button);
         Assert.Equal(4, mouse.Row);
         Assert.Equal(9, mouse.Col);
@@ -175,9 +175,9 @@ public class VtParserTests
     [Fact]
     public void Parse_SgrRightClick_ReturnsMouseEvent()
     {
-        var events = Parse("\x1b[<2;10;5M");
-        var evt = Assert.Single(events);
-        var mouse = Assert.IsType<MouseEvent>(evt);
+        List<InputEvent> events = Parse("\x1b[<2;10;5M");
+        InputEvent evt = Assert.Single(events);
+        MouseEvent mouse = Assert.IsType<MouseEvent>(evt);
         Assert.Equal(MouseButton.Right, mouse.Button);
         Assert.Equal(4, mouse.Row);
         Assert.Equal(9, mouse.Col);
@@ -190,9 +190,9 @@ public class VtParserTests
     public void Parse_Utf8TwoByte_ReturnsDecodedChar()
     {
         // é = U+00E9 = 0xC3 0xA9 in UTF-8
-        var events = Parse(0xC3, 0xA9);
-        var key = Assert.Single(events);
-        var keyEvent = Assert.IsType<KeyEvent>(key);
+        List<InputEvent> events = Parse(0xC3, 0xA9);
+        InputEvent key = Assert.Single(events);
+        KeyEvent keyEvent = Assert.IsType<KeyEvent>(key);
         Assert.Equal('é', keyEvent.KeyChar);
     }
 
@@ -200,9 +200,9 @@ public class VtParserTests
     public void Parse_Utf8ThreeByte_ReturnsDecodedChar()
     {
         // € = U+20AC = 0xE2 0x82 0xAC in UTF-8
-        var events = Parse(0xE2, 0x82, 0xAC);
-        var key = Assert.Single(events);
-        var keyEvent = Assert.IsType<KeyEvent>(key);
+        List<InputEvent> events = Parse(0xE2, 0x82, 0xAC);
+        InputEvent key = Assert.Single(events);
+        KeyEvent keyEvent = Assert.IsType<KeyEvent>(key);
         Assert.Equal('€', keyEvent.KeyChar);
     }
 
@@ -215,9 +215,9 @@ public class VtParserTests
     [InlineData('S', ConsoleKey.F4)]
     public void Parse_Ss3FKey_ReturnsExpectedKey(char finalChar, ConsoleKey expectedKey)
     {
-        var events = Parse(0x1B, (byte)'O', (byte)finalChar);
-        var key = Assert.Single(events);
-        var keyEvent = Assert.IsType<KeyEvent>(key);
+        List<InputEvent> events = Parse(0x1B, (byte)'O', (byte)finalChar);
+        InputEvent key = Assert.Single(events);
+        KeyEvent keyEvent = Assert.IsType<KeyEvent>(key);
         Assert.Equal(expectedKey, keyEvent.Key);
     }
 }

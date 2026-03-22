@@ -2,9 +2,9 @@ namespace Wade.Preview;
 
 internal sealed class PdfMetadataProvider : IMetadataProvider
 {
-    public string Label => "PDF metadata";
-
     internal static bool IsAvailable => CliTool.IsAvailable("pdfinfo", "-v");
+
+    public string Label => "PDF metadata";
 
     public bool CanProvideMetadata(string path, PreviewContext context) =>
         !context.DisabledTools.Contains("pdfinfo")

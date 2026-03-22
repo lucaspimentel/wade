@@ -28,35 +28,35 @@ public class PythonLanguageTests
     [Fact]
     public void HashComment_Classified()
     {
-        var spans = Tokenize("# this is a comment");
+        StyledSpan[] spans = Tokenize("# this is a comment");
         Assert.Contains(spans, s => s.Kind == TokenKind.Comment && s.Start == 0);
     }
 
     [Fact]
     public void TripleDoubleQuote_SingleLine_Classified()
     {
-        var spans = Tokenize("\"\"\"docstring\"\"\"");
+        StyledSpan[] spans = Tokenize("\"\"\"docstring\"\"\"");
         Assert.Contains(spans, s => s.Kind == TokenKind.String);
     }
 
     [Fact]
     public void TripleSingleQuote_SingleLine_Classified()
     {
-        var spans = Tokenize("'''docstring'''");
+        StyledSpan[] spans = Tokenize("'''docstring'''");
         Assert.Contains(spans, s => s.Kind == TokenKind.String);
     }
 
     [Fact]
     public void TripleQuote_MultiLine_SpansAllLines()
     {
-        var lines = TokenizeLines("\"\"\"", "content", "\"\"\"");
+        StyledLine[] lines = TokenizeLines("\"\"\"", "content", "\"\"\"");
         Assert.All(lines, l => Assert.Contains(l.Spans ?? [], s => s.Kind == TokenKind.String));
     }
 
     [Fact]
     public void Decorator_Classified()
     {
-        var spans = Tokenize("@decorator");
+        StyledSpan[] spans = Tokenize("@decorator");
         Assert.Contains(spans, s => s.Kind == TokenKind.Attribute && s.Start == 0);
     }
 
@@ -68,17 +68,17 @@ public class PythonLanguageTests
     [InlineData("from")]
     public void PythonKeywords_Classified(string keyword)
     {
-        var spans = Tokenize(keyword);
+        StyledSpan[] spans = Tokenize(keyword);
         Assert.Contains(spans, s => s.Kind == TokenKind.Keyword);
     }
 
     [Theory]
-    [InlineData("True",  TokenKind.Constant)]
+    [InlineData("True", TokenKind.Constant)]
     [InlineData("False", TokenKind.Constant)]
-    [InlineData("None",  TokenKind.Constant)]
+    [InlineData("None", TokenKind.Constant)]
     public void PythonConstants_Classified(string word, TokenKind expected)
     {
-        var spans = Tokenize(word);
+        StyledSpan[] spans = Tokenize(word);
         Assert.Contains(spans, s => s.Kind == expected);
     }
 
@@ -89,14 +89,14 @@ public class PythonLanguageTests
     [InlineData("isinstance")]
     public void Builtins_Classified(string name)
     {
-        var spans = Tokenize(name);
+        StyledSpan[] spans = Tokenize(name);
         Assert.Contains(spans, s => s.Kind == TokenKind.BuiltinFunc);
     }
 
     [Fact]
     public void FString_Classified()
     {
-        var spans = Tokenize("f\"text {var}\"");
+        StyledSpan[] spans = Tokenize("f\"text {var}\"");
         Assert.Contains(spans, s => s.Kind == TokenKind.String);
     }
 }

@@ -31,7 +31,8 @@ internal sealed class RustLanguage : RegexLanguage
     protected override int TryMatchExtension(string line, int pos, List<StyledSpan> spans)
     {
         // Attributes: #[...] or #![...]
-        if (line[pos] == '#' && pos + 1 < line.Length && (line[pos + 1] == '[' || (line[pos + 1] == '!' && pos + 2 < line.Length && line[pos + 2] == '[')))
+        if (line[pos] == '#' && pos + 1 < line.Length &&
+            (line[pos + 1] == '[' || (line[pos + 1] == '!' && pos + 2 < line.Length && line[pos + 2] == '[')))
         {
             int end = pos + 1;
             int depth = 0;
@@ -41,7 +42,15 @@ internal sealed class RustLanguage : RegexLanguage
                 {
                     depth++;
                 }
-                else if (line[end] == ']') { depth--; if (depth == 0) { end++; break; } }
+                else if (line[end] == ']')
+                {
+                    depth--;
+                    if (depth == 0)
+                    {
+                        end++;
+                        break;
+                    }
+                }
 
                 end++;
             }
@@ -70,10 +79,12 @@ internal sealed class RustLanguage : RegexLanguage
                     end = pos + 3;
                     return true;
                 }
+
                 // Otherwise it's likely a lifetime — skip
                 end = pos;
                 return false;
             }
+
             if (pos + 1 < line.Length && line[pos + 1] == '\\')
             {
                 // Escape sequence char literal: '\n', '\t', etc.

@@ -20,7 +20,7 @@ internal sealed class GitStatusLoader
         _cts?.Cancel();
         _cts?.Dispose();
         _cts = new CancellationTokenSource();
-        var token = _cts.Token;
+        CancellationToken token = _cts.Token;
 
         Task.Run(() => Load(repoRoot, token), token);
     }
@@ -43,14 +43,14 @@ internal sealed class GitStatusLoader
                 return;
             }
 
-            var statuses = GitUtils.QueryStatus(repoRoot, ct);
+            Dictionary<string, GitFileStatus>? statuses = GitUtils.QueryStatus(repoRoot, ct);
 
             if (ct.IsCancellationRequested)
             {
                 return;
             }
 
-            var aheadBehind = GitUtils.GetAheadBehind(repoRoot, ct);
+            (int Ahead, int Behind)? aheadBehind = GitUtils.GetAheadBehind(repoRoot, ct);
             int ahead = aheadBehind?.Ahead ?? 0;
             int behind = aheadBehind?.Behind ?? 0;
 

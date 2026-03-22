@@ -6,10 +6,7 @@ namespace Wade.Tests;
 public class ZipPreviewTests
 {
     [Fact]
-    public void IsZipFile_ZipExtension_ReturnsTrue()
-    {
-        Assert.True(ZipPreview.IsZipFile("archive.zip"));
-    }
+    public void IsZipFile_ZipExtension_ReturnsTrue() => Assert.True(ZipPreview.IsZipFile("archive.zip"));
 
     [Theory]
     [InlineData(".nupkg")]
@@ -27,19 +24,13 @@ public class ZipPreviewTests
     [InlineData(".vsix")]
     [InlineData(".whl")]
     [InlineData(".epub")]
-    public void IsZipFile_ZipFormatExtensions_ReturnsTrue(string ext)
-    {
-        Assert.True(ZipPreview.IsZipFile($"file{ext}"));
-    }
+    public void IsZipFile_ZipFormatExtensions_ReturnsTrue(string ext) => Assert.True(ZipPreview.IsZipFile($"file{ext}"));
 
     [Theory]
     [InlineData(".tar")]
     [InlineData(".gz")]
     [InlineData(".txt")]
-    public void IsZipFile_NonZipExtensions_ReturnsFalse(string ext)
-    {
-        Assert.False(ZipPreview.IsZipFile($"file{ext}"));
-    }
+    public void IsZipFile_NonZipExtensions_ReturnsFalse(string ext) => Assert.False(ZipPreview.IsZipFile($"file{ext}"));
 
     [Theory]
     [InlineData(".zip")]
@@ -49,10 +40,7 @@ public class ZipPreviewTests
     [InlineData(".apk")]
     [InlineData(".vsix")]
     [InlineData(".whl")]
-    public void IsPrimaryArchive_PrimaryTypes_ReturnsTrue(string ext)
-    {
-        Assert.True(ZipPreview.IsPrimaryArchive($"file{ext}"));
-    }
+    public void IsPrimaryArchive_PrimaryTypes_ReturnsTrue(string ext) => Assert.True(ZipPreview.IsPrimaryArchive($"file{ext}"));
 
     [Theory]
     [InlineData(".nupkg")]
@@ -67,10 +55,7 @@ public class ZipPreviewTests
     [InlineData(".ods")]
     [InlineData(".odp")]
     [InlineData(".epub")]
-    public void IsPrimaryArchive_SecondaryTypes_ReturnsFalse(string ext)
-    {
-        Assert.False(ZipPreview.IsPrimaryArchive($"file{ext}"));
-    }
+    public void IsPrimaryArchive_SecondaryTypes_ReturnsFalse(string ext) => Assert.False(ZipPreview.IsPrimaryArchive($"file{ext}"));
 
     [Fact]
     public void GetPreviewLines_ValidZip_ReturnsHeaderAndEntries()
@@ -170,12 +155,12 @@ public class ZipPreviewTests
     private static string CreateTempZip(params (string Name, string Content)[] entries)
     {
         string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".zip");
-        using var stream = File.Create(path);
+        using FileStream stream = File.Create(path);
         using var archive = new ZipArchive(stream, ZipArchiveMode.Create);
 
-        foreach (var (name, content) in entries)
+        foreach ((string name, string content) in entries)
         {
-            var entry = archive.CreateEntry(name);
+            ZipArchiveEntry entry = archive.CreateEntry(name);
             using var writer = new StreamWriter(entry.Open());
             writer.Write(content);
         }
@@ -186,12 +171,12 @@ public class ZipPreviewTests
     private static string CreateTempZipWithDirs(params (string Name, string? Content)[] entries)
     {
         string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".zip");
-        using var stream = File.Create(path);
+        using FileStream stream = File.Create(path);
         using var archive = new ZipArchive(stream, ZipArchiveMode.Create);
 
-        foreach (var (name, content) in entries)
+        foreach ((string name, string? content) in entries)
         {
-            var entry = archive.CreateEntry(name);
+            ZipArchiveEntry entry = archive.CreateEntry(name);
             if (content is not null)
             {
                 using var writer = new StreamWriter(entry.Open());

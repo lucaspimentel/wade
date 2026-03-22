@@ -1,3 +1,4 @@
+using Wade.Highlighting;
 using Wade.Highlighting.Languages;
 using Wade.Terminal;
 
@@ -5,12 +6,11 @@ namespace Wade.Tests;
 
 public class DiffLanguageTests
 {
-    private readonly DiffLanguage _lang = new();
-
     private static readonly Color Green = new(80, 200, 80);
     private static readonly Color Red = new(220, 80, 80);
     private static readonly Color Cyan = new(80, 180, 220);
     private static readonly Color DimGray = new(140, 140, 140);
+    private readonly DiffLanguage _lang = new();
 
     [Theory]
     [InlineData("+added line")]
@@ -18,7 +18,7 @@ public class DiffLanguageTests
     public void AddedLines_GetGreenStyle(string line)
     {
         byte state = 0;
-        var result = _lang.TokenizeLine(line, ref state);
+        StyledLine result = _lang.TokenizeLine(line, ref state);
 
         Assert.NotNull(result.CharStyles);
         Assert.All(result.CharStyles, s => Assert.Equal(Green, s.Fg));
@@ -30,7 +30,7 @@ public class DiffLanguageTests
     public void RemovedLines_GetRedStyle(string line)
     {
         byte state = 0;
-        var result = _lang.TokenizeLine(line, ref state);
+        StyledLine result = _lang.TokenizeLine(line, ref state);
 
         Assert.NotNull(result.CharStyles);
         Assert.All(result.CharStyles, s => Assert.Equal(Red, s.Fg));
@@ -42,7 +42,7 @@ public class DiffLanguageTests
     public void HunkHeaders_GetCyanStyle(string line)
     {
         byte state = 0;
-        var result = _lang.TokenizeLine(line, ref state);
+        StyledLine result = _lang.TokenizeLine(line, ref state);
 
         Assert.NotNull(result.CharStyles);
         Assert.All(result.CharStyles, s => Assert.Equal(Cyan, s.Fg));
@@ -56,7 +56,7 @@ public class DiffLanguageTests
     public void MetadataLines_GetDimGrayStyle(string line)
     {
         byte state = 0;
-        var result = _lang.TokenizeLine(line, ref state);
+        StyledLine result = _lang.TokenizeLine(line, ref state);
 
         Assert.NotNull(result.CharStyles);
         Assert.All(result.CharStyles, s =>
@@ -72,7 +72,7 @@ public class DiffLanguageTests
     public void ContextLines_GetNoCharStyles(string line)
     {
         byte state = 0;
-        var result = _lang.TokenizeLine(line, ref state);
+        StyledLine result = _lang.TokenizeLine(line, ref state);
 
         Assert.Null(result.CharStyles);
     }
@@ -81,7 +81,7 @@ public class DiffLanguageTests
     public void EmptyLine_GetNoCharStyles()
     {
         byte state = 0;
-        var result = _lang.TokenizeLine("", ref state);
+        StyledLine result = _lang.TokenizeLine("", ref state);
 
         Assert.Null(result.CharStyles);
     }
@@ -91,7 +91,7 @@ public class DiffLanguageTests
     {
         byte state = 0;
         string line = "+hello world";
-        var result = _lang.TokenizeLine(line, ref state);
+        StyledLine result = _lang.TokenizeLine(line, ref state);
 
         Assert.Equal(line, result.Text);
     }
@@ -101,7 +101,7 @@ public class DiffLanguageTests
     {
         byte state = 0;
         string line = "-removed content here";
-        var result = _lang.TokenizeLine(line, ref state);
+        StyledLine result = _lang.TokenizeLine(line, ref state);
 
         Assert.NotNull(result.CharStyles);
         Assert.Equal(line.Length, result.CharStyles.Length);

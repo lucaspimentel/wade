@@ -5,6 +5,17 @@ namespace Wade.FileSystem;
 
 internal static class DriveTypeDetector
 {
+    // --- Windows P/Invoke declarations ---
+
+    private const uint IOCTL_STORAGE_QUERY_PROPERTY = 0x002D1400;
+    private const int StorageDeviceSeekPenaltyProperty = 7;
+    private const int PropertyStandardQuery = 0;
+
+    private const uint FileShareRead = 0x00000001;
+    private const uint FileShareWrite = 0x00000002;
+    private const uint OpenExisting = 3;
+    private static readonly nint InvalidHandleValue = -1;
+
     public static DriveMediaType Detect(DriveInfo drive)
     {
         return drive.DriveType switch
@@ -216,34 +227,6 @@ internal static class DriveTypeDetector
     internal static DriveMediaType ParseSeekPenaltyResult(bool incursSeekPenalty) =>
         incursSeekPenalty ? DriveMediaType.Hdd : DriveMediaType.Ssd;
 
-    // --- Windows P/Invoke declarations ---
-
-    private const uint IOCTL_STORAGE_QUERY_PROPERTY = 0x002D1400;
-    private const int StorageDeviceSeekPenaltyProperty = 7;
-    private const int PropertyStandardQuery = 0;
-
-    private const uint FileShareRead = 0x00000001;
-    private const uint FileShareWrite = 0x00000002;
-    private const uint OpenExisting = 3;
-    private static readonly nint InvalidHandleValue = -1;
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct STORAGE_PROPERTY_QUERY
-    {
-        public int PropertyId;
-        public int QueryType;
-        public byte AdditionalParameters;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct DEVICE_SEEK_PENALTY_DESCRIPTOR
-    {
-        public uint Version;
-        public uint Size;
-        [MarshalAs(UnmanagedType.U1)]
-        public bool IncursSeekPenalty;
-    }
-
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern nint CreateFileW(
         string lpFileName,
@@ -267,4 +250,20 @@ internal static class DriveTypeDetector
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool CloseHandle(nint hObject);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct STORAGE_PROPERTY_QUERY
+    {
+        public int PropertyId;
+        public int QueryType;
+        public byte AdditionalParameters;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct DEVICE_SEEK_PENALTY_DESCRIPTOR
+    {
+        public uint Version;
+        public uint Size;
+        [MarshalAs(UnmanagedType.U1)] public bool IncursSeekPenalty;
+    }
 }

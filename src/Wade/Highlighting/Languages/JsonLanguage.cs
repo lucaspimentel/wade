@@ -26,7 +26,11 @@ internal sealed class JsonLanguage : ILanguage
 
         while (pos < len)
         {
-            if (char.IsWhiteSpace(line[pos])) { pos++; continue; }
+            if (char.IsWhiteSpace(line[pos]))
+            {
+                pos++;
+                continue;
+            }
 
             char ch = line[pos];
 
@@ -58,8 +62,18 @@ internal sealed class JsonLanguage : ILanguage
                 pos++;
                 while (pos < len)
                 {
-                    if (line[pos] == '\\') { pos += 2; continue; }
-                    if (line[pos] == '"') { pos++; break; }
+                    if (line[pos] == '\\')
+                    {
+                        pos += 2;
+                        continue;
+                    }
+
+                    if (line[pos] == '"')
+                    {
+                        pos++;
+                        break;
+                    }
+
                     pos++;
                 }
 
@@ -78,7 +92,8 @@ internal sealed class JsonLanguage : ILanguage
                     pos++;
                 }
 
-                while (pos < len && (char.IsDigit(line[pos]) || line[pos] == '.' || line[pos] == 'e' || line[pos] == 'E' || line[pos] == '+' || line[pos] == '-'))
+                while (pos < len && (char.IsDigit(line[pos]) || line[pos] == '.' || line[pos] == 'e' || line[pos] == 'E' || line[pos] == '+' ||
+                                     line[pos] == '-'))
                 {
                     pos++;
                 }
@@ -89,9 +104,29 @@ internal sealed class JsonLanguage : ILanguage
             }
 
             // true / false / null
-            if (line.AsSpan(pos).StartsWith("true"))  { spans.Add(new StyledSpan(pos, 4, TokenKind.Constant)); pos += 4; expectKey = false; continue; }
-            if (line.AsSpan(pos).StartsWith("false")) { spans.Add(new StyledSpan(pos, 5, TokenKind.Constant)); pos += 5; expectKey = false; continue; }
-            if (line.AsSpan(pos).StartsWith("null"))  { spans.Add(new StyledSpan(pos, 4, TokenKind.Constant)); pos += 4; expectKey = false; continue; }
+            if (line.AsSpan(pos).StartsWith("true"))
+            {
+                spans.Add(new StyledSpan(pos, 4, TokenKind.Constant));
+                pos += 4;
+                expectKey = false;
+                continue;
+            }
+
+            if (line.AsSpan(pos).StartsWith("false"))
+            {
+                spans.Add(new StyledSpan(pos, 5, TokenKind.Constant));
+                pos += 5;
+                expectKey = false;
+                continue;
+            }
+
+            if (line.AsSpan(pos).StartsWith("null"))
+            {
+                spans.Add(new StyledSpan(pos, 4, TokenKind.Constant));
+                pos += 4;
+                expectKey = false;
+                continue;
+            }
 
             pos++;
         }

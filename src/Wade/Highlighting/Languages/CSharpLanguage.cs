@@ -45,6 +45,7 @@ internal sealed class CSharpLanguage : RegexLanguage
             spans.Add(new StyledSpan(0, line.Length, TokenKind.Directive));
             return -1; // Skip main scan loop
         }
+
         return 0;
     }
 
@@ -92,6 +93,7 @@ internal sealed class CSharpLanguage : RegexLanguage
                 end = closeEnd;
                 return true;
             }
+
             // Multi-line raw string
             spans.Add(new StyledSpan(pos, line.Length - pos, TokenKind.String));
             state = StateMultiString;
@@ -108,10 +110,16 @@ internal sealed class CSharpLanguage : RegexLanguage
                 if (line[p] == '"')
                 {
                     // Escaped double-quote in verbatim string: ""
-                    if (p + 1 < line.Length && line[p + 1] == '"') { p += 2; continue; }
+                    if (p + 1 < line.Length && line[p + 1] == '"')
+                    {
+                        p += 2;
+                        continue;
+                    }
+
                     p++;
                     break;
                 }
+
                 p++;
             }
 
@@ -127,7 +135,7 @@ internal sealed class CSharpLanguage : RegexLanguage
             // Overwrite the span start to include '$'
             if (spans.Count > 0)
             {
-                var last = spans[^1];
+                StyledSpan last = spans[^1];
                 spans[^1] = new StyledSpan(pos, last.Length + 1, TokenKind.String);
             }
 
@@ -147,6 +155,7 @@ internal sealed class CSharpLanguage : RegexLanguage
             state = StateNormal;
             return closeEnd;
         }
+
         spans.Add(new StyledSpan(pos, line.Length - pos, TokenKind.String));
         return line.Length;
     }

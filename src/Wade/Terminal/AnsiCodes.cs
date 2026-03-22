@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace Wade.Terminal;
 
 internal static class AnsiCodes
@@ -25,16 +27,16 @@ internal static class AnsiCodes
     public const string DisableMouseReporting = Csi + "?1000l";
     public const string EnableSgrMouseMode = Csi + "?1006h";
     public const string DisableSgrMouseMode = Csi + "?1006l";
-
-    public static string MoveCursor(int row, int col) => $"{Csi}{row + 1};{col + 1}H";
-
-    // Terminal title (OSC)
-    public static string SetTitle(string title) => $"\x1b]0;{title}\x07";
     public const string ClearTitle = "\x1b]0;\x07";
 
     // Terminal title stack (xterm)
     public const string SaveTitle = Csi + "22;0t";
     public const string RestoreTitle = Csi + "23;0t";
+
+    public static string MoveCursor(int row, int col) => $"{Csi}{row + 1};{col + 1}H";
+
+    // Terminal title (OSC)
+    public static string SetTitle(string title) => $"\x1b]0;{title}\x07";
 
     public static string SetFg(byte r, byte g, byte b) => $"{Csi}38;2;{r};{g};{b}m";
 
@@ -44,7 +46,7 @@ internal static class AnsiCodes
 
     public static string SetBg256(byte index) => $"{Csi}48;5;{index}m";
 
-    public static void AppendMoveCursor(System.Text.StringBuilder sb, int row, int col)
+    public static void AppendMoveCursor(StringBuilder sb, int row, int col)
     {
         sb.Append('\x1b');
         sb.Append('[');
@@ -54,7 +56,7 @@ internal static class AnsiCodes
         sb.Append('H');
     }
 
-    public static void AppendSetFg(System.Text.StringBuilder sb, byte r, byte g, byte b)
+    public static void AppendSetFg(StringBuilder sb, byte r, byte g, byte b)
     {
         sb.Append('\x1b');
         sb.Append("[38;2;");
@@ -66,7 +68,7 @@ internal static class AnsiCodes
         sb.Append('m');
     }
 
-    public static void AppendSetBg(System.Text.StringBuilder sb, byte r, byte g, byte b)
+    public static void AppendSetBg(StringBuilder sb, byte r, byte g, byte b)
     {
         sb.Append('\x1b');
         sb.Append("[48;2;");

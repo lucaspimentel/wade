@@ -16,7 +16,7 @@ public class GoLanguageTests
     [Fact]
     public void BacktickString_Classified()
     {
-        var spans = Tokenize("`raw string`");
+        StyledSpan[] spans = Tokenize("`raw string`");
         Assert.Contains(spans, s => s.Kind == TokenKind.String && s.Start == 0);
     }
 
@@ -34,18 +34,18 @@ public class GoLanguageTests
             return; // skip
         }
 
-        var spans = Tokenize(keyword);
+        StyledSpan[] spans = Tokenize(keyword);
         Assert.Contains(spans, s => s.Kind == TokenKind.Keyword);
     }
 
     [Theory]
-    [InlineData("nil",  TokenKind.Constant)]
+    [InlineData("nil", TokenKind.Constant)]
     [InlineData("iota", TokenKind.Constant)]
     [InlineData("true", TokenKind.Constant)]
     [InlineData("false", TokenKind.Constant)]
     public void GoConstants_Classified(string word, TokenKind expected)
     {
-        var spans = Tokenize(word);
+        StyledSpan[] spans = Tokenize(word);
         Assert.Contains(spans, s => s.Kind == expected);
     }
 
@@ -55,7 +55,7 @@ public class GoLanguageTests
     [InlineData("len")]
     public void GoBuiltins_Classified(string name)
     {
-        var spans = Tokenize(name);
+        StyledSpan[] spans = Tokenize(name);
         Assert.Contains(spans, s => s.Kind == TokenKind.BuiltinFunc);
     }
 }

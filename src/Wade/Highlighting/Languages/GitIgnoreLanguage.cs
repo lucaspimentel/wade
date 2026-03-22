@@ -56,6 +56,7 @@ internal sealed class GitIgnoreLanguage : ILanguage
                         spans.Add(new StyledSpan(pos, 1, TokenKind.Keyword));
                         pos++;
                     }
+
                     break;
 
                 case '?':
@@ -76,6 +77,7 @@ internal sealed class GitIgnoreLanguage : ILanguage
                     {
                         pos++;
                     }
+
                     break;
 
                 // Path separator
@@ -95,6 +97,7 @@ internal sealed class GitIgnoreLanguage : ILanguage
                     {
                         pos++;
                     }
+
                     break;
 
                 default:

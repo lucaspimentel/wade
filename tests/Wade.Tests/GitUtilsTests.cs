@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Wade.FileSystem;
 
 namespace Wade.Tests;
@@ -158,7 +159,7 @@ public class GitUtilsTests
     {
         var expected = (GitFileStatus)expectedInt;
         string repoRoot = OperatingSystem.IsWindows() ? @"C:\repo" : "/repo";
-        var statuses = GitUtils.ParsePorcelainOutput(line + "\n", repoRoot);
+        Dictionary<string, GitFileStatus> statuses = GitUtils.ParsePorcelainOutput(line + "\n", repoRoot);
 
         // Find the file entry (not a directory aggregate)
         var fileEntries = statuses
@@ -174,7 +175,7 @@ public class GitUtilsTests
     {
         string repoRoot = OperatingSystem.IsWindows() ? @"C:\repo" : "/repo";
         string output = "R  old.txt -> new.txt\n";
-        var statuses = GitUtils.ParsePorcelainOutput(output, repoRoot);
+        Dictionary<string, GitFileStatus> statuses = GitUtils.ParsePorcelainOutput(output, repoRoot);
 
         string expectedPath = Path.Combine(repoRoot, "new.txt");
         Assert.True(statuses.ContainsKey(expectedPath), $"Expected key '{expectedPath}' in statuses");
@@ -185,7 +186,7 @@ public class GitUtilsTests
     {
         string repoRoot = OperatingSystem.IsWindows() ? @"C:\repo" : "/repo";
         string output = " M src/foo/bar.cs\nA  src/baz.cs\n";
-        var statuses = GitUtils.ParsePorcelainOutput(output, repoRoot);
+        Dictionary<string, GitFileStatus> statuses = GitUtils.ParsePorcelainOutput(output, repoRoot);
 
         // The "src" directory should have both Modified and Staged aggregated
         string srcDir = Path.Combine(repoRoot, "src");
@@ -199,7 +200,7 @@ public class GitUtilsTests
     {
         string repoRoot = OperatingSystem.IsWindows() ? @"C:\repo" : "/repo";
         string output = " M src/deep/file.cs\n";
-        var statuses = GitUtils.ParsePorcelainOutput(output, repoRoot);
+        Dictionary<string, GitFileStatus> statuses = GitUtils.ParsePorcelainOutput(output, repoRoot);
 
         string expectedPath = Path.Combine(repoRoot, "src", "deep", "file.cs");
         Assert.True(statuses.ContainsKey(expectedPath), $"Expected key '{expectedPath}' with platform separators");
@@ -209,7 +210,7 @@ public class GitUtilsTests
     public void ParsePorcelainOutput_EmptyOutput_ReturnsEmptyDictionary()
     {
         string repoRoot = OperatingSystem.IsWindows() ? @"C:\repo" : "/repo";
-        var statuses = GitUtils.ParsePorcelainOutput("", repoRoot);
+        Dictionary<string, GitFileStatus> statuses = GitUtils.ParsePorcelainOutput("", repoRoot);
         Assert.Empty(statuses);
     }
 
@@ -218,7 +219,7 @@ public class GitUtilsTests
     {
         string repoRoot = OperatingSystem.IsWindows() ? @"C:\repo" : "/repo";
         string output = "!! build/output.dll\n";
-        var statuses = GitUtils.ParsePorcelainOutput(output, repoRoot);
+        Dictionary<string, GitFileStatus> statuses = GitUtils.ParsePorcelainOutput(output, repoRoot);
 
         // The file should be Ignored
         string filePath = Path.Combine(repoRoot, "build", "output.dll");
@@ -237,7 +238,7 @@ public class GitUtilsTests
         string? repoRoot = GitUtils.FindRepoRoot(AppContext.BaseDirectory);
         Assert.NotNull(repoRoot);
 
-        var statuses = GitUtils.QueryStatus(repoRoot, CancellationToken.None);
+        Dictionary<string, GitFileStatus>? statuses = GitUtils.QueryStatus(repoRoot, CancellationToken.None);
 
         // Should return non-null (even if empty, it's a valid repo)
         Assert.NotNull(statuses);
@@ -252,7 +253,7 @@ public class GitUtilsTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var statuses = GitUtils.QueryStatus(repoRoot, cts.Token);
+        Dictionary<string, GitFileStatus>? statuses = GitUtils.QueryStatus(repoRoot, cts.Token);
         Assert.Null(statuses);
     }
 
@@ -261,7 +262,7 @@ public class GitUtilsTests
     {
         string repoRoot = OperatingSystem.IsWindows() ? @"C:\repo" : "/repo";
         string output = " M \"src/special file.txt\"\n";
-        var statuses = GitUtils.ParsePorcelainOutput(output, repoRoot);
+        Dictionary<string, GitFileStatus> statuses = GitUtils.ParsePorcelainOutput(output, repoRoot);
 
         string expectedPath = Path.Combine(repoRoot, "src", "special file.txt");
         Assert.True(statuses.ContainsKey(expectedPath), $"Expected key '{expectedPath}' for quoted path");
@@ -399,10 +400,10 @@ public class GitUtilsTests
 
             File.WriteAllText(filePath, "modified\n");
 
-            var statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Dictionary<string, GitFileStatus>? statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
             Assert.True(statuses[filePath].HasFlag(GitFileStatus.Modified));
 
-            var result = GitUtils.Stage(tempDir, [filePath], CancellationToken.None);
+            (bool Success, string? Error) result = GitUtils.Stage(tempDir, [filePath], CancellationToken.None);
             Assert.True(result.Success);
 
             statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
@@ -437,10 +438,10 @@ public class GitUtilsTests
             string filePath = Path.Combine(tempDir, "new-file.txt");
             File.WriteAllText(filePath, "new content\n");
 
-            var statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Dictionary<string, GitFileStatus>? statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
             Assert.True(statuses[filePath].HasFlag(GitFileStatus.Untracked));
 
-            var result = GitUtils.Stage(tempDir, [filePath], CancellationToken.None);
+            (bool Success, string? Error) result = GitUtils.Stage(tempDir, [filePath], CancellationToken.None);
             Assert.True(result.Success);
 
             statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
@@ -474,10 +475,10 @@ public class GitUtilsTests
             File.WriteAllText(filePath, "modified\n");
             RunGit(tempDir, "add test.txt");
 
-            var statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Dictionary<string, GitFileStatus>? statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
             Assert.True(statuses[filePath].HasFlag(GitFileStatus.Staged));
 
-            var result = GitUtils.Unstage(tempDir, [filePath], CancellationToken.None);
+            (bool Success, string? Error) result = GitUtils.Unstage(tempDir, [filePath], CancellationToken.None);
             Assert.True(result.Success);
 
             statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
@@ -512,10 +513,10 @@ public class GitUtilsTests
             File.WriteAllText(filePath, "new content\n");
             RunGit(tempDir, "add new-file.txt");
 
-            var statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Dictionary<string, GitFileStatus>? statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
             Assert.True(statuses[filePath].HasFlag(GitFileStatus.Staged));
 
-            var result = GitUtils.Unstage(tempDir, [filePath], CancellationToken.None);
+            (bool Success, string? Error) result = GitUtils.Unstage(tempDir, [filePath], CancellationToken.None);
             Assert.True(result.Success);
 
             statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
@@ -553,10 +554,10 @@ public class GitUtilsTests
             string file2 = Path.Combine(tempDir, "file2.txt");
             File.WriteAllText(file2, "new\n");
 
-            var result = GitUtils.StageAll(tempDir, CancellationToken.None);
+            (bool Success, string? Error) result = GitUtils.StageAll(tempDir, CancellationToken.None);
             Assert.True(result.Success);
 
-            var statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Dictionary<string, GitFileStatus>? statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
             Assert.True(statuses[file1].HasFlag(GitFileStatus.Staged));
             Assert.True(statuses[file2].HasFlag(GitFileStatus.Staged));
         }
@@ -589,10 +590,10 @@ public class GitUtilsTests
             File.WriteAllText(file1, "a modified\n");
             File.WriteAllText(file2, "b modified\n");
 
-            var result = GitUtils.Stage(tempDir, [file1, file2], CancellationToken.None);
+            (bool Success, string? Error) result = GitUtils.Stage(tempDir, [file1, file2], CancellationToken.None);
             Assert.True(result.Success);
 
-            var statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Dictionary<string, GitFileStatus>? statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
             Assert.True(statuses[file1].HasFlag(GitFileStatus.Staged));
             Assert.True(statuses[file2].HasFlag(GitFileStatus.Staged));
         }
@@ -618,7 +619,7 @@ public class GitUtilsTests
             using var cts = new CancellationTokenSource();
             cts.Cancel();
 
-            var result = GitUtils.Stage(tempDir, [filePath], cts.Token);
+            (bool Success, string? Error) result = GitUtils.Stage(tempDir, [filePath], cts.Token);
             Assert.False(result.Success);
         }
         finally
@@ -633,7 +634,7 @@ public class GitUtilsTests
         string? repoRoot = GitUtils.FindRepoRoot(AppContext.BaseDirectory);
         Assert.NotNull(repoRoot);
 
-        var result = GitUtils.RunGitCommand(repoRoot, "status", CancellationToken.None);
+        (bool Success, string? Error) result = GitUtils.RunGitCommand(repoRoot, "status", CancellationToken.None);
         Assert.True(result.Success);
         Assert.Null(result.Error);
     }
@@ -662,11 +663,11 @@ public class GitUtilsTests
             File.WriteAllText(file2, "modified\n");
             RunGit(tempDir, "add .");
 
-            var statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Dictionary<string, GitFileStatus>? statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
             Assert.True(statuses[file1].HasFlag(GitFileStatus.Staged));
             Assert.True(statuses[file2].HasFlag(GitFileStatus.Staged));
 
-            var result = GitUtils.UnstageAll(tempDir, CancellationToken.None);
+            (bool Success, string? Error) result = GitUtils.UnstageAll(tempDir, CancellationToken.None);
             Assert.True(result.Success);
 
             statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
@@ -698,11 +699,11 @@ public class GitUtilsTests
             File.WriteAllText(filePath, "content\n");
             RunGit(tempDir, "add test.txt");
 
-            var result = GitUtils.Commit(tempDir, "Initial commit", CancellationToken.None);
+            (bool Success, string? Error) result = GitUtils.Commit(tempDir, "Initial commit", CancellationToken.None);
             Assert.True(result.Success);
 
             // After commit, file should no longer appear in status
-            var statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Dictionary<string, GitFileStatus>? statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
             Assert.DoesNotContain(statuses, kv => kv.Key == filePath);
         }
         finally
@@ -728,7 +729,7 @@ public class GitUtilsTests
             File.WriteAllText(filePath, "content\n");
             RunGit(tempDir, "add test.txt");
 
-            var result = GitUtils.Commit(tempDir, "Fix \"broken\" thing", CancellationToken.None);
+            (bool Success, string? Error) result = GitUtils.Commit(tempDir, "Fix \"broken\" thing", CancellationToken.None);
             Assert.True(result.Success);
         }
         finally
@@ -757,7 +758,7 @@ public class GitUtilsTests
             RunGit(tempDir, "commit -m initial");
 
             // Nothing staged — commit should fail
-            var result = GitUtils.Commit(tempDir, "Empty commit", CancellationToken.None);
+            (bool Success, string? Error) result = GitUtils.Commit(tempDir, "Empty commit", CancellationToken.None);
             Assert.False(result.Success);
         }
         finally
@@ -782,7 +783,7 @@ public class GitUtilsTests
             RunGit(tempDir, "add .");
             RunGit(tempDir, "commit -m initial");
 
-            var result = GitUtils.Push(tempDir, CancellationToken.None);
+            (bool Success, string? Error) result = GitUtils.Push(tempDir, CancellationToken.None);
             Assert.False(result.Success);
         }
         finally
@@ -807,7 +808,7 @@ public class GitUtilsTests
             RunGit(tempDir, "add .");
             RunGit(tempDir, "commit -m initial");
 
-            var result = GitUtils.PushForceWithLease(tempDir, CancellationToken.None);
+            (bool Success, string? Error) result = GitUtils.PushForceWithLease(tempDir, CancellationToken.None);
             Assert.False(result.Success);
         }
         finally
@@ -826,7 +827,7 @@ public class GitUtilsTests
         {
             RunGit(tempDir, "init");
 
-            var result = GitUtils.Pull(tempDir, CancellationToken.None);
+            (bool Success, string? Error) result = GitUtils.Pull(tempDir, CancellationToken.None);
             Assert.False(result.Success);
         }
         finally
@@ -845,7 +846,7 @@ public class GitUtilsTests
         {
             RunGit(tempDir, "init");
 
-            var result = GitUtils.PullRebase(tempDir, CancellationToken.None);
+            (bool Success, string? Error) result = GitUtils.PullRebase(tempDir, CancellationToken.None);
             Assert.False(result.Success);
         }
         finally
@@ -865,7 +866,7 @@ public class GitUtilsTests
         {
             RunGit(tempDir, "init");
 
-            var result = GitUtils.Fetch(tempDir, CancellationToken.None);
+            (bool Success, string? Error) result = GitUtils.Fetch(tempDir, CancellationToken.None);
             Assert.True(result.Success);
         }
         finally
@@ -890,7 +891,7 @@ public class GitUtilsTests
             RunGit(tempDir, "add .");
             RunGit(tempDir, "commit -m initial");
 
-            var result = GitUtils.GetAheadBehind(tempDir, CancellationToken.None);
+            (int Ahead, int Behind)? result = GitUtils.GetAheadBehind(tempDir, CancellationToken.None);
             Assert.Null(result);
         }
         finally
@@ -928,7 +929,7 @@ public class GitUtilsTests
             RunGit(localDir, "add .");
             RunGit(localDir, "commit -m local");
 
-            var result = GitUtils.GetAheadBehind(localDir, CancellationToken.None);
+            (int Ahead, int Behind)? result = GitUtils.GetAheadBehind(localDir, CancellationToken.None);
             Assert.NotNull(result);
             Assert.Equal(1, result.Value.Ahead);
             Assert.Equal(0, result.Value.Behind);
@@ -946,14 +947,14 @@ public class GitUtilsTests
         string? repoRoot = GitUtils.FindRepoRoot(AppContext.BaseDirectory);
         Assert.NotNull(repoRoot);
 
-        var result = GitUtils.RunGitCommand(repoRoot, "not-a-real-command", CancellationToken.None);
+        (bool Success, string? Error) result = GitUtils.RunGitCommand(repoRoot, "not-a-real-command", CancellationToken.None);
         Assert.False(result.Success);
         Assert.NotNull(result.Error);
     }
 
     private static void RunGit(string workDir, string arguments)
     {
-        var psi = new System.Diagnostics.ProcessStartInfo
+        var psi = new ProcessStartInfo
         {
             FileName = "git",
             Arguments = arguments,
@@ -964,7 +965,7 @@ public class GitUtilsTests
             CreateNoWindow = true,
         };
 
-        using var process = System.Diagnostics.Process.Start(psi)!;
+        using var process = Process.Start(psi)!;
         process.WaitForExit(10_000);
 
         if (process.ExitCode != 0)

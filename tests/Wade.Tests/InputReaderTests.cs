@@ -51,14 +51,14 @@ public class InputReaderTests
     [Fact]
     public void MapKey_QuestionMark_ReturnsShowHelp()
     {
-        var evt = new KeyEvent((ConsoleKey)0, '?', false, false, false);
+        var evt = new KeyEvent(0, '?', false, false, false);
         Assert.Equal(AppAction.ShowHelp, InputReader.MapKey(evt));
     }
 
     [Fact]
     public void MapKey_Slash_ReturnsSearch()
     {
-        var evt = new KeyEvent((ConsoleKey)0, '/', false, false, false);
+        var evt = new KeyEvent(0, '/', false, false, false);
         Assert.Equal(AppAction.Search, InputReader.MapKey(evt));
     }
 

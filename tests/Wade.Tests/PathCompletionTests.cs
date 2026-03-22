@@ -13,7 +13,13 @@ public class PathCompletionTests
 
     private static void CleanupDir(string dir)
     {
-        try { Directory.Delete(dir, recursive: true); } catch { }
+        try
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+        catch
+        {
+        }
     }
 
     [Fact]
@@ -30,7 +36,10 @@ public class PathCompletionTests
             Assert.NotNull(suggestion);
             Assert.Equal(Path.Combine(dir, "alpha"), suggestion);
         }
-        finally { CleanupDir(dir); }
+        finally
+        {
+            CleanupDir(dir);
+        }
     }
 
     [Fact]
@@ -46,7 +55,10 @@ public class PathCompletionTests
             Assert.NotNull(suggestion);
             Assert.StartsWith(dir, suggestion);
         }
-        finally { CleanupDir(dir); }
+        finally
+        {
+            CleanupDir(dir);
+        }
     }
 
     [Fact]
@@ -61,7 +73,10 @@ public class PathCompletionTests
 
             Assert.Null(suggestion);
         }
-        finally { CleanupDir(dir); }
+        finally
+        {
+            CleanupDir(dir);
+        }
     }
 
     [Fact]
@@ -92,7 +107,10 @@ public class PathCompletionTests
             Assert.NotNull(suggestion);
             Assert.EndsWith("Alpha", suggestion);
         }
-        finally { CleanupDir(dir); }
+        finally
+        {
+            CleanupDir(dir);
+        }
     }
 
     [Fact]
@@ -105,7 +123,10 @@ public class PathCompletionTests
 
             Assert.Null(suggestion);
         }
-        finally { CleanupDir(dir); }
+        finally
+        {
+            CleanupDir(dir);
+        }
     }
 
     // ── Tilde expansion ──────────────────────────────────────────────────────
@@ -113,24 +134,21 @@ public class PathCompletionTests
     [Fact]
     public void ExpandTilde_ExpandsToHomeDirectory()
     {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         Assert.Equal(home, PathCompletion.ExpandTilde("~"));
     }
 
     [Fact]
     public void ExpandTilde_ExpandsWithSubpath()
     {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         string result = PathCompletion.ExpandTilde("~/Downloads");
         Assert.StartsWith(home, result);
         Assert.Contains("Downloads", result);
     }
 
     [Fact]
-    public void ExpandTilde_NoTilde_ReturnsUnchanged()
-    {
-        Assert.Equal("/some/path", PathCompletion.ExpandTilde("/some/path"));
-    }
+    public void ExpandTilde_NoTilde_ReturnsUnchanged() => Assert.Equal("/some/path", PathCompletion.ExpandTilde("/some/path"));
 
     [Fact]
     public void Suggest_TildeWithSeparator_SuggestsHomeChild()
@@ -158,10 +176,7 @@ public class PathCompletionTests
     }
 
     [Fact]
-    public void NormalizeSeparators_NoSlashes_Unchanged()
-    {
-        Assert.Equal("foo", PathCompletion.NormalizeSeparators("foo"));
-    }
+    public void NormalizeSeparators_NoSlashes_Unchanged() => Assert.Equal("foo", PathCompletion.NormalizeSeparators("foo"));
 
     [Fact]
     public void Suggest_ForwardSlashes_StillMatches()
@@ -178,7 +193,10 @@ public class PathCompletionTests
             Assert.NotNull(suggestion);
             Assert.EndsWith("alpha", suggestion);
         }
-        finally { CleanupDir(dir); }
+        finally
+        {
+            CleanupDir(dir);
+        }
     }
 
     // ── Drive letter capitalization ─────────────────────────────────────────
@@ -192,8 +210,6 @@ public class PathCompletionTests
     [InlineData("relative/path", "relative/path")]
     [InlineData("", "")]
     [InlineData("x", "x")]
-    public void CapitalizeDriveLetter_ReturnsExpected(string input, string expected)
-    {
+    public void CapitalizeDriveLetter_ReturnsExpected(string input, string expected) =>
         Assert.Equal(expected, PathCompletion.CapitalizeDriveLetter(input));
-    }
 }

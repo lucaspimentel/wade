@@ -28,7 +28,7 @@ public class XmlHtmlLanguageTests
     [Fact]
     public void TagWithAttribute_Classified()
     {
-        var spans = Tokenize("<div class=\"x\">");
+        StyledSpan[] spans = Tokenize("<div class=\"x\">");
         Assert.Contains(spans, s => s.Kind == TokenKind.TagName);
         Assert.Contains(spans, s => s.Kind == TokenKind.AttrName);
         Assert.Contains(spans, s => s.Kind == TokenKind.AttrValue);
@@ -37,35 +37,35 @@ public class XmlHtmlLanguageTests
     [Fact]
     public void Comment_SingleLine_Classified()
     {
-        var spans = Tokenize("<!-- comment -->");
+        StyledSpan[] spans = Tokenize("<!-- comment -->");
         Assert.Contains(spans, s => s.Kind == TokenKind.Comment && s.Start == 0);
     }
 
     [Fact]
     public void Comment_MultiLine_AllLinesClassified()
     {
-        var lines = TokenizeLines("<!--", "text", "-->");
+        StyledLine[] lines = TokenizeLines("<!--", "text", "-->");
         Assert.All(lines, l => Assert.Contains(l.Spans ?? [], s => s.Kind == TokenKind.Comment));
     }
 
     [Fact]
     public void SelfClosingTag_Classified()
     {
-        var spans = Tokenize("<br />");
+        StyledSpan[] spans = Tokenize("<br />");
         Assert.Contains(spans, s => s.Kind == TokenKind.TagName);
     }
 
     [Fact]
     public void EntityReference_ClassifiedAsConstant()
     {
-        var spans = Tokenize("&amp;");
+        StyledSpan[] spans = Tokenize("&amp;");
         Assert.Contains(spans, s => s.Kind == TokenKind.Constant && s.Start == 0);
     }
 
     [Fact]
     public void ClosingTag_Classified()
     {
-        var spans = Tokenize("</div>");
+        StyledSpan[] spans = Tokenize("</div>");
         Assert.Contains(spans, s => s.Kind == TokenKind.TagName);
     }
 }

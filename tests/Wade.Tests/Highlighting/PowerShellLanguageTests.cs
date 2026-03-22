@@ -28,21 +28,21 @@ public class PowerShellLanguageTests
     [Fact]
     public void BlockComment_MultiLine_Classified()
     {
-        var lines = TokenizeLines("<# block comment", "middle", "#>");
+        StyledLine[] lines = TokenizeLines("<# block comment", "middle", "#>");
         Assert.All(lines, l => Assert.Contains(l.Spans ?? [], s => s.Kind == TokenKind.Comment));
     }
 
     [Fact]
     public void HashComment_SingleLine_Classified()
     {
-        var spans = Tokenize("# inline comment");
+        StyledSpan[] spans = Tokenize("# inline comment");
         Assert.Contains(spans, s => s.Kind == TokenKind.Comment);
     }
 
     [Fact]
     public void Attribute_Classified()
     {
-        var spans = Tokenize("[Parameter()]");
+        StyledSpan[] spans = Tokenize("[Parameter()]");
         Assert.Contains(spans, s => s.Kind == TokenKind.Attribute && s.Start == 0);
     }
 
@@ -53,7 +53,7 @@ public class PowerShellLanguageTests
     [InlineData("param")]
     public void PsKeywords_Classified(string keyword)
     {
-        var spans = Tokenize(keyword);
+        StyledSpan[] spans = Tokenize(keyword);
         Assert.Contains(spans, s => s.Kind == TokenKind.Keyword);
     }
 }

@@ -63,6 +63,7 @@ internal sealed class JavaLanguage : RegexLanguage
                 end = closeEnd;
                 return true;
             }
+
             spans.Add(new StyledSpan(pos, line.Length - pos, TokenKind.String));
             state = StateMultiString;
             end = line.Length;
@@ -82,6 +83,7 @@ internal sealed class JavaLanguage : RegexLanguage
             state = StateNormal;
             return closeEnd;
         }
+
         spans.Add(new StyledSpan(pos, line.Length - pos, TokenKind.String));
         return line.Length;
     }

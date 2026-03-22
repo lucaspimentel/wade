@@ -4,7 +4,7 @@ internal static class SyntaxHighlighter
 {
     public static StyledLine[] Highlight(string[] lines, string filePath)
     {
-        var lang = LanguageMap.GetLanguage(filePath);
+        ILanguage? lang = LanguageMap.GetLanguage(filePath);
         var result = new StyledLine[lines.Length];
 
         if (lang is null)

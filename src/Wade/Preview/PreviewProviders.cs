@@ -15,7 +15,7 @@ internal sealed class ImagePreviewProvider : IPreviewProvider
 
     public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct)
     {
-        var result = ImagePreview.Load(
+        ImagePreviewResult? result = ImagePreview.Load(
             path,
             context.PaneWidthCells, context.PaneHeightCells,
             context.CellPixelWidth, context.CellPixelHeight,
@@ -55,7 +55,7 @@ internal sealed class PdfPreviewProvider : IPreviewProvider
 
         try
         {
-            var result = ImagePreview.Load(
+            ImagePreviewResult? result = ImagePreview.Load(
                 tempImagePath,
                 context.PaneWidthCells, context.PaneHeightCells,
                 context.CellPixelWidth, context.CellPixelHeight,
@@ -78,7 +78,13 @@ internal sealed class PdfPreviewProvider : IPreviewProvider
         }
         finally
         {
-            try { File.Delete(tempImagePath); } catch { }
+            try
+            {
+                File.Delete(tempImagePath);
+            }
+            catch
+            {
+            }
         }
     }
 }
@@ -96,12 +102,12 @@ internal sealed class GlowMarkdownPreviewProvider : IPreviewProvider
 
         string ext = Path.GetExtension(path);
         return ext.Equals(".md", StringComparison.OrdinalIgnoreCase)
-            || ext.Equals(".markdown", StringComparison.OrdinalIgnoreCase);
+               || ext.Equals(".markdown", StringComparison.OrdinalIgnoreCase);
     }
 
     public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct)
     {
-        var lines = GlowRenderer.Render(path, context.PaneWidthCells - 2, ct);
+        StyledLine[]? lines = GlowRenderer.Render(path, context.PaneWidthCells - 2, ct);
         if (lines is null)
         {
             return null;
@@ -125,7 +131,7 @@ internal sealed class ZipContentsPreviewProvider : IPreviewProvider
 
     public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct)
     {
-        var zipLines = ZipPreview.GetPreviewLines(path, ct);
+        string[]? zipLines = ZipPreview.GetPreviewLines(path, ct);
         if (zipLines is null)
         {
             return null;
@@ -156,7 +162,7 @@ internal sealed class TextPreviewProvider : IPreviewProvider
 
     public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct)
     {
-        var rawLines = FilePreview.GetPreviewLines(path, out var metadata);
+        string[] rawLines = FilePreview.GetPreviewLines(path, out FileMetadata metadata);
 
         if (ct.IsCancellationRequested)
         {
@@ -174,7 +180,7 @@ internal sealed class TextPreviewProvider : IPreviewProvider
             };
         }
 
-        var styledLines = SyntaxHighlighter.Highlight(rawLines, path);
+        StyledLine[] styledLines = SyntaxHighlighter.Highlight(rawLines, path);
 
         return new PreviewResult
         {
@@ -195,7 +201,7 @@ internal sealed class HexPreviewProvider : IPreviewProvider
 
     public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct)
     {
-        var hexLines = HexPreview.GetPreviewLines(path, ct);
+        StyledLine[]? hexLines = HexPreview.GetPreviewLines(path, ct);
         if (hexLines is null)
         {
             return null;
@@ -217,7 +223,7 @@ internal sealed class NonePreviewProvider : IPreviewProvider
     public bool CanPreview(string path, PreviewContext context) => true;
 
     public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct) =>
-        new PreviewResult
+        new()
         {
             TextLines = [],
             IsPlaceholder = true,
@@ -239,7 +245,7 @@ internal sealed class DiffPreviewProvider : IPreviewProvider
         bool hasModified = context.GitStatus!.Value.HasFlag(GitFileStatus.Modified);
         bool staged = !hasModified && context.GitStatus.Value.HasFlag(GitFileStatus.Staged);
 
-        var diffLines = GitUtils.GetDiff(context.RepoRoot!, path, staged, ct);
+        string[]? diffLines = GitUtils.GetDiff(context.RepoRoot!, path, staged, ct);
         if (diffLines is null || diffLines.Length == 0)
         {
             return null;

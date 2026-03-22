@@ -22,7 +22,7 @@ public class CloudPlaceholderTests
     public void GetIcon_ReturnsOriginalIcon_ForPlaceholderFile()
     {
         // Cloud placeholders keep their original file type icon
-        var icon = FileIcons.GetIcon(PlaceholderFile("document.docx"));
+        Rune icon = FileIcons.GetIcon(PlaceholderFile("document.docx"));
         // docx has a Word document icon (nf-fa-file_text_o)
         Assert.Equal(new Rune(0xF1C2), icon);
     }
@@ -30,28 +30,25 @@ public class CloudPlaceholderTests
     [Fact]
     public void GetIcon_ReturnsFolderIcon_ForPlaceholderDirectory()
     {
-        var icon = FileIcons.GetIcon(PlaceholderDir("Photos"));
+        Rune icon = FileIcons.GetIcon(PlaceholderDir("Photos"));
         Assert.Equal(new Rune(0xF114), icon);
     }
 
     [Fact]
-    public void GetCloudIcon_ReturnsCloudIcon()
-    {
-        Assert.Equal(new Rune(0xF0163), FileIcons.GetCloudIcon());
-    }
+    public void GetCloudIcon_ReturnsCloudIcon() => Assert.Equal(new Rune(0xF0163), FileIcons.GetCloudIcon());
 
     [Fact]
     public void GetIcon_ReturnsNormalIcon_ForNonPlaceholderFile()
     {
-        var icon = FileIcons.GetIcon(NormalFile("document.docx"));
+        Rune icon = FileIcons.GetIcon(NormalFile("document.docx"));
         // docx has a Word document icon (nf-fa-file_text_o)
         Assert.Equal(new Rune(0xF1C2), icon);
     }
 
     [Theory]
-    [InlineData(0x00400000, true)]  // FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS
-    [InlineData(0x00004000, true)]  // FILE_ATTRIBUTE_RECALL_ON_OPEN
-    [InlineData(0x00404000, true)]  // both flags
+    [InlineData(0x00400000, true)] // FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS
+    [InlineData(0x00004000, true)] // FILE_ATTRIBUTE_RECALL_ON_OPEN
+    [InlineData(0x00404000, true)] // both flags
     [InlineData(0x00000020, false)] // FILE_ATTRIBUTE_ARCHIVE only
     [InlineData(0x00000000, false)] // no flags
     public void CheckIsCloudPlaceholder_DetectsCorrectly(int attributeBits, bool expected)

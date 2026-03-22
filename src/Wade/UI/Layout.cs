@@ -3,6 +3,7 @@ namespace Wade.UI;
 internal readonly record struct Rect(int Left, int Top, int Width, int Height)
 {
     public int Right => Left + Width;
+
     public int Bottom => Top + Height;
 
     public (int Row, int Col) CenterContent(int contentWidthCells, int contentHeightCells)
@@ -16,9 +17,13 @@ internal readonly record struct Rect(int Left, int Top, int Width, int Height)
 internal sealed class Layout
 {
     public Rect LeftPane { get; private set; }
+
     public Rect CenterPane { get; private set; }
+
     public Rect RightPane { get; private set; }
+
     public Rect ExpandedPane { get; private set; }
+
     public Rect StatusBar { get; private set; }
 
     public void Calculate(int terminalWidth, int terminalHeight, bool previewPaneEnabled = true)

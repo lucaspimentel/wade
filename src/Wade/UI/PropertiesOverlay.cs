@@ -8,6 +8,7 @@ namespace Wade.UI;
 
 internal static class PropertiesOverlay
 {
+    private const int LabelWidth = 12;
     private static readonly Color LabelColor = new(120, 120, 140);
     private static readonly Color ValueColor = new(200, 200, 200);
     private static readonly Color GitModifiedColor = new(220, 180, 50);
@@ -29,8 +30,6 @@ internal static class PropertiesOverlay
         "Read-only",
         "Git status",
     ];
-
-    private const int LabelWidth = 12;
 
     /// <summary>
     /// Renders the properties overlay with scroll support. Returns the total content row count.
@@ -128,7 +127,7 @@ internal static class PropertiesOverlay
             ? "\u2191\u2193 scroll \u00b7 any key to close"
             : "Press any key to close";
 
-        var content = DialogBox.Render(
+        Rect content = DialogBox.Render(
             buffer, screenWidth, screenHeight,
             contentWidth, visibleHeight,
             title: "Properties",
@@ -172,10 +171,6 @@ internal static class PropertiesOverlay
         return totalContentHeight;
     }
 
-    private enum RowKind { Blank, Header, LabelValue }
-
-    private readonly record struct Row(RowKind Kind, string Label, string Value, CellStyle LabelStyle, CellStyle ValueStyle);
-
     private static string[] BuildValues(FileSystemEntry entry, string? directorySizeText, GitFileStatus? gitStatus)
     {
         string type = entry.IsDrive
@@ -183,7 +178,7 @@ internal static class PropertiesOverlay
             : entry.IsBrokenSymlink
                 ? "Broken Symlink"
                 : entry.IsSymlink
-                    ? (entry.IsDirectory ? "Symlink \u2192 Directory" : "Symlink \u2192 File")
+                    ? entry.IsDirectory ? "Symlink \u2192 Directory" : "Symlink \u2192 File"
                     : entry.IsDirectory
                         ? "Directory"
                         : FilePreview.GetFileTypeLabel(entry.FullPath) ?? "File";
@@ -217,8 +212,8 @@ internal static class PropertiesOverlay
                 accessed = "\u2014";
                 attributes = entry.DriveMediaType switch
                 {
-                    FileSystem.DriveMediaType.Ssd => "SSD",
-                    FileSystem.DriveMediaType.Hdd => "HDD",
+                    DriveMediaType.Ssd => "SSD",
+                    DriveMediaType.Hdd => "HDD",
                     _ => driveInfo.DriveType.ToString(),
                 };
                 readOnly = !driveInfo.IsReady;
@@ -396,4 +391,13 @@ internal static class PropertiesOverlay
         name.AsSpan().CopyTo(buf[pos..]);
         pos += name.Length;
     }
+
+    private enum RowKind
+    {
+        Blank,
+        Header,
+        LabelValue,
+    }
+
+    private readonly record struct Row(RowKind Kind, string Label, string Value, CellStyle LabelStyle, CellStyle ValueStyle);
 }

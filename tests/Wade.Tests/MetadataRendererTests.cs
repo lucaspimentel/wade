@@ -1,3 +1,4 @@
+using Wade.Highlighting;
 using Wade.Preview;
 using Wade.UI;
 
@@ -10,10 +11,10 @@ public class MetadataRendererTests
     {
         MetadataSection[] sections =
         [
-            new("Test Section", [new MetadataEntry("Key", "Value"), new MetadataEntry("Name", "Test")])
+            new("Test Section", [new MetadataEntry("Key", "Value"), new MetadataEntry("Name", "Test")]),
         ];
 
-        var lines = MetadataRenderer.Render(sections);
+        StyledLine[] lines = MetadataRenderer.Render(sections);
 
         Assert.True(lines.Length >= 4); // header + divider + 2 entries
         Assert.Contains("Test Section", lines[0].Text);
@@ -33,7 +34,7 @@ public class MetadataRendererTests
             new("Second", [new MetadataEntry("B", "2")]),
         ];
 
-        var lines = MetadataRenderer.Render(sections);
+        StyledLine[] lines = MetadataRenderer.Render(sections);
 
         // Find blank line between sections
         bool foundBlank = false;
@@ -54,10 +55,10 @@ public class MetadataRendererTests
     {
         MetadataSection[] sections =
         [
-            new("Items", [new MetadataEntry("", "item one"), new MetadataEntry("", "item two")])
+            new("Items", [new MetadataEntry("", "item one"), new MetadataEntry("", "item two")]),
         ];
 
-        var lines = MetadataRenderer.Render(sections);
+        StyledLine[] lines = MetadataRenderer.Render(sections);
 
         // List items should be indented with 4 spaces
         var itemLines = lines.Where(l => l.Text.Contains("item")).ToList();
@@ -71,10 +72,10 @@ public class MetadataRendererTests
     {
         MetadataSection[] sections =
         [
-            new(null, [new MetadataEntry("Key", "Value")])
+            new(null, [new MetadataEntry("Key", "Value")]),
         ];
 
-        var lines = MetadataRenderer.Render(sections);
+        StyledLine[] lines = MetadataRenderer.Render(sections);
 
         // Should only have the entry line, no header or divider
         Assert.Single(lines);
@@ -87,13 +88,13 @@ public class MetadataRendererTests
     {
         MetadataSection[] sections =
         [
-            new("Section", [new MetadataEntry("Label", "Value")])
+            new("Section", [new MetadataEntry("Label", "Value")]),
         ];
 
-        var lines = MetadataRenderer.Render(sections);
+        StyledLine[] lines = MetadataRenderer.Render(sections);
 
         // Header and entry lines should have CharStyles set
-        foreach (var line in lines)
+        foreach (StyledLine line in lines)
         {
             Assert.NotNull(line.CharStyles);
             Assert.Equal(line.Text.Length, line.CharStyles!.Length);

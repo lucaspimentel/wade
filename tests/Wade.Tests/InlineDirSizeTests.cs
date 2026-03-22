@@ -11,9 +11,9 @@ public class InlineDirSizeTests
     [InlineData(DriveMediaType.Hdd, true, false, false, false)]
     [InlineData(DriveMediaType.Network, true, false, true, true)]
     [InlineData(DriveMediaType.Network, true, false, false, false)]
-    [InlineData(DriveMediaType.Removable, true, false, false, true)]   // follows SSD
+    [InlineData(DriveMediaType.Removable, true, false, false, true)] // follows SSD
     [InlineData(DriveMediaType.Removable, false, false, false, false)] // follows SSD
-    [InlineData(DriveMediaType.Unknown, true, true, true, false)]      // Unknown = disabled
+    [InlineData(DriveMediaType.Unknown, true, true, true, false)] // Unknown = disabled
     internal void ShouldComputeInlineDirSizes_ReturnsExpected(
         DriveMediaType driveType,
         bool ssdEnabled,

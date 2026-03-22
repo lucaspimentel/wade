@@ -28,35 +28,35 @@ public class CssLanguageTests
     [Fact]
     public void CssProperty_ClassifiedAsKey()
     {
-        var spans = Tokenize("color: red;");
+        StyledSpan[] spans = Tokenize("color: red;");
         Assert.Contains(spans, s => s.Kind == TokenKind.Key);
     }
 
     [Fact]
     public void BlockComment_SingleLine_Classified()
     {
-        var spans = Tokenize("/* comment */");
+        StyledSpan[] spans = Tokenize("/* comment */");
         Assert.Contains(spans, s => s.Kind == TokenKind.Comment && s.Start == 0);
     }
 
     [Fact]
     public void BlockComment_MultiLine_Classified()
     {
-        var lines = TokenizeLines("/* start", "middle", "end */");
+        StyledLine[] lines = TokenizeLines("/* start", "middle", "end */");
         Assert.All(lines, l => Assert.Contains(l.Spans ?? [], s => s.Kind == TokenKind.Comment));
     }
 
     [Fact]
     public void StringValue_Classified()
     {
-        var spans = Tokenize("content: \"text\";");
+        StyledSpan[] spans = Tokenize("content: \"text\";");
         Assert.Contains(spans, s => s.Kind == TokenKind.String);
     }
 
     [Fact]
     public void Punctuation_Classified()
     {
-        var spans = Tokenize("{ color: red; }");
+        StyledSpan[] spans = Tokenize("{ color: red; }");
         Assert.Contains(spans, s => s.Kind == TokenKind.Punctuation);
     }
 }

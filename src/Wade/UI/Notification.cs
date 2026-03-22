@@ -1,6 +1,11 @@
 namespace Wade.UI;
 
-internal enum NotificationKind { Info, Success, Error }
+internal enum NotificationKind
+{
+    Info,
+    Success,
+    Error,
+}
 
 internal readonly record struct Notification(string Message, NotificationKind Kind, long Timestamp)
 {

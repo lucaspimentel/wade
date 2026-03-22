@@ -6,73 +6,71 @@ namespace Wade.UI;
 internal sealed class TextInput
 {
     private readonly StringBuilder _buffer;
-    private int _cursorPos;
-    private int _scrollOffset;
 
     public TextInput(string initialValue = "")
     {
         _buffer = new StringBuilder(initialValue);
-        _cursorPos = initialValue.Length;
+        CursorPosition = initialValue.Length;
     }
 
     public string Value => _buffer.ToString();
 
-    public int CursorPosition => _cursorPos;
+    public int CursorPosition { get; private set; }
 
-    public int ScrollOffset => _scrollOffset;
+    public int ScrollOffset { get; private set; }
 
     public void InsertChar(char ch)
     {
-        _buffer.Insert(_cursorPos, ch);
-        _cursorPos++;
+        _buffer.Insert(CursorPosition, ch);
+        CursorPosition++;
     }
 
     public void DeleteBackward()
     {
-        if (_cursorPos <= 0)
+        if (CursorPosition <= 0)
         {
             return;
         }
 
-        _cursorPos--;
-        _buffer.Remove(_cursorPos, 1);
+        CursorPosition--;
+        _buffer.Remove(CursorPosition, 1);
     }
 
     public void DeleteForward()
     {
-        if (_cursorPos >= _buffer.Length)
+        if (CursorPosition >= _buffer.Length)
         {
             return;
         }
 
-        _buffer.Remove(_cursorPos, 1);
+        _buffer.Remove(CursorPosition, 1);
     }
 
     public void MoveCursorLeft()
     {
-        if (_cursorPos > 0)
+        if (CursorPosition > 0)
         {
-            _cursorPos--;
+            CursorPosition--;
         }
     }
 
     public void MoveCursorRight()
     {
-        if (_cursorPos < _buffer.Length)
+        if (CursorPosition < _buffer.Length)
         {
-            _cursorPos++;
+            CursorPosition++;
         }
     }
 
-    public void MoveCursorHome() => _cursorPos = 0;
+    public void MoveCursorHome() => CursorPosition = 0;
 
-    public void MoveCursorEnd() => _cursorPos = _buffer.Length;
+    public void MoveCursorEnd() => CursorPosition = _buffer.Length;
 
     public void Clear()
     {
         _buffer.Clear();
-        _cursorPos = 0;
-        _scrollOffset = 0;
+        CursorPosition = 0;
+        ScrollOffset = 0;
     }
 
     public void Render(ScreenBuffer buffer, int row, int col, int maxWidth, CellStyle style)
@@ -83,32 +81,32 @@ internal sealed class TextInput
         }
 
         // Adjust scroll offset to keep cursor visible
-        if (_cursorPos < _scrollOffset)
+        if (CursorPosition < ScrollOffset)
         {
-            _scrollOffset = _cursorPos;
+            ScrollOffset = CursorPosition;
         }
-        else if (_cursorPos >= _scrollOffset + maxWidth)
+        else if (CursorPosition >= ScrollOffset + maxWidth)
         {
-            _scrollOffset = _cursorPos - maxWidth + 1;
+            ScrollOffset = CursorPosition - maxWidth + 1;
         }
 
-        var cursorStyle = style with { Inverse = true };
-        int visibleEnd = Math.Min(_scrollOffset + maxWidth, _buffer.Length);
+        CellStyle cursorStyle = style with { Inverse = true };
+        int visibleEnd = Math.Min(ScrollOffset + maxWidth, _buffer.Length);
 
         // Render visible text
         int c = col;
-        for (int i = _scrollOffset; i < visibleEnd; i++)
+        for (int i = ScrollOffset; i < visibleEnd; i++)
         {
-            CellStyle cellStyle = (i == _cursorPos) ? cursorStyle : style;
+            CellStyle cellStyle = i == CursorPosition ? cursorStyle : style;
             buffer.Put(row, c, _buffer[i], cellStyle);
             c++;
         }
 
         // Cursor at end of text — render inverse space
-        if (_cursorPos >= _buffer.Length && _cursorPos >= _scrollOffset && (_cursorPos - _scrollOffset) < maxWidth)
+        if (CursorPosition >= _buffer.Length && CursorPosition >= ScrollOffset && CursorPosition - ScrollOffset < maxWidth)
         {
-            buffer.Put(row, col + _cursorPos - _scrollOffset, ' ', cursorStyle);
-            c = Math.Max(c, col + _cursorPos - _scrollOffset + 1);
+            buffer.Put(row, col + CursorPosition - ScrollOffset, ' ', cursorStyle);
+            c = Math.Max(c, col + CursorPosition - ScrollOffset + 1);
         }
 
         // Fill remaining width with spaces to clear stale content

@@ -20,7 +20,7 @@ internal sealed class ArchiveMetadataProvider : IMetadataProvider
 
         try
         {
-            using var archive = ZipFile.OpenRead(path);
+            using ZipArchive archive = ZipFile.OpenRead(path);
 
             if (ct.IsCancellationRequested)
             {

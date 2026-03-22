@@ -11,7 +11,7 @@ internal sealed class NuGetMetadataProvider : IMetadataProvider
     {
         string ext = Path.GetExtension(path);
         return ext.Equals(".nupkg", StringComparison.OrdinalIgnoreCase)
-            || ext.Equals(".snupkg", StringComparison.OrdinalIgnoreCase);
+               || ext.Equals(".snupkg", StringComparison.OrdinalIgnoreCase);
     }
 
     public MetadataResult? GetMetadata(string path, PreviewContext context, CancellationToken ct)
@@ -23,7 +23,7 @@ internal sealed class NuGetMetadataProvider : IMetadataProvider
 
         try
         {
-            using var zip = ZipFile.OpenRead(path);
+            using ZipArchive zip = ZipFile.OpenRead(path);
 
             ZipArchiveEntry? nuspecEntry = null;
 
@@ -51,7 +51,7 @@ internal sealed class NuGetMetadataProvider : IMetadataProvider
                 return null;
             }
 
-            using var stream = nuspecEntry.Open();
+            using Stream stream = nuspecEntry.Open();
             var doc = XDocument.Load(stream);
 
             if (doc.Root is null)
@@ -242,9 +242,7 @@ internal sealed class NuGetMetadataProvider : IMetadataProvider
 
     private static string? GetElementValue(XElement parent, string localName)
     {
-        XElement? el = parent.Elements().FirstOrDefault(
-            e => e.Name.LocalName.Equals(localName, StringComparison.OrdinalIgnoreCase));
+        XElement? el = parent.Elements().FirstOrDefault(e => e.Name.LocalName.Equals(localName, StringComparison.OrdinalIgnoreCase));
         return el?.Value;
     }
-
 }

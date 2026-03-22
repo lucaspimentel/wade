@@ -5,6 +5,8 @@ namespace Wade.Tests;
 
 public class ArchiveMetadataProviderTests
 {
+    private readonly ArchiveMetadataProvider _provider = new();
+
     private static PreviewContext MakeContext() =>
         new(
             PaneWidthCells: 60,
@@ -21,8 +23,6 @@ public class ArchiveMetadataProviderTests
             SixelSupported: true,
             ArchiveMetadataEnabled: true);
 
-    private readonly ArchiveMetadataProvider _provider = new();
-
     // ── Extension matching ────────────────────────────────────────────────────
 
     [Theory]
@@ -30,19 +30,13 @@ public class ArchiveMetadataProviderTests
     [InlineData("lib.jar")]
     [InlineData("package.nupkg")]
     [InlineData("doc.docx")]
-    public void CanProvideMetadata_ZipExtensions_ReturnsTrue(string path)
-    {
-        Assert.True(_provider.CanProvideMetadata(path, MakeContext()));
-    }
+    public void CanProvideMetadata_ZipExtensions_ReturnsTrue(string path) => Assert.True(_provider.CanProvideMetadata(path, MakeContext()));
 
     [Theory]
     [InlineData("file.txt")]
     [InlineData("file.tar")]
     [InlineData("file.gz")]
-    public void CanProvideMetadata_NonZipExtensions_ReturnsFalse(string path)
-    {
-        Assert.False(_provider.CanProvideMetadata(path, MakeContext()));
-    }
+    public void CanProvideMetadata_NonZipExtensions_ReturnsFalse(string path) => Assert.False(_provider.CanProvideMetadata(path, MakeContext()));
 
     // ── Metadata extraction ───────────────────────────────────────────────────
 
@@ -148,12 +142,12 @@ public class ArchiveMetadataProviderTests
     private static string CreateTempZip(params (string Name, string Content)[] entries)
     {
         string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".zip");
-        using var stream = File.Create(path);
+        using FileStream stream = File.Create(path);
         using var archive = new ZipArchive(stream, ZipArchiveMode.Create);
 
-        foreach (var (name, content) in entries)
+        foreach ((string name, string content) in entries)
         {
-            var entry = archive.CreateEntry(name);
+            ZipArchiveEntry entry = archive.CreateEntry(name);
             using var writer = new StreamWriter(entry.Open());
             writer.Write(content);
         }
@@ -164,12 +158,12 @@ public class ArchiveMetadataProviderTests
     private static string CreateTempZipWithDirs(params (string Name, string? Content)[] entries)
     {
         string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".zip");
-        using var stream = File.Create(path);
+        using FileStream stream = File.Create(path);
         using var archive = new ZipArchive(stream, ZipArchiveMode.Create);
 
-        foreach (var (name, content) in entries)
+        foreach ((string name, string? content) in entries)
         {
-            var entry = archive.CreateEntry(name);
+            ZipArchiveEntry entry = archive.CreateEntry(name);
             if (content is not null)
             {
                 using var writer = new StreamWriter(entry.Open());

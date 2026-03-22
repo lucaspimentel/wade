@@ -2,18 +2,22 @@ namespace Wade.UI;
 
 internal sealed class ActionMenuLevel
 {
-    public string Title { get; }
-    public ActionMenuItem[] Items { get; }
-    public TextInput Filter { get; }
-    public int SelectedIndex { get; set; }
-    public int ScrollOffset { get; set; }
-
     public ActionMenuLevel(string title, ActionMenuItem[] items)
     {
         Title = title;
         Items = items;
         Filter = new TextInput();
     }
+
+    public string Title { get; }
+
+    public ActionMenuItem[] Items { get; }
+
+    public TextInput Filter { get; }
+
+    public int SelectedIndex { get; set; }
+
+    public int ScrollOffset { get; set; }
 
     public List<ActionMenuItem> GetFilteredItems()
     {
@@ -26,7 +30,7 @@ internal sealed class ActionMenuLevel
 
         var result = new List<ActionMenuItem>();
 
-        foreach (var item in Items)
+        foreach (ActionMenuItem item in Items)
         {
             if (item.Label.Contains(filter, StringComparison.OrdinalIgnoreCase))
             {

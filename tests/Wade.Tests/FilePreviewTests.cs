@@ -1,3 +1,4 @@
+using System.Text;
 using Wade.FileSystem;
 
 namespace Wade.Tests;
@@ -11,7 +12,7 @@ public class FilePreviewTests
         try
         {
             File.WriteAllText(tempFile, "line1\nline2\nline3\n");
-            var lines = FilePreview.GetPreviewLines(tempFile);
+            string[] lines = FilePreview.GetPreviewLines(tempFile);
 
             Assert.Equal(3, lines.Length);
             Assert.Equal("line1", lines[0]);
@@ -32,7 +33,7 @@ public class FilePreviewTests
         try
         {
             File.WriteAllText(tempFile, "public class Foo { }");
-            var lines = FilePreview.GetPreviewLines(tempFile);
+            string[] lines = FilePreview.GetPreviewLines(tempFile);
 
             Assert.Equal("public class Foo { }", lines[0]);
         }
@@ -48,7 +49,7 @@ public class FilePreviewTests
         string tempFile = Path.GetTempFileName();
         try
         {
-            var lines = FilePreview.GetPreviewLines(tempFile, out var metadata);
+            string[] lines = FilePreview.GetPreviewLines(tempFile, out FileMetadata metadata);
             Assert.Single(lines);
             Assert.Equal("[empty file]", lines[0]);
             Assert.Equal("[empty file]", metadata.PlaceholderMessage);
@@ -96,7 +97,7 @@ public class FilePreviewTests
         try
         {
             File.WriteAllBytes(tempFile, [0x48, 0x65, 0x6C, 0x00, 0x6F]);
-            var lines = FilePreview.GetPreviewLines(tempFile, out var metadata);
+            string[] lines = FilePreview.GetPreviewLines(tempFile, out FileMetadata metadata);
             Assert.Single(lines);
             Assert.Equal("[binary file]", lines[0]);
             Assert.Equal("[binary file]", metadata.PlaceholderMessage);
@@ -115,7 +116,7 @@ public class FilePreviewTests
         try
         {
             File.WriteAllBytes(tempFile, [0x4D, 0x5A, 0x00, 0x00]); // MZ header + null bytes
-            var lines = FilePreview.GetPreviewLines(tempFile, out var metadata);
+            string[] lines = FilePreview.GetPreviewLines(tempFile, out FileMetadata metadata);
             Assert.Single(lines);
             Assert.Equal("[binary file]", lines[0]);
             Assert.Equal("[binary file]", metadata.PlaceholderMessage);
@@ -133,7 +134,7 @@ public class FilePreviewTests
         try
         {
             File.WriteAllText(tempFile, "Hello, world!");
-            FilePreview.GetPreviewLines(tempFile, out var metadata);
+            FilePreview.GetPreviewLines(tempFile, out FileMetadata metadata);
             Assert.Null(metadata.PlaceholderMessage);
         }
         finally
@@ -175,10 +176,8 @@ public class FilePreviewTests
     [InlineData("Dockerfile", "Docker")]
     [InlineData("Makefile", "Makefile")]
     [InlineData("Jenkinsfile", "Jenkinsfile")]
-    public void GetFileTypeLabel_SpecialFilename_ReturnsLabel(string filename, string expectedLabel)
-    {
+    public void GetFileTypeLabel_SpecialFilename_ReturnsLabel(string filename, string expectedLabel) =>
         Assert.Equal(expectedLabel, FilePreview.GetFileTypeLabel(filename));
-    }
 
     [Fact]
     public void DetectFileMetadata_CrlfText_ReturnsCrlfAndUtf8()
@@ -187,12 +186,15 @@ public class FilePreviewTests
         try
         {
             File.WriteAllBytes(tempFile, "line1\r\nline2\r\nline3"u8.ToArray());
-            var metadata = FilePreview.DetectFileMetadata(tempFile);
+            FileMetadata metadata = FilePreview.DetectFileMetadata(tempFile);
             Assert.False(metadata.IsBinary);
             Assert.Equal("UTF-8", metadata.Encoding);
             Assert.Equal("CRLF", metadata.LineEnding);
         }
-        finally { File.Delete(tempFile); }
+        finally
+        {
+            File.Delete(tempFile);
+        }
     }
 
     [Fact]
@@ -202,12 +204,15 @@ public class FilePreviewTests
         try
         {
             File.WriteAllBytes(tempFile, "line1\nline2\nline3"u8.ToArray());
-            var metadata = FilePreview.DetectFileMetadata(tempFile);
+            FileMetadata metadata = FilePreview.DetectFileMetadata(tempFile);
             Assert.False(metadata.IsBinary);
             Assert.Equal("UTF-8", metadata.Encoding);
             Assert.Equal("LF", metadata.LineEnding);
         }
-        finally { File.Delete(tempFile); }
+        finally
+        {
+            File.Delete(tempFile);
+        }
     }
 
     [Fact]
@@ -217,11 +222,14 @@ public class FilePreviewTests
         try
         {
             File.WriteAllBytes(tempFile, "line1\r\nline2\nline3"u8.ToArray());
-            var metadata = FilePreview.DetectFileMetadata(tempFile);
+            FileMetadata metadata = FilePreview.DetectFileMetadata(tempFile);
             Assert.False(metadata.IsBinary);
             Assert.Equal("Mixed", metadata.LineEnding);
         }
-        finally { File.Delete(tempFile); }
+        finally
+        {
+            File.Delete(tempFile);
+        }
     }
 
     [Fact]
@@ -231,11 +239,14 @@ public class FilePreviewTests
         try
         {
             File.WriteAllBytes(tempFile, "line1\rline2\rline3"u8.ToArray());
-            var metadata = FilePreview.DetectFileMetadata(tempFile);
+            FileMetadata metadata = FilePreview.DetectFileMetadata(tempFile);
             Assert.False(metadata.IsBinary);
             Assert.Equal("CR", metadata.LineEnding);
         }
-        finally { File.Delete(tempFile); }
+        finally
+        {
+            File.Delete(tempFile);
+        }
     }
 
     [Fact]
@@ -245,11 +256,14 @@ public class FilePreviewTests
         try
         {
             File.WriteAllBytes(tempFile, "no line endings here"u8.ToArray());
-            var metadata = FilePreview.DetectFileMetadata(tempFile);
+            FileMetadata metadata = FilePreview.DetectFileMetadata(tempFile);
             Assert.False(metadata.IsBinary);
             Assert.Null(metadata.LineEnding);
         }
-        finally { File.Delete(tempFile); }
+        finally
+        {
+            File.Delete(tempFile);
+        }
     }
 
     [Fact]
@@ -261,11 +275,14 @@ public class FilePreviewTests
             byte[] bom = [0xEF, 0xBB, 0xBF];
             byte[] content = "hello world"u8.ToArray();
             File.WriteAllBytes(tempFile, [.. bom, .. content]);
-            var metadata = FilePreview.DetectFileMetadata(tempFile);
+            FileMetadata metadata = FilePreview.DetectFileMetadata(tempFile);
             Assert.False(metadata.IsBinary);
             Assert.Equal("UTF-8 BOM", metadata.Encoding);
         }
-        finally { File.Delete(tempFile); }
+        finally
+        {
+            File.Delete(tempFile);
+        }
     }
 
     [Fact]
@@ -275,11 +292,14 @@ public class FilePreviewTests
         try
         {
             File.WriteAllBytes(tempFile, [0x48, 0x65, 0x6C, 0x00, 0x6F]);
-            var metadata = FilePreview.DetectFileMetadata(tempFile);
+            FileMetadata metadata = FilePreview.DetectFileMetadata(tempFile);
             Assert.True(metadata.IsBinary);
             Assert.Null(metadata.LineEnding);
         }
-        finally { File.Delete(tempFile); }
+        finally
+        {
+            File.Delete(tempFile);
+        }
     }
 
     [Fact]
@@ -288,12 +308,15 @@ public class FilePreviewTests
         string tempFile = Path.GetTempFileName();
         try
         {
-            File.WriteAllText(tempFile, "Hello UTF-16", System.Text.Encoding.Unicode);
-            var metadata = FilePreview.DetectFileMetadata(tempFile);
+            File.WriteAllText(tempFile, "Hello UTF-16", Encoding.Unicode);
+            FileMetadata metadata = FilePreview.DetectFileMetadata(tempFile);
             Assert.False(metadata.IsBinary);
             Assert.Equal("UTF-16 LE", metadata.Encoding);
         }
-        finally { File.Delete(tempFile); }
+        finally
+        {
+            File.Delete(tempFile);
+        }
     }
 
     [Fact]
@@ -302,12 +325,15 @@ public class FilePreviewTests
         string tempFile = Path.GetTempFileName();
         try
         {
-            File.WriteAllText(tempFile, "Hello UTF-16", System.Text.Encoding.BigEndianUnicode);
-            var metadata = FilePreview.DetectFileMetadata(tempFile);
+            File.WriteAllText(tempFile, "Hello UTF-16", Encoding.BigEndianUnicode);
+            FileMetadata metadata = FilePreview.DetectFileMetadata(tempFile);
             Assert.False(metadata.IsBinary);
             Assert.Equal("UTF-16 BE", metadata.Encoding);
         }
-        finally { File.Delete(tempFile); }
+        finally
+        {
+            File.Delete(tempFile);
+        }
     }
 
     [Fact]
@@ -316,10 +342,13 @@ public class FilePreviewTests
         string tempFile = Path.GetTempFileName();
         try
         {
-            File.WriteAllText(tempFile, "Hello UTF-16", System.Text.Encoding.Unicode);
+            File.WriteAllText(tempFile, "Hello UTF-16", Encoding.Unicode);
             Assert.False(FilePreview.IsBinary(tempFile));
         }
-        finally { File.Delete(tempFile); }
+        finally
+        {
+            File.Delete(tempFile);
+        }
     }
 
     [Fact]
@@ -328,14 +357,17 @@ public class FilePreviewTests
         string tempFile = Path.GetTempFileName();
         try
         {
-            File.WriteAllText(tempFile, "line1\nline2\nline3", System.Text.Encoding.Unicode);
-            var lines = FilePreview.GetPreviewLines(tempFile, out var metadata);
+            File.WriteAllText(tempFile, "line1\nline2\nline3", Encoding.Unicode);
+            string[] lines = FilePreview.GetPreviewLines(tempFile, out FileMetadata metadata);
             Assert.Equal(3, lines.Length);
             Assert.Equal("line1", lines[0]);
             Assert.Equal("line2", lines[1]);
             Assert.Equal("line3", lines[2]);
         }
-        finally { File.Delete(tempFile); }
+        finally
+        {
+            File.Delete(tempFile);
+        }
     }
 
     [Fact]
@@ -344,14 +376,16 @@ public class FilePreviewTests
         string tempFile = Path.GetTempFileName();
         try
         {
-            File.WriteAllText(tempFile, "line1\nline2\nline3", System.Text.Encoding.BigEndianUnicode);
-            var lines = FilePreview.GetPreviewLines(tempFile, out var metadata);
+            File.WriteAllText(tempFile, "line1\nline2\nline3", Encoding.BigEndianUnicode);
+            string[] lines = FilePreview.GetPreviewLines(tempFile, out FileMetadata metadata);
             Assert.Equal(3, lines.Length);
             Assert.Equal("line1", lines[0]);
             Assert.Equal("line2", lines[1]);
             Assert.Equal("line3", lines[2]);
         }
-        finally { File.Delete(tempFile); }
+        finally
+        {
+            File.Delete(tempFile);
+        }
     }
-
 }

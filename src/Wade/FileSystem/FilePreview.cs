@@ -220,7 +220,7 @@ internal static class FilePreview
             }
 
             Span<byte> buffer = stackalloc byte[BinaryCheckSize];
-            using var stream = File.OpenRead(filePath);
+            using FileStream stream = File.OpenRead(filePath);
             int bytesRead = stream.Read(buffer);
 
             if (bytesRead == 0)
@@ -286,7 +286,7 @@ internal static class FilePreview
                 (false, true, false) => "LF",
                 (false, false, true) => "CR",
                 (false, false, false) => null,
-                _ => "Mixed"
+                _ => "Mixed",
             };
 
             return new FileMetadata(IsBinary: false, Encoding: encoding, LineEnding: lineEnding);

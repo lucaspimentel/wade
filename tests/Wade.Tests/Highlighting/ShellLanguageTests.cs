@@ -18,21 +18,21 @@ public class ShellLanguageTests
     [InlineData("#!/bin/bash")]
     public void HashComment_Classified(string line)
     {
-        var spans = Tokenize(line);
+        StyledSpan[] spans = Tokenize(line);
         Assert.Contains(spans, s => s.Kind == TokenKind.Comment && s.Start == 0);
     }
 
     [Fact]
     public void SingleQuotedString_Classified()
     {
-        var spans = Tokenize("'no escape here'");
+        StyledSpan[] spans = Tokenize("'no escape here'");
         Assert.Contains(spans, s => s.Kind == TokenKind.String && s.Start == 0);
     }
 
     [Fact]
     public void DoubleQuotedString_Classified()
     {
-        var spans = Tokenize("\"hello world\"");
+        StyledSpan[] spans = Tokenize("\"hello world\"");
         Assert.Contains(spans, s => s.Kind == TokenKind.String);
     }
 
@@ -44,7 +44,7 @@ public class ShellLanguageTests
     [InlineData("export")]
     public void ShellKeywords_Classified(string keyword)
     {
-        var spans = Tokenize(keyword);
+        StyledSpan[] spans = Tokenize(keyword);
         Assert.Contains(spans, s => s.Kind == TokenKind.Keyword);
     }
 }

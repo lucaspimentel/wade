@@ -25,11 +25,11 @@ public class SixelEncoderTests
         // 2x6 image (one sixel row) — all blue pixels
         int width = 2;
         int height = 6;
-        var rgba = new byte[width * height * 4];
+        byte[] rgba = new byte[width * height * 4];
         for (int i = 0; i < width * height; i++)
         {
-            rgba[i * 4 + 0] = 0;   // R
-            rgba[i * 4 + 1] = 0;   // G
+            rgba[i * 4 + 0] = 0; // R
+            rgba[i * 4 + 1] = 0; // G
             rgba[i * 4 + 2] = 255; // B
             rgba[i * 4 + 3] = 255; // A
         }
@@ -50,7 +50,7 @@ public class SixelEncoderTests
         // Wide single-color row — RLE threshold is 4
         int width = 10;
         int height = 1;
-        var rgba = new byte[width * height * 4];
+        byte[] rgba = new byte[width * height * 4];
         for (int i = 0; i < width * height; i++)
         {
             rgba[i * 4 + 0] = 128;

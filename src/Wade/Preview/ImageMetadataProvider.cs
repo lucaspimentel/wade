@@ -20,7 +20,7 @@ internal sealed class ImageMetadataProvider : IMetadataProvider
 
         try
         {
-            using var stream = File.OpenRead(path);
+            using FileStream stream = File.OpenRead(path);
             ImageInfo info = Image.Identify(stream);
 
             ct.ThrowIfCancellationRequested();

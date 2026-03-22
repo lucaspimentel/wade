@@ -47,7 +47,7 @@ internal static class ZipPreview
     {
         try
         {
-            using var archive = ZipFile.OpenRead(path);
+            using ZipArchive archive = ZipFile.OpenRead(path);
 
             if (ct.IsCancellationRequested)
             {
@@ -85,7 +85,7 @@ internal static class ZipPreview
                     return null;
                 }
 
-                var entry = files[i];
+                ZipArchiveEntry entry = files[i];
 
                 int sn = FormatHelpers.FormatSize(sizeBuf, entry.Length);
                 string size = sizeBuf[..sn].ToString();

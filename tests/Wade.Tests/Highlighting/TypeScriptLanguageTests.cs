@@ -23,14 +23,14 @@ public class TypeScriptLanguageTests
     [InlineData("enum")]
     public void TsExtraKeywords_Classified(string keyword)
     {
-        var spans = Tokenize(keyword);
+        StyledSpan[] spans = Tokenize(keyword);
         Assert.Contains(spans, s => s.Kind == TokenKind.Keyword);
     }
 
     [Fact]
     public void TemplateLiteral_Classified()
     {
-        var spans = Tokenize("`typed template`");
+        StyledSpan[] spans = Tokenize("`typed template`");
         Assert.Contains(spans, s => s.Kind == TokenKind.String);
     }
 }

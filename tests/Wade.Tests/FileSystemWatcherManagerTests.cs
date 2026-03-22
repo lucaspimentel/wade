@@ -4,19 +4,6 @@ namespace Wade.Tests;
 
 public class FileSystemWatcherManagerTests
 {
-    private sealed class FakeInputSource : IInputSource
-    {
-        private readonly ManualResetEventSlim _gate = new(false);
-
-        public InputEvent? ReadNext(CancellationToken ct)
-        {
-            _gate.Wait(ct);
-            return null;
-        }
-
-        public void Dispose() => _gate.Set();
-    }
-
     [Fact]
     public void Watch_FileCreated_InjectsEvent()
     {
@@ -34,7 +21,7 @@ public class FileSystemWatcherManagerTests
             File.WriteAllText(Path.Combine(dir, "test.txt"), "hello");
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            var evt = WaitForEvent<FileSystemChangedEvent>(pipeline, cts.Token);
+            FileSystemChangedEvent evt = WaitForEvent<FileSystemChangedEvent>(pipeline, cts.Token);
 
             Assert.Equal(dir, evt.DirectoryPath);
             Assert.False(evt.FullRefresh);
@@ -63,7 +50,7 @@ public class FileSystemWatcherManagerTests
             File.Delete(filePath);
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            var evt = WaitForEvent<FileSystemChangedEvent>(pipeline, cts.Token);
+            FileSystemChangedEvent evt = WaitForEvent<FileSystemChangedEvent>(pipeline, cts.Token);
 
             Assert.Equal(dir, evt.DirectoryPath);
         }
@@ -94,7 +81,7 @@ public class FileSystemWatcherManagerTests
             File.Move(filePath, Path.Combine(dir, "new.txt"));
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            var evt = WaitForEvent<FileSystemChangedEvent>(pipeline, cts.Token);
+            FileSystemChangedEvent evt = WaitForEvent<FileSystemChangedEvent>(pipeline, cts.Token);
 
             Assert.Equal(dir, evt.DirectoryPath);
         }
@@ -124,7 +111,7 @@ public class FileSystemWatcherManagerTests
             File.WriteAllText(Path.Combine(dir2, "test.txt"), "hello");
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            var evt = WaitForEvent<FileSystemChangedEvent>(pipeline, cts.Token);
+            FileSystemChangedEvent evt = WaitForEvent<FileSystemChangedEvent>(pipeline, cts.Token);
 
             Assert.Equal(dir2, evt.DirectoryPath);
         }
@@ -153,7 +140,7 @@ public class FileSystemWatcherManagerTests
             File.WriteAllText(Path.Combine(dir, "test.txt"), "hello");
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            var evt = WaitForEvent<FileSystemChangedEvent>(pipeline, cts.Token);
+            FileSystemChangedEvent evt = WaitForEvent<FileSystemChangedEvent>(pipeline, cts.Token);
 
             Assert.Equal(dir, evt.DirectoryPath);
         }
@@ -182,7 +169,7 @@ public class FileSystemWatcherManagerTests
 
             // Wait briefly to ensure no event arrives
             Thread.Sleep(500);
-            bool hasEvent = pipeline.TryTake(out var evt);
+            bool hasEvent = pipeline.TryTake(out InputEvent? evt);
             Assert.False(hasEvent && evt is FileSystemChangedEvent);
         }
         finally
@@ -212,14 +199,14 @@ public class FileSystemWatcherManagerTests
 
             // Wait for debounce to fire (300ms debounce + margin)
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            var firstEvt = WaitForEvent<FileSystemChangedEvent>(pipeline, cts.Token);
+            FileSystemChangedEvent firstEvt = WaitForEvent<FileSystemChangedEvent>(pipeline, cts.Token);
             Assert.Equal(dir, firstEvt.DirectoryPath);
 
             // Wait briefly and drain — should have at most a small number of coalesced events
             // (not 10+ individual events)
             Thread.Sleep(500);
             int extraEvents = 0;
-            while (pipeline.TryTake(out var extra))
+            while (pipeline.TryTake(out InputEvent? extra))
             {
                 if (extra is FileSystemChangedEvent)
                 {
@@ -242,11 +229,24 @@ public class FileSystemWatcherManagerTests
     {
         while (true)
         {
-            var evt = pipeline.Take(ct);
+            InputEvent evt = pipeline.Take(ct);
             if (evt is T typed)
             {
                 return typed;
             }
         }
+    }
+
+    private sealed class FakeInputSource : IInputSource
+    {
+        private readonly ManualResetEventSlim _gate = new(false);
+
+        public InputEvent? ReadNext(CancellationToken ct)
+        {
+            _gate.Wait(ct);
+            return null;
+        }
+
+        public void Dispose() => _gate.Set();
     }
 }

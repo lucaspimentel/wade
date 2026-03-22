@@ -4,10 +4,10 @@ namespace Wade.Highlighting.Languages;
 
 internal sealed class DiffLanguage : ILanguage
 {
-    private static readonly CellStyle s_addedStyle = new(new Color(80, 200, 80), null);           // green
-    private static readonly CellStyle s_removedStyle = new(new Color(220, 80, 80), null);         // red
+    private static readonly CellStyle s_addedStyle = new(new Color(80, 200, 80), null); // green
+    private static readonly CellStyle s_removedStyle = new(new Color(220, 80, 80), null); // red
     private static readonly CellStyle s_hunkHeaderStyle = new(new Color(80, 180, 220), null, Dim: true); // cyan/dim
-    private static readonly CellStyle s_metadataStyle = new(new Color(140, 140, 140), null, Dim: true);  // dim gray
+    private static readonly CellStyle s_metadataStyle = new(new Color(140, 140, 140), null, Dim: true); // dim gray
 
     public StyledLine TokenizeLine(string line, ref byte state)
     {

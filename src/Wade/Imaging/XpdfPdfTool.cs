@@ -26,12 +26,12 @@ internal sealed class XpdfPdfTool : IPdfTool
                     "-r", "150",
                     "-q",
                     pdfPath,
-                    tempRoot
+                    tempRoot,
                 },
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
             };
 
             using var process = Process.Start(psi);
@@ -40,7 +40,17 @@ internal sealed class XpdfPdfTool : IPdfTool
                 return null;
             }
 
-            using var reg = ct.Register(() => { try { process.Kill(); } catch { /* best effort */ } });
+            using CancellationTokenRegistration reg = ct.Register(() =>
+            {
+                try
+                {
+                    process.Kill();
+                }
+                catch
+                {
+                    /* best effort */
+                }
+            });
 
             process.WaitForExit(TimeSpan.FromSeconds(10));
             ct.ThrowIfCancellationRequested();
@@ -72,7 +82,13 @@ internal sealed class XpdfPdfTool : IPdfTool
         {
             if (!success)
             {
-                try { Directory.Delete(tempDir, recursive: true); } catch { }
+                try
+                {
+                    Directory.Delete(tempDir, recursive: true);
+                }
+                catch
+                {
+                }
             }
         }
     }

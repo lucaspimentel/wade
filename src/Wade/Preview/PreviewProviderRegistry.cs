@@ -26,7 +26,7 @@ internal static class PreviewProviderRegistry
 
         var result = new List<IPreviewProvider>();
 
-        foreach (var provider in s_providers)
+        foreach (IPreviewProvider provider in s_providers)
         {
             if (provider.CanPreview(path, context))
             {
@@ -43,7 +43,7 @@ internal static class PreviewProviderRegistry
 
             if (zipIndex >= 0 && noneIndex >= 0 && zipIndex < noneIndex)
             {
-                var zip = result[zipIndex];
+                IPreviewProvider zip = result[zipIndex];
                 result.RemoveAt(zipIndex);
                 // noneIndex shifted left by 1 after removal
                 int insertAt = noneIndex; // insert after None (which is now at noneIndex - 1)

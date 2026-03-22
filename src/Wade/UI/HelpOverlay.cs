@@ -13,7 +13,7 @@ internal static class HelpOverlay
         const int ContentWidth = 46;
         const int contentHeight = 10;
 
-        var content = DialogBox.Render(
+        Rect content = DialogBox.Render(
             buffer, screenWidth, screenHeight,
             ContentWidth, contentHeight,
             title: "Help",

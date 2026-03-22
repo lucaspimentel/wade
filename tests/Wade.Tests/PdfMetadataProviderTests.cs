@@ -53,17 +53,17 @@ public class PdfMetadataProviderTests
     public void ParsePdfInfoOutput_FullMetadata_ReturnsAllFields()
     {
         const string output = """
-            Title:           Cover Page English
-            Author:          John Doe
-            Creator:         Windows NT 4.0
-            Producer:        Acrobat Distiller 3.01 for Windows
-            CreationDate:    Mon May 24 04:42:21 1999
-            ModDate:         Mon May 24 04:44:24 1999
-            Pages:           57
-            Encrypted:       no
-            Page size:       595 x 842 pts (A4)
-            PDF version:     1.2
-            """;
+                              Title:           Cover Page English
+                              Author:          John Doe
+                              Creator:         Windows NT 4.0
+                              Producer:        Acrobat Distiller 3.01 for Windows
+                              CreationDate:    Mon May 24 04:42:21 1999
+                              ModDate:         Mon May 24 04:44:24 1999
+                              Pages:           57
+                              Encrypted:       no
+                              Page size:       595 x 842 pts (A4)
+                              PDF version:     1.2
+                              """;
 
         MetadataSection[]? sections = PdfMetadataProvider.ParsePdfInfoOutput(output);
 
@@ -83,9 +83,9 @@ public class PdfMetadataProviderTests
     public void ParsePdfInfoOutput_MinimalMetadata_ReturnsAvailableFields()
     {
         const string output = """
-            Pages:           3
-            PDF version:     1.7
-            """;
+                              Pages:           3
+                              PDF version:     1.7
+                              """;
 
         MetadataSection[]? sections = PdfMetadataProvider.ParsePdfInfoOutput(output);
 
@@ -108,10 +108,10 @@ public class PdfMetadataProviderTests
     public void ParsePdfInfoOutput_EncryptedPdf_ShowsEncryptedField()
     {
         const string output = """
-            Pages:           10
-            Encrypted:       yes (print:yes copy:no change:no addNotes:no algorithm:RC4)
-            PDF version:     1.6
-            """;
+                              Pages:           10
+                              Encrypted:       yes (print:yes copy:no change:no addNotes:no algorithm:RC4)
+                              PDF version:     1.6
+                              """;
 
         MetadataSection[]? sections = PdfMetadataProvider.ParsePdfInfoOutput(output);
 
@@ -132,7 +132,7 @@ public class PdfMetadataProviderTests
             return; // Skip if pdfinfo not installed
         }
 
-        var providers = MetadataProviderRegistry.GetApplicableProviders("doc.pdf", MakeContext());
+        List<IMetadataProvider> providers = MetadataProviderRegistry.GetApplicableProviders("doc.pdf", MakeContext());
 
         Assert.Contains(providers, p => p is PdfMetadataProvider);
     }

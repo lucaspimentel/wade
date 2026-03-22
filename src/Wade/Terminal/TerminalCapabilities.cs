@@ -45,7 +45,7 @@ internal sealed record TerminalCapabilities(
                 if (i < data.Length)
                 {
                     // Parse semicolon-separated params between paramStart and i
-                    var paramSpan = data[paramStart..i];
+                    ReadOnlySpan<byte> paramSpan = data[paramStart..i];
                     sixelSupported = ContainsParam(paramSpan, 4);
                     i++; // skip 'c'
                 }
@@ -63,7 +63,7 @@ internal sealed record TerminalCapabilities(
 
                 if (i < data.Length && data[i] == 't')
                 {
-                    var paramSpan = data[paramStart..i];
+                    ReadOnlySpan<byte> paramSpan = data[paramStart..i];
                     ParseCellSizeParams(paramSpan, ref cellPixelHeight, ref cellPixelWidth);
                     i++; // skip 't'
                 }

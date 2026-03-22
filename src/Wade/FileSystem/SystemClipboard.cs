@@ -6,6 +6,14 @@ namespace Wade.FileSystem;
 
 internal static class SystemClipboard
 {
+    // ── Windows P/Invoke ──────────────────────────────────────────────────
+
+    private const uint CF_UNICODETEXT = 13;
+    private const uint CF_HDROP = 15;
+    private const uint GMEM_MOVEABLE = 0x0002;
+    private const int DROPEFFECT_COPY = 1;
+    private const int DROPEFFECT_MOVE = 2;
+
     /// <summary>
     /// Copies the specified text to the OS clipboard.
     /// Returns true on success, false if no clipboard mechanism is available.
@@ -79,10 +87,10 @@ internal static class SystemClipboard
         // Try clipboard tools in order of preference
         string[][] tools =
         [
-            ["pbcopy"],                                  // macOS
-            ["wl-copy"],                                 // Wayland
-            ["xclip", "-selection", "clipboard"],        // X11
-            ["xsel", "--clipboard", "--input"],          // X11 fallback
+            ["pbcopy"], // macOS
+            ["wl-copy"], // Wayland
+            ["xclip", "-selection", "clipboard"], // X11
+            ["xsel", "--clipboard", "--input"], // X11 fallback
         ];
 
         foreach (string[] tool in tools)
@@ -206,10 +214,10 @@ internal static class SystemClipboard
             {
                 // Write DROPFILES header
                 Marshal.WriteInt32(locked, 0, headerSize); // pFiles offset
-                Marshal.WriteInt32(locked, 4, 0);          // pt.x
-                Marshal.WriteInt32(locked, 8, 0);          // pt.y
-                Marshal.WriteInt32(locked, 12, 0);         // fNC
-                Marshal.WriteInt32(locked, 16, 1);         // fWide (Unicode)
+                Marshal.WriteInt32(locked, 4, 0); // pt.x
+                Marshal.WriteInt32(locked, 8, 0); // pt.y
+                Marshal.WriteInt32(locked, 12, 0); // fNC
+                Marshal.WriteInt32(locked, 16, 1); // fWide (Unicode)
 
                 // Write paths
                 int offset = headerSize;
@@ -337,14 +345,6 @@ internal static class SystemClipboard
             CloseClipboard();
         }
     }
-
-    // ── Windows P/Invoke ──────────────────────────────────────────────────
-
-    private const uint CF_UNICODETEXT = 13;
-    private const uint CF_HDROP = 15;
-    private const uint GMEM_MOVEABLE = 0x0002;
-    private const int DROPEFFECT_COPY = 1;
-    private const int DROPEFFECT_MOVE = 2;
 
     [SupportedOSPlatform("windows")]
     [DllImport("user32.dll", SetLastError = true)]

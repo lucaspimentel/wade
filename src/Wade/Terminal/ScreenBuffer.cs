@@ -6,24 +6,19 @@ namespace Wade.Terminal;
 internal sealed class ScreenBuffer
 {
     private static readonly Stream StdOut = Console.OpenStandardOutput();
-
-    private Cell[] _front;
     private Cell[] _back;
-    private int _width;
-    private int _height;
 
     // Dirty-row bitfield: 1 bit per row, packed into ulong[]
     private ulong[] _dirtyRows;
 
-    private char[] _writeBuffer = new char[4096];
+    private Cell[] _front;
 
-    public int Width => _width;
-    public int Height => _height;
+    private char[] _writeBuffer = new char[4096];
 
     public ScreenBuffer(int width, int height)
     {
-        _width = width;
-        _height = height;
+        Width = width;
+        Height = height;
         _front = new Cell[width * height];
         _back = new Cell[width * height];
         _dirtyRows = new ulong[(height + 63) / 64];
@@ -31,10 +26,14 @@ internal sealed class ScreenBuffer
         Array.Fill(_back, Cell.Empty);
     }
 
+    public int Width { get; private set; }
+
+    public int Height { get; private set; }
+
     public void Resize(int width, int height)
     {
-        _width = width;
-        _height = height;
+        Width = width;
+        Height = height;
         _front = new Cell[width * height];
         _back = new Cell[width * height];
         _dirtyRows = new ulong[(height + 63) / 64];
@@ -53,16 +52,16 @@ internal sealed class ScreenBuffer
 
     public void Put(int row, int col, Rune rune, CellStyle style)
     {
-        if (row < 0 || row >= _height || col < 0 || col >= _width)
+        if (row < 0 || row >= Height || col < 0 || col >= Width)
         {
             return;
         }
 
-        int idx = row * _width + col;
+        int idx = row * Width + col;
         _back[idx] = new Cell(rune, style);
 
         // Wide characters occupy 2 terminal columns; store a continuation marker in the next cell
-        if (RuneWidth.GetWidth(rune) == 2 && col + 1 < _width)
+        if (RuneWidth.GetWidth(rune) == 2 && col + 1 < Width)
         {
             _back[idx + 1] = Cell.WideContinuation;
         }
@@ -75,40 +74,40 @@ internal sealed class ScreenBuffer
 
     public void FillRow(int row, int startCol, int count, char ch, CellStyle style)
     {
-        if (row < 0 || row >= _height)
+        if (row < 0 || row >= Height)
         {
             return;
         }
 
         int clampedStart = Math.Max(startCol, 0);
-        int clampedEnd = Math.Min(startCol + count, _width);
+        int clampedEnd = Math.Min(startCol + count, Width);
         if (clampedStart >= clampedEnd)
         {
             return;
         }
 
         var cell = new Cell(new Rune(ch), style);
-        _back.AsSpan(row * _width + clampedStart, clampedEnd - clampedStart).Fill(cell);
+        _back.AsSpan(row * Width + clampedStart, clampedEnd - clampedStart).Fill(cell);
         _dirtyRows[row >> 6] |= 1UL << (row & 63);
     }
 
     public void WriteString(int row, int col, string text, CellStyle style, int maxWidth = int.MaxValue)
     {
-        if (row < 0 || row >= _height)
+        if (row < 0 || row >= Height)
         {
             return;
         }
 
         int clampedStart = Math.Max(col, 0);
-        int clampedEnd = (int)Math.Min((long)col + maxWidth, _width);
+        int clampedEnd = (int)Math.Min((long)col + maxWidth, Width);
         if (clampedStart >= clampedEnd)
         {
             return;
         }
 
-        int rowOffset = row * _width;
+        int rowOffset = row * Width;
         int c = col;
-        foreach (var rune in text.EnumerateRunes())
+        foreach (Rune rune in text.EnumerateRunes())
         {
             int w = RuneWidth.GetWidth(rune);
             if (c + w > clampedEnd)
@@ -119,7 +118,7 @@ internal sealed class ScreenBuffer
             if (c >= 0)
             {
                 _back[rowOffset + c] = new Cell(rune, style);
-                if (w == 2 && c + 1 < _width)
+                if (w == 2 && c + 1 < Width)
                 {
                     _back[rowOffset + c + 1] = Cell.WideContinuation;
                 }
@@ -133,21 +132,21 @@ internal sealed class ScreenBuffer
 
     public void WriteString(int row, int col, ReadOnlySpan<char> text, CellStyle style, int maxWidth = int.MaxValue)
     {
-        if (row < 0 || row >= _height)
+        if (row < 0 || row >= Height)
         {
             return;
         }
 
         int clampedStart = Math.Max(col, 0);
-        int clampedEnd = (int)Math.Min((long)col + maxWidth, _width);
+        int clampedEnd = (int)Math.Min((long)col + maxWidth, Width);
         if (clampedStart >= clampedEnd)
         {
             return;
         }
 
-        int rowOffset = row * _width;
+        int rowOffset = row * Width;
         int c = col;
-        foreach (var rune in text.EnumerateRunes())
+        foreach (Rune rune in text.EnumerateRunes())
         {
             int w = RuneWidth.GetWidth(rune);
             if (c + w > clampedEnd)
@@ -158,7 +157,7 @@ internal sealed class ScreenBuffer
             if (c >= 0)
             {
                 _back[rowOffset + c] = new Cell(rune, style);
-                if (w == 2 && c + 1 < _width)
+                if (w == 2 && c + 1 < Width)
                 {
                     _back[rowOffset + c + 1] = Cell.WideContinuation;
                 }
@@ -178,7 +177,7 @@ internal sealed class ScreenBuffer
         int lastRow = -1, lastCol = -1;
         Span<char> charBuf = stackalloc char[2];
 
-        for (int row = 0; row < _height; row++)
+        for (int row = 0; row < Height; row++)
         {
             // Skip clean rows
             if ((_dirtyRows[row >> 6] & (1UL << (row & 63))) == 0)
@@ -186,11 +185,11 @@ internal sealed class ScreenBuffer
                 continue;
             }
 
-            for (int col = 0; col < _width; col++)
+            for (int col = 0; col < Width; col++)
             {
-                int idx = row * _width + col;
-                ref var front = ref _front[idx];
-                ref var back = ref _back[idx];
+                int idx = row * Width + col;
+                ref Cell front = ref _front[idx];
+                ref Cell back = ref _back[idx];
 
                 if (front == back)
                 {
@@ -284,12 +283,12 @@ internal sealed class ScreenBuffer
     {
         // If Bold, Dim, or Inverse was on and is now off, we must reset then reapply
         bool needsReset = !hadStyle
-            || (oldStyle.Bold && !newStyle.Bold)
-            || (oldStyle.Dim && !newStyle.Dim)
-            || (oldStyle.Inverse && !newStyle.Inverse)
-            || (oldStyle.Underline && !newStyle.Underline)
-            || (oldStyle.Strikethrough && !newStyle.Strikethrough)
-            || oldStyle.Bg != newStyle.Bg;
+                          || (oldStyle.Bold && !newStyle.Bold)
+                          || (oldStyle.Dim && !newStyle.Dim)
+                          || (oldStyle.Inverse && !newStyle.Inverse)
+                          || (oldStyle.Underline && !newStyle.Underline)
+                          || (oldStyle.Strikethrough && !newStyle.Strikethrough)
+                          || oldStyle.Bg != newStyle.Bg;
 
         if (needsReset)
         {
@@ -374,7 +373,14 @@ internal sealed class ScreenBuffer
 
 internal readonly record struct Color(byte R, byte G, byte B);
 
-internal readonly record struct CellStyle(Color? Fg, Color? Bg, bool Bold = false, bool Dim = false, bool Inverse = false, bool Underline = false, bool Strikethrough = false)
+internal readonly record struct CellStyle(
+    Color? Fg,
+    Color? Bg,
+    bool Bold = false,
+    bool Dim = false,
+    bool Inverse = false,
+    bool Underline = false,
+    bool Strikethrough = false)
 {
     public static readonly CellStyle Default = new(null, null);
 }
@@ -382,8 +388,10 @@ internal readonly record struct CellStyle(Color? Fg, Color? Bg, bool Bold = fals
 internal readonly record struct Cell(Rune Char, CellStyle Style)
 {
     public static readonly Cell Empty = new(new Rune(' '), CellStyle.Default);
+
     // Sentinel value that never matches any real cell, used to force a full redraw
     public static readonly Cell Dirty = new(new Rune('\0'), new CellStyle(new Color(255, 255, 255), new Color(255, 255, 255)));
+
     // Placeholder for the second column of a wide character
     public static readonly Cell WideContinuation = new(new Rune('\0'), CellStyle.Default);
 

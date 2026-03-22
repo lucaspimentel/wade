@@ -78,7 +78,9 @@ internal static class FileOperations
                         File.CreateSymbolicLink(destFile, info.LinkTarget);
                         continue;
                     }
-                    catch (UnauthorizedAccessException) { }
+                    catch (UnauthorizedAccessException)
+                    {
+                    }
                 }
             }
 
@@ -98,7 +100,9 @@ internal static class FileOperations
                         Directory.CreateSymbolicLink(destDir, info.LinkTarget);
                         continue;
                     }
-                    catch (UnauthorizedAccessException) { }
+                    catch (UnauthorizedAccessException)
+                    {
+                    }
                 }
             }
 

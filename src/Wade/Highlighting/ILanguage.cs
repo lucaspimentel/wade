@@ -7,5 +7,5 @@ internal interface ILanguage
     /// (e.g. inside block comment or multi-line string) across calls.
     /// State values: 0 = normal, 1 = block comment, 2 = multi-line string.
     /// </summary>
-    StyledLine TokenizeLine(string line, ref byte state);
+    public StyledLine TokenizeLine(string line, ref byte state);
 }

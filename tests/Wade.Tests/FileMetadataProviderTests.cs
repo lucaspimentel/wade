@@ -42,7 +42,7 @@ public class FileMetadataProviderTests
             MetadataResult? result = provider.GetMetadata(tempDir, MakeContext(), CancellationToken.None);
 
             Assert.NotNull(result);
-            var section = Assert.Single(result.Sections);
+            MetadataSection section = Assert.Single(result.Sections);
             Assert.Equal(Path.GetFileName(tempDir), section.Header);
             Assert.DoesNotContain(section.Entries, e => e.Label == "Size");
             Assert.DoesNotContain(section.Entries, e => e.Label == "Modified");
@@ -65,7 +65,7 @@ public class FileMetadataProviderTests
             MetadataResult? result = provider.GetMetadata(tempPath, MakeContext(), CancellationToken.None);
 
             Assert.NotNull(result);
-            var section = Assert.Single(result.Sections);
+            MetadataSection section = Assert.Single(result.Sections);
             Assert.Equal(Path.GetFileName(tempPath), section.Header);
         }
         finally
@@ -138,7 +138,7 @@ public class FileMetadataProviderTests
                 ZipPreviewEnabled: true,
                 ImagePreviewsEnabled: true,
                 SixelSupported: true,
-            ArchiveMetadataEnabled: true);
+                ArchiveMetadataEnabled: true);
 
             var provider = new FileMetadataProvider();
             MetadataResult? result = provider.GetMetadata(tempPath, context, CancellationToken.None);
@@ -223,7 +223,7 @@ public class FileMetadataProviderTests
         try
         {
             File.WriteAllText(tempPath, "hello");
-            var providers = MetadataProviderRegistry.GetApplicableProviders(tempPath, MakeContext());
+            List<IMetadataProvider> providers = MetadataProviderRegistry.GetApplicableProviders(tempPath, MakeContext());
 
             Assert.NotEmpty(providers);
             Assert.IsType<FileMetadataProvider>(providers[0]);

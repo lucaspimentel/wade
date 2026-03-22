@@ -6,127 +6,132 @@ namespace Wade.UI;
 
 internal static class FileIcons
 {
-    private static readonly Rune FolderIcon      = new(0xF114);  // nf-fa-folder
-    private static readonly Rune DriveIcon       = new(0xF0A0);  // nf-fa-hdd_o
-    private static readonly Rune FileIcon        = new(0xF15B);  // nf-fa-file
-    private static readonly Rune SymlinkDirIcon  = new(0xF482);  // nf-oct-file_symlink_directory
-    private static readonly Rune SymlinkFileIcon = new(0xF481);  // nf-oct-file_symlink_file
-    private static readonly Rune CloudIcon       = new(0xF0163); // nf-md-cloud_outline
+    private static readonly Rune FolderIcon = new(0xF114); // nf-fa-folder
+    private static readonly Rune DriveIcon = new(0xF0A0); // nf-fa-hdd_o
+    private static readonly Rune FileIcon = new(0xF15B); // nf-fa-file
+    private static readonly Rune SymlinkDirIcon = new(0xF482); // nf-oct-file_symlink_directory
+    private static readonly Rune SymlinkFileIcon = new(0xF481); // nf-oct-file_symlink_file
+    private static readonly Rune CloudIcon = new(0xF0163); // nf-md-cloud_outline
 
     private static readonly FrozenDictionary<string, Rune> ExtensionIcons =
         new Dictionary<string, Rune>(StringComparer.OrdinalIgnoreCase)
         {
             // .NET / C#
-            [".cs"]          = new(0xF031B), // nf-md-language_csharp
-            [".csx"]         = new(0xF031B),
-            [".sln"]         = new(0xF0610), // nf-md-microsoft_visual_studio
-            [".slnx"]        = new(0xF0610),
-            [".csproj"]      = new(0xF0610),
-            [".fsproj"]      = new(0xF0610),
-            [".vbproj"]      = new(0xF0610),
+            [".cs"] = new(0xF031B), // nf-md-language_csharp
+            [".csx"] = new(0xF031B),
+            [".sln"] = new(0xF0610), // nf-md-microsoft_visual_studio
+            [".slnx"] = new(0xF0610),
+            [".csproj"] = new(0xF0610),
+            [".fsproj"] = new(0xF0610),
+            [".vbproj"] = new(0xF0610),
 
             // Web
-            [".html"]        = new(0xF13B),  // nf-fa-html5
-            [".htm"]         = new(0xF13B),
-            [".css"]         = new(0xF031C), // nf-md-language_css3
-            [".scss"]        = new(0xF031C),
-            [".sass"]        = new(0xF031C),
+            [".html"] = new(0xF13B), // nf-fa-html5
+            [".htm"] = new(0xF13B),
+            [".css"] = new(0xF031C), // nf-md-language_css3
+            [".scss"] = new(0xF031C),
+            [".sass"] = new(0xF031C),
 
             // JavaScript / TypeScript
-            [".js"]          = new(0xF031E), // nf-md-language_javascript
-            [".mjs"]         = new(0xF031E),
-            [".cjs"]         = new(0xF031E),
-            [".ts"]          = new(0xF06E6), // nf-md-language_typescript
-            [".tsx"]         = new(0xF06E6),
-            [".jsx"]         = new(0xF031E),
+            [".js"] = new(0xF031E), // nf-md-language_javascript
+            [".mjs"] = new(0xF031E),
+            [".cjs"] = new(0xF031E),
+            [".ts"] = new(0xF06E6), // nf-md-language_typescript
+            [".tsx"] = new(0xF06E6),
+            [".jsx"] = new(0xF031E),
 
             // Python
-            [".py"]          = new(0xF0320), // nf-md-language_python
+            [".py"] = new(0xF0320), // nf-md-language_python
 
             // Go
-            [".go"]          = new(0xF07D3), // nf-md-language_go
+            [".go"] = new(0xF07D3), // nf-md-language_go
 
             // Rust
-            [".rs"]          = new(0xF1617), // nf-md-language_rust
+            [".rs"] = new(0xF1617), // nf-md-language_rust
 
             // Java / JVM
-            [".java"]        = new(0xF0B37), // nf-md-language_java
-            [".kt"]          = new(0xF1219), // nf-md-language_kotlin
-            [".gradle"]      = new(0xF0AD),  // nf-fa-wrench
+            [".java"] = new(0xF0B37), // nf-md-language_java
+            [".kt"] = new(0xF1219), // nf-md-language_kotlin
+            [".gradle"] = new(0xF0AD), // nf-fa-wrench
 
             // Data / Config
-            [".json"]        = new(0xF1C9),  // nf-fa-file_code_o (close enough)
-            [".toml"]        = new(0xF1C9),
-            [".yaml"]        = new(0xF1C9),
-            [".yml"]         = new(0xF1C9),
-            [".xml"]         = new(0xF1C9),
-            [".ini"]         = new(0xF1C9),
-            [".env"]         = new(0xF462),  // nf-oct-key
+            [".json"] = new(0xF1C9), // nf-fa-file_code_o (close enough)
+            [".toml"] = new(0xF1C9),
+            [".yaml"] = new(0xF1C9),
+            [".yml"] = new(0xF1C9),
+            [".xml"] = new(0xF1C9),
+            [".ini"] = new(0xF1C9),
+            [".env"] = new(0xF462), // nf-oct-key
 
             // Docs
-            [".md"]          = new(0xF48A),  // nf-oct-markdown
-            [".markdown"]    = new(0xF48A),
-            [".txt"]         = new(0xF15C),  // nf-fa-file_text_o
-            [".rst"]         = new(0xF15C),
-            [".pdf"]         = new(0xF1C1),  // nf-fa-file_pdf_o
+            [".md"] = new(0xF48A), // nf-oct-markdown
+            [".markdown"] = new(0xF48A),
+            [".txt"] = new(0xF15C), // nf-fa-file_text_o
+            [".rst"] = new(0xF15C),
+            [".pdf"] = new(0xF1C1), // nf-fa-file_pdf_o
 
             // Shell / Scripts
-            [".sh"]          = new(0xF489),  // nf-oct-terminal
-            [".bash"]        = new(0xF489),
-            [".zsh"]         = new(0xF489),
-            [".fish"]        = new(0xF489),
-            [".ps1"]         = new(0xF489),
-            [".psm1"]        = new(0xF489),
-            [".psd1"]        = new(0xF489),
-            [".bat"]         = new(0xF17A),  // nf-fa-windows
-            [".cmd"]         = new(0xF17A),
+            [".sh"] = new(0xF489), // nf-oct-terminal
+            [".bash"] = new(0xF489),
+            [".zsh"] = new(0xF489),
+            [".fish"] = new(0xF489),
+            [".ps1"] = new(0xF489),
+            [".psm1"] = new(0xF489),
+            [".psd1"] = new(0xF489),
+            [".bat"] = new(0xF17A), // nf-fa-windows
+            [".cmd"] = new(0xF17A),
 
             // Docker / CI
-            [".dockerfile"]  = new(0xF308),  // nf-linux-docker
+            [".dockerfile"] = new(0xF308), // nf-linux-docker
             [".dockerignore"] = new(0xF308),
-            [".gitignore"]   = new(0xF1D3),  // nf-fa-git
+            [".gitignore"] = new(0xF1D3), // nf-fa-git
             [".gitattributes"] = new(0xF1D3),
 
             // Images
-            [".png"]         = new(0xF1C5),  // nf-fa-file_image_o
-            [".jpg"]         = new(0xF1C5),
-            [".jpeg"]        = new(0xF1C5),
-            [".gif"]         = new(0xF1C5),
-            [".svg"]         = new(0xF1C5),
-            [".webp"]        = new(0xF1C5),
-            [".ico"]         = new(0xF1C5),
+            [".png"] = new(0xF1C5), // nf-fa-file_image_o
+            [".jpg"] = new(0xF1C5),
+            [".jpeg"] = new(0xF1C5),
+            [".gif"] = new(0xF1C5),
+            [".svg"] = new(0xF1C5),
+            [".webp"] = new(0xF1C5),
+            [".ico"] = new(0xF1C5),
 
             // Archives
-            [".zip"]         = new(0xF1C6),  // nf-fa-file_archive_o
-            [".tar"]         = new(0xF1C6),
-            [".gz"]          = new(0xF1C6),
-            [".bz2"]         = new(0xF1C6),
-            [".xz"]          = new(0xF1C6),
-            [".7z"]          = new(0xF1C6),
-            [".rar"]         = new(0xF1C6),
-            [".nupkg"]       = new(0xF1C6),
-            [".snupkg"]      = new(0xF1C6),
-            [".jar"]         = new(0xF1C6),
-            [".war"]         = new(0xF1C6),
-            [".ear"]         = new(0xF1C6),
-            [".docx"]        = new(0xF1C2),  // nf-fa-file_text_o
-            [".xlsx"]        = new(0xF1C3),  // nf-fa-file_excel_o
-            [".pptx"]        = new(0xF1C4),  // nf-fa-file_powerpoint_o
-            [".odt"]         = new(0xF1C2),
-            [".ods"]         = new(0xF1C3),
-            [".odp"]         = new(0xF1C4),
-            [".apk"]         = new(0xF1C6),
-            [".vsix"]        = new(0xF1C6),
-            [".whl"]         = new(0xF1C6),
-            [".epub"]        = new(0xF02D),  // nf-fa-book
+            [".zip"] = new(0xF1C6), // nf-fa-file_archive_o
+            [".tar"] = new(0xF1C6),
+            [".gz"] = new(0xF1C6),
+            [".bz2"] = new(0xF1C6),
+            [".xz"] = new(0xF1C6),
+            [".7z"] = new(0xF1C6),
+            [".rar"] = new(0xF1C6),
+            [".nupkg"] = new(0xF1C6),
+            [".snupkg"] = new(0xF1C6),
+            [".jar"] = new(0xF1C6),
+            [".war"] = new(0xF1C6),
+            [".ear"] = new(0xF1C6),
+            [".docx"] = new(0xF1C2), // nf-fa-file_text_o
+            [".xlsx"] = new(0xF1C3), // nf-fa-file_excel_o
+            [".pptx"] = new(0xF1C4), // nf-fa-file_powerpoint_o
+            [".odt"] = new(0xF1C2),
+            [".ods"] = new(0xF1C3),
+            [".odp"] = new(0xF1C4),
+            [".apk"] = new(0xF1C6),
+            [".vsix"] = new(0xF1C6),
+            [".whl"] = new(0xF1C6),
+            [".epub"] = new(0xF02D), // nf-fa-book
 
             // Binaries
-            [".exe"]         = new(0xF17A),  // nf-fa-windows
-            [".dll"]         = new(0xF17A),
-            [".so"]          = new(0xF17A),
-            [".dylib"]       = new(0xF17A),
-            [".pdb"]         = new(0xF188),  // nf-fa-bug
+            [".exe"] = new(0xF17A), // nf-fa-windows
+            [".dll"] = new(0xF17A),
+            [".so"] = new(0xF17A),
+            [".dylib"] = new(0xF17A),
+            [".pdb"] = new(0xF188), // nf-fa-bug
         }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
+
+    private static readonly Rune GitModifiedIcon = new(0xF06D7); // nf-oct-diff_modified
+    private static readonly Rune GitStagedIcon = new(0xF06D3); // nf-oct-diff_added
+    private static readonly Rune GitUntrackedIcon = new(0xEB90); // nf-cod-question
+    private static readonly Rune GitConflictIcon = new(0xF0026); // nf-md-alert
 
     public static Rune GetIcon(FileSystemEntry entry)
     {
@@ -145,14 +150,14 @@ internal static class FileIcons
             return FolderIcon;
         }
 
-        var ext = Path.GetExtension(entry.Name);
-        if (ext.Length > 0 && ExtensionIcons.TryGetValue(ext, out var icon))
+        string ext = Path.GetExtension(entry.Name);
+        if (ext.Length > 0 && ExtensionIcons.TryGetValue(ext, out Rune icon))
         {
             return icon;
         }
 
         // Special filenames without extension
-        var name = entry.Name;
+        string name = entry.Name;
         if (name.Equals("Dockerfile", StringComparison.OrdinalIgnoreCase))
         {
             return new Rune(0xF308);
@@ -168,11 +173,6 @@ internal static class FileIcons
     }
 
     public static Rune GetCloudIcon() => CloudIcon;
-
-    private static readonly Rune GitModifiedIcon  = new(0xF06D7);  // nf-oct-diff_modified
-    private static readonly Rune GitStagedIcon    = new(0xF06D3);  // nf-oct-diff_added
-    private static readonly Rune GitUntrackedIcon = new(0xEB90);   // nf-cod-question
-    private static readonly Rune GitConflictIcon  = new(0xF0026);  // nf-md-alert
 
     public static Rune GetGitStatusIcon(GitFileStatus status)
     {

@@ -12,7 +12,7 @@ internal sealed class ExecutableMetadataProvider : IMetadataProvider
     {
         string ext = Path.GetExtension(path);
         return ext.Equals(".exe", StringComparison.OrdinalIgnoreCase)
-            || ext.Equals(".dll", StringComparison.OrdinalIgnoreCase);
+               || ext.Equals(".dll", StringComparison.OrdinalIgnoreCase);
     }
 
     public MetadataResult? GetMetadata(string path, PreviewContext context, CancellationToken ct)
@@ -24,7 +24,7 @@ internal sealed class ExecutableMetadataProvider : IMetadataProvider
 
         try
         {
-            using var stream = File.OpenRead(path);
+            using FileStream stream = File.OpenRead(path);
             using var peReader = new PEReader(stream);
             PEHeaders headers = peReader.PEHeaders;
 
@@ -53,7 +53,7 @@ internal sealed class ExecutableMetadataProvider : IMetadataProvider
             }
             else
             {
-                DateTimeOffset timestamp = DateTimeOffset.FromUnixTimeSeconds(rawTimestamp);
+                var timestamp = DateTimeOffset.FromUnixTimeSeconds(rawTimestamp);
                 if (timestamp.Year is >= 2000 and <= 2100)
                 {
                     peEntries.Add(new MetadataEntry("Timestamp", $"{timestamp:yyyy-MM-dd HH:mm:ss} UTC"));
@@ -117,9 +117,9 @@ internal sealed class ExecutableMetadataProvider : IMetadataProvider
         }
 
         bool hasData = !string.IsNullOrWhiteSpace(fvi.ProductName)
-            || !string.IsNullOrWhiteSpace(fvi.FileDescription)
-            || !string.IsNullOrWhiteSpace(fvi.CompanyName)
-            || !string.IsNullOrWhiteSpace(fvi.FileVersion);
+                       || !string.IsNullOrWhiteSpace(fvi.FileDescription)
+                       || !string.IsNullOrWhiteSpace(fvi.CompanyName)
+                       || !string.IsNullOrWhiteSpace(fvi.FileVersion);
 
         if (!hasData)
         {

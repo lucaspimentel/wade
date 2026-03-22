@@ -1,35 +1,35 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
-    <AssemblyName>wade</AssemblyName>
-    <PublishAot>true</PublishAot>
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <AssemblyName>wade</AssemblyName>
+        <PublishAot>true</PublishAot>
 
-    <!-- AOT optimization -->
-    <!-- https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/optimizing -->
-    <!-- https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/trimming-options#trim-framework-library-features -->
-    <OptimizationPreference>Speed</OptimizationPreference>
-    <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
-    <IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>
-    <IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>
-    <DebuggerSupport>false</DebuggerSupport>
-    <EventSourceSupport>false</EventSourceSupport>
-    <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>
-    <InvariantGlobalization>true</InvariantGlobalization>
-    <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
-    <MetricsSupport>false</MetricsSupport>
-    <StackTraceSupport>false</StackTraceSupport>
-    <UseSystemResourceKeys>true</UseSystemResourceKeys>
-  </PropertyGroup>
+        <!-- AOT optimization -->
+        <!-- https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/optimizing -->
+        <!-- https://learn.microsoft.com/en-us/dotnet/core/deploying/trimming/trimming-options#trim-framework-library-features -->
+        <OptimizationPreference>Speed</OptimizationPreference>
+        <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
+        <IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>
+        <IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>
+        <DebuggerSupport>false</DebuggerSupport>
+        <EventSourceSupport>false</EventSourceSupport>
+        <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>
+        <InvariantGlobalization>true</InvariantGlobalization>
+        <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
+        <MetricsSupport>false</MetricsSupport>
+        <StackTraceSupport>false</StackTraceSupport>
+        <UseSystemResourceKeys>true</UseSystemResourceKeys>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.*" />
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="SixLabors.ImageSharp" Version="3.*"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <InternalsVisibleTo Include="Wade.Tests" />
-    <InternalsVisibleTo Include="Wade.Benchmarks" />
-  </ItemGroup>
+    <ItemGroup>
+        <InternalsVisibleTo Include="Wade.Tests"/>
+        <InternalsVisibleTo Include="Wade.Benchmarks"/>
+    </ItemGroup>
 
 </Project>

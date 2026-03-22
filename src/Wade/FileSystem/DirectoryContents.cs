@@ -1,6 +1,12 @@
 namespace Wade.FileSystem;
 
-internal enum SortMode { Name, Modified, Size, Extension }
+internal enum SortMode
+{
+    Name,
+    Modified,
+    Size,
+    Extension,
+}
 
 internal sealed class DirectoryContents
 {
@@ -12,9 +18,13 @@ internal sealed class DirectoryContents
     private readonly Dictionary<string, List<FileSystemEntry>> _cache = new(StringComparer.OrdinalIgnoreCase);
 
     public bool ShowHiddenFiles { get; set; }
+
     public bool ShowSystemFiles { get; set; }
+
     public SortMode SortMode { get; set; } = SortMode.Name;
+
     public bool SortAscending { get; set; } = true;
+
     public Dictionary<string, long>? DirSizes { get; set; }
 
     public List<FileSystemEntry> GetEntries(string path)
@@ -24,12 +34,12 @@ internal sealed class DirectoryContents
             return GetDriveEntries();
         }
 
-        if (_cache.TryGetValue(path, out var cached))
+        if (_cache.TryGetValue(path, out List<FileSystemEntry>? cached))
         {
             return cached;
         }
 
-        var entries = LoadEntries(path);
+        List<FileSystemEntry> entries = LoadEntries(path);
         _cache[path] = entries;
         return entries;
     }
@@ -43,7 +53,7 @@ internal sealed class DirectoryContents
     private static List<FileSystemEntry> GetDriveEntries()
     {
         var list = new List<FileSystemEntry>();
-        foreach (var drive in DriveInfo.GetDrives())
+        foreach (DriveInfo drive in DriveInfo.GetDrives())
         {
             if (!drive.IsReady)
             {
@@ -66,15 +76,9 @@ internal sealed class DirectoryContents
         return list;
     }
 
-    public void Invalidate(string path)
-    {
-        _cache.Remove(path);
-    }
+    public void Invalidate(string path) => _cache.Remove(path);
 
-    public void InvalidateAll()
-    {
-        _cache.Clear();
-    }
+    public void InvalidateAll() => _cache.Clear();
 
     internal List<FileSystemEntry> LoadEntries(string path)
     {
@@ -84,7 +88,7 @@ internal sealed class DirectoryContents
         {
             var dirInfo = new DirectoryInfo(path);
 
-            foreach (var dir in dirInfo.EnumerateDirectories())
+            foreach (DirectoryInfo dir in dirInfo.EnumerateDirectories())
             {
                 // Hide system entries on Windows (e.g. $Recycle.Bin) unless ShowSystemFiles is enabled
                 if (OperatingSystem.IsWindows() && !ShowSystemFiles &&
@@ -111,7 +115,7 @@ internal sealed class DirectoryContents
                     IsCloudPlaceholder: CheckIsCloudPlaceholder(dir)));
             }
 
-            foreach (var file in dirInfo.EnumerateFiles())
+            foreach (FileInfo file in dirInfo.EnumerateFiles())
             {
                 // Hide system entries on Windows (e.g. $Recycle.Bin) unless ShowSystemFiles is enabled
                 if (OperatingSystem.IsWindows() && !ShowSystemFiles &&
@@ -217,7 +221,7 @@ internal sealed class DirectoryContents
 
         try
         {
-            var target = info.ResolveLinkTarget(returnFinalTarget: true);
+            FileSystemInfo? target = info.ResolveLinkTarget(returnFinalTarget: true);
             return target == null || !Path.Exists(target.FullName);
         }
         catch

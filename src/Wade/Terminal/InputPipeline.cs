@@ -5,10 +5,10 @@ namespace Wade.Terminal;
 
 internal sealed class InputPipeline : IDisposable
 {
-    private readonly IInputSource _source;
-    private readonly BlockingCollection<InputEvent> _queue = new(boundedCapacity: 64);
     private readonly CancellationTokenSource _cts = new();
+    private readonly BlockingCollection<InputEvent> _queue = new(boundedCapacity: 64);
     private readonly Thread _readThread;
+    private readonly IInputSource _source;
     private bool _disposed;
 
     public InputPipeline(IInputSource source)
@@ -20,29 +20,6 @@ internal sealed class InputPipeline : IDisposable
             Name = "InputPipeline",
         };
         _readThread.Start();
-    }
-
-    public InputEvent Take(CancellationToken ct = default)
-    {
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, ct);
-        return _queue.Take(linked.Token);
-    }
-
-    public bool TryTake(out InputEvent? evt)
-    {
-        return _queue.TryTake(out evt);
-    }
-
-    public void Inject(InputEvent evt) => _queue.Add(evt);
-
-    public static IInputSource CreatePlatformSource()
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            return new WindowsInputSource();
-        }
-
-        return new UnixInputSource();
     }
 
     public void Dispose()
@@ -62,13 +39,33 @@ internal sealed class InputPipeline : IDisposable
         _cts.Dispose();
     }
 
+    public InputEvent Take(CancellationToken ct = default)
+    {
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, ct);
+        return _queue.Take(linked.Token);
+    }
+
+    public bool TryTake(out InputEvent? evt) => _queue.TryTake(out evt);
+
+    public void Inject(InputEvent evt) => _queue.Add(evt);
+
+    public static IInputSource CreatePlatformSource()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return new WindowsInputSource();
+        }
+
+        return new UnixInputSource();
+    }
+
     private void ReadLoop()
     {
         try
         {
             while (!_cts.Token.IsCancellationRequested)
             {
-                var evt = _source.ReadNext(_cts.Token);
+                InputEvent? evt = _source.ReadNext(_cts.Token);
                 if (evt is not null && !_cts.Token.IsCancellationRequested)
                 {
                     _queue.Add(evt, _cts.Token);

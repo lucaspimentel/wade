@@ -5,31 +5,57 @@ namespace Wade;
 internal sealed class WadeConfig
 {
     public bool ShowIconsEnabled { get; set; } = true;
+
     public bool ImagePreviewsEnabled { get; set; } = true;
-    public bool ShowHiddenFiles { get; set; } = false;
-    public bool ShowSystemFiles { get; set; } = false;
+
+    public bool ShowHiddenFiles { get; set; }
+
+    public bool ShowSystemFiles { get; set; }
+
     public SortMode SortMode { get; set; } = SortMode.Name;
+
     public bool SortAscending { get; set; } = true;
+
     public bool ConfirmDeleteEnabled { get; set; } = true;
+
     public bool PreviewPaneEnabled { get; set; } = true;
+
     public bool SizeColumnEnabled { get; set; } = true;
+
     public bool DateColumnEnabled { get; set; } = true;
+
     public bool CopySymlinksAsLinksEnabled { get; set; } = true;
+
     public bool ZipPreviewEnabled { get; set; } = true;
+
     public bool TerminalTitleEnabled { get; set; } = true;
+
     public bool GitStatusEnabled { get; set; } = true;
+
     public bool FileMetadataEnabled { get; set; } = true;
+
     public bool FilePreviewsEnabled { get; set; } = true;
+
     public bool ArchiveMetadataEnabled { get; set; } = true;
+
     public bool DirSizeSsdEnabled { get; set; } = true;
-    public bool DirSizeHddEnabled { get; set; } = false;
-    public bool DirSizeNetworkEnabled { get; set; } = false;
+
+    public bool DirSizeHddEnabled { get; set; }
+
+    public bool DirSizeNetworkEnabled { get; set; }
+
     public HashSet<string> DisabledTools { get; set; } = [];
+
     public string StartPath { get; set; } = Directory.GetCurrentDirectory();
-    public bool ShowConfig { get; set; } = false;
-    public bool ShowHelp { get; set; } = false;
-    public bool ShowVersion { get; set; } = false;
+
+    public bool ShowConfig { get; set; }
+
+    public bool ShowHelp { get; set; }
+
+    public bool ShowVersion { get; set; }
+
     public string ConfigFilePath { get; private set; } = "";
+
     public string? CwdFilePath { get; set; }
 
     public static WadeConfig Load(
@@ -37,7 +63,7 @@ internal sealed class WadeConfig
         string? configFilePath = null)
     {
         // Allow --config-file=<path> to override the config file location
-        foreach (var arg in args)
+        foreach (string arg in args)
         {
             if (arg.StartsWith("--config-file="))
             {
@@ -55,9 +81,9 @@ internal sealed class WadeConfig
         // Config file
         if (File.Exists(configFilePath))
         {
-            foreach (var line in File.ReadAllLines(configFilePath))
+            foreach (string line in File.ReadAllLines(configFilePath))
             {
-                var trimmed = line.Trim();
+                string trimmed = line.Trim();
                 if (trimmed.Length == 0 || trimmed[0] == '#')
                 {
                     continue;
@@ -69,8 +95,8 @@ internal sealed class WadeConfig
                     continue;
                 }
 
-                var key = trimmed[..eq].Trim();
-                var value = trimmed[(eq + 1)..].Trim();
+                string key = trimmed[..eq].Trim();
+                string value = trimmed[(eq + 1)..].Trim();
 
                 // Strip inline comment
                 int commentIdx = value.IndexOf('#');
@@ -94,7 +120,7 @@ internal sealed class WadeConfig
                         config.ShowSystemFiles = ParseBool(value, config.ShowSystemFiles);
                         break;
                     case "sort_mode":
-                        if (Enum.TryParse<SortMode>(value, ignoreCase: true, out var sortMode))
+                        if (Enum.TryParse(value, ignoreCase: true, out SortMode sortMode))
                         {
                             config.SortMode = sortMode;
                         }
@@ -154,7 +180,7 @@ internal sealed class WadeConfig
                         break;
                     case "detail_columns_enabled":
                         // Backward compat: sets both columns
-                        var detailBool = ParseBool(value, true);
+                        bool detailBool = ParseBool(value, true);
                         config.SizeColumnEnabled = detailBool;
                         config.DateColumnEnabled = detailBool;
                         break;
@@ -179,7 +205,7 @@ internal sealed class WadeConfig
         }
 
         // CLI flags
-        foreach (var arg in args)
+        foreach (string arg in args)
         {
             if (arg.StartsWith("--cwd-file="))
             {
@@ -202,7 +228,7 @@ internal sealed class WadeConfig
         }
 
         // First non-flag arg is start path
-        foreach (var arg in args)
+        foreach (string arg in args)
         {
             if (!arg.StartsWith('-'))
             {
@@ -214,13 +240,13 @@ internal sealed class WadeConfig
         // Expand ~ to home directory
         if (config.StartPath.StartsWith('~'))
         {
-            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             config.StartPath = Path.Join(home, config.StartPath.AsSpan(1));
         }
 
         // Use explicit chars (not Path.DirectorySeparatorChar/AltDirectorySeparatorChar) so that
         // Windows-style backslashes are also stripped when running on Linux/macOS.
-        var startPath = config.StartPath.TrimEnd('/', '\\');
+        string startPath = config.StartPath.TrimEnd('/', '\\');
 
         if (startPath.Length == 0)
         {
@@ -238,35 +264,35 @@ internal sealed class WadeConfig
 
     internal void Save()
     {
-        var dir = Path.GetDirectoryName(ConfigFilePath);
+        string? dir = Path.GetDirectoryName(ConfigFilePath);
         if (dir is not null && !Directory.Exists(dir))
         {
             Directory.CreateDirectory(dir);
         }
 
-        var sortModeStr = SortMode.ToString().ToLowerInvariant();
-        var content = $"""
-            show_icons_enabled = {(ShowIconsEnabled ? "true" : "false")}
-            image_previews_enabled = {(ImagePreviewsEnabled ? "true" : "false")}
-            show_hidden_files = {(ShowHiddenFiles ? "true" : "false")}
-            show_system_files = {(ShowSystemFiles ? "true" : "false")}
-            sort_mode = {sortModeStr}
-            sort_ascending = {(SortAscending ? "true" : "false")}
-            confirm_delete_enabled = {(ConfirmDeleteEnabled ? "true" : "false")}
-            preview_pane_enabled = {(PreviewPaneEnabled ? "true" : "false")}
-            size_column_enabled = {(SizeColumnEnabled ? "true" : "false")}
-            date_column_enabled = {(DateColumnEnabled ? "true" : "false")}
-            copy_symlinks_as_links_enabled = {(CopySymlinksAsLinksEnabled ? "true" : "false")}
-            zip_preview_enabled = {(ZipPreviewEnabled ? "true" : "false")}
-            terminal_title_enabled = {(TerminalTitleEnabled ? "true" : "false")}
-            git_status_enabled = {(GitStatusEnabled ? "true" : "false")}
-            file_metadata_enabled = {(FileMetadataEnabled ? "true" : "false")}
-            file_previews_enabled = {(FilePreviewsEnabled ? "true" : "false")}
-            archive_metadata_enabled = {(ArchiveMetadataEnabled ? "true" : "false")}
-            dir_size_ssd_enabled = {(DirSizeSsdEnabled ? "true" : "false")}
-            dir_size_hdd_enabled = {(DirSizeHddEnabled ? "true" : "false")}
-            dir_size_network_enabled = {(DirSizeNetworkEnabled ? "true" : "false")}
-            """;
+        string sortModeStr = SortMode.ToString().ToLowerInvariant();
+        string content = $"""
+                          show_icons_enabled = {(ShowIconsEnabled ? "true" : "false")}
+                          image_previews_enabled = {(ImagePreviewsEnabled ? "true" : "false")}
+                          show_hidden_files = {(ShowHiddenFiles ? "true" : "false")}
+                          show_system_files = {(ShowSystemFiles ? "true" : "false")}
+                          sort_mode = {sortModeStr}
+                          sort_ascending = {(SortAscending ? "true" : "false")}
+                          confirm_delete_enabled = {(ConfirmDeleteEnabled ? "true" : "false")}
+                          preview_pane_enabled = {(PreviewPaneEnabled ? "true" : "false")}
+                          size_column_enabled = {(SizeColumnEnabled ? "true" : "false")}
+                          date_column_enabled = {(DateColumnEnabled ? "true" : "false")}
+                          copy_symlinks_as_links_enabled = {(CopySymlinksAsLinksEnabled ? "true" : "false")}
+                          zip_preview_enabled = {(ZipPreviewEnabled ? "true" : "false")}
+                          terminal_title_enabled = {(TerminalTitleEnabled ? "true" : "false")}
+                          git_status_enabled = {(GitStatusEnabled ? "true" : "false")}
+                          file_metadata_enabled = {(FileMetadataEnabled ? "true" : "false")}
+                          file_previews_enabled = {(FilePreviewsEnabled ? "true" : "false")}
+                          archive_metadata_enabled = {(ArchiveMetadataEnabled ? "true" : "false")}
+                          dir_size_ssd_enabled = {(DirSizeSsdEnabled ? "true" : "false")}
+                          dir_size_hdd_enabled = {(DirSizeHddEnabled ? "true" : "false")}
+                          dir_size_network_enabled = {(DirSizeNetworkEnabled ? "true" : "false")}
+                          """;
 
         if (DisabledTools.Count > 0)
         {
@@ -278,36 +304,36 @@ internal sealed class WadeConfig
 
     internal string ToJson()
     {
-        var escapedPath = StartPath.Replace("\\", "\\\\");
-        var sortModeStr = SortMode.ToString().ToLowerInvariant();
+        string escapedPath = StartPath.Replace("\\", "\\\\");
+        string sortModeStr = SortMode.ToString().ToLowerInvariant();
         string disabledToolsJson = DisabledTools.Count > 0
             ? "[" + string.Join(",", DisabledTools.Order().Select(t => $"\"{t}\"")) + "]"
             : "[]";
 
         return "{" +
-            $"\"show_icons_enabled\":{(ShowIconsEnabled ? "true" : "false")}," +
-            $"\"image_previews_enabled\":{(ImagePreviewsEnabled ? "true" : "false")}," +
-            $"\"show_hidden_files\":{(ShowHiddenFiles ? "true" : "false")}," +
-            $"\"show_system_files\":{(ShowSystemFiles ? "true" : "false")}," +
-            $"\"sort_mode\":\"{sortModeStr}\"," +
-            $"\"sort_ascending\":{(SortAscending ? "true" : "false")}," +
-            $"\"confirm_delete_enabled\":{(ConfirmDeleteEnabled ? "true" : "false")}," +
-            $"\"preview_pane_enabled\":{(PreviewPaneEnabled ? "true" : "false")}," +
-            $"\"size_column_enabled\":{(SizeColumnEnabled ? "true" : "false")}," +
-            $"\"date_column_enabled\":{(DateColumnEnabled ? "true" : "false")}," +
-            $"\"copy_symlinks_as_links_enabled\":{(CopySymlinksAsLinksEnabled ? "true" : "false")}," +
-            $"\"zip_preview_enabled\":{(ZipPreviewEnabled ? "true" : "false")}," +
-            $"\"disabled_tools\":{disabledToolsJson}," +
-            $"\"terminal_title_enabled\":{(TerminalTitleEnabled ? "true" : "false")}," +
-            $"\"git_status_enabled\":{(GitStatusEnabled ? "true" : "false")}," +
-            $"\"file_metadata_enabled\":{(FileMetadataEnabled ? "true" : "false")}," +
-            $"\"file_previews_enabled\":{(FilePreviewsEnabled ? "true" : "false")}," +
-            $"\"archive_metadata_enabled\":{(ArchiveMetadataEnabled ? "true" : "false")}," +
-            $"\"dir_size_ssd_enabled\":{(DirSizeSsdEnabled ? "true" : "false")}," +
-            $"\"dir_size_hdd_enabled\":{(DirSizeHddEnabled ? "true" : "false")}," +
-            $"\"dir_size_network_enabled\":{(DirSizeNetworkEnabled ? "true" : "false")}," +
-            $"\"start_path\":\"{escapedPath}\"" +
-            "}";
+               $"\"show_icons_enabled\":{(ShowIconsEnabled ? "true" : "false")}," +
+               $"\"image_previews_enabled\":{(ImagePreviewsEnabled ? "true" : "false")}," +
+               $"\"show_hidden_files\":{(ShowHiddenFiles ? "true" : "false")}," +
+               $"\"show_system_files\":{(ShowSystemFiles ? "true" : "false")}," +
+               $"\"sort_mode\":\"{sortModeStr}\"," +
+               $"\"sort_ascending\":{(SortAscending ? "true" : "false")}," +
+               $"\"confirm_delete_enabled\":{(ConfirmDeleteEnabled ? "true" : "false")}," +
+               $"\"preview_pane_enabled\":{(PreviewPaneEnabled ? "true" : "false")}," +
+               $"\"size_column_enabled\":{(SizeColumnEnabled ? "true" : "false")}," +
+               $"\"date_column_enabled\":{(DateColumnEnabled ? "true" : "false")}," +
+               $"\"copy_symlinks_as_links_enabled\":{(CopySymlinksAsLinksEnabled ? "true" : "false")}," +
+               $"\"zip_preview_enabled\":{(ZipPreviewEnabled ? "true" : "false")}," +
+               $"\"disabled_tools\":{disabledToolsJson}," +
+               $"\"terminal_title_enabled\":{(TerminalTitleEnabled ? "true" : "false")}," +
+               $"\"git_status_enabled\":{(GitStatusEnabled ? "true" : "false")}," +
+               $"\"file_metadata_enabled\":{(FileMetadataEnabled ? "true" : "false")}," +
+               $"\"file_previews_enabled\":{(FilePreviewsEnabled ? "true" : "false")}," +
+               $"\"archive_metadata_enabled\":{(ArchiveMetadataEnabled ? "true" : "false")}," +
+               $"\"dir_size_ssd_enabled\":{(DirSizeSsdEnabled ? "true" : "false")}," +
+               $"\"dir_size_hdd_enabled\":{(DirSizeHddEnabled ? "true" : "false")}," +
+               $"\"dir_size_network_enabled\":{(DirSizeNetworkEnabled ? "true" : "false")}," +
+               $"\"start_path\":\"{escapedPath}\"" +
+               "}";
     }
 
     internal static bool ParseBool(string value, bool fallback)

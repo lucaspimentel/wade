@@ -5,28 +5,49 @@ namespace Wade.UI;
 internal sealed class ConfigDialogState
 {
     public bool ShowIcons { get; set; }
+
     public bool ImagePreviews { get; set; }
+
     public bool ShowHiddenFiles { get; set; }
+
     public bool ShowSystemFiles { get; set; }
+
     public SortMode SortMode { get; set; }
+
     public bool SortAscending { get; set; }
+
     public bool ConfirmDelete { get; set; }
+
     public bool PreviewPane { get; set; }
+
     public bool SizeColumn { get; set; }
+
     public bool DateColumn { get; set; }
+
     public bool ZipPreview { get; set; }
+
     public HashSet<string> DisabledTools { get; set; } = [];
+
     public bool CopySymlinksAsLinks { get; set; }
+
     public bool TerminalTitle { get; set; }
+
     public bool GitStatus { get; set; }
+
     public bool FileMetadata { get; set; }
+
     public bool FilePreviews { get; set; }
+
     public bool ArchiveMetadata { get; set; }
+
     public bool DirSizeSsd { get; set; }
+
     public bool DirSizeHdd { get; set; }
+
     public bool DirSizeNetwork { get; set; }
 
     public List<ConfigItem> Items { get; private set; } = [];
+
     public int SelectedIndex { get; set; }
 
     public static ConfigDialogState FromConfig(WadeConfig config)

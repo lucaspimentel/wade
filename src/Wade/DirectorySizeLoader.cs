@@ -19,7 +19,7 @@ internal sealed class DirectorySizeLoader
         _cts?.Cancel();
         _cts?.Dispose();
         _cts = new CancellationTokenSource();
-        var token = _cts.Token;
+        CancellationToken token = _cts.Token;
 
         Task.Run(() => Calculate(directoryPath, token), token);
     }

@@ -31,63 +31,63 @@ public class MarkdownLanguageTests
     [InlineData("### Third level")]
     public void Headings_ClassifiedAsHeading(string line)
     {
-        var spans = Tokenize(line);
+        StyledSpan[] spans = Tokenize(line);
         Assert.Contains(spans, s => s.Kind == TokenKind.Heading && s.Start == 0 && s.Length == line.Length);
     }
 
     [Fact]
     public void Bold_Classified()
     {
-        var spans = Tokenize("**bold text**");
+        StyledSpan[] spans = Tokenize("**bold text**");
         Assert.Contains(spans, s => s.Kind == TokenKind.Bold);
     }
 
     [Fact]
     public void Italic_Classified()
     {
-        var spans = Tokenize("*italic text*");
+        StyledSpan[] spans = Tokenize("*italic text*");
         Assert.Contains(spans, s => s.Kind == TokenKind.Italic);
     }
 
     [Fact]
     public void InlineCode_Classified()
     {
-        var spans = Tokenize("`code span`");
+        StyledSpan[] spans = Tokenize("`code span`");
         Assert.Contains(spans, s => s.Kind == TokenKind.CodeSpan);
     }
 
     [Fact]
     public void Link_Classified()
     {
-        var spans = Tokenize("[text](url)");
+        StyledSpan[] spans = Tokenize("[text](url)");
         Assert.Contains(spans, s => s.Kind == TokenKind.Link);
     }
 
     [Fact]
     public void CodeFence_LinesInsideClassifiedAsCodeSpan()
     {
-        var lines = TokenizeLines("```", "code here", "```");
+        StyledLine[] lines = TokenizeLines("```", "code here", "```");
         Assert.All(lines, l => Assert.Contains(l.Spans ?? [], s => s.Kind == TokenKind.CodeSpan));
     }
 
     [Fact]
     public void ListItem_PunctuationClassified()
     {
-        var spans = Tokenize("- list item");
+        StyledSpan[] spans = Tokenize("- list item");
         Assert.Contains(spans, s => s.Kind == TokenKind.Punctuation);
     }
 
     [Fact]
     public void PlainTextLine_ReturnsNullSpans()
     {
-        var spans = Tokenize("just plain text here");
+        StyledSpan[] spans = Tokenize("just plain text here");
         Assert.Empty(spans);
     }
 
     [Fact]
     public void EmptyLine_ReturnsNullSpans()
     {
-        var spans = Tokenize("");
+        StyledSpan[] spans = Tokenize("");
         Assert.Empty(spans);
     }
 }

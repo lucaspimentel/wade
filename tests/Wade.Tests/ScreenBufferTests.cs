@@ -32,8 +32,8 @@ public class ScreenBufferTests
     [Theory]
     [InlineData(-1, 0)]
     [InlineData(0, -1)]
-    [InlineData(5, 0)]   // row == height
-    [InlineData(0, 10)]  // col == width
+    [InlineData(5, 0)] // row == height
+    [InlineData(0, 10)] // col == width
     public void Put_OutOfBounds_DoesNotThrow(int row, int col)
     {
         var buf = new ScreenBuffer(10, 5);
@@ -75,7 +75,7 @@ public class ScreenBufferTests
     {
         var buf = new ScreenBuffer(20, 5);
         buf.WriteString(0, 0, "Hello World", DefaultStyle, maxWidth: 5);
-        var output = Flush(buf);
+        string output = Flush(buf);
         Assert.Contains("Hello", output);
         Assert.DoesNotContain(" World", output);
     }
@@ -86,10 +86,10 @@ public class ScreenBufferTests
         // U+F0001 is in the supplementary plane (Nerd Fonts v3 MDI range).
         // It occupies one buffer cell, not two.
         var icon = new Rune(0xF0001);
-        var text = icon.ToString() + " foo";
+        string text = icon + " foo";
         var buf = new ScreenBuffer(20, 5);
         buf.WriteString(0, 0, text, DefaultStyle);
-        var output = Flush(buf);
+        string output = Flush(buf);
         Assert.Contains(icon.ToString(), output);
         Assert.Contains("foo", output);
     }
@@ -99,7 +99,7 @@ public class ScreenBufferTests
     {
         var buf = new ScreenBuffer(5, 5);
         buf.WriteString(0, 0, "ABCDEFGHIJ", DefaultStyle);
-        var output = Flush(buf);
+        string output = Flush(buf);
         Assert.Contains("ABCDE", output);
         Assert.DoesNotContain("F", output);
     }
@@ -202,7 +202,7 @@ public class ScreenBufferTests
         // Frame 3: write "HELLO" at row 1 again (scroll back)
         buf.Clear();
         buf.WriteString(1, 0, "HELLO", DefaultStyle);
-        var output = Flush(buf);
+        string output = Flush(buf);
 
         // If Clear() properly marked rows dirty in frame 2, front[row 1] was
         // cleared to Cell.Empty, so frame 3 must re-emit "HELLO".
@@ -222,7 +222,7 @@ public class ScreenBufferTests
 
         var sb = new StringBuilder();
         buf.Flush(sb);
-        var raw = sb.ToString();
+        string raw = sb.ToString();
         Assert.Contains("\x1b[4m", raw);
     }
 }

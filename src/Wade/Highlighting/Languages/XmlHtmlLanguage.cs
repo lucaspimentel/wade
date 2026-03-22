@@ -2,9 +2,9 @@ namespace Wade.Highlighting.Languages;
 
 internal sealed class XmlHtmlLanguage : ILanguage
 {
-    private const byte StateNormal  = 0;
+    private const byte StateNormal = 0;
     private const byte StateComment = 1;
-    private const byte StateTag     = 2;
+    private const byte StateTag = 2;
 
     public StyledLine TokenizeLine(string line, ref byte state)
     {
@@ -25,6 +25,7 @@ internal sealed class XmlHtmlLanguage : ILanguage
                 spans.Add(new StyledSpan(0, len, TokenKind.Comment));
                 return MakeResult(line, spans);
             }
+
             int closeEnd = closeIdx + 3;
             spans.Add(new StyledSpan(0, closeEnd, TokenKind.Comment));
             state = StateNormal;
@@ -43,6 +44,7 @@ internal sealed class XmlHtmlLanguage : ILanguage
                     pos = closeIdx + 3;
                     continue;
                 }
+
                 spans.Add(new StyledSpan(pos, len - pos, TokenKind.Comment));
                 state = StateComment;
                 return MakeResult(line, spans);
@@ -76,7 +78,11 @@ internal sealed class XmlHtmlLanguage : ILanguage
                 // Scan attributes until '>'
                 while (pos < len && line[pos] != '>')
                 {
-                    if (char.IsWhiteSpace(line[pos])) { pos++; continue; }
+                    if (char.IsWhiteSpace(line[pos]))
+                    {
+                        pos++;
+                        continue;
+                    }
 
                     if (line[pos] == '/')
                     {

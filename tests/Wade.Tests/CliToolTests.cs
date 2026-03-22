@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace Wade.Tests;
 
 public class CliToolTests
@@ -71,7 +73,7 @@ public class CliToolTests
         // Cancel after 500ms
         cts.CancelAfter(TimeSpan.FromMilliseconds(500));
 
-        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var sw = Stopwatch.StartNew();
         string? result = CliTool.Run(fileName, args, timeoutMs: 60_000, ct: cts.Token);
         sw.Stop();
 

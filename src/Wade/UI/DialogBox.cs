@@ -40,7 +40,7 @@ internal static class DialogBox
         int boxHeight = 1 + contentHeight + 1; // top border + content + bottom border
         if (title is not null)
         {
-            boxHeight += 2;  // title row + separator
+            boxHeight += 2; // title row + separator
         }
 
         if (footer is not null)

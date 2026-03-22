@@ -9,10 +9,9 @@ internal sealed class BookmarkStore
             ? StringComparison.OrdinalIgnoreCase
             : StringComparison.Ordinal;
 
-    private readonly string _filePath;
     private readonly List<string> _bookmarks = [];
 
-    public IReadOnlyList<string> Bookmarks => _bookmarks;
+    private readonly string _filePath;
 
     public BookmarkStore(string? filePath = null)
     {
@@ -21,6 +20,8 @@ internal sealed class BookmarkStore
                         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                         ".config", "wade", "bookmarks");
     }
+
+    public IReadOnlyList<string> Bookmarks => _bookmarks;
 
     public void Load()
     {

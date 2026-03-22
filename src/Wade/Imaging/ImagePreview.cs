@@ -12,7 +12,7 @@ internal static class ImagePreview
     private static readonly FrozenSet<string> s_imageExtensions =
         new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".tga", ".tiff", ".pbm"
+            ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".tga", ".tiff", ".pbm",
         }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     public static bool IsImageFile(string path)
@@ -34,7 +34,7 @@ internal static class ImagePreview
                 return null;
             }
 
-            using var stream = File.OpenRead(path);
+            using FileStream stream = File.OpenRead(path);
             using var image = Image.Load<Rgba32>(stream);
 
             ct.ThrowIfCancellationRequested();
@@ -59,7 +59,7 @@ internal static class ImagePreview
             ct.ThrowIfCancellationRequested();
 
             // Extract RGBA bytes
-            var rgba = new byte[targetWidth * targetHeight * 4];
+            byte[] rgba = new byte[targetWidth * targetHeight * 4];
             image.CopyPixelDataTo(rgba);
 
             ct.ThrowIfCancellationRequested();

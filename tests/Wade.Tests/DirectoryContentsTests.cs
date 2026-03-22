@@ -9,10 +9,10 @@ public class DirectoryContentsTests
     {
         // Use the test project's own directory as a known path
         string testDir = Path.GetTempPath();
-        var entries = new DirectoryContents().LoadEntries(testDir);
+        List<FileSystemEntry> entries = new DirectoryContents().LoadEntries(testDir);
 
         bool seenFile = false;
-        foreach (var entry in entries)
+        foreach (FileSystemEntry entry in entries)
         {
             if (!entry.IsDirectory)
             {
@@ -28,7 +28,7 @@ public class DirectoryContentsTests
     [Fact]
     public void LoadEntries_InvalidPath_ReturnsEmptyList()
     {
-        var entries = new DirectoryContents().LoadEntries(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()));
+        List<FileSystemEntry> entries = new DirectoryContents().LoadEntries(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()));
         Assert.Empty(entries);
     }
 
@@ -38,8 +38,8 @@ public class DirectoryContentsTests
         var dc = new DirectoryContents();
         string path = Path.GetTempPath();
 
-        var first = dc.GetEntries(path);
-        var second = dc.GetEntries(path);
+        List<FileSystemEntry> first = dc.GetEntries(path);
+        List<FileSystemEntry> second = dc.GetEntries(path);
 
         Assert.Same(first, second);
     }
@@ -50,9 +50,9 @@ public class DirectoryContentsTests
         var dc = new DirectoryContents();
         string path = Path.GetTempPath();
 
-        var first = dc.GetEntries(path);
+        List<FileSystemEntry> first = dc.GetEntries(path);
         dc.Invalidate(path);
-        var second = dc.GetEntries(path);
+        List<FileSystemEntry> second = dc.GetEntries(path);
 
         Assert.NotSame(first, second);
     }
@@ -68,7 +68,13 @@ public class DirectoryContentsTests
 
     private static void CleanupDir(string dir)
     {
-        try { Directory.Delete(dir, recursive: true); } catch { }
+        try
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+        catch
+        {
+        }
     }
 
     [Fact]
@@ -83,12 +89,15 @@ public class DirectoryContentsTests
             File.SetLastWriteTime(Path.Combine(dir, "new.txt"), new DateTime(2024, 1, 1));
 
             var dc = new DirectoryContents { SortMode = SortMode.Modified };
-            var entries = dc.LoadEntries(dir);
+            List<FileSystemEntry> entries = dc.LoadEntries(dir);
 
             Assert.Equal("old.txt", entries[0].Name);
             Assert.Equal("new.txt", entries[1].Name);
         }
-        finally { CleanupDir(dir); }
+        finally
+        {
+            CleanupDir(dir);
+        }
     }
 
     [Fact]
@@ -101,12 +110,15 @@ public class DirectoryContentsTests
             File.WriteAllText(Path.Combine(dir, "big.txt"), new string('x', 1000));
 
             var dc = new DirectoryContents { SortMode = SortMode.Size };
-            var entries = dc.LoadEntries(dir);
+            List<FileSystemEntry> entries = dc.LoadEntries(dir);
 
             Assert.Equal("small.txt", entries[0].Name);
             Assert.Equal("big.txt", entries[1].Name);
         }
-        finally { CleanupDir(dir); }
+        finally
+        {
+            CleanupDir(dir);
+        }
     }
 
     [Fact]
@@ -125,12 +137,15 @@ public class DirectoryContentsTests
             };
 
             var dc = new DirectoryContents { SortMode = SortMode.Size, DirSizes = dirSizes };
-            var entries = dc.LoadEntries(dir);
+            List<FileSystemEntry> entries = dc.LoadEntries(dir);
 
             Assert.Equal("small_dir", entries[0].Name);
             Assert.Equal("big_dir", entries[1].Name);
         }
-        finally { CleanupDir(dir); }
+        finally
+        {
+            CleanupDir(dir);
+        }
     }
 
     [Fact]
@@ -149,12 +164,15 @@ public class DirectoryContentsTests
             };
 
             var dc = new DirectoryContents { SortMode = SortMode.Size, SortAscending = false, DirSizes = dirSizes };
-            var entries = dc.LoadEntries(dir);
+            List<FileSystemEntry> entries = dc.LoadEntries(dir);
 
             Assert.Equal("big_dir", entries[0].Name);
             Assert.Equal("small_dir", entries[1].Name);
         }
-        finally { CleanupDir(dir); }
+        finally
+        {
+            CleanupDir(dir);
+        }
     }
 
     [Fact]
@@ -168,13 +186,16 @@ public class DirectoryContentsTests
             File.WriteAllText(Path.Combine(dir, "file.md"), "");
 
             var dc = new DirectoryContents { SortMode = SortMode.Extension };
-            var entries = dc.LoadEntries(dir);
+            List<FileSystemEntry> entries = dc.LoadEntries(dir);
 
             Assert.Equal("file.cs", entries[0].Name);
             Assert.Equal("file.md", entries[1].Name);
             Assert.Equal("file.txt", entries[2].Name);
         }
-        finally { CleanupDir(dir); }
+        finally
+        {
+            CleanupDir(dir);
+        }
     }
 
     [Fact]
@@ -187,12 +208,15 @@ public class DirectoryContentsTests
             File.WriteAllText(Path.Combine(dir, "alpha.txt"), "");
 
             var dc = new DirectoryContents { SortMode = SortMode.Extension };
-            var entries = dc.LoadEntries(dir);
+            List<FileSystemEntry> entries = dc.LoadEntries(dir);
 
             Assert.Equal("alpha.txt", entries[0].Name);
             Assert.Equal("beta.txt", entries[1].Name);
         }
-        finally { CleanupDir(dir); }
+        finally
+        {
+            CleanupDir(dir);
+        }
     }
 
     [Fact]
@@ -205,12 +229,15 @@ public class DirectoryContentsTests
             File.WriteAllText(Path.Combine(dir, "zzz.txt"), "");
 
             var dc = new DirectoryContents { SortMode = SortMode.Name, SortAscending = false };
-            var entries = dc.LoadEntries(dir);
+            List<FileSystemEntry> entries = dc.LoadEntries(dir);
 
             Assert.Equal("zzz.txt", entries[0].Name);
             Assert.Equal("aaa.txt", entries[1].Name);
         }
-        finally { CleanupDir(dir); }
+        finally
+        {
+            CleanupDir(dir);
+        }
     }
 
     [Fact]
@@ -223,12 +250,15 @@ public class DirectoryContentsTests
             File.WriteAllText(Path.Combine(dir, "file.txt"), "");
 
             var dc = new DirectoryContents { SortMode = SortMode.Name, SortAscending = false };
-            var entries = dc.LoadEntries(dir);
+            List<FileSystemEntry> entries = dc.LoadEntries(dir);
 
             Assert.True(entries[0].IsDirectory);
             Assert.False(entries[1].IsDirectory);
         }
-        finally { CleanupDir(dir); }
+        finally
+        {
+            CleanupDir(dir);
+        }
     }
 
     // ── Symlink support ────────────────────────────────────────────────────
@@ -236,14 +266,16 @@ public class DirectoryContentsTests
     [Fact]
     public void FileSystemEntry_LinkTarget_DefaultsToNull()
     {
-        var entry = new FileSystemEntry("test.txt", "/tmp/test.txt", false, 100, DateTime.Now, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
+        var entry = new FileSystemEntry("test.txt", "/tmp/test.txt", false, 100, DateTime.Now, LinkTarget: null, IsBrokenSymlink: false,
+            IsDrive: false);
         Assert.Null(entry.LinkTarget);
     }
 
     [Fact]
     public void FileSystemEntry_LinkTarget_CanBeSet()
     {
-        var entry = new FileSystemEntry("link.txt", "/tmp/link.txt", false, 0, DateTime.Now, LinkTarget: "/tmp/target.txt", IsBrokenSymlink: false, IsDrive: false);
+        var entry = new FileSystemEntry("link.txt", "/tmp/link.txt", false, 0, DateTime.Now, LinkTarget: "/tmp/target.txt", IsBrokenSymlink: false,
+            IsDrive: false);
         Assert.Equal("/tmp/target.txt", entry.LinkTarget);
     }
 
@@ -266,15 +298,18 @@ public class DirectoryContentsTests
             File.CreateSymbolicLink(linkPath, targetPath);
 
             var dc = new DirectoryContents();
-            var entries = dc.LoadEntries(dir);
+            List<FileSystemEntry> entries = dc.LoadEntries(dir);
 
-            var targetEntry = entries.Single(e => e.Name == "target.txt");
-            var linkEntry = entries.Single(e => e.Name == "link.txt");
+            FileSystemEntry targetEntry = entries.Single(e => e.Name == "target.txt");
+            FileSystemEntry linkEntry = entries.Single(e => e.Name == "link.txt");
 
             Assert.Null(targetEntry.LinkTarget);
             Assert.NotNull(linkEntry.LinkTarget);
         }
-        finally { CleanupDir(dir); }
+        finally
+        {
+            CleanupDir(dir);
+        }
     }
 
     [Fact]
@@ -295,16 +330,19 @@ public class DirectoryContentsTests
             Directory.CreateSymbolicLink(linkDir, targetDir);
 
             var dc = new DirectoryContents();
-            var entries = dc.LoadEntries(dir);
+            List<FileSystemEntry> entries = dc.LoadEntries(dir);
 
-            var targetEntry = entries.Single(e => e.Name == "realdir");
-            var linkEntry = entries.Single(e => e.Name == "linkdir");
+            FileSystemEntry targetEntry = entries.Single(e => e.Name == "realdir");
+            FileSystemEntry linkEntry = entries.Single(e => e.Name == "linkdir");
 
             Assert.Null(targetEntry.LinkTarget);
             Assert.NotNull(linkEntry.LinkTarget);
             Assert.True(linkEntry.IsDirectory);
         }
-        finally { CleanupDir(dir); }
+        finally
+        {
+            CleanupDir(dir);
+        }
     }
 
     // ── System+Hidden filtering (Windows only) ─────────────────────────────
@@ -334,13 +372,16 @@ public class DirectoryContentsTests
 
             // With ShowHiddenFiles = true but ShowSystemFiles = false, system+hidden entries should be excluded
             var dc = new DirectoryContents { ShowHiddenFiles = true, ShowSystemFiles = false };
-            var entries = dc.LoadEntries(dir);
+            List<FileSystemEntry> entries = dc.LoadEntries(dir);
 
             Assert.DoesNotContain(entries, e => e.Name == "SystemHiddenDir");
             Assert.DoesNotContain(entries, e => e.Name == "systemhidden.txt");
             Assert.Contains(entries, e => e.Name == "normal.txt");
         }
-        finally { CleanupDir(dir); }
+        finally
+        {
+            CleanupDir(dir);
+        }
     }
 
     [Fact]
@@ -366,13 +407,16 @@ public class DirectoryContentsTests
 
             // With both ShowHiddenFiles and ShowSystemFiles = true, system+hidden entries should be visible
             var dc = new DirectoryContents { ShowHiddenFiles = true, ShowSystemFiles = true };
-            var entries = dc.LoadEntries(dir);
+            List<FileSystemEntry> entries = dc.LoadEntries(dir);
 
             Assert.Contains(entries, e => e.Name == "SystemHiddenDir");
             Assert.Contains(entries, e => e.Name == "systemhidden.txt");
             Assert.Contains(entries, e => e.Name == "normal.txt");
         }
-        finally { CleanupDir(dir); }
+        finally
+        {
+            CleanupDir(dir);
+        }
     }
 
     [Fact]
@@ -393,12 +437,15 @@ public class DirectoryContentsTests
             File.WriteAllText(Path.Combine(dir, "normal.txt"), "test");
 
             var dc = new DirectoryContents { ShowHiddenFiles = true, ShowSystemFiles = false };
-            var entries = dc.LoadEntries(dir);
+            List<FileSystemEntry> entries = dc.LoadEntries(dir);
 
             Assert.DoesNotContain(entries, e => e.Name == "systemonly.txt");
             Assert.Contains(entries, e => e.Name == "normal.txt");
         }
-        finally { CleanupDir(dir); }
+        finally
+        {
+            CleanupDir(dir);
+        }
     }
 
     [Fact]
@@ -419,11 +466,14 @@ public class DirectoryContentsTests
             File.WriteAllText(Path.Combine(dir, "normal.txt"), "test");
 
             var dc = new DirectoryContents { ShowHiddenFiles = true, ShowSystemFiles = true };
-            var entries = dc.LoadEntries(dir);
+            List<FileSystemEntry> entries = dc.LoadEntries(dir);
 
             Assert.Contains(entries, e => e.Name == "systemonly.txt");
             Assert.Contains(entries, e => e.Name == "normal.txt");
         }
-        finally { CleanupDir(dir); }
+        finally
+        {
+            CleanupDir(dir);
+        }
     }
 }

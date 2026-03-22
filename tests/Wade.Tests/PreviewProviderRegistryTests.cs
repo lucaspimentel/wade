@@ -7,6 +7,20 @@ public class PreviewProviderRegistryTests : IDisposable
 {
     private readonly List<string> _tempFiles = [];
 
+    public void Dispose()
+    {
+        foreach (string path in _tempFiles)
+        {
+            try
+            {
+                File.Delete(path);
+            }
+            catch
+            {
+            }
+        }
+    }
+
     private string CreateTempFile(string extension, string content = "Hello World")
     {
         string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + extension);
@@ -21,14 +35,6 @@ public class PreviewProviderRegistryTests : IDisposable
         File.WriteAllBytes(path, content ?? [0x4D, 0x5A, 0x00, 0x00]);
         _tempFiles.Add(path);
         return path;
-    }
-
-    public void Dispose()
-    {
-        foreach (string path in _tempFiles)
-        {
-            try { File.Delete(path); } catch { }
-        }
     }
 
     private static PreviewContext MakeContext(
@@ -59,7 +65,7 @@ public class PreviewProviderRegistryTests : IDisposable
     public void TextFile_DefaultsToText_WithNoneAndHex()
     {
         string path = CreateTempFile(".cs");
-        var providers = PreviewProviderRegistry.GetApplicableProviders(path, MakeContext());
+        List<IPreviewProvider> providers = PreviewProviderRegistry.GetApplicableProviders(path, MakeContext());
 
         Assert.Equal(3, providers.Count);
         Assert.IsType<TextPreviewProvider>(providers[0]);
@@ -70,7 +76,7 @@ public class PreviewProviderRegistryTests : IDisposable
     [Fact]
     public void ZipFile_ReturnsZipContentsThenNoneThenHex()
     {
-        var providers = PreviewProviderRegistry.GetApplicableProviders("file.zip", MakeContext());
+        List<IPreviewProvider> providers = PreviewProviderRegistry.GetApplicableProviders("file.zip", MakeContext());
 
         Assert.Equal(3, providers.Count);
         Assert.IsType<ZipContentsPreviewProvider>(providers[0]);
@@ -81,7 +87,7 @@ public class PreviewProviderRegistryTests : IDisposable
     [Fact]
     public void ImageFile_ReturnsImageThenNoneThenHex()
     {
-        var providers = PreviewProviderRegistry.GetApplicableProviders("file.png", MakeContext());
+        List<IPreviewProvider> providers = PreviewProviderRegistry.GetApplicableProviders("file.png", MakeContext());
 
         Assert.Equal(3, providers.Count);
         Assert.IsType<ImagePreviewProvider>(providers[0]);
@@ -92,7 +98,7 @@ public class PreviewProviderRegistryTests : IDisposable
     [Fact]
     public void CloudPlaceholder_ReturnsEmpty()
     {
-        var providers = PreviewProviderRegistry.GetApplicableProviders("file.cs", MakeContext(isCloudPlaceholder: true));
+        List<IPreviewProvider> providers = PreviewProviderRegistry.GetApplicableProviders("file.cs", MakeContext(isCloudPlaceholder: true));
 
         Assert.Empty(providers);
     }
@@ -100,7 +106,7 @@ public class PreviewProviderRegistryTests : IDisposable
     [Fact]
     public void BrokenSymlink_ReturnsEmpty()
     {
-        var providers = PreviewProviderRegistry.GetApplicableProviders("file.cs", MakeContext(isBrokenSymlink: true));
+        List<IPreviewProvider> providers = PreviewProviderRegistry.GetApplicableProviders("file.cs", MakeContext(isBrokenSymlink: true));
 
         Assert.Empty(providers);
     }
@@ -109,8 +115,8 @@ public class PreviewProviderRegistryTests : IDisposable
     public void GitModifiedTextFile_ReturnsTextThenDiffThenNoneThenHex()
     {
         string path = CreateTempFile(".cs");
-        var context = MakeContext(gitStatus: GitFileStatus.Modified, repoRoot: "/repo");
-        var providers = PreviewProviderRegistry.GetApplicableProviders(path, context);
+        PreviewContext context = MakeContext(gitStatus: GitFileStatus.Modified, repoRoot: "/repo");
+        List<IPreviewProvider> providers = PreviewProviderRegistry.GetApplicableProviders(path, context);
 
         Assert.Equal(4, providers.Count);
         Assert.IsType<TextPreviewProvider>(providers[0]);
@@ -122,8 +128,8 @@ public class PreviewProviderRegistryTests : IDisposable
     [Fact]
     public void GitModifiedNupkgFile_DefaultsToNone_ArchiveContentsAvailable()
     {
-        var context = MakeContext(gitStatus: GitFileStatus.Modified, repoRoot: "/repo");
-        var providers = PreviewProviderRegistry.GetApplicableProviders("file.nupkg", context);
+        PreviewContext context = MakeContext(gitStatus: GitFileStatus.Modified, repoRoot: "/repo");
+        List<IPreviewProvider> providers = PreviewProviderRegistry.GetApplicableProviders("file.nupkg", context);
 
         Assert.Equal(4, providers.Count);
         Assert.IsType<DiffPreviewProvider>(providers[0]);
@@ -135,7 +141,7 @@ public class PreviewProviderRegistryTests : IDisposable
     [Fact]
     public void NupkgFile_DefaultsToNone_ArchiveContentsAvailable()
     {
-        var providers = PreviewProviderRegistry.GetApplicableProviders("package.nupkg", MakeContext());
+        List<IPreviewProvider> providers = PreviewProviderRegistry.GetApplicableProviders("package.nupkg", MakeContext());
 
         Assert.Equal(3, providers.Count);
         Assert.IsType<NonePreviewProvider>(providers[0]);
@@ -146,7 +152,7 @@ public class PreviewProviderRegistryTests : IDisposable
     [Fact]
     public void DocxFile_DefaultsToNone_ArchiveContentsAvailable()
     {
-        var providers = PreviewProviderRegistry.GetApplicableProviders("report.docx", MakeContext());
+        List<IPreviewProvider> providers = PreviewProviderRegistry.GetApplicableProviders("report.docx", MakeContext());
 
         Assert.Equal(3, providers.Count);
         Assert.IsType<NonePreviewProvider>(providers[0]);
@@ -157,7 +163,7 @@ public class PreviewProviderRegistryTests : IDisposable
     [Fact]
     public void ExeFile_DefaultsToNone_WithHexAvailable()
     {
-        var providers = PreviewProviderRegistry.GetApplicableProviders("app.exe", MakeContext());
+        List<IPreviewProvider> providers = PreviewProviderRegistry.GetApplicableProviders("app.exe", MakeContext());
 
         Assert.Equal(2, providers.Count);
         Assert.IsType<NonePreviewProvider>(providers[0]);
@@ -167,7 +173,7 @@ public class PreviewProviderRegistryTests : IDisposable
     [Fact]
     public void ImagePreviewsDisabled_ExcludesImageProvider()
     {
-        var providers = PreviewProviderRegistry.GetApplicableProviders("file.png", MakeContext(imagePreviewsEnabled: false));
+        List<IPreviewProvider> providers = PreviewProviderRegistry.GetApplicableProviders("file.png", MakeContext(imagePreviewsEnabled: false));
 
         Assert.DoesNotContain(providers, p => p is ImagePreviewProvider);
         Assert.Contains(providers, p => p is NonePreviewProvider);
@@ -177,7 +183,7 @@ public class PreviewProviderRegistryTests : IDisposable
     [Fact]
     public void ZipPreviewDisabled_ExcludesZipContentsProvider()
     {
-        var providers = PreviewProviderRegistry.GetApplicableProviders("file.zip", MakeContext(zipPreviewEnabled: false));
+        List<IPreviewProvider> providers = PreviewProviderRegistry.GetApplicableProviders("file.zip", MakeContext(zipPreviewEnabled: false));
 
         Assert.DoesNotContain(providers, p => p is ZipContentsPreviewProvider);
         Assert.Contains(providers, p => p is NonePreviewProvider);
@@ -188,8 +194,8 @@ public class PreviewProviderRegistryTests : IDisposable
     public void StagedFile_IncludesDiffProvider()
     {
         string path = CreateTempFile(".cs");
-        var context = MakeContext(gitStatus: GitFileStatus.Staged, repoRoot: "/repo");
-        var providers = PreviewProviderRegistry.GetApplicableProviders(path, context);
+        PreviewContext context = MakeContext(gitStatus: GitFileStatus.Staged, repoRoot: "/repo");
+        List<IPreviewProvider> providers = PreviewProviderRegistry.GetApplicableProviders(path, context);
 
         Assert.Contains(providers, p => p is DiffPreviewProvider);
         Assert.Contains(providers, p => p is NonePreviewProvider);
@@ -200,8 +206,8 @@ public class PreviewProviderRegistryTests : IDisposable
     public void UntrackedFile_ExcludesDiffProvider()
     {
         string path = CreateTempFile(".cs");
-        var context = MakeContext(gitStatus: GitFileStatus.Untracked, repoRoot: "/repo");
-        var providers = PreviewProviderRegistry.GetApplicableProviders(path, context);
+        PreviewContext context = MakeContext(gitStatus: GitFileStatus.Untracked, repoRoot: "/repo");
+        List<IPreviewProvider> providers = PreviewProviderRegistry.GetApplicableProviders(path, context);
 
         Assert.DoesNotContain(providers, p => p is DiffPreviewProvider);
         Assert.Contains(providers, p => p is NonePreviewProvider);
@@ -212,7 +218,7 @@ public class PreviewProviderRegistryTests : IDisposable
     public void NoneAndHex_AlwaysPresent()
     {
         string path = CreateTempFile(".cs");
-        var providers = PreviewProviderRegistry.GetApplicableProviders(path, MakeContext());
+        List<IPreviewProvider> providers = PreviewProviderRegistry.GetApplicableProviders(path, MakeContext());
 
         Assert.Contains(providers, p => p is NonePreviewProvider);
         Assert.Contains(providers, p => p is HexPreviewProvider);

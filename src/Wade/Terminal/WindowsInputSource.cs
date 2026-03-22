@@ -6,6 +6,15 @@ namespace Wade.Terminal;
 [SupportedOSPlatform("windows")]
 internal sealed class WindowsInputSource : IInputSource
 {
+    // Win32 constants
+    private const int StdInputHandle = -10;
+    private const uint WaitObject0 = 0x00000000;
+    private const ushort KeyEventType = 0x0001;
+    private const ushort MouseEventType = 0x0002;
+    private const ushort WindowBufferSizeEventType = 0x0004;
+    private const uint MouseMoved = 0x0001;
+    private const uint MouseWheeled = 0x0004;
+    private const uint FromLeft1stButtonPressed = 0x0001;
     private readonly nint _stdinHandle;
 
     public WindowsInputSource()
@@ -43,16 +52,16 @@ internal sealed class WindowsInputSource : IInputSource
                         break; // skip key-up events
                     }
 
-                    var k = record.Event.KeyEvent;
+                    KEY_EVENT_RECORD k = record.Event.KeyEvent;
                     var modifiers = (ControlKeyState)k.dwControlKeyState;
-                    bool shift = (modifiers & (ControlKeyState.ShiftPressed)) != 0;
+                    bool shift = (modifiers & ControlKeyState.ShiftPressed) != 0;
                     bool alt = (modifiers & (ControlKeyState.LeftAltPressed | ControlKeyState.RightAltPressed)) != 0;
                     bool control = (modifiers & (ControlKeyState.LeftCtrlPressed | ControlKeyState.RightCtrlPressed)) != 0;
 
                     return new KeyEvent((ConsoleKey)k.wVirtualKeyCode, k.UnicodeChar, shift, alt, control);
 
                 case MouseEventType:
-                    var m = record.Event.MouseEvent;
+                    MOUSE_EVENT_RECORD m = record.Event.MouseEvent;
                     if (m.dwEventFlags == MouseMoved)
                     {
                         break; // ignore mouse move
@@ -62,7 +71,7 @@ internal sealed class WindowsInputSource : IInputSource
                     {
                         // High word of dwButtonState determines direction
                         short hiWord = (short)(m.dwButtonState >> 16);
-                        var scrollButton = hiWord > 0 ? MouseButton.ScrollUp : MouseButton.ScrollDown;
+                        MouseButton scrollButton = hiWord > 0 ? MouseButton.ScrollUp : MouseButton.ScrollDown;
                         return new MouseEvent(scrollButton, m.Y, m.X, false);
                     }
 
@@ -78,10 +87,11 @@ internal sealed class WindowsInputSource : IInputSource
                             return new MouseEvent(MouseButton.Left, m.Y, m.X, true);
                         }
                     }
+
                     break;
 
                 case WindowBufferSizeEventType:
-                    var size = record.Event.WindowBufferSizeEvent;
+                    WINDOW_BUFFER_SIZE_RECORD size = record.Event.WindowBufferSizeEvent;
                     // Query actual window size instead of buffer size
                     int width = Console.WindowWidth;
                     int height = Console.WindowHeight;
@@ -97,15 +107,17 @@ internal sealed class WindowsInputSource : IInputSource
         // stdin handle is owned by the runtime — do not close it
     }
 
-    // Win32 constants
-    private const int StdInputHandle = -10;
-    private const uint WaitObject0 = 0x00000000;
-    private const ushort KeyEventType = 0x0001;
-    private const ushort MouseEventType = 0x0002;
-    private const ushort WindowBufferSizeEventType = 0x0004;
-    private const uint MouseMoved = 0x0001;
-    private const uint MouseWheeled = 0x0004;
-    private const uint FromLeft1stButtonPressed = 0x0001;
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern nint GetStdHandle(int nStdHandle);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool ReadConsoleInput(nint hConsoleInput, ref INPUT_RECORD lpBuffer, uint nLength, out uint lpNumberOfEventsRead);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GetNumberOfConsoleInputEvents(nint hConsoleInput, out uint lpcNumberOfEvents);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern uint WaitForSingleObject(nint hHandle, uint dwMilliseconds);
 
     [Flags]
     private enum ControlKeyState : uint
@@ -159,16 +171,4 @@ internal sealed class WindowsInputSource : IInputSource
         public short X;
         public short Y;
     }
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern nint GetStdHandle(int nStdHandle);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool ReadConsoleInput(nint hConsoleInput, ref INPUT_RECORD lpBuffer, uint nLength, out uint lpNumberOfEventsRead);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool GetNumberOfConsoleInputEvents(nint hConsoleInput, out uint lpcNumberOfEvents);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern uint WaitForSingleObject(nint hHandle, uint dwMilliseconds);
 }

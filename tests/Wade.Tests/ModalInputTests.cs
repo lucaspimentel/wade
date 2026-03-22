@@ -194,7 +194,7 @@ public class ModalInputTests
     [InlineData(nameof(InputMode.Properties))]
     public void HelpOrProperties_ModifierOnlyKey_StaysOpen(string modeName)
     {
-        var mode = Enum.Parse<InputMode>(modeName);
+        InputMode mode = Enum.Parse<InputMode>(modeName);
         var harness = new ModalHarness();
         harness.SetMode(mode);
 
@@ -214,7 +214,7 @@ public class ModalInputTests
     [InlineData(nameof(InputMode.Properties))]
     public void HelpOrProperties_NonModifierKey_Closes(string modeName)
     {
-        var mode = Enum.Parse<InputMode>(modeName);
+        InputMode mode = Enum.Parse<InputMode>(modeName);
         var harness = new ModalHarness();
         harness.SetMode(mode);
 
@@ -226,9 +226,9 @@ public class ModalInputTests
     // ── KeyEvent.IsModifierOnly ──────────────────────────────────────────
 
     [Theory]
-    [InlineData(16)]  // VK_SHIFT
-    [InlineData(17)]  // VK_CONTROL
-    [InlineData(18)]  // VK_MENU (Alt)
+    [InlineData(16)] // VK_SHIFT
+    [InlineData(17)] // VK_CONTROL
+    [InlineData(18)] // VK_MENU (Alt)
     public void IsModifierOnly_TrueForModifierKeys(int vk)
     {
         var key = new KeyEvent((ConsoleKey)vk, '\0', false, false, false);
@@ -258,7 +258,7 @@ public class ModalInputTests
     [InlineData(nameof(InputMode.Help), false)]
     public void ShouldHandleMouse_ReturnsExpectedResult(string modeName, bool expected)
     {
-        var mode = Enum.Parse<InputMode>(modeName);
+        InputMode mode = Enum.Parse<InputMode>(modeName);
         var harness = new ModalHarness();
 
         switch (mode)
@@ -289,7 +289,7 @@ public class ModalInputTests
     [InlineData(nameof(InputMode.Help), false)]
     public void ShouldWriteSixel_ReturnsExpectedResult(string modeName, bool expected)
     {
-        var mode = Enum.Parse<InputMode>(modeName);
+        InputMode mode = Enum.Parse<InputMode>(modeName);
         var harness = new ModalHarness();
 
         switch (mode)
@@ -368,25 +368,25 @@ public class ModalInputTests
     /// </summary>
     private sealed class ModalHarness
     {
-        private InputMode _inputMode = InputMode.Normal;
+        private TextInput? _activeTextInput;
+        private string? _confirmMessage;
 
         private string? _confirmTitle;
-        private string? _confirmMessage;
         private Action? _confirmYesAction;
-
-        private TextInput? _activeTextInput;
-        private string? _textInputTitle;
         private Action<string>? _textInputCompleteAction;
+        private string? _textInputTitle;
 
-        public InputMode Mode => _inputMode;
+        public InputMode Mode { get; private set; } = InputMode.Normal;
+
         public string? TextInputValue => _activeTextInput?.Value;
+
         public int TextInputCursorPosition => _activeTextInput?.CursorPosition ?? -1;
 
-        public void SetMode(InputMode mode) => _inputMode = mode;
+        public void SetMode(InputMode mode) => Mode = mode;
 
         public void ShowConfirm(string title, string message, Action onYes)
         {
-            _inputMode = InputMode.Confirm;
+            Mode = InputMode.Confirm;
             _confirmTitle = title;
             _confirmMessage = message;
             _confirmYesAction = onYes;
@@ -394,7 +394,7 @@ public class ModalInputTests
 
         public void ShowTextInput(string title, string initialValue, Action<string> onComplete)
         {
-            _inputMode = InputMode.TextInput;
+            Mode = InputMode.TextInput;
             _textInputTitle = title;
             _activeTextInput = new TextInput(initialValue);
             _textInputCompleteAction = onComplete;
@@ -404,24 +404,25 @@ public class ModalInputTests
         /// Returns whether mouse events should be handled in the given mode.
         /// Mirrors the guard logic in App's main loop.
         /// </summary>
-        public bool ShouldHandleMouse() => _inputMode is not (InputMode.Help or InputMode.GoToPath or InputMode.TextInput or InputMode.Confirm);
+        public bool ShouldHandleMouse() => Mode is not (InputMode.Help or InputMode.GoToPath or InputMode.TextInput or InputMode.Confirm);
 
         /// <summary>
         /// Returns whether Sixel image output should be written in the given mode.
         /// Mirrors the guard logic in App's main loop.
         /// </summary>
-        public bool ShouldWriteSixel() => _inputMode is InputMode.Normal or InputMode.Search or InputMode.ExpandedPreview;
+        public bool ShouldWriteSixel() => Mode is InputMode.Normal or InputMode.Search or InputMode.ExpandedPreview;
 
         public void HandleKey(KeyEvent key)
         {
-            switch (_inputMode)
+            switch (Mode)
             {
                 case InputMode.Help:
                 case InputMode.Properties:
                     if (!key.IsModifierOnly)
                     {
-                        _inputMode = InputMode.Normal;
+                        Mode = InputMode.Normal;
                     }
+
                     break;
                 case InputMode.TextInput:
                     HandleTextInputKey(key);
@@ -437,7 +438,7 @@ public class ModalInputTests
             switch (key.Key)
             {
                 case ConsoleKey.Escape:
-                    _inputMode = InputMode.Normal;
+                    Mode = InputMode.Normal;
                     _activeTextInput = null;
                     _textInputTitle = null;
                     _textInputCompleteAction = null;
@@ -446,7 +447,7 @@ public class ModalInputTests
                 case ConsoleKey.Enter:
                     string value = _activeTextInput!.Value;
                     Action<string>? completeAction = _textInputCompleteAction;
-                    _inputMode = InputMode.Normal;
+                    Mode = InputMode.Normal;
                     _activeTextInput = null;
                     _textInputTitle = null;
                     _textInputCompleteAction = null;
@@ -494,7 +495,7 @@ public class ModalInputTests
                 case ConsoleKey.Y:
                 case ConsoleKey.Enter:
                     Action? yesAction = _confirmYesAction;
-                    _inputMode = InputMode.Normal;
+                    Mode = InputMode.Normal;
                     _confirmTitle = null;
                     _confirmMessage = null;
                     _confirmYesAction = null;
@@ -503,7 +504,7 @@ public class ModalInputTests
 
                 case ConsoleKey.N:
                 case ConsoleKey.Escape:
-                    _inputMode = InputMode.Normal;
+                    Mode = InputMode.Normal;
                     _confirmTitle = null;
                     _confirmMessage = null;
                     _confirmYesAction = null;

@@ -4,7 +4,8 @@ namespace Wade.Highlighting.Languages;
 
 internal sealed class PythonLanguage : RegexLanguage
 {
-    private static readonly string[] TripleQuotes = ["\"\"\"", "'''" ];
+    private static readonly string[] TripleQuotes = ["\"\"\"", "'''"];
+
     protected override FrozenSet<string> Keywords { get; } = new[]
     {
         "and", "as", "assert", "async", "await", "break", "class", "continue",
@@ -32,6 +33,7 @@ internal sealed class PythonLanguage : RegexLanguage
     }.ToFrozenSet();
 
     protected override string? LineCommentPrefix => "#";
+
     protected override (string Open, string Close)? BlockComment => null; // Python has no block comment
 
     protected override int TryMatchExtension(string line, int pos, List<StyledSpan> spans)
@@ -77,13 +79,18 @@ internal sealed class PythonLanguage : RegexLanguage
                 {
                     int closeEnd = closeIdx + 3;
                     // Include any prefix char before pos
-                    int spanStart = (pos > 0 && (line[pos - 1] == 'f' || line[pos - 1] == 'b' || line[pos - 1] == 'r' || line[pos - 1] == 'u')) ? pos - 1 : pos;
+                    int spanStart = pos > 0 && (line[pos - 1] == 'f' || line[pos - 1] == 'b' || line[pos - 1] == 'r' || line[pos - 1] == 'u')
+                        ? pos - 1
+                        : pos;
                     spans.Add(new StyledSpan(spanStart, closeEnd - spanStart, TokenKind.String));
                     end = closeEnd;
                     return true;
                 }
+
                 // Multi-line triple-quoted string
-                int spanStart2 = (pos > 0 && (line[pos - 1] == 'f' || line[pos - 1] == 'b' || line[pos - 1] == 'r' || line[pos - 1] == 'u')) ? pos - 1 : pos;
+                int spanStart2 = pos > 0 && (line[pos - 1] == 'f' || line[pos - 1] == 'b' || line[pos - 1] == 'r' || line[pos - 1] == 'u')
+                    ? pos - 1
+                    : pos;
                 spans.Add(new StyledSpan(spanStart2, line.Length - spanStart2, TokenKind.String));
                 state = StateMultiString;
                 end = line.Length;
@@ -94,11 +101,13 @@ internal sealed class PythonLanguage : RegexLanguage
         // Regular strings (single or double quote)
         if (pos < line.Length && line[pos] is '"' or '\'')
         {
-            int spanStart = (pos > 0 && (line[pos - 1] == 'f' || line[pos - 1] == 'b' || line[pos - 1] == 'r' || line[pos - 1] == 'u')) ? pos - 1 : pos;
+            int spanStart = pos > 0 && (line[pos - 1] == 'f' || line[pos - 1] == 'b' || line[pos - 1] == 'r' || line[pos - 1] == 'u')
+                ? pos - 1
+                : pos;
             end = ScanQuotedString(line, pos, line[pos], spans);
             if (spans.Count > 0 && spanStart < pos)
             {
-                var last = spans[^1];
+                StyledSpan last = spans[^1];
                 spans[^1] = new StyledSpan(spanStart, last.Start + last.Length - spanStart, TokenKind.String);
             }
 

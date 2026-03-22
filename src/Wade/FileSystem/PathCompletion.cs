@@ -9,7 +9,7 @@ internal static class PathCompletion
     {
         if (path.StartsWith('~'))
         {
-            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             return Path.Join(home, path.AsSpan(1));
         }
 
@@ -93,7 +93,7 @@ internal static class PathCompletion
             bool skipSystem = !showSystemFiles && OperatingSystem.IsWindows();
 
             // Find first matching entry
-            foreach (var entry in new DirectoryInfo(parentDir).EnumerateFileSystemInfos())
+            foreach (FileSystemInfo entry in new DirectoryInfo(parentDir).EnumerateFileSystemInfos())
             {
                 if (skipHidden && IsHidden(entry))
                 {
@@ -125,7 +125,7 @@ internal static class PathCompletion
 
         try
         {
-            foreach (var entry in new DirectoryInfo(dirPath).EnumerateFileSystemInfos())
+            foreach (FileSystemInfo entry in new DirectoryInfo(dirPath).EnumerateFileSystemInfos())
             {
                 if (!showHidden && IsHidden(entry))
                 {

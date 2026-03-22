@@ -18,14 +18,14 @@ public class TomlLanguageTests
     [InlineData("[package]")]
     public void SectionHeader_ClassifiedAsKey(string line)
     {
-        var spans = Tokenize(line);
+        StyledSpan[] spans = Tokenize(line);
         Assert.Contains(spans, s => s.Kind == TokenKind.Key && s.Start == 0);
     }
 
     [Fact]
     public void KeyValue_StringValue_Classified()
     {
-        var spans = Tokenize("key = \"value\"");
+        StyledSpan[] spans = Tokenize("key = \"value\"");
         Assert.Contains(spans, s => s.Kind == TokenKind.Key);
         Assert.Contains(spans, s => s.Kind == TokenKind.Operator);
         Assert.Contains(spans, s => s.Kind == TokenKind.String);
@@ -34,24 +34,24 @@ public class TomlLanguageTests
     [Fact]
     public void Comment_Classified()
     {
-        var spans = Tokenize("# this is a comment");
+        StyledSpan[] spans = Tokenize("# this is a comment");
         Assert.Contains(spans, s => s.Kind == TokenKind.Comment && s.Start == 0);
     }
 
     [Fact]
     public void KeyValue_NumberValue_Classified()
     {
-        var spans = Tokenize("count = 42");
+        StyledSpan[] spans = Tokenize("count = 42");
         Assert.Contains(spans, s => s.Kind == TokenKind.Key);
         Assert.Contains(spans, s => s.Kind == TokenKind.Number);
     }
 
     [Theory]
-    [InlineData("enabled = true",  TokenKind.Constant)]
+    [InlineData("enabled = true", TokenKind.Constant)]
     [InlineData("enabled = false", TokenKind.Constant)]
     public void KeyValue_BoolValue_Classified(string line, TokenKind expected)
     {
-        var spans = Tokenize(line);
+        StyledSpan[] spans = Tokenize(line);
         Assert.Contains(spans, s => s.Kind == expected);
     }
 }

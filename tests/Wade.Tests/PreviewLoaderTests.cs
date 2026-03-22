@@ -6,19 +6,6 @@ namespace Wade.Tests;
 
 public class PreviewLoaderTests
 {
-    private sealed class FakeInputSource : IInputSource
-    {
-        private readonly ManualResetEventSlim _gate = new(false);
-
-        public InputEvent? ReadNext(CancellationToken ct)
-        {
-            _gate.Wait(ct);
-            return null;
-        }
-
-        public void Dispose() => _gate.Set();
-    }
-
     private static PreviewContext DefaultContext() =>
         new(
             PaneWidthCells: 40,
@@ -43,16 +30,16 @@ public class PreviewLoaderTests
         var loader = new PreviewLoader(pipeline);
         var provider = new TextPreviewProvider();
 
-        var tempFile = Path.GetTempFileName();
+        string tempFile = Path.GetTempFileName();
         try
         {
             File.WriteAllText(tempFile, "hello world");
             loader.BeginLoad(tempFile, provider, DefaultContext());
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            var evt = pipeline.Take(cts.Token);
+            InputEvent evt = pipeline.Take(cts.Token);
 
-            var preview = Assert.IsType<PreviewReadyEvent>(evt);
+            PreviewReadyEvent preview = Assert.IsType<PreviewReadyEvent>(evt);
             Assert.Equal(tempFile, preview.Path);
             Assert.NotNull(preview.StyledLines);
             Assert.True(preview.StyledLines.Length > 0);
@@ -70,10 +57,10 @@ public class PreviewLoaderTests
         using var pipeline = new InputPipeline(source);
         var loader = new PreviewLoader(pipeline);
         var provider = new TextPreviewProvider();
-        var context = DefaultContext();
+        PreviewContext context = DefaultContext();
 
-        var tempFile1 = Path.GetTempFileName();
-        var tempFile2 = Path.GetTempFileName();
+        string tempFile1 = Path.GetTempFileName();
+        string tempFile2 = Path.GetTempFileName();
         try
         {
             File.WriteAllText(tempFile1, "first");
@@ -89,7 +76,7 @@ public class PreviewLoaderTests
             PreviewReadyEvent? lastPreview = null;
             while (true)
             {
-                var evt = pipeline.Take(cts.Token);
+                InputEvent evt = pipeline.Take(cts.Token);
                 if (evt is PreviewReadyEvent p)
                 {
                     lastPreview = p;
@@ -110,28 +97,6 @@ public class PreviewLoaderTests
         }
     }
 
-    private sealed class SlowPreviewProvider : IPreviewProvider
-    {
-        public string Label => "Slow";
-
-        public bool CanPreview(string path, PreviewContext context) => true;
-
-        public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct)
-        {
-            // Simulate a slow subprocess-based provider
-            try
-            {
-                Task.Delay(TimeSpan.FromSeconds(30), ct).Wait(ct);
-            }
-            catch (OperationCanceledException)
-            {
-                return null;
-            }
-
-            return new PreviewResult { TextLines = [new StyledLine("slow result", null)] };
-        }
-    }
-
     [Fact]
     public void BeginLoad_WithSlowProvider_CancelsOnSecondLoad()
     {
@@ -140,10 +105,10 @@ public class PreviewLoaderTests
         var loader = new PreviewLoader(pipeline);
         var slowProvider = new SlowPreviewProvider();
         var fastProvider = new TextPreviewProvider();
-        var context = DefaultContext();
+        PreviewContext context = DefaultContext();
 
-        var tempFile1 = Path.GetTempFileName();
-        var tempFile2 = Path.GetTempFileName();
+        string tempFile1 = Path.GetTempFileName();
+        string tempFile2 = Path.GetTempFileName();
         try
         {
             File.WriteAllText(tempFile1, "first");
@@ -160,7 +125,7 @@ public class PreviewLoaderTests
             PreviewReadyEvent? secondPreview = null;
             while (true)
             {
-                var evt = pipeline.Take(cts.Token);
+                InputEvent evt = pipeline.Take(cts.Token);
                 if (evt is PreviewReadyEvent p && p.Path == tempFile2)
                 {
                     secondPreview = p;
@@ -186,7 +151,7 @@ public class PreviewLoaderTests
         var loader = new PreviewLoader(pipeline);
         var provider = new TextPreviewProvider();
 
-        var tempFile = Path.GetTempFileName();
+        string tempFile = Path.GetTempFileName();
         try
         {
             File.WriteAllText(tempFile, "hello world");
@@ -196,7 +161,7 @@ public class PreviewLoaderTests
             // Give background task time to (not) post
             Thread.Sleep(200);
 
-            bool hasEvent = pipeline.TryTake(out var evt);
+            bool hasEvent = pipeline.TryTake(out InputEvent? evt);
             // Either no event, or if one arrived before cancel, that's acceptable
             if (hasEvent)
             {
@@ -208,6 +173,41 @@ public class PreviewLoaderTests
         finally
         {
             File.Delete(tempFile);
+        }
+    }
+
+    private sealed class FakeInputSource : IInputSource
+    {
+        private readonly ManualResetEventSlim _gate = new(false);
+
+        public InputEvent? ReadNext(CancellationToken ct)
+        {
+            _gate.Wait(ct);
+            return null;
+        }
+
+        public void Dispose() => _gate.Set();
+    }
+
+    private sealed class SlowPreviewProvider : IPreviewProvider
+    {
+        public string Label => "Slow";
+
+        public bool CanPreview(string path, PreviewContext context) => true;
+
+        public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct)
+        {
+            // Simulate a slow subprocess-based provider
+            try
+            {
+                Task.Delay(TimeSpan.FromSeconds(30), ct).Wait(ct);
+            }
+            catch (OperationCanceledException)
+            {
+                return null;
+            }
+
+            return new PreviewResult { TextLines = [new StyledLine("slow result", null)] };
         }
     }
 }

@@ -4,47 +4,6 @@ namespace Wade.Tests;
 
 public class InputPipelineTests
 {
-    private sealed class FakeInputSource : IInputSource
-    {
-        private readonly Queue<InputEvent> _events = new();
-        private readonly ManualResetEventSlim _hasEvents = new(false);
-        private bool _disposed;
-
-        public void Enqueue(InputEvent evt)
-        {
-            _events.Enqueue(evt);
-            _hasEvents.Set();
-        }
-
-        public InputEvent? ReadNext(CancellationToken ct)
-        {
-            while (!ct.IsCancellationRequested)
-            {
-                if (_events.TryDequeue(out var evt))
-                {
-                    if (_events.Count == 0)
-                    {
-                        _hasEvents.Reset();
-                    }
-
-                    return evt;
-                }
-
-                _hasEvents.Wait(ct);
-            }
-
-            return null;
-        }
-
-        public void Dispose()
-        {
-            _disposed = true;
-            _hasEvents.Set(); // unblock any waiting ReadNext
-        }
-
-        public bool IsDisposed => _disposed;
-    }
-
     // ── Single event ────────────────────────────────────────────────────────────
 
     [Fact]
@@ -55,7 +14,7 @@ public class InputPipelineTests
         source.Enqueue(expected);
 
         using var pipeline = new InputPipeline(source);
-        var result = pipeline.Take();
+        InputEvent result = pipeline.Take();
 
         Assert.Equal(expected, result);
     }
@@ -90,7 +49,7 @@ public class InputPipelineTests
         // Give the background thread a moment to start
         Thread.Sleep(50);
 
-        bool result = pipeline.TryTake(out var evt);
+        bool result = pipeline.TryTake(out InputEvent? evt);
         Assert.False(result);
     }
 
@@ -111,7 +70,7 @@ public class InputPipelineTests
             pipeline.Inject(injected);
         });
 
-        var result = pipeline.Take();
+        InputEvent result = pipeline.Take();
         Assert.Equal(injected, result);
     }
 
@@ -125,7 +84,7 @@ public class InputPipelineTests
         source.Enqueue(expected);
 
         using var pipeline = new InputPipeline(source);
-        var result = pipeline.Take();
+        InputEvent result = pipeline.Take();
 
         Assert.Equal(expected, result);
     }
@@ -140,5 +99,45 @@ public class InputPipelineTests
         pipeline.Dispose();
 
         Assert.True(source.IsDisposed);
+    }
+
+    private sealed class FakeInputSource : IInputSource
+    {
+        private readonly Queue<InputEvent> _events = new();
+        private readonly ManualResetEventSlim _hasEvents = new(false);
+
+        public bool IsDisposed { get; private set; }
+
+        public InputEvent? ReadNext(CancellationToken ct)
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                if (_events.TryDequeue(out InputEvent? evt))
+                {
+                    if (_events.Count == 0)
+                    {
+                        _hasEvents.Reset();
+                    }
+
+                    return evt;
+                }
+
+                _hasEvents.Wait(ct);
+            }
+
+            return null;
+        }
+
+        public void Dispose()
+        {
+            IsDisposed = true;
+            _hasEvents.Set(); // unblock any waiting ReadNext
+        }
+
+        public void Enqueue(InputEvent evt)
+        {
+            _events.Enqueue(evt);
+            _hasEvents.Set();
+        }
     }
 }

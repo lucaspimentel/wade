@@ -60,7 +60,7 @@ public class LayoutTests
     public void CenterContent_SmallerThanPane_CentersContent()
     {
         var rect = new Rect(10, 5, 40, 30);
-        var (row, col) = rect.CenterContent(20, 10);
+        (int row, int col) = rect.CenterContent(20, 10);
 
         Assert.Equal(15, row); // 5 + (30 - 10) / 2
         Assert.Equal(20, col); // 10 + (40 - 20) / 2
@@ -70,7 +70,7 @@ public class LayoutTests
     public void CenterContent_SameSizeAsPane_ReturnsTopLeft()
     {
         var rect = new Rect(10, 5, 40, 30);
-        var (row, col) = rect.CenterContent(40, 30);
+        (int row, int col) = rect.CenterContent(40, 30);
 
         Assert.Equal(5, row);
         Assert.Equal(10, col);
@@ -106,7 +106,7 @@ public class LayoutTests
     public void CenterContent_LargerThanPane_ClampsToTopLeft()
     {
         var rect = new Rect(10, 5, 40, 30);
-        var (row, col) = rect.CenterContent(60, 50);
+        (int row, int col) = rect.CenterContent(60, 50);
 
         Assert.Equal(5, row);
         Assert.Equal(10, col);

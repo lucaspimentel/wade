@@ -1,4 +1,3 @@
-using Wade;
 using Wade.FileSystem;
 
 namespace Wade.Tests;
@@ -9,7 +8,7 @@ public class WadeConfigTests
 
     private static string WriteTempConfig(string content)
     {
-        var path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".toml");
+        string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".toml");
         File.WriteAllText(path, content);
         return path;
     }
@@ -52,7 +51,7 @@ public class WadeConfigTests
     [InlineData("show_hidden_files = false", true, true, false)]
     public void ConfigFile_ParsesBoolSettings(string line, bool expectedIcons, bool expectedPreviews, bool expectedHidden)
     {
-        var path = WriteTempConfig(line);
+        string path = WriteTempConfig(line);
         try
         {
             var config = WadeConfig.Load([], configFilePath: path);
@@ -91,7 +90,7 @@ public class WadeConfigTests
     [InlineData("archive_metadata_enabled", false)]
     public void ConfigFile_ParsesNewBoolSettings(string key, bool value)
     {
-        var path = WriteTempConfig($"{key} = {(value ? "true" : "false")}");
+        string path = WriteTempConfig($"{key} = {(value ? "true" : "false")}");
         try
         {
             var config = WadeConfig.Load([], configFilePath: path);
@@ -121,10 +120,10 @@ public class WadeConfigTests
     [Fact]
     public void ConfigFile_IgnoresCommentLines()
     {
-        var path = WriteTempConfig("""
-            # this is a comment
-            # show_icons_enabled = true
-            """);
+        string path = WriteTempConfig("""
+                                      # this is a comment
+                                      # show_icons_enabled = true
+                                      """);
         try
         {
             var config = WadeConfig.Load([], configFilePath: path);
@@ -139,13 +138,13 @@ public class WadeConfigTests
     [Fact]
     public void ConfigFile_IgnoresBlankLines()
     {
-        var path = WriteTempConfig("""
+        string path = WriteTempConfig("""
 
-            show_icons_enabled = true
+                                      show_icons_enabled = true
 
-            image_previews_enabled = true
+                                      image_previews_enabled = true
 
-            """);
+                                      """);
         try
         {
             var config = WadeConfig.Load([], configFilePath: path);
@@ -161,11 +160,11 @@ public class WadeConfigTests
     [Fact]
     public void ConfigFile_IgnoresMalformedLines()
     {
-        var path = WriteTempConfig("""
-            not_a_valid_line
-            show_icons_enabled true
-            = no_key
-            """);
+        string path = WriteTempConfig("""
+                                      not_a_valid_line
+                                      show_icons_enabled true
+                                      = no_key
+                                      """);
         try
         {
             var config = WadeConfig.Load([], configFilePath: path);
@@ -180,7 +179,7 @@ public class WadeConfigTests
     [Fact]
     public void ConfigFile_StripsInlineComments()
     {
-        var path = WriteTempConfig("show_icons_enabled = true # enable icons");
+        string path = WriteTempConfig("show_icons_enabled = true # enable icons");
         try
         {
             var config = WadeConfig.Load([], configFilePath: path);
@@ -244,13 +243,13 @@ public class WadeConfigTests
     }
 
     [Theory]
-    [InlineData(@"C:\foo\bar\",  @"C:\foo\bar")]
-    [InlineData(@"C:\foo\bar/",  @"C:\foo\bar")]
+    [InlineData(@"C:\foo\bar\", @"C:\foo\bar")]
+    [InlineData(@"C:\foo\bar/", @"C:\foo\bar")]
     [InlineData(@"C:\foo\bar\\", @"C:\foo\bar")]
-    [InlineData(@"C:\foo\bar",   @"C:\foo\bar")]
-    [InlineData(@"C:\",          @"C:\")]     // drive root preserved
-    [InlineData(@"C:/",          @"C:\")]     // forward-slash drive root → backslash root
-    [InlineData(@"/",            @"/")]       // Unix root preserved
+    [InlineData(@"C:\foo\bar", @"C:\foo\bar")]
+    [InlineData(@"C:\", @"C:\")] // drive root preserved
+    [InlineData(@"C:/", @"C:\")] // forward-slash drive root → backslash root
+    [InlineData(@"/", @"/")] // Unix root preserved
     public void StartPath_TrailingSeparatorsAreStripped(string input, string expected)
     {
         var config = WadeConfig.Load([input], configFilePath: "/nonexistent/path.toml");
@@ -278,7 +277,7 @@ public class WadeConfigTests
     [InlineData(@"~\Downloads")]
     public void StartPath_TildeExpandsToHomeDirectory(string input)
     {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         var config = WadeConfig.Load([input], configFilePath: "/nonexistent/path.toml");
 
         Assert.StartsWith(home, config.StartPath, StringComparison.OrdinalIgnoreCase);
@@ -287,20 +286,23 @@ public class WadeConfigTests
     // ── Sort config ──────────────────────────────────────────────────────────
 
     [Theory]
-    [InlineData("name", 0)]      // SortMode.Name
-    [InlineData("modified", 1)]  // SortMode.Modified
-    [InlineData("size", 2)]      // SortMode.Size
+    [InlineData("name", 0)] // SortMode.Name
+    [InlineData("modified", 1)] // SortMode.Modified
+    [InlineData("size", 2)] // SortMode.Size
     [InlineData("extension", 3)] // SortMode.Extension
     public void ConfigFile_ParsesSortMode(string mode, int expectedValue)
     {
         var expected = (SortMode)expectedValue;
-        var path = WriteTempConfig($"sort_mode = {mode}");
+        string path = WriteTempConfig($"sort_mode = {mode}");
         try
         {
             var config = WadeConfig.Load([], configFilePath: path);
             Assert.Equal(expected, config.SortMode);
         }
-        finally { File.Delete(path); }
+        finally
+        {
+            File.Delete(path);
+        }
     }
 
     [Theory]
@@ -308,13 +310,16 @@ public class WadeConfigTests
     [InlineData("false", false)]
     public void ConfigFile_ParsesSortAscending(string value, bool expected)
     {
-        var path = WriteTempConfig($"sort_ascending = {value}");
+        string path = WriteTempConfig($"sort_ascending = {value}");
         try
         {
             var config = WadeConfig.Load([], configFilePath: path);
             Assert.Equal(expected, config.SortAscending);
         }
-        finally { File.Delete(path); }
+        finally
+        {
+            File.Delete(path);
+        }
     }
 
     [Fact]
@@ -365,28 +370,23 @@ public class WadeConfigTests
     [InlineData("no", false)]
     [InlineData("No", false)]
     [InlineData("NO", false)]
-    public void ParseBool_RecognizesAllAcceptedValues(string input, bool expected)
-    {
+    public void ParseBool_RecognizesAllAcceptedValues(string input, bool expected) =>
         Assert.Equal(expected, WadeConfig.ParseBool(input, fallback: !expected));
-    }
 
     [Theory]
     [InlineData("maybe", true)]
     [InlineData("", false)]
     [InlineData("2", true)]
     [InlineData("on", false)]
-    public void ParseBool_UnknownValue_ReturnsFallback(string input, bool fallback)
-    {
-        Assert.Equal(fallback, WadeConfig.ParseBool(input, fallback));
-    }
+    public void ParseBool_UnknownValue_ReturnsFallback(string input, bool fallback) => Assert.Equal(fallback, WadeConfig.ParseBool(input, fallback));
 
     // ── Save / round-trip ──────────────────────────────────────────────────
 
     [Fact]
     public void Save_RoundTrips_AllSettings()
     {
-        var dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
-        var configPath = Path.Combine(dir, "config.toml");
+        string dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        string configPath = Path.Combine(dir, "config.toml");
         try
         {
             var original = WadeConfig.Load([], configFilePath: configPath);
@@ -447,8 +447,8 @@ public class WadeConfigTests
     [Fact]
     public void Save_CreatesParentDirectory()
     {
-        var dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName(), "nested");
-        var configPath = Path.Combine(dir, "config.toml");
+        string dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName(), "nested");
+        string configPath = Path.Combine(dir, "config.toml");
         try
         {
             var config = WadeConfig.Load([], configFilePath: configPath);
@@ -458,7 +458,7 @@ public class WadeConfigTests
         }
         finally
         {
-            var root = Path.GetDirectoryName(dir)!;
+            string root = Path.GetDirectoryName(dir)!;
             if (Directory.Exists(root))
             {
                 Directory.Delete(root, recursive: true);
@@ -474,7 +474,7 @@ public class WadeConfigTests
     public void Save_RoundTrips_SortMode(int modeValue)
     {
         var mode = (SortMode)modeValue;
-        var configPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".toml");
+        string configPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".toml");
         try
         {
             var config = WadeConfig.Load([], configFilePath: configPath);
@@ -497,7 +497,7 @@ public class WadeConfigTests
     [InlineData("false", false)]
     public void ConfigFile_DetailColumnsEnabled_SetsBothColumns(string value, bool expected)
     {
-        var path = WriteTempConfig($"detail_columns_enabled = {value}");
+        string path = WriteTempConfig($"detail_columns_enabled = {value}");
         try
         {
             var config = WadeConfig.Load([], configFilePath: path);

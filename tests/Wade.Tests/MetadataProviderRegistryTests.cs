@@ -27,7 +27,7 @@ public class MetadataProviderRegistryTests
     [InlineData("lib.dll")]
     public void ExeOrDll_IncludesExecutableMetadataProvider(string path)
     {
-        var providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
+        List<IMetadataProvider> providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
 
         Assert.Contains(providers, p => p is ExecutableMetadataProvider);
     }
@@ -38,7 +38,7 @@ public class MetadataProviderRegistryTests
     [InlineData("slides.pptx")]
     public void OfficeFile_IncludesOfficeMetadataProvider(string path)
     {
-        var providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
+        List<IMetadataProvider> providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
 
         Assert.Contains(providers, p => p is OfficeMetadataProvider);
     }
@@ -48,7 +48,7 @@ public class MetadataProviderRegistryTests
     [InlineData("symbols.snupkg")]
     public void NupkgFile_IncludesNuGetMetadataProvider(string path)
     {
-        var providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
+        List<IMetadataProvider> providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
 
         Assert.Contains(providers, p => p is NuGetMetadataProvider);
     }
@@ -58,9 +58,9 @@ public class MetadataProviderRegistryTests
     [InlineData("readme.txt")]
     public void NonSpecializedFile_ReturnsOnlyFileMetadataProvider(string path)
     {
-        var providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
+        List<IMetadataProvider> providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
 
-        var provider = Assert.Single(providers);
+        IMetadataProvider provider = Assert.Single(providers);
         Assert.IsType<FileMetadataProvider>(provider);
     }
 
@@ -69,7 +69,7 @@ public class MetadataProviderRegistryTests
     [InlineData("lib.jar")]
     public void ZipFile_IncludesArchiveMetadataProvider(string path)
     {
-        var providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
+        List<IMetadataProvider> providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
 
         Assert.Contains(providers, p => p is ArchiveMetadataProvider);
     }
@@ -80,7 +80,7 @@ public class MetadataProviderRegistryTests
     [InlineData("photo.gif")]
     public void ImageFile_IncludesImageMetadataProvider(string path)
     {
-        var providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
+        List<IMetadataProvider> providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
 
         Assert.Contains(providers, p => p is ImageMetadataProvider);
     }
@@ -88,16 +88,16 @@ public class MetadataProviderRegistryTests
     [Fact]
     public void CloudPlaceholder_ReturnsOnlyFileMetadataProvider()
     {
-        var providers = MetadataProviderRegistry.GetApplicableProviders("app.exe", MakeContext(isCloudPlaceholder: true));
+        List<IMetadataProvider> providers = MetadataProviderRegistry.GetApplicableProviders("app.exe", MakeContext(isCloudPlaceholder: true));
 
-        var provider = Assert.Single(providers);
+        IMetadataProvider provider = Assert.Single(providers);
         Assert.IsType<FileMetadataProvider>(provider);
     }
 
     [Fact]
     public void BrokenSymlink_ReturnsEmptyList()
     {
-        var providers = MetadataProviderRegistry.GetApplicableProviders("app.exe", MakeContext(isBrokenSymlink: true));
+        List<IMetadataProvider> providers = MetadataProviderRegistry.GetApplicableProviders("app.exe", MakeContext(isBrokenSymlink: true));
 
         Assert.Empty(providers);
     }
@@ -108,7 +108,7 @@ public class MetadataProviderRegistryTests
         // FileMetadataProvider must be first so the filename section appears at the top
         foreach (string path in (string[])["app.exe", "report.docx", "package.nupkg", "photo.png", "file.txt"])
         {
-            var providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
+            List<IMetadataProvider> providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
             Assert.IsType<FileMetadataProvider>(providers[0]);
         }
     }
@@ -117,29 +117,29 @@ public class MetadataProviderRegistryTests
     public void RegistryPreservesProviderOrder()
     {
         // image: FileMetadataProvider first, then ImageMetadataProvider
-        var imgProviders = MetadataProviderRegistry.GetApplicableProviders("photo.png", MakeContext());
+        List<IMetadataProvider> imgProviders = MetadataProviderRegistry.GetApplicableProviders("photo.png", MakeContext());
         Assert.IsType<FileMetadataProvider>(imgProviders[0]);
         Assert.IsType<ImageMetadataProvider>(imgProviders[1]);
 
         // exe/dll: FileMetadataProvider first, then ExecutableMetadataProvider
-        var exeProviders = MetadataProviderRegistry.GetApplicableProviders("app.exe", MakeContext());
+        List<IMetadataProvider> exeProviders = MetadataProviderRegistry.GetApplicableProviders("app.exe", MakeContext());
         Assert.IsType<FileMetadataProvider>(exeProviders[0]);
         Assert.IsType<ExecutableMetadataProvider>(exeProviders[1]);
 
         // docx: FileMetadataProvider, OfficeMetadataProvider, ArchiveMetadataProvider
-        var docxProviders = MetadataProviderRegistry.GetApplicableProviders("report.docx", MakeContext());
+        List<IMetadataProvider> docxProviders = MetadataProviderRegistry.GetApplicableProviders("report.docx", MakeContext());
         Assert.IsType<FileMetadataProvider>(docxProviders[0]);
         Assert.IsType<OfficeMetadataProvider>(docxProviders[1]);
         Assert.IsType<ArchiveMetadataProvider>(docxProviders[2]);
 
         // nupkg: FileMetadataProvider, NuGetMetadataProvider, ArchiveMetadataProvider
-        var nupkgProviders = MetadataProviderRegistry.GetApplicableProviders("package.nupkg", MakeContext());
+        List<IMetadataProvider> nupkgProviders = MetadataProviderRegistry.GetApplicableProviders("package.nupkg", MakeContext());
         Assert.IsType<FileMetadataProvider>(nupkgProviders[0]);
         Assert.IsType<NuGetMetadataProvider>(nupkgProviders[1]);
         Assert.IsType<ArchiveMetadataProvider>(nupkgProviders[2]);
 
         // zip: FileMetadataProvider, ArchiveMetadataProvider
-        var zipProviders = MetadataProviderRegistry.GetApplicableProviders("archive.zip", MakeContext());
+        List<IMetadataProvider> zipProviders = MetadataProviderRegistry.GetApplicableProviders("archive.zip", MakeContext());
         Assert.IsType<FileMetadataProvider>(zipProviders[0]);
         Assert.IsType<ArchiveMetadataProvider>(zipProviders[1]);
     }

@@ -131,8 +131,18 @@ internal sealed class YamlLanguage : ILanguage
             int p = pos + 1;
             while (p < len)
             {
-                if (q == '"' && line[p] == '\\') { p += 2; continue; }
-                if (line[p] == q) { p++; break; }
+                if (q == '"' && line[p] == '\\')
+                {
+                    p += 2;
+                    continue;
+                }
+
+                if (line[p] == q)
+                {
+                    p++;
+                    break;
+                }
+
                 p++;
             }
 
@@ -146,7 +156,7 @@ internal sealed class YamlLanguage : ILanguage
         }
 
         // Boolean / null
-        var valueSpan = line.AsSpan(pos);
+        ReadOnlySpan<char> valueSpan = line.AsSpan(pos);
         if (valueSpan.StartsWith("true") || valueSpan.StartsWith("false") ||
             valueSpan.StartsWith("yes") || valueSpan.StartsWith("no") ||
             valueSpan.StartsWith("null") || valueSpan.StartsWith("~"))

@@ -17,11 +17,11 @@ internal sealed class OfficeMetadataProvider : IMetadataProvider
     {
         string ext = Path.GetExtension(path);
         return ext.Equals(".docx", StringComparison.OrdinalIgnoreCase)
-            || ext.Equals(".xlsx", StringComparison.OrdinalIgnoreCase)
-            || ext.Equals(".pptx", StringComparison.OrdinalIgnoreCase)
-            || ext.Equals(".dotx", StringComparison.OrdinalIgnoreCase)
-            || ext.Equals(".xltx", StringComparison.OrdinalIgnoreCase)
-            || ext.Equals(".potx", StringComparison.OrdinalIgnoreCase);
+               || ext.Equals(".xlsx", StringComparison.OrdinalIgnoreCase)
+               || ext.Equals(".pptx", StringComparison.OrdinalIgnoreCase)
+               || ext.Equals(".dotx", StringComparison.OrdinalIgnoreCase)
+               || ext.Equals(".xltx", StringComparison.OrdinalIgnoreCase)
+               || ext.Equals(".potx", StringComparison.OrdinalIgnoreCase);
     }
 
     public MetadataResult? GetMetadata(string path, PreviewContext context, CancellationToken ct)
@@ -33,7 +33,7 @@ internal sealed class OfficeMetadataProvider : IMetadataProvider
 
         try
         {
-            using var zip = ZipFile.OpenRead(path);
+            using ZipArchive zip = ZipFile.OpenRead(path);
             string fileTypeLabel = GetFileTypeLabel(path);
             var sections = new List<MetadataSection>();
 
@@ -80,7 +80,7 @@ internal sealed class OfficeMetadataProvider : IMetadataProvider
             return false;
         }
 
-        using var stream = coreEntry.Open();
+        using Stream stream = coreEntry.Open();
         var doc = XDocument.Load(stream);
 
         if (doc.Root is null)
@@ -140,7 +140,7 @@ internal sealed class OfficeMetadataProvider : IMetadataProvider
             return false;
         }
 
-        using var stream = appEntry.Open();
+        using Stream stream = appEntry.Open();
         var doc = XDocument.Load(stream);
 
         if (doc.Root is null)
@@ -182,8 +182,9 @@ internal sealed class OfficeMetadataProvider : IMetadataProvider
             if (parts.Count > 0)
             {
                 partLabel = ext.Equals(".xlsx", StringComparison.OrdinalIgnoreCase)
-                    || ext.Equals(".xltx", StringComparison.OrdinalIgnoreCase)
-                    ? "Sheets" : "Parts";
+                            || ext.Equals(".xltx", StringComparison.OrdinalIgnoreCase)
+                    ? "Sheets"
+                    : "Parts";
 
                 partEntries = new List<MetadataEntry>();
                 foreach (string part in parts)
@@ -265,5 +266,4 @@ internal sealed class OfficeMetadataProvider : IMetadataProvider
             _ => "Office Document",
         };
     }
-
 }

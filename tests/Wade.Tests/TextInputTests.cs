@@ -7,6 +7,9 @@ namespace Wade.Tests;
 
 public class TextInputTests
 {
+    // ── Rendering ───────────────────────────────────────────────────────────
+
+    private static readonly CellStyle TestStyle = new(new Color(200, 200, 200), null);
     // ── Editing operations ──────────────────────────────────────────────────
 
     [Fact]
@@ -46,8 +49,8 @@ public class TextInputTests
     }
 
     [Theory]
-    [InlineData("abc", 3, "ab", 2)]  // delete last char
-    [InlineData("abc", 1, "bc", 0)]  // delete first char (cursor at 1)
+    [InlineData("abc", 3, "ab", 2)] // delete last char
+    [InlineData("abc", 1, "bc", 0)] // delete first char (cursor at 1)
     public void DeleteBackward_RemovesCharBeforeCursor(string initial, int cursorPos, string expectedValue, int expectedCursor)
     {
         var input = new TextInput(initial);
@@ -93,8 +96,8 @@ public class TextInputTests
     }
 
     [Theory]
-    [InlineData(0, 0)]   // already at start, clamped
-    [InlineData(3, 2)]   // normal move
+    [InlineData(0, 0)] // already at start, clamped
+    [InlineData(3, 2)] // normal move
     public void MoveCursorLeft_ClampsAtZero(int startPos, int expectedPos)
     {
         var input = new TextInput("abc");
@@ -109,8 +112,8 @@ public class TextInputTests
     }
 
     [Theory]
-    [InlineData(3, 3)]   // already at end, clamped
-    [InlineData(0, 1)]   // normal move
+    [InlineData(3, 3)] // already at end, clamped
+    [InlineData(0, 1)] // normal move
     public void MoveCursorRight_ClampsAtLength(int startPos, int expectedPos)
     {
         var input = new TextInput("abc");
@@ -149,10 +152,6 @@ public class TextInputTests
         Assert.Equal("", input.Value);
         Assert.Equal(0, input.CursorPosition);
     }
-
-    // ── Rendering ───────────────────────────────────────────────────────────
-
-    private static readonly CellStyle TestStyle = new(new Color(200, 200, 200), null);
 
     private static string FlushRaw(ScreenBuffer buf)
     {

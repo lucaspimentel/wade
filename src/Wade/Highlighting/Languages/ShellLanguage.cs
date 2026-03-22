@@ -25,6 +25,7 @@ internal sealed class ShellLanguage : RegexLanguage
     }.ToFrozenSet();
 
     protected override string? LineCommentPrefix => "#";
+
     protected override (string Open, string Close)? BlockComment => null;
 
     protected override bool TryMatchString(string line, int pos, List<StyledSpan> spans, ref byte state, out int end)

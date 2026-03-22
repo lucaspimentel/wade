@@ -31,7 +31,7 @@ public class JavaLanguageTests
     [InlineData("@Inject")]
     public void Annotation_Classified(string line)
     {
-        var spans = Tokenize(line);
+        StyledSpan[] spans = Tokenize(line);
         Assert.Contains(spans, s => s.Kind == TokenKind.Attribute && s.Start == 0);
     }
 
@@ -42,21 +42,21 @@ public class JavaLanguageTests
     [InlineData("extends")]
     public void JavaKeywords_Classified(string keyword)
     {
-        var spans = Tokenize(keyword);
+        StyledSpan[] spans = Tokenize(keyword);
         Assert.Contains(spans, s => s.Kind == TokenKind.Keyword);
     }
 
     [Fact]
     public void TextBlock_SingleLine_Classified()
     {
-        var spans = Tokenize("\"\"\"text\"\"\"");
+        StyledSpan[] spans = Tokenize("\"\"\"text\"\"\"");
         Assert.Contains(spans, s => s.Kind == TokenKind.String);
     }
 
     [Fact]
     public void TextBlock_MultiLine_SpansAllLines()
     {
-        var lines = TokenizeLines("\"\"\"", "    content", "    \"\"\"");
+        StyledLine[] lines = TokenizeLines("\"\"\"", "    content", "    \"\"\"");
         Assert.All(lines, l => Assert.Contains(l.Spans ?? [], s => s.Kind == TokenKind.String));
     }
 }

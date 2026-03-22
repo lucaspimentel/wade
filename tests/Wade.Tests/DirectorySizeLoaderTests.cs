@@ -4,19 +4,6 @@ namespace Wade.Tests;
 
 public class DirectorySizeLoaderTests
 {
-    private sealed class FakeInputSource : IInputSource
-    {
-        private readonly ManualResetEventSlim _gate = new(false);
-
-        public InputEvent? ReadNext(CancellationToken ct)
-        {
-            _gate.Wait(ct);
-            return null;
-        }
-
-        public void Dispose() => _gate.Set();
-    }
-
     [Fact]
     public void CalculateSize_EmptyDirectory_ReturnsZero()
     {
@@ -31,9 +18,9 @@ public class DirectorySizeLoaderTests
             loader.BeginCalculation(dir);
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            var evt = pipeline.Take(cts.Token);
+            InputEvent evt = pipeline.Take(cts.Token);
 
-            var result = Assert.IsType<DirectorySizeReadyEvent>(evt);
+            DirectorySizeReadyEvent result = Assert.IsType<DirectorySizeReadyEvent>(evt);
             Assert.Equal(dir, result.Path);
             Assert.Equal(0, result.TotalBytes);
         }
@@ -60,9 +47,9 @@ public class DirectorySizeLoaderTests
             loader.BeginCalculation(dir);
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            var evt = pipeline.Take(cts.Token);
+            InputEvent evt = pipeline.Take(cts.Token);
 
-            var result = Assert.IsType<DirectorySizeReadyEvent>(evt);
+            DirectorySizeReadyEvent result = Assert.IsType<DirectorySizeReadyEvent>(evt);
             Assert.Equal(dir, result.Path);
             Assert.Equal(300, result.TotalBytes);
         }
@@ -96,9 +83,9 @@ public class DirectorySizeLoaderTests
             loader.BeginCalculation(dir);
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            var evt = pipeline.Take(cts.Token);
+            InputEvent evt = pipeline.Take(cts.Token);
 
-            var result = Assert.IsType<DirectorySizeReadyEvent>(evt);
+            DirectorySizeReadyEvent result = Assert.IsType<DirectorySizeReadyEvent>(evt);
             Assert.Equal(dir, result.Path);
             Assert.Equal(150, result.TotalBytes);
         }
@@ -133,7 +120,7 @@ public class DirectorySizeLoaderTests
             DirectorySizeReadyEvent? dir2Result = null;
             while (dir2Result is null)
             {
-                var evt = pipeline.Take(cts.Token);
+                InputEvent evt = pipeline.Take(cts.Token);
                 if (evt is DirectorySizeReadyEvent ds && ds.Path == dir2)
                 {
                     dir2Result = ds;
@@ -147,5 +134,18 @@ public class DirectorySizeLoaderTests
             Directory.Delete(dir1, true);
             Directory.Delete(dir2, true);
         }
+    }
+
+    private sealed class FakeInputSource : IInputSource
+    {
+        private readonly ManualResetEventSlim _gate = new(false);
+
+        public InputEvent? ReadNext(CancellationToken ct)
+        {
+            _gate.Wait(ct);
+            return null;
+        }
+
+        public void Dispose() => _gate.Set();
     }
 }
