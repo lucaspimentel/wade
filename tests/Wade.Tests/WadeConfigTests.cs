@@ -407,6 +407,9 @@ public class WadeConfigTests
             original.FileMetadataEnabled = false;
             original.FilePreviewsEnabled = false;
             original.ArchiveMetadataEnabled = false;
+            original.DirSizeSsdEnabled = false;
+            original.DirSizeHddEnabled = true;
+            original.DirSizeNetworkEnabled = true;
             original.Save();
 
             var loaded = WadeConfig.Load([], configFilePath: configPath);
@@ -428,6 +431,9 @@ public class WadeConfigTests
             Assert.False(loaded.FileMetadataEnabled);
             Assert.False(loaded.FilePreviewsEnabled);
             Assert.False(loaded.ArchiveMetadataEnabled);
+            Assert.False(loaded.DirSizeSsdEnabled);
+            Assert.True(loaded.DirSizeHddEnabled);
+            Assert.True(loaded.DirSizeNetworkEnabled);
         }
         finally
         {

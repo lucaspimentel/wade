@@ -88,6 +88,11 @@ internal sealed class App
     private DirectorySizeLoader? _dirSizeLoader;
     private string? _propertiesDirSizePath;
     private string? _propertiesDirSizeText;
+
+    // Inline directory size state
+    private InlineDirSizeLoader? _inlineDirSizeLoader;
+    private Dictionary<string, long>? _inlineDirSizes;
+    private DriveMediaType _currentDriveMediaType = DriveMediaType.Unknown;
     private int _propertiesScrollOffset;
     private int _propertiesContentHeight;
 
@@ -167,6 +172,7 @@ internal sealed class App
         using var pipeline = new InputPipeline(inputSource);
         _previewLoader = new PreviewLoader(pipeline);
         _dirSizeLoader = new DirectorySizeLoader(pipeline);
+        _inlineDirSizeLoader = new InlineDirSizeLoader(pipeline);
         _gitStatusLoader = new GitStatusLoader(pipeline);
         _gitActionRunner = new GitActionRunner(pipeline);
         _fsWatcher = new FileSystemWatcherManager(pipeline);
@@ -268,6 +274,10 @@ internal sealed class App
                 else if (extra is DirectorySizeReadyEvent dirSizeExtra)
                 {
                     HandleDirectorySizeReady(dirSizeExtra);
+                }
+                else if (extra is InlineDirSizeReadyEvent inlineDirSizeExtra)
+                {
+                    HandleInlineDirSizeReady(inlineDirSizeExtra);
                 }
                 else if (extra is GitStatusReadyEvent gitExtra)
                 {
@@ -378,6 +388,12 @@ internal sealed class App
             if (inputEvent is DirectorySizeReadyEvent dirSizeEvt)
             {
                 HandleDirectorySizeReady(dirSizeEvt);
+                continue;
+            }
+
+            if (inputEvent is InlineDirSizeReadyEvent inlineDirSizeEvt)
+            {
+                HandleInlineDirSizeReady(inlineDirSizeEvt);
                 continue;
             }
 
@@ -980,7 +996,8 @@ internal sealed class App
             buffer, fileListPane, entries, _selectedIndex, _scrollOffset,
             isActive: true, showIcons: _config.ShowIconsEnabled,
             showSize: _config.SizeColumnEnabled, showDate: _config.DateColumnEnabled,
-            markedPaths: _markedPaths, gitStatuses: _gitStatuses);
+            markedPaths: _markedPaths, gitStatuses: _gitStatuses,
+            dirSizes: _inlineDirSizes);
 
         // Search bar at bottom of center pane
         if (showSearchBar)
@@ -1308,6 +1325,17 @@ internal sealed class App
         int n = UI.FormatHelpers.FormatSize(sizeBuf, evt.TotalBytes);
         string formatted = sizeBuf[..n].ToString();
         _propertiesDirSizeText = $"{formatted} ({evt.TotalBytes:N0} bytes)";
+    }
+
+    private void HandleInlineDirSizeReady(InlineDirSizeReadyEvent evt)
+    {
+        if (evt.ParentPath != _currentPath)
+        {
+            return;
+        }
+
+        _inlineDirSizes ??= new Dictionary<string, long>();
+        _inlineDirSizes[evt.DirectoryPath] = evt.TotalBytes;
     }
 
     private void HandleGitStatusReady(GitStatusReadyEvent evt)
@@ -2318,22 +2346,85 @@ internal sealed class App
             _currentBranchName = null;
             _gitStatuses = null;
             _gitStatusLoader?.Cancel();
-            return;
-        }
-
-        var repoRoot = GitUtils.FindRepoRoot(_currentPath);
-        _currentRepoRoot = repoRoot;
-
-        if (repoRoot is not null)
-        {
-            _gitStatusLoader?.BeginLoad(repoRoot);
         }
         else
         {
-            _currentBranchName = null;
-            _gitStatuses = null;
+            var repoRoot = GitUtils.FindRepoRoot(_currentPath);
+            _currentRepoRoot = repoRoot;
+
+            if (repoRoot is not null)
+            {
+                _gitStatusLoader?.BeginLoad(repoRoot);
+            }
+            else
+            {
+                _currentBranchName = null;
+                _gitStatuses = null;
+            }
+        }
+
+        RefreshInlineDirSizes();
+    }
+
+    private void RefreshInlineDirSizes()
+    {
+        _inlineDirSizes = null;
+
+        if (!_config.SizeColumnEnabled || _currentPath == DirectoryContents.DrivesPath)
+        {
+            _inlineDirSizeLoader?.Cancel();
+            return;
+        }
+
+        // Detect the current drive type
+        string? root = Path.GetPathRoot(_currentPath);
+
+        if (root != null)
+        {
+            _currentDriveMediaType = DriveTypeDetector.Detect(new DriveInfo(root));
+        }
+        else
+        {
+            _currentDriveMediaType = DriveMediaType.Unknown;
+        }
+
+        if (!ShouldComputeInlineDirSizes(_currentDriveMediaType, _config))
+        {
+            _inlineDirSizeLoader?.Cancel();
+            return;
+        }
+
+        var entries = _directoryContents.GetEntries(_currentPath);
+        var dirPaths = new List<string>();
+
+        foreach (FileSystemEntry entry in entries)
+        {
+            if (entry.IsDirectory && !entry.IsDrive)
+            {
+                dirPaths.Add(entry.FullPath);
+            }
+        }
+
+        if (dirPaths.Count > 0)
+        {
+            _inlineDirSizes = new Dictionary<string, long>();
+            _inlineDirSizeLoader?.BeginLoad(_currentPath, dirPaths);
+        }
+        else
+        {
+            _inlineDirSizeLoader?.Cancel();
         }
     }
+
+    internal static bool ShouldComputeInlineDirSizes(DriveMediaType driveType, WadeConfig config) =>
+        driveType switch
+        {
+            DriveMediaType.Ssd => config.DirSizeSsdEnabled,
+            DriveMediaType.Hdd => config.DirSizeHddEnabled,
+            DriveMediaType.Network => config.DirSizeNetworkEnabled,
+            DriveMediaType.Removable => config.DirSizeSsdEnabled,
+            _ => false,
+        };
 
     private string? GetPathSuggestion(string input) =>
         PathCompletion.GetSuggestion(input, _directoryContents.ShowHiddenFiles, _directoryContents.ShowSystemFiles);

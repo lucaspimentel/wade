@@ -88,7 +88,8 @@ internal static class PaneRenderer
         bool showSize = false,
         bool showDate = false,
         HashSet<string>? markedPaths = null,
-        Dictionary<string, GitFileStatus>? gitStatuses = null)
+        Dictionary<string, GitFileStatus>? gitStatuses = null,
+        Dictionary<string, long>? dirSizes = null)
     {
         // Determine detail tier based on pane width
         int dateWidth = 0;
@@ -335,16 +336,34 @@ internal static class PaneRenderer
                 if (showSize)
                 {
                     detailCol -= GapWidth + SizeWidth;
+                    long? displaySize = null;
+
                     if (!entry.IsDirectory)
                     {
+                        displaySize = entry.Size;
+                    }
+                    else if (dirSizes != null && dirSizes.TryGetValue(entry.FullPath, out long dirSize))
+                    {
+                        displaySize = dirSize;
+                    }
+
+                    if (displaySize.HasValue)
+                    {
                         sizeBuf.Fill(' ');
-                        int sizeLen = FormatHelpers.FormatSize(tempBuf, entry.Size);
+                        int sizeLen = FormatHelpers.FormatSize(tempBuf, displaySize.Value);
                         // Right-align size in the field
                         if (sizeLen <= SizeWidth)
                         {
                             tempBuf[..sizeLen].CopyTo(sizeBuf[(SizeWidth - sizeLen)..]);
                         }
 
+                        buffer.WriteString(screenRow, detailCol + GapWidth, sizeBuf, detailStyle, SizeWidth);
+                    }
+                    else if (entry.IsDirectory && dirSizes != null)
+                    {
+                        // Directory size is loading — show indicator right-aligned
+                        sizeBuf.Fill(' ');
+                        sizeBuf[SizeWidth - 1] = '\u2026'; // …
                         buffer.WriteString(screenRow, detailCol + GapWidth, sizeBuf, detailStyle, SizeWidth);
                     }
                 }

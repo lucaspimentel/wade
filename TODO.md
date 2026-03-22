@@ -35,19 +35,9 @@ Windows file clipboard interop is implemented. Remaining: Unix/macOS file clipbo
 
 Implemented via `DriveTypeDetector.Detect(DriveInfo)` returning `DriveMediaType` enum. Windows SSD/HDD detection via DeviceIoControl seek penalty query. Linux via `/sys/block/rotational`. Stored on `FileSystemEntry.DriveMediaType`. Properties overlay shows "SSD"/"HDD" instead of "Fixed".
 
-### Inline directory sizes in file list
+### ~~Inline directory sizes in file list~~ ✅
 
-Show computed directory sizes in the size column of the center pane file list. Gated per drive type so slow drives don't trigger expensive recursive scans.
-
-- **Depends on:** Drive type detection
-- Background async computation following the `GitStatusLoader` / `DirectorySizeLoader` pattern
-- Per-drive-type config settings:
-  - Show directory size for SSD (default true)
-  - Show directory size for HDD (default false)
-  - Show directory size for network drives (default false)
-- Add settings to `WadeConfig` and `ConfigDialogState`
-- Cancel/restart computation on directory navigation
-- Sizes displayed in the existing size column (`SizeColumnEnabled`)
+Implemented via `InlineDirSizeLoader` — streaming async computation, one event per directory. Gated per drive type (`DirSizeSsdEnabled`, `DirSizeHddEnabled`, `DirSizeNetworkEnabled`). Drive type detected on navigation via `DriveTypeDetector`. Sizes displayed in the existing size column. Config dialog has nested items under "Show Size Column".
 
 ### Format-specific metadata providers
 

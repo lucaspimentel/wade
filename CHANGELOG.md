@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Add inline directory sizes in file list — computed asynchronously with progressive display, gated per drive type (SSD on by default, HDD/Network off)
 - Add drive type detection — distinguish SSD from HDD on Windows (DeviceIoControl seek penalty query) and Linux (/sys/block rotational), with Network and Removable detection via DriveInfo
 - Add SHA256 checksum verification to remote installer
 

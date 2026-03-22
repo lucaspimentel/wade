@@ -21,7 +21,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Expanded preview** — press Right/Enter on a file to expand the preview to full terminal width; scroll with Up/Down/J/K/PageUp/PageDown/Home/End/mouse wheel; press Left/Escape to collapse back to 3-pane view
 - **Directory preview** — shows contents of the selected directory
 - **Drive navigation** — browse across drives on Windows (Backspace from a drive root); drive type detection distinguishes SSD from HDD (Windows via DeviceIoControl, Linux via `/sys/block`), with Network and Removable detection via `DriveInfo`; properties overlay shows detected drive type
-- **Detail columns** — file size and modification date in the center pane; each column toggleable independently via `size_column_enabled` / `date_column_enabled` config; columns adapt responsively as the terminal narrows (full date → date only → short date → size only → name only)
+- **Detail columns** — file size and modification date in the center pane; each column toggleable independently via `size_column_enabled` / `date_column_enabled` config; columns adapt responsively as the terminal narrows (full date → date only → short date → size only → name only); directory sizes computed asynchronously and displayed inline, gated per drive type (`dir_size_ssd_enabled` default on, `dir_size_hdd_enabled` and `dir_size_network_enabled` default off)
 - **Git status** — files and directories colored by git status (modified=yellow, staged=cyan, untracked=green, conflict=red); Nerd Font status icons shown in a dedicated column between the filename and size; directory-level aggregate status; branch name with branch icon shown in status bar; async loading for large repos (toggle with `git_status_enabled` config, default: on)
 - **Git actions in action palette** — git-related actions are available in the action palette (`Ctrl+P`), prefixed with "Git:" and shown only when actionable; includes diff preview for modified/staged files (select "Git diff" via "Change preview" submenu; colored diff output with added/removed/hunk highlighting), stage/unstage files (single or multi-select), stage all changes, unstage all, commit with message, push, push (force with lease), pull, pull (rebase), and fetch
 - **Status bar** — current path, git branch name with ahead/behind commit counts (↑/↓), item count, file type label (language name, "Text", or "Binary"), encoding (UTF-8, UTF-8 BOM, UTF-16 LE/BE), line endings (CRLF, LF, CR, Mixed), file size, and sort indicator
@@ -111,6 +111,9 @@ terminal_title_enabled = true
 git_status_enabled = true
 file_metadata_enabled = true
 archive_metadata_enabled = true
+dir_size_ssd_enabled = true
+dir_size_hdd_enabled = false
+dir_size_network_enabled = false
 file_previews_enabled = true
 image_previews_enabled = true
 zip_preview_enabled = true

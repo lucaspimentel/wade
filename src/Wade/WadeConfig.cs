@@ -21,6 +21,9 @@ internal sealed class WadeConfig
     public bool FileMetadataEnabled { get; set; } = true;
     public bool FilePreviewsEnabled { get; set; } = true;
     public bool ArchiveMetadataEnabled { get; set; } = true;
+    public bool DirSizeSsdEnabled { get; set; } = true;
+    public bool DirSizeHddEnabled { get; set; } = false;
+    public bool DirSizeNetworkEnabled { get; set; } = false;
     public HashSet<string> DisabledTools { get; set; } = [];
     public string StartPath { get; set; } = Directory.GetCurrentDirectory();
     public bool ShowConfig { get; set; } = false;
@@ -132,6 +135,15 @@ internal sealed class WadeConfig
                         break;
                     case "archive_metadata_enabled":
                         config.ArchiveMetadataEnabled = ParseBool(value, config.ArchiveMetadataEnabled);
+                        break;
+                    case "dir_size_ssd_enabled":
+                        config.DirSizeSsdEnabled = ParseBool(value, config.DirSizeSsdEnabled);
+                        break;
+                    case "dir_size_hdd_enabled":
+                        config.DirSizeHddEnabled = ParseBool(value, config.DirSizeHddEnabled);
+                        break;
+                    case "dir_size_network_enabled":
+                        config.DirSizeNetworkEnabled = ParseBool(value, config.DirSizeNetworkEnabled);
                         break;
                     case "disabled_tools":
                         foreach (string tool in value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
@@ -251,6 +263,9 @@ internal sealed class WadeConfig
             file_metadata_enabled = {(FileMetadataEnabled ? "true" : "false")}
             file_previews_enabled = {(FilePreviewsEnabled ? "true" : "false")}
             archive_metadata_enabled = {(ArchiveMetadataEnabled ? "true" : "false")}
+            dir_size_ssd_enabled = {(DirSizeSsdEnabled ? "true" : "false")}
+            dir_size_hdd_enabled = {(DirSizeHddEnabled ? "true" : "false")}
+            dir_size_network_enabled = {(DirSizeNetworkEnabled ? "true" : "false")}
             """;
 
         if (DisabledTools.Count > 0)
@@ -288,6 +303,9 @@ internal sealed class WadeConfig
             $"\"file_metadata_enabled\":{(FileMetadataEnabled ? "true" : "false")}," +
             $"\"file_previews_enabled\":{(FilePreviewsEnabled ? "true" : "false")}," +
             $"\"archive_metadata_enabled\":{(ArchiveMetadataEnabled ? "true" : "false")}," +
+            $"\"dir_size_ssd_enabled\":{(DirSizeSsdEnabled ? "true" : "false")}," +
+            $"\"dir_size_hdd_enabled\":{(DirSizeHddEnabled ? "true" : "false")}," +
+            $"\"dir_size_network_enabled\":{(DirSizeNetworkEnabled ? "true" : "false")}," +
             $"\"start_path\":\"{escapedPath}\"" +
             "}";
     }

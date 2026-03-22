@@ -22,6 +22,9 @@ internal sealed class ConfigDialogState
     public bool FileMetadata { get; set; }
     public bool FilePreviews { get; set; }
     public bool ArchiveMetadata { get; set; }
+    public bool DirSizeSsd { get; set; }
+    public bool DirSizeHdd { get; set; }
+    public bool DirSizeNetwork { get; set; }
 
     public List<ConfigItem> Items { get; private set; } = [];
     public int SelectedIndex { get; set; }
@@ -48,6 +51,9 @@ internal sealed class ConfigDialogState
             FileMetadata = config.FileMetadataEnabled,
             FilePreviews = config.FilePreviewsEnabled,
             ArchiveMetadata = config.ArchiveMetadataEnabled,
+            DirSizeSsd = config.DirSizeSsdEnabled,
+            DirSizeHdd = config.DirSizeHddEnabled,
+            DirSizeNetwork = config.DirSizeNetworkEnabled,
         };
 
         state.BuildItems();
@@ -75,6 +81,9 @@ internal sealed class ConfigDialogState
         config.FileMetadataEnabled = FileMetadata;
         config.FilePreviewsEnabled = FilePreviews;
         config.ArchiveMetadataEnabled = ArchiveMetadata;
+        config.DirSizeSsdEnabled = DirSizeSsd;
+        config.DirSizeHddEnabled = DirSizeHdd;
+        config.DirSizeNetworkEnabled = DirSizeNetwork;
     }
 
     public void MoveUp()
@@ -188,6 +197,30 @@ internal sealed class ConfigDialogState
                 Label = "Show Size Column",
                 FormatValue = () => FormatBool(SizeColumn),
                 Toggle = () => SizeColumn = !SizeColumn,
+            },
+            new ConfigItem
+            {
+                Label = "Directory Sizes on SSD",
+                Indent = 1,
+                FormatValue = () => FormatBool(DirSizeSsd),
+                Toggle = () => DirSizeSsd = !DirSizeSsd,
+                EnabledWhen = () => SizeColumn,
+            },
+            new ConfigItem
+            {
+                Label = "Directory Sizes on HDD",
+                Indent = 1,
+                FormatValue = () => FormatBool(DirSizeHdd),
+                Toggle = () => DirSizeHdd = !DirSizeHdd,
+                EnabledWhen = () => SizeColumn,
+            },
+            new ConfigItem
+            {
+                Label = "Directory Sizes on Network",
+                Indent = 1,
+                FormatValue = () => FormatBool(DirSizeNetwork),
+                Toggle = () => DirSizeNetwork = !DirSizeNetwork,
+                EnabledWhen = () => SizeColumn,
             },
             new ConfigItem
             {
