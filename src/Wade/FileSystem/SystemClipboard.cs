@@ -251,9 +251,10 @@ internal static class SystemClipboard
                     {
                         Marshal.WriteInt32(effectLocked, isCut ? DROPEFFECT_MOVE : DROPEFFECT_COPY);
                         GlobalUnlock(hEffect);
-                        SetClipboardData(dropEffectFormat, hEffect);
-                        // If SetClipboardData fails, system doesn't own hEffect — but we don't free it
-                        // because CloseClipboard will clean up. Not critical if this fails.
+                        if (SetClipboardData(dropEffectFormat, hEffect) == nint.Zero)
+                        {
+                            GlobalFree(hEffect);
+                        }
                     }
                     else
                     {

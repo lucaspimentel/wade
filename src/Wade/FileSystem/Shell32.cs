@@ -23,6 +23,7 @@ internal static class Shell32
         public string pFrom;
         public string pTo;
         public int fFlags;
+        [MarshalAs(UnmanagedType.Bool)]
         public bool fAnyOperationsAborted;
         public nint hNameMappings;
         public string lpszProgressTitle;

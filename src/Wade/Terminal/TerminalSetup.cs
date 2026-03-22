@@ -174,7 +174,6 @@ internal sealed class TerminalSetup : IDisposable
     private const int StdInputHandle = -10;
     private const uint EnableVirtualTerminalProcessing = 0x0004;
     private const uint DisableNewlineAutoReturn = 0x0008;
-    private const uint EnableVirtualTerminalInput = 0x0200;
     private const uint EnableLineInput = 0x0002;
     private const uint EnableEchoInput = 0x0004;
     private const uint EnableProcessedInput = 0x0001;

@@ -58,6 +58,13 @@ internal static class MsiInterop
     private const int PID_COMMENTS = 6;
     private const int PID_WORDCOUNT = 15;
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct FILETIME
+    {
+        public uint dwLowDateTime;
+        public uint dwHighDateTime;
+    }
+
     // Summary info property types
     private const int VT_LPSTR = 30;
     private const int VT_I4 = 3;
@@ -92,7 +99,7 @@ internal static class MsiInterop
         uint uiProperty,
         out uint puiDataType,
         out int piValue,
-        out long pftValue,
+        out FILETIME pftValue,
         char[] szValueBuf,
         ref uint pcchValueBuf);
 
