@@ -31,15 +31,9 @@ Popup menu at click position with contextual actions.
 
 Windows file clipboard interop is implemented. Remaining: Unix/macOS file clipboard interop via `xclip`/`xsel`/`wl-copy`/`pbcopy` with `text/uri-list` MIME type.
 
-### Drive type detection
+### ~~Drive type detection~~ ✅
 
-Detect whether a drive is SSD, HDD, or network. Infrastructure for gating features by drive speed.
-
-- On Windows, use `DeviceIoControl` / `IOCTL_STORAGE_QUERY_PROPERTY` to distinguish SSD vs HDD; `DriveInfo.DriveType == Network` for network drives
-- On Linux, use `/sys/block/<dev>/queue/rotational` (0 = SSD, 1 = HDD)
-- `DriveInfo` is already used in `DirectoryContents.GetDriveEntries()` and `PropertiesOverlay`
-- Store detected drive type on `FileSystemEntry` or as a lookup available to consumers
-- Must be NativeAOT-compatible (no reflection-heavy WMI wrappers)
+Implemented via `DriveTypeDetector.Detect(DriveInfo)` returning `DriveMediaType` enum. Windows SSD/HDD detection via DeviceIoControl seek penalty query. Linux via `/sys/block/rotational`. Stored on `FileSystemEntry.DriveMediaType`. Properties overlay shows "SSD"/"HDD" instead of "Fixed".
 
 ### Inline directory sizes in file list
 
@@ -83,14 +77,9 @@ PDF preview now gates on `SixelSupported` (terminal capability) instead of `Imag
 
 Removed Size and Modified entries from `FileMetadataProvider` — they were redundant with the center pane detail columns and properties overlay. Metadata section now only contains filename (header), cloud status, and git status.
 
-### Replace hand-coded P/Invoke with Microsoft.Windows.CsWin32
+### ~~Replace hand-coded P/Invoke with Microsoft.Windows.CsWin32~~ — Won't do
 
-Consider using the [CsWin32](https://github.com/microsoft/CsWin32) source generator to auto-generate P/Invoke signatures instead of hand-coding `[DllImport]` declarations. Files with manual P/Invoke:
-- `src/Wade/FileSystem/SystemClipboard.cs` — user32 (clipboard), kernel32 (GlobalAlloc/Lock/Free), shell32 (DragQueryFileW)
-- `src/Wade/FileSystem/Shell32.cs` — shell32 (SHFileOperation)
-- `src/Wade/Terminal/TerminalSetup.cs` — kernel32 (GetStdHandle, Get/SetConsoleMode)
-- `src/Wade/Terminal/WindowsInputSource.cs` — kernel32 (ReadConsoleInput, WaitForSingleObject)
-- `src/Wade/Terminal/LibC.cs` — libc (open, read, poll, tcgetattr, tcsetattr, cfmakeraw) — Unix only, CsWin32 won't cover these
+Assessed and decided against. Only 28 Windows P/Invoke declarations across 5 files — stable, rarely changing. CsWin32 adds complexity (generated types, `AllowUnsafeBlocks`, `NativeMethods.txt`) for little benefit. Correctness issues in existing P/Invoke were fixed separately. LibC.cs (Unix) can't use CsWin32 anyway.
 
 ### ~~Metadata and preview for .msi Windows Installer files~~ ✅
 

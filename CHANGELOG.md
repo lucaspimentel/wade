@@ -1,5 +1,20 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Add drive type detection — distinguish SSD from HDD on Windows (DeviceIoControl seek penalty query) and Linux (/sys/block rotational), with Network and Removable detection via DriveInfo
+- Add SHA256 checksum verification to remote installer
+
+### Changed
+- Bump and pin GitHub Actions to latest versions
+
+### Fixed
+- Fix `SHFILEOPSTRUCT.fAnyOperationsAborted` struct layout — use `[MarshalAs(UnmanagedType.Bool)]` for correct Win32 BOOL (4-byte) marshaling
+- Fix memory leak in clipboard SetClipboardData failure path — free hEffect when system does not take ownership
+- Fix MsiSummaryInfoGetProperty P/Invoke — replace `out long` with proper FILETIME struct
+- Remove unused EnableVirtualTerminalInput constant
+
 ## [1.4.0] - 2026-03-20
 
 ### Added
