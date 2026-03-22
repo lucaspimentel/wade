@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.5.0] - 2026-03-22
 
 ### Added
 - Add inline directory sizes in file list — computed asynchronously with progressive display, gated per drive type (SSD on by default, HDD/Network off)
