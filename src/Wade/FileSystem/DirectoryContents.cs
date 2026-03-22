@@ -58,7 +58,8 @@ internal sealed class DirectoryContents
                 LastModified: default,
                 LinkTarget: null,
                 IsBrokenSymlink: false,
-                IsDrive: true));
+                IsDrive: true,
+                DriveMediaType: DriveTypeDetector.Detect(drive)));
         }
 
         return list;
@@ -224,7 +225,8 @@ internal sealed record FileSystemEntry(
     string? LinkTarget,
     bool IsBrokenSymlink,
     bool IsDrive,
-    bool IsCloudPlaceholder = false)
+    bool IsCloudPlaceholder = false,
+    DriveMediaType DriveMediaType = DriveMediaType.Unknown)
 {
     public bool IsSymlink => LinkTarget != null;
 }

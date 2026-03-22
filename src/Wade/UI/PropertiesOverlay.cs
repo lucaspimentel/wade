@@ -215,7 +215,12 @@ internal static class PropertiesOverlay
                 var driveInfo = new DriveInfo(entry.FullPath);
                 created = "\u2014";
                 accessed = "\u2014";
-                attributes = driveInfo.DriveType.ToString();
+                attributes = entry.DriveMediaType switch
+                {
+                    FileSystem.DriveMediaType.Ssd => "SSD",
+                    FileSystem.DriveMediaType.Hdd => "HDD",
+                    _ => driveInfo.DriveType.ToString(),
+                };
                 readOnly = !driveInfo.IsReady;
             }
             else if (entry.IsDirectory)
