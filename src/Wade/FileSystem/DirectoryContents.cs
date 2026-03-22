@@ -15,6 +15,7 @@ internal sealed class DirectoryContents
     public bool ShowSystemFiles { get; set; }
     public SortMode SortMode { get; set; } = SortMode.Name;
     public bool SortAscending { get; set; } = true;
+    public Dictionary<string, long>? DirSizes { get; set; }
 
     public List<FileSystemEntry> GetEntries(string path)
     {
@@ -163,13 +164,23 @@ internal sealed class DirectoryContents
             int cmp = SortMode switch
             {
                 SortMode.Modified => a.LastModified.CompareTo(b.LastModified),
-                SortMode.Size => a.Size.CompareTo(b.Size),
+                SortMode.Size => GetEffectiveSize(a).CompareTo(GetEffectiveSize(b)),
                 SortMode.Extension => CompareExtension(a.Name, b.Name),
                 _ => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase),
             };
 
             return SortAscending ? cmp : -cmp;
         });
+    }
+
+    private long GetEffectiveSize(FileSystemEntry entry)
+    {
+        if (entry.IsDirectory && DirSizes != null && DirSizes.TryGetValue(entry.FullPath, out long dirSize))
+        {
+            return dirSize;
+        }
+
+        return entry.Size;
     }
 
     private static int CompareExtension(string nameA, string nameB)

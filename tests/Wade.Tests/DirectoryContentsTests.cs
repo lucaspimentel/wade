@@ -110,6 +110,54 @@ public class DirectoryContentsTests
     }
 
     [Fact]
+    public void SortBySize_UsesInlineDirSizes_ForDirectories()
+    {
+        string dir = CreateSortTestDir();
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(dir, "small_dir"));
+            Directory.CreateDirectory(Path.Combine(dir, "big_dir"));
+
+            var dirSizes = new Dictionary<string, long>
+            {
+                [Path.Combine(dir, "small_dir")] = 100,
+                [Path.Combine(dir, "big_dir")] = 5000,
+            };
+
+            var dc = new DirectoryContents { SortMode = SortMode.Size, DirSizes = dirSizes };
+            var entries = dc.LoadEntries(dir);
+
+            Assert.Equal("small_dir", entries[0].Name);
+            Assert.Equal("big_dir", entries[1].Name);
+        }
+        finally { CleanupDir(dir); }
+    }
+
+    [Fact]
+    public void SortBySize_UsesInlineDirSizes_Descending()
+    {
+        string dir = CreateSortTestDir();
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(dir, "small_dir"));
+            Directory.CreateDirectory(Path.Combine(dir, "big_dir"));
+
+            var dirSizes = new Dictionary<string, long>
+            {
+                [Path.Combine(dir, "small_dir")] = 100,
+                [Path.Combine(dir, "big_dir")] = 5000,
+            };
+
+            var dc = new DirectoryContents { SortMode = SortMode.Size, SortAscending = false, DirSizes = dirSizes };
+            var entries = dc.LoadEntries(dir);
+
+            Assert.Equal("big_dir", entries[0].Name);
+            Assert.Equal("small_dir", entries[1].Name);
+        }
+        finally { CleanupDir(dir); }
+    }
+
+    [Fact]
     public void SortByExtension_OrdersByExtension()
     {
         string dir = CreateSortTestDir();

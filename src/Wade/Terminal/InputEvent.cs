@@ -55,6 +55,8 @@ internal sealed record DirectorySizeReadyEvent(string Path, long TotalBytes) : I
 
 internal sealed record InlineDirSizeReadyEvent(string ParentPath, string DirectoryPath, long TotalBytes) : InputEvent;
 
+internal sealed record InlineDirSizeCompleteEvent(string ParentPath) : InputEvent;
+
 internal sealed record FileFinderScanCompleteEvent(string BasePath, List<FileSystemEntry> Entries) : InputEvent;
 
 internal sealed record GitStatusReadyEvent(

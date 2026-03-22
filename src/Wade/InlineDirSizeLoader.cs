@@ -69,6 +69,11 @@ internal sealed class InlineDirSizeLoader
 
                 _pipeline.Inject(new InlineDirSizeReadyEvent(parentPath, dirPath, totalBytes));
             }
+
+            if (!ct.IsCancellationRequested)
+            {
+                _pipeline.Inject(new InlineDirSizeCompleteEvent(parentPath));
+            }
         }
         catch (OperationCanceledException)
         {

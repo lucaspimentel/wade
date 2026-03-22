@@ -279,6 +279,10 @@ internal sealed class App
                 {
                     HandleInlineDirSizeReady(inlineDirSizeExtra);
                 }
+                else if (extra is InlineDirSizeCompleteEvent inlineDirSizeCompleteExtra)
+                {
+                    HandleInlineDirSizeComplete(inlineDirSizeCompleteExtra);
+                }
                 else if (extra is GitStatusReadyEvent gitExtra)
                 {
                     HandleGitStatusReady(gitExtra);
@@ -394,6 +398,12 @@ internal sealed class App
             if (inputEvent is InlineDirSizeReadyEvent inlineDirSizeEvt)
             {
                 HandleInlineDirSizeReady(inlineDirSizeEvt);
+                continue;
+            }
+
+            if (inputEvent is InlineDirSizeCompleteEvent inlineDirSizeCompleteEvt)
+            {
+                HandleInlineDirSizeComplete(inlineDirSizeCompleteEvt);
                 continue;
             }
 
@@ -1336,6 +1346,21 @@ internal sealed class App
 
         _inlineDirSizes ??= new Dictionary<string, long>();
         _inlineDirSizes[evt.DirectoryPath] = evt.TotalBytes;
+    }
+
+    private void HandleInlineDirSizeComplete(InlineDirSizeCompleteEvent evt)
+    {
+        if (evt.ParentPath != _currentPath)
+        {
+            return;
+        }
+
+        _directoryContents.DirSizes = _inlineDirSizes;
+
+        if (_directoryContents.SortMode == SortMode.Size)
+        {
+            _directoryContents.Invalidate(_currentPath);
+        }
     }
 
     private void HandleGitStatusReady(GitStatusReadyEvent evt)
@@ -2369,6 +2394,7 @@ internal sealed class App
     private void RefreshInlineDirSizes()
     {
         _inlineDirSizes = null;
+        _directoryContents.DirSizes = null;
 
         if (!_config.SizeColumnEnabled || _currentPath == DirectoryContents.DrivesPath)
         {
