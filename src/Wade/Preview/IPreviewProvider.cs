@@ -12,7 +12,7 @@ internal interface IPreviewProvider
     public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct);
 }
 
-internal record PreviewContext(
+internal sealed record PreviewContext(
     int PaneWidthCells,
     int PaneHeightCells,
     int CellPixelWidth,
@@ -27,7 +27,7 @@ internal record PreviewContext(
     bool SixelSupported,
     bool ArchiveMetadataEnabled);
 
-internal record PreviewResult
+internal sealed record PreviewResult
 {
     public StyledLine[]? TextLines { get; init; }
 

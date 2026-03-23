@@ -9,13 +9,13 @@ internal interface IMetadataProvider
     public MetadataResult? GetMetadata(string path, PreviewContext context, CancellationToken ct);
 }
 
-internal record MetadataResult
+internal sealed record MetadataResult
 {
     public required MetadataSection[] Sections { get; init; }
 
     public string? FileTypeLabel { get; init; }
 }
 
-internal record MetadataSection(string? Header, MetadataEntry[] Entries);
+internal sealed record MetadataSection(string? Header, MetadataEntry[] Entries);
 
-internal record MetadataEntry(string Label, string Value);
+internal sealed record MetadataEntry(string Label, string Value);

@@ -6,12 +6,12 @@ namespace Wade.Preview;
 /// <summary>
 /// Record holding a file entry from the MSI File table.
 /// </summary>
-internal record MsiFileEntry(string FileName, int FileSize);
+internal sealed record MsiFileEntry(string FileName, int FileSize);
 
 /// <summary>
 /// Record holding summary information from the MSI summary info stream.
 /// </summary>
-internal record MsiSummaryInfo(
+internal sealed record MsiSummaryInfo(
     string? Subject,
     string? Author,
     string? Template,
