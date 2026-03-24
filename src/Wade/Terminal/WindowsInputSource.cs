@@ -15,6 +15,7 @@ internal sealed class WindowsInputSource : IInputSource
     private const uint MouseMoved = 0x0001;
     private const uint MouseWheeled = 0x0004;
     private const uint FromLeft1stButtonPressed = 0x0001;
+    private const uint RightmostButtonPressed = 0x0002;
     private readonly nint _stdinHandle;
 
     public WindowsInputSource()
@@ -80,6 +81,11 @@ internal sealed class WindowsInputSource : IInputSource
                         if ((m.dwButtonState & FromLeft1stButtonPressed) != 0)
                         {
                             return new MouseEvent(MouseButton.Left, m.Y, m.X, false);
+                        }
+
+                        if ((m.dwButtonState & RightmostButtonPressed) != 0)
+                        {
+                            return new MouseEvent(MouseButton.Right, m.Y, m.X, false);
                         }
 
                         if (m.dwButtonState == 0)
