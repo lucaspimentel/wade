@@ -18,14 +18,9 @@
 
 Progress indicator for large copy/move operations.
 
-### Right-click context menu
+### ~~Right-click context menu~~ ✅
 
-Popup menu at click position with contextual actions.
-
-- Trigger on right-click (mouse button 2)
-- Show actions relevant to the clicked item: open, rename, delete, copy, cut, paste, properties
-- Render as a floating menu overlay at the click coordinates
-- Keyboard dismissal (Escape) and selection (Enter / click)
+Implemented via `ContextMenuState` and `ContextMenuRenderer` in `Wade.UI`. Right-click in the center pane selects the entry and opens a position-anchored floating menu with contextual actions (open, rename, delete, copy, cut, paste, properties, git stage/unstage). Keyboard navigation (arrows, j/k, Enter, Escape) and mouse click selection. Menu clamped to screen bounds.
 
 ### System clipboard — Unix/macOS file interop
 

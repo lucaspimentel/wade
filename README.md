@@ -35,7 +35,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Symlink creation** — press `Ctrl+L` to create a symbolic link to the selected item; prompts for the link name
 - **File actions** — open files with default app, rename, delete (with optional confirmation), copy/cut/paste with OS clipboard interop (files copied in wade can be pasted in Explorer and vice versa; Windows only); multi-select supported for delete/copy/cut; delete confirmation can be toggled via `confirm_delete_enabled` config
 - **Copy path to clipboard** — press `y` to copy the selected item's absolute path to the OS clipboard; press `Y` to copy the path relative to the git repo root (shows an error if not inside a git repo); works in both normal view and expanded preview mode
-- **Mouse support** — click to select entries in any pane, scroll wheel to navigate; left/right pane clicks navigate directories
+- **Mouse support** — click to select entries in any pane, scroll wheel to navigate; left/right pane clicks navigate directories; right-click opens a context menu with common file actions (open, rename, delete, copy, cut, paste, properties, git stage/unstage)
 - **File properties** — press `i` to open a scrollable properties overlay showing detailed metadata: name, full path, type (extension-based labels like "PDF" or "C#", symlink-aware labels like "Symlink → File"), link target, formatted size with raw bytes (directories calculate size asynchronously), created/modified/accessed timestamps, file attributes, read-only status, git status (colored: modified=yellow, staged=cyan, untracked=green, conflict=red), and extracted file metadata when available (NuGet package info, PE/assembly details, Office document properties, media info); scroll with arrow keys, Page Up/Down, Home/End when content exceeds screen height
 - **Glow markdown preview** — renders markdown files using the [glow](https://github.com/charmbracelet/glow) CLI for rich preview with styled headings, lists, code blocks, etc. (requires `glow` on PATH; disabled by default; enable with `glow_markdown_preview_enabled = true` in config or toggle in config dialog)
 - **In-app configuration** — press `,` to open a config dialog with toggleable options organized in a hierarchy: icons, hidden/system files, sort mode/direction, columns, delete confirmation, copy-symlinks-as-links, terminal title, git status, right pane (with nested file details and file previews sub-groups controlling metadata providers and preview providers independently); changes are saved directly to the config file
@@ -162,6 +162,7 @@ Then use `wd` instead of `wade` to browse. Press `q` to quit and cd to the last 
 | Page Up / Page Down | Scroll by page |
 | Home / End | Jump to first / last item |
 | Left Click | Select / Open |
+| Right Click | Context menu |
 | Scroll | Navigate up/down |
 | Ctrl+R / F5 | Refresh |
 | Ctrl+T | Open terminal here |

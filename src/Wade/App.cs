@@ -63,6 +63,9 @@ internal sealed class App
 
     // Config dialog state
     private ConfigDialogState? _configDialogState;
+
+    // Context menu state
+    private ContextMenuState? _contextMenuState;
     private string? _confirmMessage;
 
     // Confirm dialog state
@@ -454,6 +457,12 @@ internal sealed class App
                     continue;
                 }
 
+                if (_inputMode == InputMode.ContextMenu)
+                {
+                    HandleContextMenuMouse(mouseEvent, previewLoader, buffer, pipeline);
+                    continue;
+                }
+
                 // Discard mouse events while a modal dialog is open
                 if (_inputMode is InputMode.Help or InputMode.GoToPath or InputMode.TextInput or InputMode.Confirm or InputMode.Config
                     or InputMode.Properties or InputMode.ActionPalette or InputMode.Bookmarks or InputMode.FileFinder)
@@ -539,6 +548,10 @@ internal sealed class App
 
                 case InputMode.ActionPalette:
                     HandleActionPaletteKey(keyEvent, previewLoader, buffer, pipeline);
+                    continue;
+
+                case InputMode.ContextMenu:
+                    HandleContextMenuKey(keyEvent, previewLoader, buffer, pipeline);
                     continue;
 
                 case InputMode.Bookmarks:
@@ -1235,6 +1248,13 @@ internal sealed class App
             case InputMode.ActionPalette:
                 RenderActionPalette(buffer, width, height);
                 break;
+            case InputMode.ContextMenu:
+                if (_contextMenuState is not null)
+                {
+                    ContextMenuRenderer.Render(buffer, width, height, _contextMenuState);
+                }
+
+                break;
             case InputMode.Bookmarks:
                 RenderBookmarks(buffer, width, height);
                 break;
@@ -1682,8 +1702,8 @@ internal sealed class App
             return;
         }
 
-        // Ignore releases and non-left-click
-        if (mouse.IsRelease || mouse.Button != MouseButton.Left)
+        // Ignore releases and non-left/right-click
+        if (mouse.IsRelease || (mouse.Button != MouseButton.Left && mouse.Button != MouseButton.Right))
         {
             return;
         }
@@ -1699,6 +1719,14 @@ internal sealed class App
             if (entryIndex >= 0 && entryIndex < entries.Count)
             {
                 _selectedIndex = entryIndex;
+            }
+
+            // Right-click opens context menu
+            if (mouse.Button == MouseButton.Right && entryIndex >= 0 && entryIndex < entries.Count)
+            {
+                _contextMenuState = new ContextMenuState(BuildContextMenuItems(), row, col);
+                _inputMode = InputMode.ContextMenu;
+                return;
             }
         }
         else if (HitTestPane(_layout.LeftPane, row, col) && _leftPaneEntries is not null)
@@ -3801,6 +3829,135 @@ internal sealed class App
                 buffer.WriteString(row, shortcutCol, shortcut, scStyle);
             }
         }
+    }
+
+    // ── Context Menu ─────────────────────────────────────────────────────────────
+
+    private ActionMenuItem[] BuildContextMenuItems()
+    {
+        var items = new List<ActionMenuItem>
+        {
+            new() { Label = "Open with default app", Shortcut = "o", Action = AppAction.OpenExternal },
+            new() { Label = "Rename", Shortcut = "F2", Action = AppAction.Rename },
+            new() { Label = "Delete", Shortcut = "Del", Action = AppAction.Delete },
+            new() { Label = "Copy", Shortcut = "c", Action = AppAction.Copy },
+            new() { Label = "Cut", Shortcut = "x", Action = AppAction.Cut },
+        };
+
+        if (_clipboardPaths.Count > 0)
+        {
+            items.Add(new ActionMenuItem { Label = "Paste", Shortcut = "v", Action = AppAction.Paste });
+        }
+
+        items.Add(new ActionMenuItem { Label = "Copy path", Shortcut = "y", Action = AppAction.CopyAbsolutePath });
+        items.Add(new ActionMenuItem { Label = "Properties", Shortcut = "i", Action = AppAction.ShowProperties });
+
+        // Git stage/unstage — only when applicable
+        if (_currentRepoRoot is not null && _gitStatuses is not null)
+        {
+            List<FileSystemEntry> entries = GetVisibleEntries();
+            if (_selectedIndex < entries.Count)
+            {
+                if (HasStatusInSelection(GitFileStatus.Modified | GitFileStatus.Untracked))
+                {
+                    items.Add(new ActionMenuItem { Label = "Git: Stage", Action = AppAction.StageFile });
+                }
+
+                if (HasStatusInSelection(GitFileStatus.Staged))
+                {
+                    items.Add(new ActionMenuItem { Label = "Git: Unstage", Action = AppAction.UnstageFile });
+                }
+            }
+        }
+
+        return items.ToArray();
+    }
+
+    private void HandleContextMenuKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer, InputPipeline pipeline)
+    {
+        if (_contextMenuState is null)
+        {
+            _inputMode = InputMode.Normal;
+            return;
+        }
+
+        switch (key.Key)
+        {
+            case ConsoleKey.Escape:
+                _inputMode = InputMode.Normal;
+                _contextMenuState = null;
+                break;
+
+            case ConsoleKey.Enter:
+                ActionMenuItem selected = _contextMenuState.Items[_contextMenuState.SelectedIndex];
+                _inputMode = InputMode.Normal;
+                _contextMenuState = null;
+                DispatchActionPaletteAction(selected.Action, selected.Data, previewLoader, buffer, pipeline);
+                break;
+
+            case ConsoleKey.UpArrow:
+                _contextMenuState.MoveUp();
+                break;
+
+            case ConsoleKey.DownArrow:
+                _contextMenuState.MoveDown();
+                break;
+
+            default:
+                // Vim-style navigation
+                if (key is { Key: ConsoleKey.K, Control: false, Alt: false })
+                {
+                    _contextMenuState.MoveUp();
+                }
+                else if (key is { Key: ConsoleKey.J, Control: false, Alt: false })
+                {
+                    _contextMenuState.MoveDown();
+                }
+
+                break;
+        }
+    }
+
+    private void HandleContextMenuMouse(MouseEvent mouse, PreviewLoader previewLoader, ScreenBuffer buffer, InputPipeline pipeline)
+    {
+        if (_contextMenuState is null)
+        {
+            _inputMode = InputMode.Normal;
+            return;
+        }
+
+        // Any click dismisses the context menu; clicks inside the menu also execute the item
+        if (mouse.IsRelease || mouse.Button == MouseButton.ScrollUp || mouse.Button == MouseButton.ScrollDown)
+        {
+            return;
+        }
+
+        int screenWidth = _layout.StatusBar.Width;
+        int screenHeight = _layout.StatusBar.Bottom;
+        Rect menuRect = ContextMenuRenderer.GetMenuRect(screenWidth, screenHeight, _contextMenuState);
+
+        // Content area is inside the border (top border = row 0, items start at row 1)
+        int contentTop = menuRect.Top + 1;
+        int contentBottom = menuRect.Top + 1 + _contextMenuState.Items.Length;
+
+        if (mouse.Row >= contentTop && mouse.Row < contentBottom
+                                    && mouse.Col >= menuRect.Left && mouse.Col < menuRect.Right)
+        {
+            // Click on a menu item — select and execute
+            int itemIndex = mouse.Row - contentTop;
+            if (itemIndex >= 0 && itemIndex < _contextMenuState.Items.Length)
+            {
+                ActionMenuItem item = _contextMenuState.Items[itemIndex];
+                _inputMode = InputMode.Normal;
+                _contextMenuState = null;
+                DispatchActionPaletteAction(item.Action, item.Data, previewLoader, buffer, pipeline);
+                return;
+            }
+        }
+
+        // Click outside menu — dismiss
+        _inputMode = InputMode.Normal;
+        _contextMenuState = null;
     }
 
     // ── Bookmarks ──────────────────────────────────────────────────────────────
