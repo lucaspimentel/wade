@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.6.0] - 2026-03-24
 
 ### Added
 - Add right-click context menu — position-anchored floating menu with contextual file actions (open, rename, delete, copy, cut, paste, copy path, properties, git stage/unstage)
