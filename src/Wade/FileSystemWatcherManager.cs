@@ -90,13 +90,22 @@ internal sealed class FileSystemWatcherManager : IDisposable
         _watchedPath = null;
     }
 
-    private void OnFileSystemEvent(object sender, FileSystemEventArgs e) => ScheduleDebouncedEvent(fullRefresh: false);
-
-    private void OnError(object sender, ErrorEventArgs e)
+    private void OnFileSystemEvent(object sender, FileSystemEventArgs e)
     {
+        // Ignore changes to .git directory — git operations (status, index updates)
+        // modify it constantly, creating a feedback loop with RefreshGitStatus().
+        string name = Path.GetFileName(e.FullPath);
+        if (name.Equals(".git", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        ScheduleDebouncedEvent(fullRefresh: false);
+    }
+
+    private void OnError(object sender, ErrorEventArgs e) =>
         // Buffer overflow or other watcher error — request full refresh
         ScheduleDebouncedEvent(fullRefresh: true);
-    }
 
     private void ScheduleDebouncedEvent(bool fullRefresh)
     {
