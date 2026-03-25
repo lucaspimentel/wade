@@ -32,7 +32,12 @@ public class WadeConfigTests
         Assert.True(config.DateColumnEnabled);
         Assert.True(config.CopySymlinksAsLinksEnabled);
         Assert.True(config.ZipPreviewEnabled);
-        Assert.Empty(config.DisabledTools);
+        Assert.True(config.PdfPreviewEnabled);
+        Assert.True(config.PdfMetadataEnabled);
+        Assert.True(config.MarkdownPreviewEnabled);
+        Assert.True(config.GlowPreviewEnabled);
+        Assert.True(config.FfprobeEnabled);
+        Assert.True(config.MediainfoEnabled);
         Assert.True(config.TerminalTitleEnabled);
         Assert.True(config.FileMetadataEnabled);
         Assert.True(config.FilePreviewsEnabled);
@@ -402,7 +407,8 @@ public class WadeConfigTests
             original.DateColumnEnabled = false;
             original.CopySymlinksAsLinksEnabled = false;
             original.ZipPreviewEnabled = false;
-            original.DisabledTools = new HashSet<string> { "pdftopng", "pdfinfo" };
+            original.PdfPreviewEnabled = false;
+            original.PdfMetadataEnabled = false;
             original.TerminalTitleEnabled = false;
             original.FileMetadataEnabled = false;
             original.FilePreviewsEnabled = false;
@@ -425,8 +431,8 @@ public class WadeConfigTests
             Assert.False(loaded.DateColumnEnabled);
             Assert.False(loaded.CopySymlinksAsLinksEnabled);
             Assert.False(loaded.ZipPreviewEnabled);
-            Assert.Contains("pdftopng", loaded.DisabledTools);
-            Assert.Contains("pdfinfo", loaded.DisabledTools);
+            Assert.False(loaded.PdfPreviewEnabled);
+            Assert.False(loaded.PdfMetadataEnabled);
             Assert.False(loaded.TerminalTitleEnabled);
             Assert.False(loaded.FileMetadataEnabled);
             Assert.False(loaded.FilePreviewsEnabled);

@@ -44,7 +44,17 @@ internal sealed class WadeConfig
 
     public bool DirSizeNetworkEnabled { get; set; }
 
-    public HashSet<string> DisabledTools { get; set; } = [];
+    public bool PdfPreviewEnabled { get; set; } = true;
+
+    public bool PdfMetadataEnabled { get; set; } = true;
+
+    public bool MarkdownPreviewEnabled { get; set; } = true;
+
+    public bool GlowPreviewEnabled { get; set; } = true;
+
+    public bool FfprobeEnabled { get; set; } = true;
+
+    public bool MediainfoEnabled { get; set; } = true;
 
     public string StartPath { get; set; } = Directory.GetCurrentDirectory();
 
@@ -171,12 +181,23 @@ internal sealed class WadeConfig
                     case "dir_size_network_enabled":
                         config.DirSizeNetworkEnabled = ParseBool(value, config.DirSizeNetworkEnabled);
                         break;
-                    case "disabled_tools":
-                        foreach (string tool in value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                        {
-                            config.DisabledTools.Add(tool);
-                        }
-
+                    case "pdf_preview_enabled":
+                        config.PdfPreviewEnabled = ParseBool(value, config.PdfPreviewEnabled);
+                        break;
+                    case "pdf_metadata_enabled":
+                        config.PdfMetadataEnabled = ParseBool(value, config.PdfMetadataEnabled);
+                        break;
+                    case "markdown_preview_enabled":
+                        config.MarkdownPreviewEnabled = ParseBool(value, config.MarkdownPreviewEnabled);
+                        break;
+                    case "glow_preview_enabled":
+                        config.GlowPreviewEnabled = ParseBool(value, config.GlowPreviewEnabled);
+                        break;
+                    case "ffprobe_enabled":
+                        config.FfprobeEnabled = ParseBool(value, config.FfprobeEnabled);
+                        break;
+                    case "mediainfo_enabled":
+                        config.MediainfoEnabled = ParseBool(value, config.MediainfoEnabled);
                         break;
                     case "detail_columns_enabled":
                         // Backward compat: sets both columns
@@ -184,19 +205,34 @@ internal sealed class WadeConfig
                         config.SizeColumnEnabled = detailBool;
                         config.DateColumnEnabled = detailBool;
                         break;
-                    // Backward compat: map old per-tool booleans to disabled_tools
+                    // Backward compat: map old setting names
                     case "glow_markdown_preview_enabled":
-                        if (!ParseBool(value, true))
-                        {
-                            config.DisabledTools.Add("glow");
-                        }
-
+                        config.GlowPreviewEnabled = ParseBool(value, config.GlowPreviewEnabled);
                         break;
-                    case "pdf_preview_enabled":
-                        if (!ParseBool(value, true))
+                    case "disabled_tools":
+                        foreach (string tool in value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                         {
-                            config.DisabledTools.Add("pdftopng");
-                            config.DisabledTools.Add("pdfinfo");
+                            switch (tool)
+                            {
+                                case "pdftopng":
+                                    config.PdfPreviewEnabled = false;
+                                    break;
+                                case "pdfinfo":
+                                    config.PdfMetadataEnabled = false;
+                                    break;
+                                case "markdown_preview":
+                                    config.MarkdownPreviewEnabled = false;
+                                    break;
+                                case "glow":
+                                    config.GlowPreviewEnabled = false;
+                                    break;
+                                case "ffprobe":
+                                    config.FfprobeEnabled = false;
+                                    break;
+                                case "mediainfo":
+                                    config.MediainfoEnabled = false;
+                                    break;
+                            }
                         }
 
                         break;
@@ -292,12 +328,13 @@ internal sealed class WadeConfig
                           dir_size_ssd_enabled = {(DirSizeSsdEnabled ? "true" : "false")}
                           dir_size_hdd_enabled = {(DirSizeHddEnabled ? "true" : "false")}
                           dir_size_network_enabled = {(DirSizeNetworkEnabled ? "true" : "false")}
+                          pdf_preview_enabled = {(PdfPreviewEnabled ? "true" : "false")}
+                          pdf_metadata_enabled = {(PdfMetadataEnabled ? "true" : "false")}
+                          markdown_preview_enabled = {(MarkdownPreviewEnabled ? "true" : "false")}
+                          glow_preview_enabled = {(GlowPreviewEnabled ? "true" : "false")}
+                          ffprobe_enabled = {(FfprobeEnabled ? "true" : "false")}
+                          mediainfo_enabled = {(MediainfoEnabled ? "true" : "false")}
                           """;
-
-        if (DisabledTools.Count > 0)
-        {
-            content += $"\ndisabled_tools = {string.Join(",", DisabledTools.Order())}";
-        }
 
         File.WriteAllText(ConfigFilePath, content);
     }
@@ -306,9 +343,6 @@ internal sealed class WadeConfig
     {
         string escapedPath = StartPath.Replace("\\", "\\\\");
         string sortModeStr = SortMode.ToString().ToLowerInvariant();
-        string disabledToolsJson = DisabledTools.Count > 0
-            ? "[" + string.Join(",", DisabledTools.Order().Select(t => $"\"{t}\"")) + "]"
-            : "[]";
 
         return "{" +
                $"\"show_icons_enabled\":{(ShowIconsEnabled ? "true" : "false")}," +
@@ -323,7 +357,6 @@ internal sealed class WadeConfig
                $"\"date_column_enabled\":{(DateColumnEnabled ? "true" : "false")}," +
                $"\"copy_symlinks_as_links_enabled\":{(CopySymlinksAsLinksEnabled ? "true" : "false")}," +
                $"\"zip_preview_enabled\":{(ZipPreviewEnabled ? "true" : "false")}," +
-               $"\"disabled_tools\":{disabledToolsJson}," +
                $"\"terminal_title_enabled\":{(TerminalTitleEnabled ? "true" : "false")}," +
                $"\"git_status_enabled\":{(GitStatusEnabled ? "true" : "false")}," +
                $"\"file_metadata_enabled\":{(FileMetadataEnabled ? "true" : "false")}," +
@@ -332,6 +365,12 @@ internal sealed class WadeConfig
                $"\"dir_size_ssd_enabled\":{(DirSizeSsdEnabled ? "true" : "false")}," +
                $"\"dir_size_hdd_enabled\":{(DirSizeHddEnabled ? "true" : "false")}," +
                $"\"dir_size_network_enabled\":{(DirSizeNetworkEnabled ? "true" : "false")}," +
+               $"\"pdf_preview_enabled\":{(PdfPreviewEnabled ? "true" : "false")}," +
+               $"\"pdf_metadata_enabled\":{(PdfMetadataEnabled ? "true" : "false")}," +
+               $"\"markdown_preview_enabled\":{(MarkdownPreviewEnabled ? "true" : "false")}," +
+               $"\"glow_preview_enabled\":{(GlowPreviewEnabled ? "true" : "false")}," +
+               $"\"ffprobe_enabled\":{(FfprobeEnabled ? "true" : "false")}," +
+               $"\"mediainfo_enabled\":{(MediainfoEnabled ? "true" : "false")}," +
                $"\"start_path\":\"{escapedPath}\"" +
                "}";
     }

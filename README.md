@@ -117,7 +117,12 @@ dir_size_network_enabled = false
 file_previews_enabled = true
 image_previews_enabled = true
 zip_preview_enabled = true
-disabled_tools = markdown_preview,glow,pdftopng  # comma-separated list of disabled preview tools
+pdf_preview_enabled = true
+pdf_metadata_enabled = true
+markdown_preview_enabled = true
+glow_preview_enabled = true
+ffprobe_enabled = true
+mediainfo_enabled = true
 ```
 
 ### CLI flags

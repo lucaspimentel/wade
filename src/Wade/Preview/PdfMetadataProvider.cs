@@ -7,7 +7,7 @@ internal sealed class PdfMetadataProvider : IMetadataProvider
     public string Label => "PDF metadata";
 
     public bool CanProvideMetadata(string path, PreviewContext context) =>
-        !context.DisabledTools.Contains("pdfinfo")
+        context.PdfMetadataEnabled
         && string.Equals(Path.GetExtension(path), ".pdf", StringComparison.OrdinalIgnoreCase)
         && IsAvailable;
 

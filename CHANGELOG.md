@@ -5,6 +5,9 @@
 ### Added
 - Add built-in Markdig markdown preview — renders headings, code blocks with syntax highlighting, lists, blockquotes, tables, links, and more without external tools
 
+### Changed
+- Replace `disabled_tools` list with individual boolean config settings (`pdf_preview_enabled`, `pdf_metadata_enabled`, `markdown_preview_enabled`, `glow_preview_enabled`, `ffprobe_enabled`, `mediainfo_enabled`)
+
 ## [1.6.0] - 2026-03-24
 
 ### Added

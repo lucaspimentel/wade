@@ -26,7 +26,17 @@ internal sealed class ConfigDialogState
 
     public bool ZipPreview { get; set; }
 
-    public HashSet<string> DisabledTools { get; set; } = [];
+    public bool PdfPreview { get; set; }
+
+    public bool PdfMetadata { get; set; }
+
+    public bool MarkdownPreview { get; set; }
+
+    public bool GlowPreview { get; set; }
+
+    public bool Ffprobe { get; set; }
+
+    public bool Mediainfo { get; set; }
 
     public bool CopySymlinksAsLinks { get; set; }
 
@@ -65,7 +75,12 @@ internal sealed class ConfigDialogState
             SizeColumn = config.SizeColumnEnabled,
             DateColumn = config.DateColumnEnabled,
             ZipPreview = config.ZipPreviewEnabled,
-            DisabledTools = new HashSet<string>(config.DisabledTools),
+            PdfPreview = config.PdfPreviewEnabled,
+            PdfMetadata = config.PdfMetadataEnabled,
+            MarkdownPreview = config.MarkdownPreviewEnabled,
+            GlowPreview = config.GlowPreviewEnabled,
+            Ffprobe = config.FfprobeEnabled,
+            Mediainfo = config.MediainfoEnabled,
             CopySymlinksAsLinks = config.CopySymlinksAsLinksEnabled,
             TerminalTitle = config.TerminalTitleEnabled,
             GitStatus = config.GitStatusEnabled,
@@ -95,7 +110,12 @@ internal sealed class ConfigDialogState
         config.SizeColumnEnabled = SizeColumn;
         config.DateColumnEnabled = DateColumn;
         config.ZipPreviewEnabled = ZipPreview;
-        config.DisabledTools = new HashSet<string>(DisabledTools);
+        config.PdfPreviewEnabled = PdfPreview;
+        config.PdfMetadataEnabled = PdfMetadata;
+        config.MarkdownPreviewEnabled = MarkdownPreview;
+        config.GlowPreviewEnabled = GlowPreview;
+        config.FfprobeEnabled = Ffprobe;
+        config.MediainfoEnabled = Mediainfo;
         config.CopySymlinksAsLinksEnabled = CopySymlinksAsLinks;
         config.TerminalTitleEnabled = TerminalTitle;
         config.GitStatusEnabled = GitStatus;
@@ -299,24 +319,24 @@ internal sealed class ConfigDialogState
             {
                 Label = "Show PDF Details (pdfinfo)",
                 Indent = 2,
-                FormatValue = () => FormatToolBool("pdfinfo"),
-                Toggle = () => ToggleDisabledTool("pdfinfo"),
+                FormatValue = () => FormatBool(PdfMetadata),
+                Toggle = () => PdfMetadata = !PdfMetadata,
                 EnabledWhen = () => PreviewPane && FileMetadata,
             },
             new ConfigItem
             {
                 Label = "Show Media Details (ffprobe)",
                 Indent = 2,
-                FormatValue = () => FormatToolBool("ffprobe"),
-                Toggle = () => ToggleDisabledTool("ffprobe"),
+                FormatValue = () => FormatBool(Ffprobe),
+                Toggle = () => Ffprobe = !Ffprobe,
                 EnabledWhen = () => PreviewPane && FileMetadata,
             },
             new ConfigItem
             {
                 Label = "Show Media Details (mediainfo)",
                 Indent = 2,
-                FormatValue = () => FormatToolBool("mediainfo"),
-                Toggle = () => ToggleDisabledTool("mediainfo"),
+                FormatValue = () => FormatBool(Mediainfo),
+                Toggle = () => Mediainfo = !Mediainfo,
                 EnabledWhen = () => PreviewPane && FileMetadata,
             },
             new ConfigItem
@@ -339,8 +359,8 @@ internal sealed class ConfigDialogState
             {
                 Label = "Show PDF Previews (pdftopng)",
                 Indent = 2,
-                FormatValue = () => FormatToolBool("pdftopng"),
-                Toggle = () => ToggleDisabledTool("pdftopng"),
+                FormatValue = () => FormatBool(PdfPreview),
+                Toggle = () => PdfPreview = !PdfPreview,
                 EnabledWhen = () => PreviewPane && FilePreviews,
             },
             new ConfigItem
@@ -355,32 +375,22 @@ internal sealed class ConfigDialogState
             {
                 Label = "Show Markdown Preview (built-in)",
                 Indent = 2,
-                FormatValue = () => FormatToolBool("markdown_preview"),
-                Toggle = () => ToggleDisabledTool("markdown_preview"),
+                FormatValue = () => FormatBool(MarkdownPreview),
+                Toggle = () => MarkdownPreview = !MarkdownPreview,
                 EnabledWhen = () => PreviewPane && FilePreviews,
             },
             new ConfigItem
             {
                 Label = "Show Markdown Preview (glow)",
                 Indent = 2,
-                FormatValue = () => FormatToolBool("glow"),
-                Toggle = () => ToggleDisabledTool("glow"),
+                FormatValue = () => FormatBool(GlowPreview),
+                Toggle = () => GlowPreview = !GlowPreview,
                 EnabledWhen = () => PreviewPane && FilePreviews,
             },
         ]);
     }
 
     internal static string FormatBool(bool value) => value ? "[X]" : "[ ]";
-
-    private string FormatToolBool(string toolName) => FormatBool(!DisabledTools.Contains(toolName));
-
-    private void ToggleDisabledTool(string toolName)
-    {
-        if (!DisabledTools.Remove(toolName))
-        {
-            DisabledTools.Add(toolName);
-        }
-    }
 
     private static SortMode CycleSortModeNext(SortMode current) =>
         current switch

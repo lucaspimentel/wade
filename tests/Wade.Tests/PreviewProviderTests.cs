@@ -12,7 +12,9 @@ public class PreviewProviderTests
         bool isBrokenSymlink = false,
         GitFileStatus? gitStatus = null,
         string? repoRoot = null,
-        HashSet<string>? disabledTools = null,
+        bool pdfPreviewEnabled = true,
+        bool markdownPreviewEnabled = true,
+        bool glowPreviewEnabled = true,
         bool zipPreviewEnabled = true,
         bool imagePreviewsEnabled = true,
         bool sixelSupported = true) =>
@@ -25,7 +27,12 @@ public class PreviewProviderTests
             IsBrokenSymlink: isBrokenSymlink,
             GitStatus: gitStatus,
             RepoRoot: repoRoot,
-            DisabledTools: disabledTools ?? new HashSet<string>(),
+            PdfPreviewEnabled: pdfPreviewEnabled,
+            PdfMetadataEnabled: true,
+            MarkdownPreviewEnabled: markdownPreviewEnabled,
+            GlowPreviewEnabled: glowPreviewEnabled,
+            FfprobeEnabled: true,
+            MediainfoEnabled: true,
             ZipPreviewEnabled: zipPreviewEnabled,
             ImagePreviewsEnabled: imagePreviewsEnabled,
             SixelSupported: sixelSupported,
@@ -94,7 +101,7 @@ public class PreviewProviderTests
         public void CanPreview_PdfDisabled_ReturnsFalse()
         {
             var provider = new PdfPreviewProvider();
-            Assert.False(provider.CanPreview("file.pdf", DefaultContext(disabledTools: new HashSet<string> { "pdftopng" })));
+            Assert.False(provider.CanPreview("file.pdf", DefaultContext(pdfPreviewEnabled: false)));
         }
 
         [Fact]
@@ -156,7 +163,7 @@ public class PreviewProviderTests
         public void CanPreview_GlowDisabled_ReturnsFalse()
         {
             var provider = new GlowMarkdownPreviewProvider();
-            Assert.False(provider.CanPreview("file.md", DefaultContext(disabledTools: new HashSet<string> { "glow" })));
+            Assert.False(provider.CanPreview("file.md", DefaultContext(glowPreviewEnabled: false)));
         }
 
         [Fact]
@@ -191,7 +198,7 @@ public class PreviewProviderTests
         public void CanPreview_MarkdownPreviewDisabled_ReturnsFalse()
         {
             var provider = new MarkdigMarkdownPreviewProvider();
-            Assert.False(provider.CanPreview("file.md", DefaultContext(disabledTools: new HashSet<string> { "markdown_preview" })));
+            Assert.False(provider.CanPreview("file.md", DefaultContext(markdownPreviewEnabled: false)));
         }
 
         [Fact]

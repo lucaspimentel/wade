@@ -41,7 +41,7 @@ internal sealed class PdfPreviewProvider : IPreviewProvider
     public string Label => "PDF";
 
     public bool CanPreview(string path, PreviewContext context) =>
-        !context.DisabledTools.Contains("pdftopng")
+        context.PdfPreviewEnabled
         && context.SixelSupported
         && ImageConverter.CanConvert(path);
 
@@ -95,7 +95,7 @@ internal sealed class MarkdigMarkdownPreviewProvider : IPreviewProvider
 
     public bool CanPreview(string path, PreviewContext context)
     {
-        if (context.DisabledTools.Contains("markdown_preview"))
+        if (!context.MarkdownPreviewEnabled)
         {
             return false;
         }
@@ -129,7 +129,7 @@ internal sealed class GlowMarkdownPreviewProvider : IPreviewProvider
 
     public bool CanPreview(string path, PreviewContext context)
     {
-        if (context.DisabledTools.Contains("glow") || !GlowRenderer.IsAvailable)
+        if (!context.GlowPreviewEnabled || !GlowRenderer.IsAvailable)
         {
             return false;
         }

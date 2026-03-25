@@ -28,7 +28,8 @@ public class ConfigDialogStateTests
         config.FileMetadataEnabled = false;
         config.FilePreviewsEnabled = false;
         config.ArchiveMetadataEnabled = false;
-        config.DisabledTools = new HashSet<string> { "glow", "pdfinfo" };
+        config.GlowPreviewEnabled = false;
+        config.PdfMetadataEnabled = false;
 
         var state = ConfigDialogState.FromConfig(config);
 
@@ -49,20 +50,8 @@ public class ConfigDialogStateTests
         Assert.False(state.FileMetadata);
         Assert.False(state.FilePreviews);
         Assert.False(state.ArchiveMetadata);
-        Assert.Contains("glow", state.DisabledTools);
-        Assert.Contains("pdfinfo", state.DisabledTools);
-    }
-
-    [Fact]
-    public void FromConfig_DisabledToolsAreCopied_NotShared()
-    {
-        var config = WadeConfig.Load([], configFilePath: "/nonexistent/path.toml");
-        config.DisabledTools = new HashSet<string> { "glow" };
-
-        var state = ConfigDialogState.FromConfig(config);
-        state.DisabledTools.Add("pdfinfo");
-
-        Assert.DoesNotContain("pdfinfo", config.DisabledTools);
+        Assert.False(state.GlowPreview);
+        Assert.False(state.PdfMetadata);
     }
 
     [Fact]
@@ -100,7 +89,7 @@ public class ConfigDialogStateTests
         state.FileMetadata = false;
         state.FilePreviews = false;
         state.ArchiveMetadata = false;
-        state.DisabledTools = new HashSet<string> { "ffprobe" };
+        state.Ffprobe = false;
 
         state.ApplyTo(config);
 
@@ -121,7 +110,7 @@ public class ConfigDialogStateTests
         Assert.False(config.FileMetadataEnabled);
         Assert.False(config.FilePreviewsEnabled);
         Assert.False(config.ArchiveMetadataEnabled);
-        Assert.Contains("ffprobe", config.DisabledTools);
+        Assert.False(config.FfprobeEnabled);
     }
 
     [Fact]
@@ -245,7 +234,7 @@ public class ConfigDialogStateTests
     }
 
     [Fact]
-    public void ToggleSelected_ToolToggle_AddsToDisabledTools()
+    public void ToggleSelected_ToolToggle_FlipsBool()
     {
         ConfigDialogState state = CreateDefaultState();
 
@@ -254,11 +243,11 @@ public class ConfigDialogStateTests
         state.SelectedIndex = pdfinfoIndex;
         state.ToggleSelected();
 
-        Assert.Contains("pdfinfo", state.DisabledTools);
+        Assert.False(state.PdfMetadata);
 
         // Toggle again to re-enable
         state.ToggleSelected();
-        Assert.DoesNotContain("pdfinfo", state.DisabledTools);
+        Assert.True(state.PdfMetadata);
     }
 
     // ── Sort mode cycling ────────────────────────────────────────────────────
@@ -420,13 +409,13 @@ public class ConfigDialogStateTests
     }
 
     [Fact]
-    public void FormatValue_ToolItem_ReflectsDisabledTools()
+    public void FormatValue_ToolItem_ReflectsBool()
     {
         ConfigDialogState state = CreateDefaultState();
         ConfigItem pdfinfoItem = state.Items.Find(i => i.Label.Contains("pdfinfo"))!;
 
         Assert.Equal("[X]", pdfinfoItem.FormatValue()); // enabled by default
-        state.DisabledTools.Add("pdfinfo");
+        state.PdfMetadata = false;
         Assert.Equal("[ ]", pdfinfoItem.FormatValue());
     }
 

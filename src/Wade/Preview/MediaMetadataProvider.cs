@@ -30,8 +30,8 @@ internal sealed class MediaMetadataProvider : IMetadataProvider
             return false;
         }
 
-        bool ffprobeEnabled = !context.DisabledTools.Contains("ffprobe") && FfprobeAvailable;
-        bool mediainfoEnabled = !context.DisabledTools.Contains("mediainfo") && MediainfoAvailable;
+        bool ffprobeEnabled = context.FfprobeEnabled && FfprobeAvailable;
+        bool mediainfoEnabled = context.MediainfoEnabled && MediainfoAvailable;
         return ffprobeEnabled || mediainfoEnabled;
     }
 
@@ -44,8 +44,8 @@ internal sealed class MediaMetadataProvider : IMetadataProvider
 
         try
         {
-            bool useFfprobe = !context.DisabledTools.Contains("ffprobe") && FfprobeAvailable;
-            bool useMediainfo = !useFfprobe && !context.DisabledTools.Contains("mediainfo") && MediainfoAvailable;
+            bool useFfprobe = context.FfprobeEnabled && FfprobeAvailable;
+            bool useMediainfo = !useFfprobe && context.MediainfoEnabled && MediainfoAvailable;
 
             string? json = useFfprobe
                 ? CliTool.Run("ffprobe", ["-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", path], ct: ct)
