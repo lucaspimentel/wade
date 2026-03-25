@@ -8,6 +8,7 @@ internal static class PreviewProviderRegistry
     [
         new ImagePreviewProvider(),
         new PdfPreviewProvider(),
+        new MarkdigMarkdownPreviewProvider(),
         new GlowMarkdownPreviewProvider(),
         new ZipContentsPreviewProvider(),
         new MsiPreviewProvider(),

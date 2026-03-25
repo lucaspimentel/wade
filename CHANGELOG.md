@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Add built-in Markdig markdown preview — renders headings, code blocks with syntax highlighting, lists, blockquotes, tables, links, and more without external tools
+
 ## [1.6.0] - 2026-03-24
 
 ### Added

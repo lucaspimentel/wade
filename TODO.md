@@ -44,6 +44,10 @@ Implemented via `InlineDirSizeLoader` — streaming async computation, one event
 - **Windows shortcuts** (`.lnk`) — target path, working directory, arguments, timestamps, icon location, hotkey, file attributes, volume info, extra data (environment variables, known folder, tracker info). Reuse existing parser from [lucaspimentel/windows-shortcut-parser](https://github.com/lucaspimentel/windows-shortcut-parser) — pure C#, NativeAOT-safe, zero dependencies. Entry point: `LnkFile.Parse(path)` → `GetTargetPath()`, `Header` (timestamps, size, attributes), `StringData` (name, relative path, working dir, args, icon location), `LinkInfo` (local/network path, volume info), `ExtraDataBlocks`. Add as a project reference or publish as NuGet package. Preview could show the resolved target path prominently, with metadata sections for shortcut properties. Windows-only (`.lnk` is a Windows format; on Unix, detect but skip gracefully).
 - **URL shortcuts** (`.url`) — URL and icon location. Reuse `UrlFile.Parse(path)` from [lucaspimentel/windows-shortcut-parser](https://github.com/lucaspimentel/windows-shortcut-parser). Simple INI-style format; metadata section showing the target URL prominently. Cross-platform (plain text format, works on Unix too).
 
+### ~~Replace `glow` CLI with Markdig for markdown preview~~ ✅
+
+Implemented via `MarkdigRenderer` — parses Markdown AST with Markdig and produces `StyledLine[]` with per-character `CellStyle[]`. Supports headings (H1-H6), paragraphs with word wrapping, fenced code blocks with syntax highlighting, bullet/ordered lists, blockquotes, horizontal rules, tables, emphasis, inline code, links, and images. Registered as `MarkdigMarkdownPreviewProvider` (default for `.md`/`.markdown`). Glow provider kept as an alternative (switchable via `p` key). NativeAOT-safe, no external dependencies.
+
 ### Zip — other archive formats
 
 Support additional archive formats in the preview pane (`.tar`, `.gz`, `.tar.gz`). Zip preview is already implemented via `System.IO.Compression.ZipFile`.

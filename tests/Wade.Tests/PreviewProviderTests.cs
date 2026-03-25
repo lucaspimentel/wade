@@ -160,7 +160,42 @@ public class PreviewProviderTests
         }
 
         [Fact]
-        public void Label_IsRenderedMarkdown() => Assert.Equal("Rendered markdown", new GlowMarkdownPreviewProvider().Label);
+        public void Label_IsRenderedMarkdown() => Assert.Equal("Rendered markdown (glow)", new GlowMarkdownPreviewProvider().Label);
+    }
+
+    // --- MarkdigMarkdownPreviewProvider ---
+
+    public class MarkdigMarkdownPreviewProviderTests
+    {
+        [Theory]
+        [InlineData(".md")]
+        [InlineData(".markdown")]
+        [InlineData(".MD")]
+        public void CanPreview_MarkdownExtensions_ReturnsTrue(string ext)
+        {
+            var provider = new MarkdigMarkdownPreviewProvider();
+            Assert.True(provider.CanPreview($"file{ext}", DefaultContext()));
+        }
+
+        [Theory]
+        [InlineData(".txt")]
+        [InlineData(".cs")]
+        [InlineData(".html")]
+        public void CanPreview_NonMarkdownExtensions_ReturnsFalse(string ext)
+        {
+            var provider = new MarkdigMarkdownPreviewProvider();
+            Assert.False(provider.CanPreview($"file{ext}", DefaultContext()));
+        }
+
+        [Fact]
+        public void CanPreview_MarkdownPreviewDisabled_ReturnsFalse()
+        {
+            var provider = new MarkdigMarkdownPreviewProvider();
+            Assert.False(provider.CanPreview("file.md", DefaultContext(disabledTools: new HashSet<string> { "markdown_preview" })));
+        }
+
+        [Fact]
+        public void Label_IsRenderedMarkdown() => Assert.Equal("Rendered markdown (built-in)", new MarkdigMarkdownPreviewProvider().Label);
     }
 
     // --- ZipContentsPreviewProvider ---

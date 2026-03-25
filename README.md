@@ -37,7 +37,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Copy path to clipboard** — press `y` to copy the selected item's absolute path to the OS clipboard; press `Y` to copy the path relative to the git repo root (shows an error if not inside a git repo); works in both normal view and expanded preview mode
 - **Mouse support** — click to select entries in any pane, scroll wheel to navigate; left/right pane clicks navigate directories; right-click opens a context menu with common file actions (open, rename, delete, copy, cut, paste, properties, git stage/unstage)
 - **File properties** — press `i` to open a scrollable properties overlay showing detailed metadata: name, full path, type (extension-based labels like "PDF" or "C#", symlink-aware labels like "Symlink → File"), link target, formatted size with raw bytes (directories calculate size asynchronously), created/modified/accessed timestamps, file attributes, read-only status, git status (colored: modified=yellow, staged=cyan, untracked=green, conflict=red), and extracted file metadata when available (NuGet package info, PE/assembly details, Office document properties, media info); scroll with arrow keys, Page Up/Down, Home/End when content exceeds screen height
-- **Glow markdown preview** — renders markdown files using the [glow](https://github.com/charmbracelet/glow) CLI for rich preview with styled headings, lists, code blocks, etc. (requires `glow` on PATH; disabled by default; enable with `glow_markdown_preview_enabled = true` in config or toggle in config dialog)
+- **Markdown preview** — renders markdown files with styled headings, lists, code blocks (with syntax highlighting), blockquotes, tables, links, and more using a built-in [Markdig](https://github.com/xoofx/markdig)-based renderer (no external tools needed; enabled by default). Alternatively, the [glow](https://github.com/charmbracelet/glow) CLI can be used as a preview provider if installed (switchable via `p` key)
 - **In-app configuration** — press `,` to open a config dialog with toggleable options organized in a hierarchy: icons, hidden/system files, sort mode/direction, columns, delete confirmation, copy-symlinks-as-links, terminal title, git status, right pane (with nested file details and file previews sub-groups controlling metadata providers and preview providers independently); changes are saved directly to the config file
 - **Bookmarks** — press `b` to open a filterable bookmarks dialog; press `B` to toggle the current directory as a bookmark; quick-jump with `1`-`9`, `Enter` to navigate, `d`/`Delete` to remove; bookmarks persist to `~/.config/wade/bookmarks` in MRU order
 - **File finder** — press `Ctrl+F` to recursively search for files by name in the current directory tree; type to filter, Up/Down to navigate, Enter to open the file. Automatically skips `.git` directories and respects hidden/system file visibility settings
@@ -117,7 +117,7 @@ dir_size_network_enabled = false
 file_previews_enabled = true
 image_previews_enabled = true
 zip_preview_enabled = true
-disabled_tools = glow,pdftopng  # comma-separated list of disabled external tools
+disabled_tools = markdown_preview,glow,pdftopng  # comma-separated list of disabled preview tools
 ```
 
 ### CLI flags

@@ -353,6 +353,14 @@ internal sealed class ConfigDialogState
             },
             new ConfigItem
             {
+                Label = "Show Markdown Preview (built-in)",
+                Indent = 2,
+                FormatValue = () => FormatToolBool("markdown_preview"),
+                Toggle = () => ToggleDisabledTool("markdown_preview"),
+                EnabledWhen = () => PreviewPane && FilePreviews,
+            },
+            new ConfigItem
+            {
                 Label = "Show Markdown Preview (glow)",
                 Indent = 2,
                 FormatValue = () => FormatToolBool("glow"),

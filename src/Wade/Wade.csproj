@@ -24,6 +24,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Markdig" Version="0.*"/>
         <PackageReference Include="SixLabors.ImageSharp" Version="3.*"/>
     </ItemGroup>
 
