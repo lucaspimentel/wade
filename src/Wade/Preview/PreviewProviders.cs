@@ -123,39 +123,6 @@ internal sealed class MarkdigMarkdownPreviewProvider : IPreviewProvider
     }
 }
 
-internal sealed class GlowMarkdownPreviewProvider : IPreviewProvider
-{
-    public string Label => "Rendered markdown (glow)";
-
-    public bool CanPreview(string path, PreviewContext context)
-    {
-        if (!context.GlowPreviewEnabled || !GlowRenderer.IsAvailable)
-        {
-            return false;
-        }
-
-        string ext = Path.GetExtension(path);
-        return ext.Equals(".md", StringComparison.OrdinalIgnoreCase)
-               || ext.Equals(".markdown", StringComparison.OrdinalIgnoreCase);
-    }
-
-    public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct)
-    {
-        StyledLine[]? lines = GlowRenderer.Render(path, context.PaneWidthCells - 2, ct);
-        if (lines is null)
-        {
-            return null;
-        }
-
-        return new PreviewResult
-        {
-            TextLines = lines,
-            IsRendered = true,
-            FileTypeLabel = FilePreview.GetFileTypeLabel(path) ?? "Markdown",
-        };
-    }
-}
-
 internal sealed class ZipContentsPreviewProvider : IPreviewProvider
 {
     public string Label => "Archive contents";

@@ -24,7 +24,6 @@ internal sealed record PreviewContext(
     bool PdfPreviewEnabled,
     bool PdfMetadataEnabled,
     bool MarkdownPreviewEnabled,
-    bool GlowPreviewEnabled,
     bool FfprobeEnabled,
     bool MediainfoEnabled,
     bool ZipPreviewEnabled,

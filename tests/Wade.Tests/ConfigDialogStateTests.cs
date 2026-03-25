@@ -28,7 +28,6 @@ public class ConfigDialogStateTests
         config.FileMetadataEnabled = false;
         config.FilePreviewsEnabled = false;
         config.ArchiveMetadataEnabled = false;
-        config.GlowPreviewEnabled = false;
         config.PdfMetadataEnabled = false;
 
         var state = ConfigDialogState.FromConfig(config);
@@ -50,7 +49,6 @@ public class ConfigDialogStateTests
         Assert.False(state.FileMetadata);
         Assert.False(state.FilePreviews);
         Assert.False(state.ArchiveMetadata);
-        Assert.False(state.GlowPreview);
         Assert.False(state.PdfMetadata);
     }
 
@@ -353,7 +351,6 @@ public class ConfigDialogStateTests
     [InlineData("Show Image Previews")]
     [InlineData("Show PDF Previews (pdftopng)")]
     [InlineData("Show Archive Contents")]
-    [InlineData("Show Markdown Preview (glow)")]
     public void PreviewSubItems_DisabledWhenFilePreviewsOff(string label)
     {
         ConfigDialogState state = CreateDefaultState();
@@ -370,7 +367,6 @@ public class ConfigDialogStateTests
     [InlineData("Show Image Previews")]
     [InlineData("Show PDF Previews (pdftopng)")]
     [InlineData("Show Archive Contents")]
-    [InlineData("Show Markdown Preview (glow)")]
     public void PreviewSubItems_EnabledWhenFilePreviewsOn(string label)
     {
         ConfigDialogState state = CreateDefaultState();

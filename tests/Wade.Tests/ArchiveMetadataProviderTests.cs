@@ -20,7 +20,6 @@ public class ArchiveMetadataProviderTests
             PdfPreviewEnabled: true,
             PdfMetadataEnabled: true,
             MarkdownPreviewEnabled: true,
-            GlowPreviewEnabled: true,
             FfprobeEnabled: true,
             MediainfoEnabled: true,
             ZipPreviewEnabled: true,

@@ -32,8 +32,6 @@ internal sealed class ConfigDialogState
 
     public bool MarkdownPreview { get; set; }
 
-    public bool GlowPreview { get; set; }
-
     public bool Ffprobe { get; set; }
 
     public bool Mediainfo { get; set; }
@@ -78,7 +76,6 @@ internal sealed class ConfigDialogState
             PdfPreview = config.PdfPreviewEnabled,
             PdfMetadata = config.PdfMetadataEnabled,
             MarkdownPreview = config.MarkdownPreviewEnabled,
-            GlowPreview = config.GlowPreviewEnabled,
             Ffprobe = config.FfprobeEnabled,
             Mediainfo = config.MediainfoEnabled,
             CopySymlinksAsLinks = config.CopySymlinksAsLinksEnabled,
@@ -113,7 +110,6 @@ internal sealed class ConfigDialogState
         config.PdfPreviewEnabled = PdfPreview;
         config.PdfMetadataEnabled = PdfMetadata;
         config.MarkdownPreviewEnabled = MarkdownPreview;
-        config.GlowPreviewEnabled = GlowPreview;
         config.FfprobeEnabled = Ffprobe;
         config.MediainfoEnabled = Mediainfo;
         config.CopySymlinksAsLinksEnabled = CopySymlinksAsLinks;
@@ -377,14 +373,6 @@ internal sealed class ConfigDialogState
                 Indent = 2,
                 FormatValue = () => FormatBool(MarkdownPreview),
                 Toggle = () => MarkdownPreview = !MarkdownPreview,
-                EnabledWhen = () => PreviewPane && FilePreviews,
-            },
-            new ConfigItem
-            {
-                Label = "Show Markdown Preview (glow)",
-                Indent = 2,
-                FormatValue = () => FormatBool(GlowPreview),
-                Toggle = () => GlowPreview = !GlowPreview,
                 EnabledWhen = () => PreviewPane && FilePreviews,
             },
         ]);

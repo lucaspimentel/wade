@@ -37,14 +37,6 @@ internal static class CliToolHints
             }
         }
 
-        if (ext.Equals(".md", StringComparison.OrdinalIgnoreCase) || ext.Equals(".markdown", StringComparison.OrdinalIgnoreCase))
-        {
-            if (!CliTool.IsAvailable("glow", "--version", requireZeroExitCode: true))
-            {
-                return "Install glow for rendered markdown preview";
-            }
-        }
-
         if (s_mediaExtensions.Contains(ext))
         {
             bool hasFfprobe = CliTool.IsAvailable("ffprobe", "-version", requireZeroExitCode: true);

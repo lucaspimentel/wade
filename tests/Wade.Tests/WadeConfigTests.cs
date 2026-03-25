@@ -35,7 +35,6 @@ public class WadeConfigTests
         Assert.True(config.PdfPreviewEnabled);
         Assert.True(config.PdfMetadataEnabled);
         Assert.True(config.MarkdownPreviewEnabled);
-        Assert.True(config.GlowPreviewEnabled);
         Assert.True(config.FfprobeEnabled);
         Assert.True(config.MediainfoEnabled);
         Assert.True(config.TerminalTitleEnabled);

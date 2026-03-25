@@ -5,8 +5,11 @@
 ### Added
 - Add built-in Markdig markdown preview — renders headings, code blocks with syntax highlighting, lists, blockquotes, tables, links, and more without external tools
 
+### Removed
+- Remove Glow markdown preview provider — built-in Markdig renderer is now the only markdown preview
+
 ### Changed
-- Replace `disabled_tools` list with individual boolean config settings (`pdf_preview_enabled`, `pdf_metadata_enabled`, `markdown_preview_enabled`, `glow_preview_enabled`, `ffprobe_enabled`, `mediainfo_enabled`)
+- Replace `disabled_tools` list with individual boolean config settings (`pdf_preview_enabled`, `pdf_metadata_enabled`, `markdown_preview_enabled`, `ffprobe_enabled`, `mediainfo_enabled`)
 
 ### Fixed
 - Fix file list flickering in git repos — ignore `.git` directory changes in filesystem watcher to break feedback loop with git status refresh

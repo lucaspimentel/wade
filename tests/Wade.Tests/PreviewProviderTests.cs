@@ -14,7 +14,6 @@ public class PreviewProviderTests
         string? repoRoot = null,
         bool pdfPreviewEnabled = true,
         bool markdownPreviewEnabled = true,
-        bool glowPreviewEnabled = true,
         bool zipPreviewEnabled = true,
         bool imagePreviewsEnabled = true,
         bool sixelSupported = true) =>
@@ -30,7 +29,6 @@ public class PreviewProviderTests
             PdfPreviewEnabled: pdfPreviewEnabled,
             PdfMetadataEnabled: true,
             MarkdownPreviewEnabled: markdownPreviewEnabled,
-            GlowPreviewEnabled: glowPreviewEnabled,
             FfprobeEnabled: true,
             MediainfoEnabled: true,
             ZipPreviewEnabled: zipPreviewEnabled,
@@ -143,31 +141,6 @@ public class PreviewProviderTests
 
         [Fact]
         public void Label_IsPdf() => Assert.Equal("PDF", new PdfPreviewProvider().Label);
-    }
-
-    // --- GlowMarkdownPreviewProvider ---
-
-    public class GlowMarkdownPreviewProviderTests
-    {
-        [Theory]
-        [InlineData(".txt")]
-        [InlineData(".cs")]
-        [InlineData(".html")]
-        public void CanPreview_NonMarkdownExtensions_ReturnsFalse(string ext)
-        {
-            var provider = new GlowMarkdownPreviewProvider();
-            Assert.False(provider.CanPreview($"file{ext}", DefaultContext()));
-        }
-
-        [Fact]
-        public void CanPreview_GlowDisabled_ReturnsFalse()
-        {
-            var provider = new GlowMarkdownPreviewProvider();
-            Assert.False(provider.CanPreview("file.md", DefaultContext(glowPreviewEnabled: false)));
-        }
-
-        [Fact]
-        public void Label_IsRenderedMarkdown() => Assert.Equal("Rendered markdown (glow)", new GlowMarkdownPreviewProvider().Label);
     }
 
     // --- MarkdigMarkdownPreviewProvider ---

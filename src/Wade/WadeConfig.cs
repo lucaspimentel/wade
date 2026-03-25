@@ -50,8 +50,6 @@ internal sealed class WadeConfig
 
     public bool MarkdownPreviewEnabled { get; set; } = true;
 
-    public bool GlowPreviewEnabled { get; set; } = true;
-
     public bool FfprobeEnabled { get; set; } = true;
 
     public bool MediainfoEnabled { get; set; } = true;
@@ -190,9 +188,6 @@ internal sealed class WadeConfig
                     case "markdown_preview_enabled":
                         config.MarkdownPreviewEnabled = ParseBool(value, config.MarkdownPreviewEnabled);
                         break;
-                    case "glow_preview_enabled":
-                        config.GlowPreviewEnabled = ParseBool(value, config.GlowPreviewEnabled);
-                        break;
                     case "ffprobe_enabled":
                         config.FfprobeEnabled = ParseBool(value, config.FfprobeEnabled);
                         break;
@@ -204,10 +199,6 @@ internal sealed class WadeConfig
                         bool detailBool = ParseBool(value, true);
                         config.SizeColumnEnabled = detailBool;
                         config.DateColumnEnabled = detailBool;
-                        break;
-                    // Backward compat: map old setting names
-                    case "glow_markdown_preview_enabled":
-                        config.GlowPreviewEnabled = ParseBool(value, config.GlowPreviewEnabled);
                         break;
                     case "disabled_tools":
                         foreach (string tool in value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
@@ -222,9 +213,6 @@ internal sealed class WadeConfig
                                     break;
                                 case "markdown_preview":
                                     config.MarkdownPreviewEnabled = false;
-                                    break;
-                                case "glow":
-                                    config.GlowPreviewEnabled = false;
                                     break;
                                 case "ffprobe":
                                     config.FfprobeEnabled = false;
@@ -331,7 +319,6 @@ internal sealed class WadeConfig
                           pdf_preview_enabled = {(PdfPreviewEnabled ? "true" : "false")}
                           pdf_metadata_enabled = {(PdfMetadataEnabled ? "true" : "false")}
                           markdown_preview_enabled = {(MarkdownPreviewEnabled ? "true" : "false")}
-                          glow_preview_enabled = {(GlowPreviewEnabled ? "true" : "false")}
                           ffprobe_enabled = {(FfprobeEnabled ? "true" : "false")}
                           mediainfo_enabled = {(MediainfoEnabled ? "true" : "false")}
                           """;
@@ -368,7 +355,6 @@ internal sealed class WadeConfig
                $"\"pdf_preview_enabled\":{(PdfPreviewEnabled ? "true" : "false")}," +
                $"\"pdf_metadata_enabled\":{(PdfMetadataEnabled ? "true" : "false")}," +
                $"\"markdown_preview_enabled\":{(MarkdownPreviewEnabled ? "true" : "false")}," +
-               $"\"glow_preview_enabled\":{(GlowPreviewEnabled ? "true" : "false")}," +
                $"\"ffprobe_enabled\":{(FfprobeEnabled ? "true" : "false")}," +
                $"\"mediainfo_enabled\":{(MediainfoEnabled ? "true" : "false")}," +
                $"\"start_path\":\"{escapedPath}\"" +

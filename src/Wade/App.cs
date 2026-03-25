@@ -1594,7 +1594,6 @@ internal sealed class App
             PdfPreviewEnabled: _config.PdfPreviewEnabled,
             PdfMetadataEnabled: _config.PdfMetadataEnabled,
             MarkdownPreviewEnabled: _config.MarkdownPreviewEnabled,
-            GlowPreviewEnabled: _config.GlowPreviewEnabled,
             FfprobeEnabled: _config.FfprobeEnabled,
             MediainfoEnabled: _config.MediainfoEnabled,
             ZipPreviewEnabled: _config.ZipPreviewEnabled,

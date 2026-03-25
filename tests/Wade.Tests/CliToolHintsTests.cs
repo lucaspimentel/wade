@@ -62,18 +62,9 @@ public class CliToolHintsTests
     }
 
     [Fact]
-    public void GetHint_MarkdownFile_ReturnsNonNullOrNullDependingOnAvailability()
+    public void GetHint_MarkdownFile_ReturnsNull()
     {
         string? hint = CliToolHints.GetHint("README.md");
-        bool glowAvailable = CliTool.IsAvailable("glow", "--version", requireZeroExitCode: true);
-
-        if (glowAvailable)
-        {
-            Assert.Null(hint);
-        }
-        else
-        {
-            Assert.NotNull(hint);
-        }
+        Assert.Null(hint);
     }
 }
