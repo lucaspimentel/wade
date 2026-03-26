@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Add directories to file finder (Ctrl+F) results with file-type icons
+
+### Changed
+- Use breadth-first search in file finder so current-directory entries appear before deeper nested ones
+
 ## [1.7.0] - 2026-03-25
 
 ### Added

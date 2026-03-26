@@ -95,7 +95,7 @@ public class FileFinderTests : IDisposable
     }
 
     [Fact]
-    public void Scan_FindsFilesInSubdirectories()
+    public void Scan_FindsFilesAndDirectoriesInSubdirectories()
     {
         // Create a simple directory tree
         string sub = Path.Combine(_tempDir, "a", "b");
@@ -110,9 +110,45 @@ public class FileFinderTests : IDisposable
         Assert.NotNull(evt);
         FileFinderScanCompleteEvent scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
         Assert.Equal(_tempDir, scanEvt.BasePath);
-        Assert.True(scanEvt.Entries.Count >= 2);
-        Assert.Contains(scanEvt.Entries, e => e.Name == "root.txt");
-        Assert.Contains(scanEvt.Entries, e => e.Name == "deep.txt");
+        Assert.Contains(scanEvt.Entries, e => e.Name == "root.txt" && !e.IsDirectory);
+        Assert.Contains(scanEvt.Entries, e => e.Name == "deep.txt" && !e.IsDirectory);
+        Assert.Contains(scanEvt.Entries, e => e.Name == "a" && e.IsDirectory);
+        Assert.Contains(scanEvt.Entries, e => e.Name == "b" && e.IsDirectory);
+    }
+
+    [Fact]
+    public void Scan_BfsOrder_CurrentDirectoryEntriesAppearFirst()
+    {
+        // Create: root/root.txt, root/child/child.txt, root/child/grandchild/deep.txt
+        string child = Path.Combine(_tempDir, "child");
+        string grandchild = Path.Combine(child, "grandchild");
+        Directory.CreateDirectory(grandchild);
+        File.WriteAllText(Path.Combine(_tempDir, "root.txt"), "");
+        File.WriteAllText(Path.Combine(child, "child.txt"), "");
+        File.WriteAllText(Path.Combine(grandchild, "deep.txt"), "");
+
+        using InputPipeline pipeline = CreateTestPipeline();
+        App.ScanFilesForFinder(_tempDir, showHidden: true, showSystem: true, pipeline, CancellationToken.None);
+
+        InputEvent? evt = DrainPipeline(pipeline);
+        Assert.NotNull(evt);
+        FileFinderScanCompleteEvent scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
+
+        // root.txt and child/ (depth 0) should appear before child.txt and grandchild/ (depth 1)
+        // which should appear before deep.txt (depth 2)
+        int rootTxtIndex = scanEvt.Entries.FindIndex(e => e.Name == "root.txt");
+        int childDirIndex = scanEvt.Entries.FindIndex(e => e.Name == "child" && e.IsDirectory);
+        int childTxtIndex = scanEvt.Entries.FindIndex(e => e.Name == "child.txt");
+        int grandchildDirIndex = scanEvt.Entries.FindIndex(e => e.Name == "grandchild" && e.IsDirectory);
+        int deepTxtIndex = scanEvt.Entries.FindIndex(e => e.Name == "deep.txt");
+
+        // Depth 0 entries before depth 1 entries
+        Assert.True(rootTxtIndex < childTxtIndex, "root.txt should appear before child.txt");
+        Assert.True(childDirIndex < childTxtIndex, "child/ should appear before child.txt");
+
+        // Depth 1 entries before depth 2 entries
+        Assert.True(childTxtIndex < deepTxtIndex, "child.txt should appear before deep.txt");
+        Assert.True(grandchildDirIndex < deepTxtIndex, "grandchild/ should appear before deep.txt");
     }
 
     [Fact]
@@ -162,6 +198,7 @@ public class FileFinderTests : IDisposable
         Assert.NotNull(evt);
         FileFinderScanCompleteEvent scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
         Assert.DoesNotContain(scanEvt.Entries, e => e.FullPath.Contains(".git"));
+        Assert.DoesNotContain(scanEvt.Entries, e => e.Name == ".git");
         Assert.Contains(scanEvt.Entries, e => e.Name == "readme.md");
     }
 
@@ -179,6 +216,7 @@ public class FileFinderTests : IDisposable
         InputEvent? evt = DrainPipeline(pipeline);
         Assert.NotNull(evt);
         FileFinderScanCompleteEvent scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
+        Assert.DoesNotContain(scanEvt.Entries, e => e.Name == ".hidden");
         Assert.DoesNotContain(scanEvt.Entries, e => e.Name == "secret.txt");
         Assert.Contains(scanEvt.Entries, e => e.Name == "visible.txt");
     }
@@ -197,6 +235,7 @@ public class FileFinderTests : IDisposable
         InputEvent? evt = DrainPipeline(pipeline);
         Assert.NotNull(evt);
         FileFinderScanCompleteEvent scanEvt = Assert.IsType<FileFinderScanCompleteEvent>(evt);
+        Assert.Contains(scanEvt.Entries, e => e.Name == ".hidden" && e.IsDirectory);
         Assert.Contains(scanEvt.Entries, e => e.Name == "secret.txt");
         Assert.Contains(scanEvt.Entries, e => e.Name == "visible.txt");
     }

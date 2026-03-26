@@ -4437,18 +4437,18 @@ internal sealed class App
             AttributesToSkip = FileAttributes.Device,
         };
 
-        // Manual recursive walk so we can skip directories before descending
-        var stack = new Stack<(string Path, int Depth)>();
-        stack.Push((basePath, 0));
+        // BFS walk so current directory entries appear before deeper ones
+        var queue = new Queue<(string Path, int Depth)>();
+        queue.Enqueue((basePath, 0));
 
-        while (stack.Count > 0 && entries.Count < maxEntries)
+        while (queue.Count > 0 && entries.Count < maxEntries)
         {
             if (ct.IsCancellationRequested)
             {
                 return;
             }
 
-            (string currentDir, int depth) = stack.Pop();
+            (string currentDir, int depth) = queue.Dequeue();
 
             // Enumerate files in the current directory
             try
@@ -4524,11 +4524,13 @@ internal sealed class App
                         }
 
                         // Skip system directories on Windows when system files are not shown
+                        DirectoryInfo? dirInfo = null;
+
                         if (!showSystem && OperatingSystem.IsWindows())
                         {
                             try
                             {
-                                var dirInfo = new DirectoryInfo(subDir);
+                                dirInfo = new DirectoryInfo(subDir);
 
                                 if ((dirInfo.Attributes & FileAttributes.Hidden) != 0)
                                 {
@@ -4546,7 +4548,32 @@ internal sealed class App
                             }
                         }
 
-                        stack.Push((subDir, depth + 1));
+                        // Add directory to results
+                        try
+                        {
+                            dirInfo ??= new DirectoryInfo(subDir);
+
+                            entries.Add(new FileSystemEntry(
+                                dirInfo.Name,
+                                dirInfo.FullName,
+                                IsDirectory: true,
+                                Size: 0,
+                                LastModified: dirInfo.LastWriteTime,
+                                LinkTarget: dirInfo.LinkTarget,
+                                IsBrokenSymlink: false,
+                                IsDrive: false));
+
+                            if (entries.Count >= maxEntries)
+                            {
+                                break;
+                            }
+                        }
+                        catch
+                        {
+                            // Skip directories we can't access
+                        }
+
+                        queue.Enqueue((subDir, depth + 1));
                     }
                 }
                 catch
@@ -4752,7 +4779,7 @@ internal sealed class App
         if (filtered.Count == 0)
         {
             var emptyStyle = new CellStyle(new Color(120, 120, 140), DialogBox.BgColor);
-            string emptyText = _fileFinderScanning ? "Scanning..." : "No matching files";
+            string emptyText = _fileFinderScanning ? "Scanning..." : "No matches";
             buffer.WriteString(content.Top + 2, content.Left + 1, emptyText, emptyStyle);
             return;
         }
@@ -4786,8 +4813,10 @@ internal sealed class App
                 buffer.FillRow(row, content.Left, content.Width, ' ', selectedStyle);
             }
 
-            // Left: filename
-            buffer.WriteString(row, content.Left + 1, entry.Name, nameStyle, content.Width / 2 - 1);
+            // Left: icon + filename
+            Rune icon = FileIcons.GetIcon(entry);
+            buffer.Put(row, content.Left + 1, icon, nameStyle);
+            buffer.WriteString(row, content.Left + 3, entry.Name, nameStyle, content.Width / 2 - 3);
 
             // Right: relative parent path (dim hint)
             string? parentDir = Path.GetDirectoryName(Path.GetRelativePath(_currentPath, entry.FullPath));

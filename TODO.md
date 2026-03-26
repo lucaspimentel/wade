@@ -133,13 +133,13 @@ Fixed — `ImagePreview.Load()` scales down to fit pane pixel dimensions correct
 
 Handled by `FileSystemWatcherManager` — attribute changes when a cloud file finishes downloading trigger an auto-refresh.
 
-### File finder — show directories in results
+### ~~File finder — show directories in results~~ ✅
 
-- [ ] `ScanFilesForFinder` (`App.cs:4415`) only enumerates files (`Directory.EnumerateFiles`). Directories are traversed for recursion but never added to the results list. Add directory entries alongside file entries.
+Directories are now included in finder results with file-type icons. `ScanFilesForFinder` adds `FileSystemEntry` with `IsDirectory: true` for each qualifying subdirectory.
 
-### File finder — breadth-first search (prioritize current directory)
+### ~~File finder — breadth-first search (prioritize current directory)~~ ✅
 
-- [ ] `ScanFilesForFinder` uses a `Stack<>` (DFS) — deep subdirectories appear before sibling entries in the current directory. Switch to a `Queue<>` (BFS) so the current directory's contents appear first, then immediate children, etc.
+`ScanFilesForFinder` switched from `Stack<>` (DFS) to `Queue<>` (BFS). Current directory entries now appear before deeper nested entries.
 
 ### Keyboard shortcut convention audit
 
