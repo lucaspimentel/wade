@@ -42,7 +42,7 @@ Implemented via `InlineDirSizeLoader` — streaming async computation, one event
 - **OpenDocument** (`.odt`, `.ods`, `.odp`) — title, author, dates, page/sheet count. Extract from `meta.xml` inside the ODF zip archive (similar to Office OOXML approach). These are zip-based; **benefits from** "Support multiple metadata providers per file" to show document metadata alongside archive metadata.
 - **EPUB** (`.epub`) — title, author, publisher, language, identifier. Extract from `content.opf` metadata inside the zip archive. Also zip-based; **benefits from** "Support multiple metadata providers per file" for the same reason.
 - **Windows shortcuts** (`.lnk`) — target path, working directory, arguments, timestamps, icon location, hotkey, file attributes, volume info, extra data (environment variables, known folder, tracker info). Reuse existing parser from [lucaspimentel/windows-shortcut-parser](https://github.com/lucaspimentel/windows-shortcut-parser) — pure C#, NativeAOT-safe, zero dependencies. Entry point: `LnkFile.Parse(path)` → `GetTargetPath()`, `Header` (timestamps, size, attributes), `StringData` (name, relative path, working dir, args, icon location), `LinkInfo` (local/network path, volume info), `ExtraDataBlocks`. Add as a project reference or publish as NuGet package. Preview could show the resolved target path prominently, with metadata sections for shortcut properties. Windows-only (`.lnk` is a Windows format; on Unix, detect but skip gracefully).
-- **URL shortcuts** (`.url`) — URL and icon location. Reuse `UrlFile.Parse(path)` from [lucaspimentel/windows-shortcut-parser](https://github.com/lucaspimentel/windows-shortcut-parser). Simple INI-style format; metadata section showing the target URL prominently. Cross-platform (plain text format, works on Unix too).
+- **URL shortcuts** (`.url`) — simple INI-style format. Add an `IniLanguage` syntax highlighter (section headers, key=value pairs) so `.url` files get colored text preview instead of plain text. Cross-platform.
 
 ### ~~Replace `glow` CLI with Markdig for markdown preview~~ ✅
 
@@ -132,3 +132,15 @@ Fixed — `ImagePreview.Load()` scales down to fit pane pixel dimensions correct
 ### ~~Refresh when cloud file finishes downloading~~ ✅
 
 Handled by `FileSystemWatcherManager` — attribute changes when a cloud file finishes downloading trigger an auto-refresh.
+
+### File finder — show directories in results
+
+- [ ] `ScanFilesForFinder` (`App.cs:4415`) only enumerates files (`Directory.EnumerateFiles`). Directories are traversed for recursion but never added to the results list. Add directory entries alongside file entries.
+
+### File finder — breadth-first search (prioritize current directory)
+
+- [ ] `ScanFilesForFinder` uses a `Stack<>` (DFS) — deep subdirectories appear before sibling entries in the current directory. Switch to a `Queue<>` (BFS) so the current directory's contents appear first, then immediate children, etc.
+
+### Keyboard shortcut convention audit
+
+- [ ] Review keybinding consistency. Current mix: some dialogs/tools use `Ctrl+` (`Ctrl+F` finder, `Ctrl+T` terminal, `Ctrl+L` symlink, `Ctrl+R` refresh, `Ctrl+P` command palette) while others use bare keys (`g` go-to-path, `n`/`N` new file/dir, `b`/`B` bookmarks, `/` filter, `,` config, `?` help, `i` properties). Consider a convention: `Ctrl+<key>` for opening tools/dialogs/overlays, bare keys for direct actions.
