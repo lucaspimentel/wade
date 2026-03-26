@@ -92,6 +92,20 @@ Research and implement image previews for Office Open XML formats (`.docx`, `.xl
 - Performance concern: LibreOffice startup is slow (~1-2s); consider debouncing or async user feedback
 - Start with DOCX (most common); extend to XLSX/PPTX after proving the concept
 
+### Reparse point type detection — junction points (`IO_REPARSE_TAG_MOUNT_POINT`)
+
+- [ ] Detect junction points via `FSCTL_GET_REPARSE_POINT` / `DeviceIoControl` and parse the `REPARSE_DATA_BUFFER` to extract the target path (substitute name field, UTF-16).
+  - Currently wade only shows `ReparsePoint` as a raw attribute flag in `PropertiesOverlay.cs:358` — no type distinction or target resolution.
+  - Display the resolved target path in properties overlay and preview pane (similar to symlink target display).
+  - Windows-only (junctions don't exist on Unix).
+
+### Reparse point type detection — app execution aliases (`IO_REPARSE_TAG_APPEXECLINK`)
+
+- [ ] Detect app execution aliases (reparse tag `0x8000001B`) via `FSCTL_GET_REPARSE_POINT` and parse the custom reparse data buffer to extract the target executable path, package family name, and app entry point (three null-terminated UTF-16 strings).
+  - These are zero-byte reparse points used by Windows for MSIX/UWP packaged apps (e.g., `C:\Users\...\WindowsApps\wt.exe`).
+  - Display the resolved target and package info in properties overlay and preview pane.
+  - Windows-only.
+
 ### Fix stale/leftover content when switching preview types
 
 **Related to:** "Cancel in-flight preview when navigating to another file" — both deal with stale preview artifacts. Faster cancellation from that task may expose more rendering cleanup edge cases here, so doing both together is recommended.
