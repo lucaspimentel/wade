@@ -90,6 +90,8 @@ internal sealed class App
 
     // File finder state
     private int _fileFinderSelectedIndex;
+    private List<FileSystemEntry>? _fileFinderFilteredCache;
+    private string _fileFinderCacheFilter = "";
     private List<FileSystemEntry>? _filteredEntries;
 
     // Filesystem watcher state
@@ -307,11 +309,19 @@ internal sealed class App
                 {
                     HandleFileSystemChanged(fsChangedExtra, previewLoader, buffer);
                 }
+                else if (extra is FileFinderPartialResultEvent partialExtra)
+                {
+                    if (_inputMode == InputMode.FileFinder && partialExtra.BasePath == _currentPath)
+                    {
+                        _fileFinderAllEntries ??= new List<FileSystemEntry>();
+                        _fileFinderAllEntries.AddRange(partialExtra.Entries);
+                        AppendToFinderFilterCache(partialExtra.Entries);
+                    }
+                }
                 else if (extra is FileFinderScanCompleteEvent scanExtra)
                 {
                     if (_inputMode == InputMode.FileFinder && scanExtra.BasePath == _currentPath)
                     {
-                        _fileFinderAllEntries = scanExtra.Entries;
                         _fileFinderScanning = false;
                     }
                 }
@@ -437,11 +447,22 @@ internal sealed class App
                 continue;
             }
 
+            if (inputEvent is FileFinderPartialResultEvent partialEvt)
+            {
+                if (_inputMode == InputMode.FileFinder && partialEvt.BasePath == _currentPath)
+                {
+                    _fileFinderAllEntries ??= new List<FileSystemEntry>();
+                    _fileFinderAllEntries.AddRange(partialEvt.Entries);
+                    AppendToFinderFilterCache(partialEvt.Entries);
+                }
+
+                continue;
+            }
+
             if (inputEvent is FileFinderScanCompleteEvent scanEvt)
             {
                 if (_inputMode == InputMode.FileFinder && scanEvt.BasePath == _currentPath)
                 {
-                    _fileFinderAllEntries = scanEvt.Entries;
                     _fileFinderScanning = false;
                 }
 
@@ -4390,6 +4411,8 @@ internal sealed class App
         _fileFinderScrollOffset = 0;
         _fileFinderInput = new TextInput();
         _fileFinderAllEntries = null;
+        _fileFinderFilteredCache = null;
+        _fileFinderCacheFilter = "";
         _fileFinderScanning = true;
         _fileFinderCts?.Cancel();
         _fileFinderCts = new CancellationTokenSource();
@@ -4409,6 +4432,8 @@ internal sealed class App
         _inputMode = InputMode.Normal;
         _fileFinderInput = null;
         _fileFinderAllEntries = null;
+        _fileFinderFilteredCache = null;
+        _fileFinderCacheFilter = "";
         _fileFinderScanning = false;
     }
 
@@ -4419,9 +4444,11 @@ internal sealed class App
         InputPipeline pipeline,
         CancellationToken ct)
     {
-        const int maxEntries = 10_000;
-        const int maxDepth = 8;
-        var entries = new List<FileSystemEntry>();
+        const int maxEntries = 50_000;
+        const int flushIntervalMs = 200;
+        int totalCount = 0;
+        var batch = new List<FileSystemEntry>();
+        long lastFlushTicks = Environment.TickCount64;
 
         var fileOptions = new EnumerationOptions
         {
@@ -4438,17 +4465,17 @@ internal sealed class App
         };
 
         // BFS walk so current directory entries appear before deeper ones
-        var queue = new Queue<(string Path, int Depth)>();
-        queue.Enqueue((basePath, 0));
+        var queue = new Queue<string>();
+        queue.Enqueue(basePath);
 
-        while (queue.Count > 0 && entries.Count < maxEntries)
+        while (queue.Count > 0 && totalCount < maxEntries)
         {
             if (ct.IsCancellationRequested)
             {
                 return;
             }
 
-            (string currentDir, int depth) = queue.Dequeue();
+            string currentDir = queue.Dequeue();
 
             // Enumerate files in the current directory
             try
@@ -4476,7 +4503,7 @@ internal sealed class App
                             continue;
                         }
 
-                        entries.Add(new FileSystemEntry(
+                        batch.Add(new FileSystemEntry(
                             fileInfo.Name,
                             fileInfo.FullName,
                             IsDirectory: false,
@@ -4486,10 +4513,7 @@ internal sealed class App
                             IsBrokenSymlink: false,
                             IsDrive: false));
 
-                        if (entries.Count >= maxEntries)
-                        {
-                            break;
-                        }
+                        totalCount++;
                     }
                     catch
                     {
@@ -4502,91 +4526,147 @@ internal sealed class App
                 // Skip if directory enumeration fails
             }
 
-            // Push child directories onto the stack (if within depth limit)
-            if (depth < maxDepth && entries.Count < maxEntries)
+            // Enqueue child directories for BFS traversal
+            try
             {
-                try
+                foreach (string subDir in Directory.EnumerateDirectories(currentDir, "*", dirOptions))
                 {
-                    foreach (string subDir in Directory.EnumerateDirectories(currentDir, "*", dirOptions))
+                    string dirName = Path.GetFileName(subDir);
+
+                    // Always skip .git directories
+                    if (dirName.Equals(".git", StringComparison.OrdinalIgnoreCase))
                     {
-                        string dirName = Path.GetFileName(subDir);
+                        continue;
+                    }
 
-                        // Always skip .git directories
-                        if (dirName.Equals(".git", StringComparison.OrdinalIgnoreCase))
+                    // Skip dot-prefixed directories when hidden files are not shown
+                    if (!showHidden && dirName.StartsWith('.'))
+                    {
+                        continue;
+                    }
+
+                    // Skip system directories on Windows when system files are not shown
+                    DirectoryInfo? dirInfo = null;
+
+                    if (!showSystem && OperatingSystem.IsWindows())
+                    {
+                        try
                         {
-                            continue;
-                        }
+                            dirInfo = new DirectoryInfo(subDir);
 
-                        // Skip dot-prefixed directories when hidden files are not shown
-                        if (!showHidden && dirName.StartsWith('.'))
-                        {
-                            continue;
-                        }
-
-                        // Skip system directories on Windows when system files are not shown
-                        DirectoryInfo? dirInfo = null;
-
-                        if (!showSystem && OperatingSystem.IsWindows())
-                        {
-                            try
+                            if ((dirInfo.Attributes & FileAttributes.Hidden) != 0)
                             {
-                                dirInfo = new DirectoryInfo(subDir);
-
-                                if ((dirInfo.Attributes & FileAttributes.Hidden) != 0)
-                                {
-                                    continue;
-                                }
-
-                                if ((dirInfo.Attributes & FileAttributes.System) != 0)
-                                {
-                                    continue;
-                                }
+                                continue;
                             }
-                            catch
+
+                            if ((dirInfo.Attributes & FileAttributes.System) != 0)
                             {
                                 continue;
                             }
                         }
-
-                        // Add directory to results
-                        try
-                        {
-                            dirInfo ??= new DirectoryInfo(subDir);
-
-                            entries.Add(new FileSystemEntry(
-                                dirInfo.Name,
-                                dirInfo.FullName,
-                                IsDirectory: true,
-                                Size: 0,
-                                LastModified: dirInfo.LastWriteTime,
-                                LinkTarget: dirInfo.LinkTarget,
-                                IsBrokenSymlink: false,
-                                IsDrive: false));
-
-                            if (entries.Count >= maxEntries)
-                            {
-                                break;
-                            }
-                        }
                         catch
                         {
-                            // Skip directories we can't access
+                            continue;
                         }
-
-                        queue.Enqueue((subDir, depth + 1));
                     }
+
+                    // Add directory to results
+                    try
+                    {
+                        dirInfo ??= new DirectoryInfo(subDir);
+
+                        batch.Add(new FileSystemEntry(
+                            dirInfo.Name,
+                            dirInfo.FullName,
+                            IsDirectory: true,
+                            Size: 0,
+                            LastModified: dirInfo.LastWriteTime,
+                            LinkTarget: dirInfo.LinkTarget,
+                            IsBrokenSymlink: false,
+                            IsDrive: false));
+
+                        totalCount++;
+                    }
+                    catch
+                    {
+                        // Skip directories we can't access
+                    }
+
+                    queue.Enqueue(subDir);
                 }
-                catch
+            }
+            catch
+            {
+                // Skip if directory enumeration fails
+            }
+
+            // Flush batch periodically (time-based throttle)
+            if (batch.Count > 0 && Environment.TickCount64 - lastFlushTicks >= flushIntervalMs)
+            {
+                if (ct.IsCancellationRequested)
                 {
-                    // Skip if directory enumeration fails
+                    return;
                 }
+
+                pipeline.Inject(new FileFinderPartialResultEvent(basePath, batch));
+                batch = new List<FileSystemEntry>();
+                lastFlushTicks = Environment.TickCount64;
             }
         }
 
         if (!ct.IsCancellationRequested)
         {
-            pipeline.Inject(new FileFinderScanCompleteEvent(basePath, entries));
+            // Flush remaining entries
+            if (batch.Count > 0)
+            {
+                pipeline.Inject(new FileFinderPartialResultEvent(basePath, batch));
+            }
+
+            pipeline.Inject(new FileFinderScanCompleteEvent(basePath));
         }
+    }
+
+    private void AppendToFinderFilterCache(List<FileSystemEntry> newEntries)
+    {
+        string filter = _fileFinderInput?.Value ?? "";
+
+        if (string.IsNullOrEmpty(filter))
+        {
+            // No filter — filtered cache is the same as the full list
+            _fileFinderFilteredCache = _fileFinderAllEntries;
+            _fileFinderCacheFilter = "";
+            return;
+        }
+
+        // Incrementally filter only the new entries
+        _fileFinderFilteredCache ??= new List<FileSystemEntry>();
+
+        if (filter != _fileFinderCacheFilter)
+        {
+            // Filter changed since last cache — full recompute
+            _fileFinderFilteredCache = GetFilteredFileFinderEntries(
+                _fileFinderAllEntries, filter, _currentPath);
+            _fileFinderCacheFilter = filter;
+            return;
+        }
+
+        _fileFinderFilteredCache.AddRange(
+            GetFilteredFileFinderEntries(newEntries, filter, _currentPath));
+    }
+
+    private List<FileSystemEntry> GetOrFilterFinderEntries()
+    {
+        string filter = _fileFinderInput?.Value ?? "";
+
+        if (filter != _fileFinderCacheFilter)
+        {
+            // Filter changed — full recompute
+            _fileFinderFilteredCache = GetFilteredFileFinderEntries(
+                _fileFinderAllEntries, filter, _currentPath);
+            _fileFinderCacheFilter = filter;
+        }
+
+        return _fileFinderFilteredCache ?? [];
     }
 
     internal static List<FileSystemEntry> GetFilteredFileFinderEntries(
@@ -4619,8 +4699,7 @@ internal sealed class App
 
     private void HandleFileFinderKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer)
     {
-        List<FileSystemEntry> filtered = GetFilteredFileFinderEntries(
-            _fileFinderAllEntries, _fileFinderInput?.Value ?? "", _currentPath);
+        List<FileSystemEntry> filtered = GetOrFilterFinderEntries();
 
         switch (key.Key)
         {
@@ -4722,8 +4801,7 @@ internal sealed class App
         }
 
         // Adjust scroll offset to keep selection visible
-        filtered = GetFilteredFileFinderEntries(
-            _fileFinderAllEntries, _fileFinderInput?.Value ?? "", _currentPath);
+        filtered = GetOrFilterFinderEntries();
 
         if (filtered.Count > 0)
         {
@@ -4748,13 +4826,12 @@ internal sealed class App
 
     private void RenderFileFinder(ScreenBuffer buffer, int width, int height)
     {
-        List<FileSystemEntry> filtered = GetFilteredFileFinderEntries(
-            _fileFinderAllEntries, _fileFinderInput?.Value ?? "", _currentPath);
+        List<FileSystemEntry> filtered = GetOrFilterFinderEntries();
         int contentWidth = Math.Min(70, width - 8);
         int itemRows = Math.Min(filtered.Count, 18);
         int contentHeight = itemRows + 2; // 1 row for text input + 1 separator + item rows
         const string Footer = "[↑↓] Navigate  [Enter] Open  [Esc] Cancel";
-        string title = _fileFinderScanning ? "Find File [scanning...]" : "Find File";
+        string title = _fileFinderScanning && _fileFinderAllEntries != null ? "Find File [scanning...]" : "Find File";
 
         Rect content = DialogBox.Render(
             buffer, width, height,
@@ -4779,7 +4856,7 @@ internal sealed class App
         if (filtered.Count == 0)
         {
             var emptyStyle = new CellStyle(new Color(120, 120, 140), DialogBox.BgColor);
-            string emptyText = _fileFinderScanning ? "Scanning..." : "No matches";
+            string emptyText = _fileFinderAllEntries == null ? "" : "No matches";
             buffer.WriteString(content.Top + 2, content.Left + 1, emptyText, emptyStyle);
             return;
         }

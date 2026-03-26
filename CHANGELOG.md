@@ -7,6 +7,9 @@
 
 ### Changed
 - Use breadth-first search in file finder so current-directory entries appear before deeper nested ones
+- Stream file finder results incrementally as directories are scanned instead of waiting for the full scan to complete
+- Cache filtered file finder results incrementally — new batches filter only the delta, full recompute only on filter text change
+- Show clean empty dialog when file finder opens instead of immediately showing "scanning..."
 
 ## [1.7.0] - 2026-03-25
 

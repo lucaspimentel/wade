@@ -57,7 +57,9 @@ internal sealed record InlineDirSizeReadyEvent(string ParentPath, string Directo
 
 internal sealed record InlineDirSizeCompleteEvent(string ParentPath) : InputEvent;
 
-internal sealed record FileFinderScanCompleteEvent(string BasePath, List<FileSystemEntry> Entries) : InputEvent;
+internal sealed record FileFinderPartialResultEvent(string BasePath, List<FileSystemEntry> Entries) : InputEvent;
+
+internal sealed record FileFinderScanCompleteEvent(string BasePath) : InputEvent;
 
 internal sealed record GitStatusReadyEvent(
     string RepoRoot,
