@@ -242,12 +242,19 @@ public sealed class SearchIndex : IDisposable
                     query.TryMatch(path, segments);
                 }
             }
-
-            query.MarkSnapshotComplete();
         }
         catch (OperationCanceledException)
         {
             // Expected on cancellation.
+        }
+        catch (Exception)
+        {
+            // Prevent unobserved task exceptions. The query is effectively dead
+            // at this point — the consumer will see the channel complete.
+        }
+        finally
+        {
+            query.MarkSnapshotComplete();
         }
     }
 

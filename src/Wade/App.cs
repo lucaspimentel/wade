@@ -4678,24 +4678,24 @@ internal sealed class App
             return _fileFinderDisplayCache;
         }
 
-        // Convert SearchResults to FileSystemEntries, using the entry cache to avoid filesystem I/O.
+        // Sort results by score (prefix matches first), then alphabetically for stability.
+        _fileFinderSearchResults.Sort((a, b) =>
+        {
+            int c = a.Score.CompareTo(b.Score);
+            return c != 0 ? c : string.Compare(a.Path, b.Path, StringComparison.Ordinal);
+        });
+
+        // Convert SearchResults to FileSystemEntries using the entry cache.
+        // Skip entries not yet received from the scanner — they'll appear on the next
+        // render cycle when the corresponding FileFinderPartialResultEvent arrives.
         var entries = new List<FileSystemEntry>(_fileFinderSearchResults.Count);
 
         foreach (Wade.Search.SearchResult sr in _fileFinderSearchResults)
         {
-            if (!_fileFinderEntryCache!.TryGetValue(sr.Path, out FileSystemEntry? entry))
+            if (_fileFinderEntryCache!.TryGetValue(sr.Path, out FileSystemEntry? entry))
             {
-                entry = CreateFileSystemEntry(sr.Path);
-
-                if (entry is null)
-                {
-                    continue;
-                }
-
-                _fileFinderEntryCache[sr.Path] = entry;
+                entries.Add(entry);
             }
-
-            entries.Add(entry);
         }
 
         _fileFinderDisplayCache = entries;
@@ -4771,48 +4771,6 @@ internal sealed class App
                 // Suppress unexpected exceptions to avoid unobserved task faults.
             }
         });
-    }
-
-    private static FileSystemEntry? CreateFileSystemEntry(string fullPath)
-    {
-        try
-        {
-            if (Directory.Exists(fullPath))
-            {
-                var di = new DirectoryInfo(fullPath);
-
-                return new FileSystemEntry(
-                    di.Name,
-                    di.FullName,
-                    IsDirectory: true,
-                    Size: 0,
-                    LastModified: di.LastWriteTime,
-                    LinkTarget: di.LinkTarget,
-                    IsBrokenSymlink: false,
-                    IsDrive: false);
-            }
-
-            if (File.Exists(fullPath))
-            {
-                var fi = new FileInfo(fullPath);
-
-                return new FileSystemEntry(
-                    fi.Name,
-                    fi.FullName,
-                    IsDirectory: false,
-                    Size: fi.Length,
-                    LastModified: fi.LastWriteTime,
-                    LinkTarget: fi.LinkTarget,
-                    IsBrokenSymlink: false,
-                    IsDrive: false);
-            }
-        }
-        catch
-        {
-            // Skip inaccessible paths
-        }
-
-        return null;
     }
 
     private void HandleFileFinderKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer, InputPipeline pipeline)
