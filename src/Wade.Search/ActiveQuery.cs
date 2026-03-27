@@ -12,7 +12,7 @@ internal sealed class ActiveQuery : IDisposable
     private readonly CancellationTokenSource _cts;
     private readonly string _query;
     private readonly SearchOptions _options;
-    private readonly HashSet<string> _emittedPaths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _emittedPaths = new(StringComparer.Ordinal);
     private readonly object _emitLock = new();
     private int _resultCount;
 
@@ -79,15 +79,17 @@ internal sealed class ActiveQuery : IDisposable
                 return false;
             }
 
+            if (_resultCount >= _options.MaxResults)
+            {
+                return false;
+            }
+
             if (!_emittedPaths.Add(path))
             {
                 return false; // Already emitted.
             }
 
-            if (Interlocked.Increment(ref _resultCount) > _options.MaxResults)
-            {
-                return false;
-            }
+            _resultCount++;
         }
 
         var result = new SearchResult(path, bestDistance, isPrefixMatch);

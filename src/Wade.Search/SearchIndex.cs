@@ -5,8 +5,10 @@ namespace Wade.Search;
 
 /// <summary>
 /// A thread-safe, segment-based search index for file paths.
-/// Supports prefix search and fuzzy (Damerau-Levenshtein) matching with ranked results
+/// Supports prefix search and fuzzy (Damerau-Levenshtein) matching with results
 /// streamed via <see cref="System.Threading.Channels.Channel{T}"/>.
+/// Results are streamed in approximate score order (prefix matches first, then fuzzy).
+/// Consumers should sort by <see cref="SearchResult.Score"/> for exact ordering.
 /// </summary>
 public sealed class SearchIndex
 {
@@ -18,11 +20,11 @@ public sealed class SearchIndex
     private readonly SortedList<string, byte> _sortedSegments = new(StringComparer.OrdinalIgnoreCase);
     private readonly ReaderWriterLockSlim _sortedLock = new();
 
-    // All indexed paths (for dedup)
-    private readonly ConcurrentDictionary<string, byte> _allPaths = new(StringComparer.OrdinalIgnoreCase);
+    // All indexed paths (for dedup) — case-sensitive to preserve distinct paths on Linux
+    private readonly ConcurrentDictionary<string, byte> _allPaths = new(StringComparer.Ordinal);
 
     // Per-path segment cache so we don't re-split during search
-    private readonly ConcurrentDictionary<string, string[]> _pathSegments = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, string[]> _pathSegments = new(StringComparer.Ordinal);
 
     // Active query state
     private readonly object _queryLock = new();
@@ -87,9 +89,10 @@ public sealed class SearchIndex
     /// </summary>
     public ChannelReader<SearchResult> Search(string query, SearchOptions? options = null)
     {
-        // Empty query: return an immediately-completed empty channel.
+        // Empty query: cancel any active query and return an immediately-completed empty channel.
         if (string.IsNullOrEmpty(query))
         {
+            CancelSearch();
             var emptyChannel = Channel.CreateUnbounded<SearchResult>();
             emptyChannel.Writer.Complete();
             return emptyChannel.Reader;
@@ -221,7 +224,7 @@ public sealed class SearchIndex
     /// </summary>
     private HashSet<string> FindPrefixMatchPaths(string query, CancellationToken ct)
     {
-        var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var result = new HashSet<string>(StringComparer.Ordinal);
         string queryLower = query.ToLowerInvariant();
 
         _sortedLock.EnterReadLock();
@@ -282,7 +285,15 @@ public sealed class SearchIndex
             int mid = lo + (hi - lo) / 2;
             string key = keys[mid];
 
-            int cmp = string.Compare(key, 0, prefix, 0, prefix.Length, StringComparison.OrdinalIgnoreCase);
+            // Compare up to the shorter of the two lengths to avoid ArgumentOutOfRangeException.
+            int compareLen = Math.Min(key.Length, prefix.Length);
+            int cmp = string.Compare(key, 0, prefix, 0, compareLen, StringComparison.OrdinalIgnoreCase);
+
+            // If the shared prefix is equal, a shorter key sorts before a longer prefix.
+            if (cmp == 0 && key.Length < prefix.Length)
+            {
+                cmp = -1;
+            }
 
             if (cmp >= 0 && key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             {

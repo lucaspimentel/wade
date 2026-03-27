@@ -64,7 +64,8 @@ internal sealed record FileFinderScanCompleteEvent(string BasePath) : InputEvent
 internal sealed record FileFinderSearchResultEvent(
     string BasePath,
     List<Wade.Search.SearchResult> Results,
-    bool IsComplete) : InputEvent;
+    bool IsComplete,
+    long SearchId) : InputEvent;
 
 internal sealed record GitStatusReadyEvent(
     string RepoRoot,

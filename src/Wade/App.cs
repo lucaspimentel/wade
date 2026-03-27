@@ -92,6 +92,7 @@ internal sealed class App
     private int _fileFinderSelectedIndex;
     private Wade.Search.SearchIndex? _fileFinderSearchIndex;
     private string _fileFinderLastSearchQuery = "";
+    private long _fileFinderSearchId;
     private List<Wade.Search.SearchResult>? _fileFinderSearchResults;
     private Dictionary<string, FileSystemEntry>? _fileFinderEntryCache;
     private List<FileSystemEntry>? _filteredEntries;
@@ -321,7 +322,9 @@ internal sealed class App
                 }
                 else if (extra is FileFinderSearchResultEvent searchExtra)
                 {
-                    if (_inputMode == InputMode.FileFinder && searchExtra.BasePath == _currentPath)
+                    if (_inputMode == InputMode.FileFinder
+                        && searchExtra.BasePath == _currentPath
+                        && searchExtra.SearchId == _fileFinderSearchId)
                     {
                         if (searchExtra.Results.Count > 0)
                         {
@@ -472,7 +475,9 @@ internal sealed class App
 
             if (inputEvent is FileFinderSearchResultEvent searchResultEvt)
             {
-                if (_inputMode == InputMode.FileFinder && searchResultEvt.BasePath == _currentPath)
+                if (_inputMode == InputMode.FileFinder
+                    && searchResultEvt.BasePath == _currentPath
+                    && searchResultEvt.SearchId == _fileFinderSearchId)
                 {
                     if (searchResultEvt.Results.Count > 0)
                     {
@@ -4709,6 +4714,7 @@ internal sealed class App
         _fileFinderLastSearchQuery = query;
         _fileFinderSearchResults = null;
         _fileFinderEntryCache = new Dictionary<string, FileSystemEntry>(StringComparer.OrdinalIgnoreCase);
+        long searchId = ++_fileFinderSearchId;
 
         if (string.IsNullOrEmpty(query) || _fileFinderSearchIndex is null)
         {
@@ -4729,14 +4735,14 @@ internal sealed class App
 
                 if (Environment.TickCount64 - lastFlush >= 100)
                 {
-                    pipeline.Inject(new FileFinderSearchResultEvent(basePath, batch, IsComplete: false));
+                    pipeline.Inject(new FileFinderSearchResultEvent(basePath, batch, IsComplete: false, SearchId: searchId));
                     batch = new List<Wade.Search.SearchResult>();
                     lastFlush = Environment.TickCount64;
                 }
             }
 
             // Final flush
-            pipeline.Inject(new FileFinderSearchResultEvent(basePath, batch, IsComplete: true));
+            pipeline.Inject(new FileFinderSearchResultEvent(basePath, batch, IsComplete: true, SearchId: searchId));
         });
     }
 
