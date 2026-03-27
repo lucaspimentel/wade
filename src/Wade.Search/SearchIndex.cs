@@ -7,8 +7,9 @@ namespace Wade.Search;
 /// A thread-safe, segment-based search index for file paths.
 /// Supports prefix search and fuzzy (Damerau-Levenshtein) matching with results
 /// streamed via <see cref="System.Threading.Channels.Channel{T}"/>.
-/// Results are streamed in approximate score order (prefix matches first, then fuzzy).
-/// Consumers should sort by <see cref="SearchResult.Score"/> for exact ordering.
+/// Results are streamed in two phases (prefix matches first, then fuzzy matches),
+/// but are unordered within each phase. Consumers must sort by
+/// <see cref="SearchResult.Score"/> if display ordering matters.
 /// </summary>
 public sealed class SearchIndex : IDisposable
 {
