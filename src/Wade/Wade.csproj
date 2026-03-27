@@ -33,4 +33,8 @@
         <InternalsVisibleTo Include="Wade.Benchmarks"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <ProjectReference Include="..\Wade.Search\Wade.Search.csproj"/>
+    </ItemGroup>
+
 </Project>
