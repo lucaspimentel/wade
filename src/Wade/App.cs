@@ -4711,6 +4711,7 @@ internal sealed class App
 
         if (string.IsNullOrEmpty(query) || _fileFinderSearchIndex is null)
         {
+            _fileFinderSearchIndex?.CancelSearch();
             return;
         }
 

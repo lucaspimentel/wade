@@ -51,23 +51,22 @@ public sealed class SearchIndex : IDisposable
         string[] segments = PathSegmenter.Split(path);
         _pathSegments[path] = segments;
 
-        foreach (string segment in segments)
+        _sortedLock.EnterWriteLock();
+        try
         {
-            ConcurrentDictionary<string, byte> pathSet = _segmentToPaths.GetOrAdd(
-                segment,
-                static _ => new ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase));
-            pathSet.TryAdd(path, 0);
-
-            // Add to sorted structure for prefix range lookups.
-            _sortedLock.EnterWriteLock();
-            try
+            foreach (string segment in segments)
             {
+                ConcurrentDictionary<string, byte> pathSet = _segmentToPaths.GetOrAdd(
+                    segment,
+                    static _ => new ConcurrentDictionary<string, byte>(StringComparer.Ordinal));
+                pathSet.TryAdd(path, 0);
+
                 _sortedSegments.Add(segment.ToLowerInvariant());
             }
-            finally
-            {
-                _sortedLock.ExitWriteLock();
-            }
+        }
+        finally
+        {
+            _sortedLock.ExitWriteLock();
         }
 
         // Live push: if there's an active query, check this new path immediately.
