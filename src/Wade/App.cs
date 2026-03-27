@@ -4425,7 +4425,7 @@ internal sealed class App
         _fileFinderSearchIndex = new Wade.Search.SearchIndex();
         _fileFinderLastSearchQuery = "";
         _fileFinderSearchResults = null;
-        _fileFinderEntryCache = new Dictionary<string, FileSystemEntry>(StringComparer.OrdinalIgnoreCase);
+        _fileFinderEntryCache = new Dictionary<string, FileSystemEntry>(StringComparer.Ordinal);
         _fileFinderScanning = true;
         _fileFinderCts?.Cancel();
         _fileFinderCts = new CancellationTokenSource();
@@ -4706,7 +4706,7 @@ internal sealed class App
 
         _fileFinderLastSearchQuery = query;
         _fileFinderSearchResults = null;
-        _fileFinderEntryCache = new Dictionary<string, FileSystemEntry>(StringComparer.OrdinalIgnoreCase);
+        _fileFinderEntryCache = new Dictionary<string, FileSystemEntry>(StringComparer.Ordinal);
         long searchId = ++_fileFinderSearchId;
 
         if (string.IsNullOrEmpty(query) || _fileFinderSearchIndex is null)
