@@ -12,11 +12,14 @@ namespace Wade.Search;
 /// </summary>
 public sealed class SearchIndex : IDisposable
 {
-    // segment (case-insensitive) → set of full paths containing that segment
+    // segment (case-insensitive) → set of full paths containing that segment.
+    // NOTE: Keys use OrdinalIgnoreCase, while _sortedSegments stores ToLowerInvariant() copies.
+    // FindPrefixMatchPaths looks up lowercased segments from _sortedSegments in this dictionary,
+    // which works because of the OrdinalIgnoreCase comparer. Keep these two in sync.
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _segmentToPaths
         = new(StringComparer.OrdinalIgnoreCase);
 
-    // Sorted segments for prefix range lookup (SortedSet = O(log n) insert via red-black tree)
+    // Sorted segments (lowercased) for prefix range lookup (SortedSet = O(log n) insert via red-black tree)
     private readonly SortedSet<string> _sortedSegments = new(StringComparer.OrdinalIgnoreCase);
     private readonly ReaderWriterLockSlim _sortedLock = new();
 
@@ -66,17 +69,28 @@ public sealed class SearchIndex : IDisposable
         string[] segments = PathSegmenter.Split(path);
         _pathSegments[path] = segments;
 
+        // Update the concurrent segment→paths map outside the lock (ConcurrentDictionary is thread-safe).
+        // Collect lowercased segments to batch-insert into _sortedSegments under a short write lock.
+        var loweredSegments = new string[segments.Length];
+
+        for (int i = 0; i < segments.Length; i++)
+        {
+            string segment = segments[i];
+
+            ConcurrentDictionary<string, byte> pathSet = _segmentToPaths.GetOrAdd(
+                segment,
+                static _ => new ConcurrentDictionary<string, byte>(StringComparer.Ordinal));
+            pathSet.TryAdd(path, 0);
+
+            loweredSegments[i] = segment.ToLowerInvariant();
+        }
+
         _sortedLock.EnterWriteLock();
         try
         {
-            foreach (string segment in segments)
+            foreach (string lowered in loweredSegments)
             {
-                ConcurrentDictionary<string, byte> pathSet = _segmentToPaths.GetOrAdd(
-                    segment,
-                    static _ => new ConcurrentDictionary<string, byte>(StringComparer.Ordinal));
-                pathSet.TryAdd(path, 0);
-
-                _sortedSegments.Add(segment.ToLowerInvariant());
+                _sortedSegments.Add(lowered);
             }
         }
         finally
@@ -207,6 +221,9 @@ public sealed class SearchIndex : IDisposable
             }
 
             // Phase 2: Fuzzy scan all remaining paths.
+            // Note: _allPaths iteration is weakly consistent — concurrent Add() calls may cause
+            // some paths to be visited here AND via live push in Add(). This is harmless because
+            // ActiveQuery.TryMatch deduplicates via _emittedPaths.
             foreach (string path in _allPaths.Keys)
             {
                 if (ct.IsCancellationRequested)
@@ -246,9 +263,15 @@ public sealed class SearchIndex : IDisposable
         // Upper bound for GetViewBetween: the query prefix with the highest possible trailing char.
         string upperBound = queryLower + "\uffff";
 
+        // Collect matching segments under the read lock, then release before doing path lookups.
+        // This keeps the lock hold time short — only the SortedSet iteration, not the path expansion.
+        List<string> matchingSegments;
+
         _sortedLock.EnterReadLock();
         try
         {
+            matchingSegments = new List<string>();
+
             foreach (string segment in _sortedSegments.GetViewBetween(queryLower, upperBound))
             {
                 if (ct.IsCancellationRequested)
@@ -256,24 +279,32 @@ public sealed class SearchIndex : IDisposable
                     break;
                 }
 
-                if (!segment.StartsWith(queryLower, StringComparison.OrdinalIgnoreCase))
+                if (segment.StartsWith(queryLower, StringComparison.OrdinalIgnoreCase))
                 {
-                    continue;
-                }
-
-                // Look up all paths containing this segment.
-                if (_segmentToPaths.TryGetValue(segment, out ConcurrentDictionary<string, byte>? pathSet))
-                {
-                    foreach (string path in pathSet.Keys)
-                    {
-                        result.Add(path);
-                    }
+                    matchingSegments.Add(segment);
                 }
             }
         }
         finally
         {
             _sortedLock.ExitReadLock();
+        }
+
+        // Expand segments to paths outside the lock — _segmentToPaths is a ConcurrentDictionary.
+        foreach (string segment in matchingSegments)
+        {
+            if (ct.IsCancellationRequested)
+            {
+                break;
+            }
+
+            if (_segmentToPaths.TryGetValue(segment, out ConcurrentDictionary<string, byte>? pathSet))
+            {
+                foreach (string path in pathSet.Keys)
+                {
+                    result.Add(path);
+                }
+            }
         }
 
         return result;

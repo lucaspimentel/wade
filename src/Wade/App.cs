@@ -95,6 +95,8 @@ internal sealed class App
     private long _fileFinderSearchId;
     private List<Wade.Search.SearchResult>? _fileFinderSearchResults;
     private Dictionary<string, FileSystemEntry>? _fileFinderEntryCache;
+    private List<FileSystemEntry>? _fileFinderDisplayCache;
+    private bool _fileFinderDisplayDirty;
     private List<FileSystemEntry>? _filteredEntries;
 
     // Filesystem watcher state
@@ -4432,6 +4434,8 @@ internal sealed class App
         _fileFinderLastSearchQuery = "";
         _fileFinderSearchResults = null;
         _fileFinderEntryCache = new Dictionary<string, FileSystemEntry>(StringComparer.Ordinal);
+        _fileFinderDisplayCache = null;
+        _fileFinderDisplayDirty = false;
         _fileFinderScanning = true;
         _fileFinderCts?.Cancel();
         _fileFinderCts = new CancellationTokenSource();
@@ -4456,6 +4460,8 @@ internal sealed class App
         _fileFinderSearchIndex = null;
         _fileFinderSearchResults = null;
         _fileFinderEntryCache = null;
+        _fileFinderDisplayCache = null;
+        _fileFinderDisplayDirty = false;
         _fileFinderLastSearchQuery = "";
         _fileFinderScanning = false;
     }
@@ -4666,7 +4672,13 @@ internal sealed class App
             return [];
         }
 
-        // Convert SearchResults to FileSystemEntries on demand, caching each one.
+        // Return cached display list if results haven't changed since last build.
+        if (!_fileFinderDisplayDirty && _fileFinderDisplayCache is not null)
+        {
+            return _fileFinderDisplayCache;
+        }
+
+        // Convert SearchResults to FileSystemEntries, using the entry cache to avoid filesystem I/O.
         var entries = new List<FileSystemEntry>(_fileFinderSearchResults.Count);
 
         foreach (Wade.Search.SearchResult sr in _fileFinderSearchResults)
@@ -4686,6 +4698,8 @@ internal sealed class App
             entries.Add(entry);
         }
 
+        _fileFinderDisplayCache = entries;
+        _fileFinderDisplayDirty = false;
         return entries;
     }
 
@@ -4698,6 +4712,7 @@ internal sealed class App
         {
             _fileFinderSearchResults ??= new List<Wade.Search.SearchResult>();
             _fileFinderSearchResults.AddRange(evt.Results);
+            _fileFinderDisplayDirty = true;
         }
     }
 
@@ -4712,7 +4727,9 @@ internal sealed class App
 
         _fileFinderLastSearchQuery = query;
         _fileFinderSearchResults = null;
-        long searchId = ++_fileFinderSearchId;
+        _fileFinderDisplayCache = null;
+        _fileFinderDisplayDirty = false;
+        long searchId = Interlocked.Increment(ref _fileFinderSearchId);
 
         if (string.IsNullOrEmpty(query) || _fileFinderSearchIndex is null)
         {
@@ -4725,23 +4742,34 @@ internal sealed class App
 
         Task.Run(async () =>
         {
-            var batch = new List<Wade.Search.SearchResult>();
-            long lastFlush = Environment.TickCount64;
-
-            await foreach (Wade.Search.SearchResult result in reader.ReadAllAsync())
+            try
             {
-                batch.Add(result);
+                var batch = new List<Wade.Search.SearchResult>();
+                long lastFlush = Environment.TickCount64;
 
-                if (Environment.TickCount64 - lastFlush >= 100)
+                await foreach (Wade.Search.SearchResult result in reader.ReadAllAsync())
                 {
-                    pipeline.Inject(new FileFinderSearchResultEvent(basePath, batch, IsComplete: false, SearchId: searchId));
-                    batch = new List<Wade.Search.SearchResult>();
-                    lastFlush = Environment.TickCount64;
-                }
-            }
+                    batch.Add(result);
 
-            // Final flush
-            pipeline.Inject(new FileFinderSearchResultEvent(basePath, batch, IsComplete: true, SearchId: searchId));
+                    if (Environment.TickCount64 - lastFlush >= 100)
+                    {
+                        pipeline.Inject(new FileFinderSearchResultEvent(basePath, batch, IsComplete: false, SearchId: searchId));
+                        batch = new List<Wade.Search.SearchResult>();
+                        lastFlush = Environment.TickCount64;
+                    }
+                }
+
+                // Final flush
+                pipeline.Inject(new FileFinderSearchResultEvent(basePath, batch, IsComplete: true, SearchId: searchId));
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when search is cancelled.
+            }
+            catch
+            {
+                // Suppress unexpected exceptions to avoid unobserved task faults.
+            }
         });
     }
 

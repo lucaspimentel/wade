@@ -108,6 +108,9 @@ internal sealed class ActiveQuery : IDisposable
             _resultCount++;
         }
 
+        // Write to channel outside the lock intentionally — TryWrite on an unbounded channel
+        // is thread-safe (SingleWriter = false), and holding the lock during the write would
+        // unnecessarily block other TryMatch callers.
         var result = new SearchResult(path, bestDistance, isPrefixMatch);
         _channel.Writer.TryWrite(result);
         return true;
