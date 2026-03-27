@@ -60,7 +60,11 @@ public sealed class SearchIndex
             _sortedLock.EnterWriteLock();
             try
             {
-                _sortedSegments.TryAdd(segment.ToLowerInvariant(), 0);
+                string lower = segment.ToLowerInvariant();
+                if (!_sortedSegments.ContainsKey(lower))
+                {
+                    _sortedSegments.Add(lower, 0);
+                }
             }
             finally
             {
@@ -83,6 +87,14 @@ public sealed class SearchIndex
     /// </summary>
     public ChannelReader<SearchResult> Search(string query, SearchOptions? options = null)
     {
+        // Empty query: return an immediately-completed empty channel.
+        if (string.IsNullOrEmpty(query))
+        {
+            var emptyChannel = Channel.CreateUnbounded<SearchResult>();
+            emptyChannel.Writer.Complete();
+            return emptyChannel.Reader;
+        }
+
         options ??= new SearchOptions();
         var newQuery = new ActiveQuery(query, options);
 

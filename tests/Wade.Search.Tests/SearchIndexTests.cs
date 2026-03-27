@@ -59,8 +59,8 @@ public class SearchIndexTests
         var index = new SearchIndex();
         index.Add(MakePath("src", "Wade", "App.cs"));
 
-        // "Aop" is 1 edit from "App" (transposition).
-        ChannelReader<SearchResult> reader = index.Search("Aop", new SearchOptions { MaxEditDistance = 1 });
+        // "Wede" is 1 edit from "Wade" (substitution a→e). Not a prefix of any segment.
+        ChannelReader<SearchResult> reader = index.Search("Wede", new SearchOptions { MaxEditDistance = 1 });
         List<SearchResult> results = await DrainResultsAsync(index, reader);
 
         Assert.Single(results);
@@ -139,7 +139,7 @@ public class SearchIndexTests
     }
 
     [Fact]
-    public void CancelSearch_CompletesChannel()
+    public async Task CancelSearch_CompletesChannel()
     {
         var index = new SearchIndex();
         index.Add(MakePath("src", "Wade", "App.cs"));
@@ -148,7 +148,7 @@ public class SearchIndexTests
         index.CancelSearch();
 
         // The channel should eventually complete.
-        Assert.True(reader.Completion.Wait(TimeSpan.FromSeconds(5)));
+        await reader.Completion.WaitAsync(TimeSpan.FromSeconds(5));
     }
 
     [Fact]
@@ -196,16 +196,16 @@ public class SearchIndexTests
     public async Task PrefixMatches_RankedBeforeFuzzy()
     {
         var index = new SearchIndex();
-        index.Add(MakePath("src", "App.cs"));       // "App" is a prefix match for "App"
-        index.Add(MakePath("src", "Aop.cs"));       // "Aop" is 1 edit from "App" (not a prefix match)
+        index.Add(MakePath("src", "Wade"));         // "Wade" is a prefix match for "Wade"
+        index.Add(MakePath("src", "Wede"));         // "Wede" is 1 edit from "Wade" (not a prefix match)
 
-        ChannelReader<SearchResult> reader = index.Search("App", new SearchOptions { MaxEditDistance = 2 });
+        ChannelReader<SearchResult> reader = index.Search("Wade", new SearchOptions { MaxEditDistance = 2 });
         List<SearchResult> results = await DrainResultsAsync(index, reader);
 
         Assert.True(results.Count >= 2);
 
-        SearchResult prefixResult = results.First(r => r.Path == MakePath("src", "App.cs"));
-        SearchResult fuzzyResult = results.First(r => r.Path == MakePath("src", "Aop.cs"));
+        SearchResult prefixResult = results.First(r => r.Path == MakePath("src", "Wade"));
+        SearchResult fuzzyResult = results.First(r => r.Path == MakePath("src", "Wede"));
 
         Assert.True(prefixResult.Score < fuzzyResult.Score);
     }

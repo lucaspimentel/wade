@@ -55,7 +55,8 @@ public class DamerauLevenshteinTests
     [Fact]
     public void AdjacentTransposition_InLongerString()
     {
-        Assert.Equal(1, DamerauLevenshtein.Distance("abcdef", "abcfed"));
+        // "abcde" -> "abced" — swap d and e (adjacent transposition at positions 3,4).
+        Assert.Equal(1, DamerauLevenshtein.Distance("abcde", "abced"));
     }
 
     [Fact]
