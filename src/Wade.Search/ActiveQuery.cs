@@ -38,7 +38,14 @@ internal sealed class ActiveQuery : IDisposable
     /// </summary>
     internal bool TryMatch(string path, string[] segments)
     {
-        if (_cts.IsCancellationRequested)
+        try
+        {
+            if (_cts.IsCancellationRequested)
+            {
+                return false;
+            }
+        }
+        catch (ObjectDisposedException)
         {
             return false;
         }
@@ -74,7 +81,14 @@ internal sealed class ActiveQuery : IDisposable
 
         lock (_emitLock)
         {
-            if (_cts.IsCancellationRequested)
+            try
+            {
+                if (_cts.IsCancellationRequested)
+                {
+                    return false;
+                }
+            }
+            catch (ObjectDisposedException)
             {
                 return false;
             }
@@ -111,7 +125,15 @@ internal sealed class ActiveQuery : IDisposable
     /// </summary>
     internal void Complete()
     {
-        _cts.Cancel();
+        try
+        {
+            _cts.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Already disposed by a concurrent call.
+        }
+
         _channel.Writer.TryComplete();
     }
 

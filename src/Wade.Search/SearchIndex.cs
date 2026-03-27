@@ -10,14 +10,14 @@ namespace Wade.Search;
 /// Results are streamed in approximate score order (prefix matches first, then fuzzy).
 /// Consumers should sort by <see cref="SearchResult.Score"/> for exact ordering.
 /// </summary>
-public sealed class SearchIndex
+public sealed class SearchIndex : IDisposable
 {
     // segment (case-insensitive) → set of full paths containing that segment
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _segmentToPaths
         = new(StringComparer.OrdinalIgnoreCase);
 
-    // Sorted segments for O(log n) prefix range lookup
-    private readonly SortedList<string, byte> _sortedSegments = new(StringComparer.OrdinalIgnoreCase);
+    // Sorted segments for prefix range lookup (SortedSet = O(log n) insert via red-black tree)
+    private readonly SortedSet<string> _sortedSegments = new(StringComparer.OrdinalIgnoreCase);
     private readonly ReaderWriterLockSlim _sortedLock = new();
 
     // All indexed paths (for dedup) — case-sensitive to preserve distinct paths on Linux
@@ -62,11 +62,7 @@ public sealed class SearchIndex
             _sortedLock.EnterWriteLock();
             try
             {
-                string lower = segment.ToLowerInvariant();
-                if (!_sortedSegments.ContainsKey(lower))
-                {
-                    _sortedSegments.Add(lower, 0);
-                }
+                _sortedSegments.Add(segment.ToLowerInvariant());
             }
             finally
             {
@@ -162,6 +158,12 @@ public sealed class SearchIndex
         }
     }
 
+    public void Dispose()
+    {
+        CancelSearch();
+        _sortedLock.Dispose();
+    }
+
     /// <summary>
     /// Scan all existing indexed paths against the given query.
     /// Uses the sorted segment structure for efficient prefix range lookup,
@@ -227,29 +229,22 @@ public sealed class SearchIndex
         var result = new HashSet<string>(StringComparer.Ordinal);
         string queryLower = query.ToLowerInvariant();
 
+        // Upper bound for GetViewBetween: the query prefix with the highest possible trailing char.
+        string upperBound = queryLower + "\uffff";
+
         _sortedLock.EnterReadLock();
         try
         {
-            IList<string> keys = _sortedSegments.Keys;
-            int startIndex = BinarySearchFirstPrefix(keys, queryLower);
-
-            if (startIndex < 0)
-            {
-                return result;
-            }
-
-            // Walk forward through segments that start with the query.
-            for (int i = startIndex; i < keys.Count; i++)
+            foreach (string segment in _sortedSegments.GetViewBetween(queryLower, upperBound))
             {
                 if (ct.IsCancellationRequested)
                 {
                     break;
                 }
 
-                string segment = keys[i];
                 if (!segment.StartsWith(queryLower, StringComparison.OrdinalIgnoreCase))
                 {
-                    break; // Past the prefix range.
+                    continue;
                 }
 
                 // Look up all paths containing this segment.
@@ -265,49 +260,6 @@ public sealed class SearchIndex
         finally
         {
             _sortedLock.ExitReadLock();
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// Binary search for the first key in the sorted list that starts with the given prefix.
-    /// Returns the index or -1 if no such key exists.
-    /// </summary>
-    private static int BinarySearchFirstPrefix(IList<string> keys, string prefix)
-    {
-        int lo = 0;
-        int hi = keys.Count - 1;
-        int result = -1;
-
-        while (lo <= hi)
-        {
-            int mid = lo + (hi - lo) / 2;
-            string key = keys[mid];
-
-            // Compare up to the shorter of the two lengths to avoid ArgumentOutOfRangeException.
-            int compareLen = Math.Min(key.Length, prefix.Length);
-            int cmp = string.Compare(key, 0, prefix, 0, compareLen, StringComparison.OrdinalIgnoreCase);
-
-            // If the shared prefix is equal, a shorter key sorts before a longer prefix.
-            if (cmp == 0 && key.Length < prefix.Length)
-            {
-                cmp = -1;
-            }
-
-            if (cmp >= 0 && key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-            {
-                result = mid;
-                hi = mid - 1; // Look for an earlier match.
-            }
-            else if (cmp < 0)
-            {
-                lo = mid + 1;
-            }
-            else
-            {
-                hi = mid - 1;
-            }
         }
 
         return result;

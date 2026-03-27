@@ -322,16 +322,7 @@ internal sealed class App
                 }
                 else if (extra is FileFinderSearchResultEvent searchExtra)
                 {
-                    if (_inputMode == InputMode.FileFinder
-                        && searchExtra.BasePath == _currentPath
-                        && searchExtra.SearchId == _fileFinderSearchId)
-                    {
-                        if (searchExtra.Results.Count > 0)
-                        {
-                            _fileFinderSearchResults ??= new List<Wade.Search.SearchResult>();
-                            _fileFinderSearchResults.AddRange(searchExtra.Results);
-                        }
-                    }
+                    HandleFileFinderSearchResult(searchExtra);
                 }
                 else if (extra is FileFinderScanCompleteEvent scanExtra)
                 {
@@ -475,17 +466,7 @@ internal sealed class App
 
             if (inputEvent is FileFinderSearchResultEvent searchResultEvt)
             {
-                if (_inputMode == InputMode.FileFinder
-                    && searchResultEvt.BasePath == _currentPath
-                    && searchResultEvt.SearchId == _fileFinderSearchId)
-                {
-                    if (searchResultEvt.Results.Count > 0)
-                    {
-                        _fileFinderSearchResults ??= new List<Wade.Search.SearchResult>();
-                        _fileFinderSearchResults.AddRange(searchResultEvt.Results);
-                    }
-                }
-
+                HandleFileFinderSearchResult(searchResultEvt);
                 continue;
             }
 
@@ -4465,7 +4446,7 @@ internal sealed class App
         _inputMode = InputMode.Normal;
         _fileFinderInput = null;
         _fileFinderAllEntries = null;
-        _fileFinderSearchIndex?.CancelSearch();
+        _fileFinderSearchIndex?.Dispose();
         _fileFinderSearchIndex = null;
         _fileFinderSearchResults = null;
         _fileFinderEntryCache = null;
@@ -4700,6 +4681,18 @@ internal sealed class App
         }
 
         return entries;
+    }
+
+    private void HandleFileFinderSearchResult(FileFinderSearchResultEvent evt)
+    {
+        if (_inputMode == InputMode.FileFinder
+            && evt.BasePath == _currentPath
+            && evt.SearchId == _fileFinderSearchId
+            && evt.Results.Count > 0)
+        {
+            _fileFinderSearchResults ??= new List<Wade.Search.SearchResult>();
+            _fileFinderSearchResults.AddRange(evt.Results);
+        }
     }
 
     private void StartFinderSearch(InputPipeline pipeline)
