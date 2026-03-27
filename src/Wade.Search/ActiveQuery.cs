@@ -14,6 +14,7 @@ internal sealed class ActiveQuery : IDisposable
     private readonly SearchOptions _options;
     private readonly HashSet<string> _emittedPaths = new(StringComparer.Ordinal);
     private readonly object _emitLock = new();
+    private readonly TaskCompletionSource _snapshotTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private int _resultCount;
 
     internal ActiveQuery(string query, SearchOptions options)
@@ -31,6 +32,7 @@ internal sealed class ActiveQuery : IDisposable
     internal ChannelReader<SearchResult> Reader => _channel.Reader;
     internal CancellationToken CancellationToken => _cts.Token;
     internal string Query => _query;
+    internal Task SnapshotComplete => _snapshotTcs.Task;
 
     /// <summary>
     /// Evaluate a path against this query. If it matches, write to the channel.
@@ -117,7 +119,7 @@ internal sealed class ActiveQuery : IDisposable
     /// </summary>
     internal void MarkSnapshotComplete()
     {
-        // Currently a no-op placeholder. The channel stays open until Complete().
+        _snapshotTcs.TrySetResult();
     }
 
     /// <summary>

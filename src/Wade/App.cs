@@ -318,6 +318,9 @@ internal sealed class App
                     {
                         _fileFinderAllEntries ??= new List<FileSystemEntry>();
                         _fileFinderAllEntries.AddRange(partialExtra.Entries);
+
+                        foreach (FileSystemEntry entry in partialExtra.Entries)
+                            _fileFinderEntryCache?.TryAdd(entry.FullPath, entry);
                     }
                 }
                 else if (extra is FileFinderSearchResultEvent searchExtra)
@@ -459,6 +462,9 @@ internal sealed class App
                 {
                     _fileFinderAllEntries ??= new List<FileSystemEntry>();
                     _fileFinderAllEntries.AddRange(partialEvt.Entries);
+
+                    foreach (FileSystemEntry entry in partialEvt.Entries)
+                        _fileFinderEntryCache?.TryAdd(entry.FullPath, entry);
                 }
 
                 continue;
@@ -4706,7 +4712,6 @@ internal sealed class App
 
         _fileFinderLastSearchQuery = query;
         _fileFinderSearchResults = null;
-        _fileFinderEntryCache = new Dictionary<string, FileSystemEntry>(StringComparer.Ordinal);
         long searchId = ++_fileFinderSearchId;
 
         if (string.IsNullOrEmpty(query) || _fileFinderSearchIndex is null)

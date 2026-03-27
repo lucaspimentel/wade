@@ -166,14 +166,15 @@ public class SearchIndexTests
 
         ChannelReader<SearchResult> reader = index.Search("newfile");
 
-        // Wait a moment for the snapshot scan to complete.
-        await Task.Delay(100);
+        // Wait for the snapshot scan to complete before adding.
+        Task? snapshot = index.SnapshotCompleteTask;
+        if (snapshot != null)
+        {
+            await snapshot.WaitAsync(TimeSpan.FromSeconds(5));
+        }
 
-        // Add a new path that matches.
+        // Add a new path that matches — live push should emit it immediately.
         index.Add(MakePath("src", "newfile.cs"));
-
-        // Give the live push a moment.
-        await Task.Delay(100);
 
         index.CancelSearch();
         List<SearchResult> results = await DrainResultsAsync(reader);
@@ -238,12 +239,16 @@ public class SearchIndexTests
         string.Join(Path.DirectorySeparatorChar, parts);
 
     /// <summary>
-    /// Drain all results from a channel reader, cancelling the search first to close the channel.
+    /// Drain all results from a channel reader, waiting for the snapshot scan to complete before cancelling.
     /// </summary>
     private static async Task<List<SearchResult>> DrainResultsAsync(SearchIndex index, ChannelReader<SearchResult> reader)
     {
-        // Give the background scan time to produce results.
-        await Task.Delay(200);
+        Task? snapshot = index.SnapshotCompleteTask;
+        if (snapshot != null)
+        {
+            await snapshot.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+
         index.CancelSearch();
         return await DrainResultsAsync(reader);
     }

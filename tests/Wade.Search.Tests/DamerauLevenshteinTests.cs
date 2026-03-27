@@ -4,105 +4,38 @@ namespace Wade.Search.Tests;
 
 public class DamerauLevenshteinTests
 {
-    [Fact]
-    public void IdenticalStrings_ReturnsZero()
+    [Theory]
+    [InlineData("hello", "hello", 0)]   // identical
+    [InlineData("", "", 0)]              // both empty
+    [InlineData("", "hello", 5)]         // empty source → target length
+    [InlineData("hello", "", 5)]         // empty target → source length
+    [InlineData("a", "a", 0)]            // single char, same
+    [InlineData("a", "b", 1)]            // single char, different
+    [InlineData("Hello", "hello", 0)]    // case insensitive
+    [InlineData("ABC", "abc", 0)]        // case insensitive
+    public void BasicDistance(string source, string target, int expected)
     {
-        Assert.Equal(0, DamerauLevenshtein.Distance("hello", "hello"));
+        Assert.Equal(expected, DamerauLevenshtein.Distance(source, target));
     }
 
-    [Fact]
-    public void EmptySource_ReturnsTargetLength()
+    [Theory]
+    [InlineData("helo", "hello", 1)]       // insertion
+    [InlineData("hello", "helo", 1)]       // deletion
+    [InlineData("hello", "hallo", 1)]      // substitution
+    [InlineData("ab", "ba", 1)]            // adjacent transposition
+    [InlineData("abcde", "abced", 1)]      // transposition in longer string
+    [InlineData("kitten", "sitting", 3)]   // multiple operations
+    public void EditOperations(string source, string target, int expected)
     {
-        Assert.Equal(5, DamerauLevenshtein.Distance("", "hello"));
+        Assert.Equal(expected, DamerauLevenshtein.Distance(source, target));
     }
 
-    [Fact]
-    public void EmptyTarget_ReturnsSourceLength()
+    [Theory]
+    [InlineData("abc", "abd", 1, 1)]            // within threshold
+    [InlineData("abc", "xyz", 1, int.MaxValue)]  // exceeds threshold → early termination
+    [InlineData("a", "abcd", 2, int.MaxValue)]   // length difference exceeds threshold
+    public void MaxDistance(string source, string target, int maxDistance, int expected)
     {
-        Assert.Equal(5, DamerauLevenshtein.Distance("hello", ""));
-    }
-
-    [Fact]
-    public void BothEmpty_ReturnsZero()
-    {
-        Assert.Equal(0, DamerauLevenshtein.Distance("", ""));
-    }
-
-    [Fact]
-    public void SingleInsertion_ReturnsOne()
-    {
-        Assert.Equal(1, DamerauLevenshtein.Distance("helo", "hello"));
-    }
-
-    [Fact]
-    public void SingleDeletion_ReturnsOne()
-    {
-        Assert.Equal(1, DamerauLevenshtein.Distance("hello", "helo"));
-    }
-
-    [Fact]
-    public void SingleSubstitution_ReturnsOne()
-    {
-        Assert.Equal(1, DamerauLevenshtein.Distance("hello", "hallo"));
-    }
-
-    [Fact]
-    public void AdjacentTransposition_ReturnsOne()
-    {
-        Assert.Equal(1, DamerauLevenshtein.Distance("ab", "ba"));
-    }
-
-    [Fact]
-    public void AdjacentTransposition_InLongerString()
-    {
-        // "abcde" -> "abced" — swap d and e (adjacent transposition at positions 3,4).
-        Assert.Equal(1, DamerauLevenshtein.Distance("abcde", "abced"));
-    }
-
-    [Fact]
-    public void CaseInsensitive()
-    {
-        Assert.Equal(0, DamerauLevenshtein.Distance("Hello", "hello"));
-        Assert.Equal(0, DamerauLevenshtein.Distance("ABC", "abc"));
-    }
-
-    [Fact]
-    public void MaxDistance_EarlyTermination()
-    {
-        int result = DamerauLevenshtein.Distance("abc", "xyz", maxDistance: 1);
-        Assert.Equal(int.MaxValue, result);
-    }
-
-    [Fact]
-    public void MaxDistance_WithinThreshold()
-    {
-        int result = DamerauLevenshtein.Distance("abc", "abd", maxDistance: 1);
-        Assert.Equal(1, result);
-    }
-
-    [Fact]
-    public void MaxDistance_LengthDifferenceExceedsThreshold()
-    {
-        int result = DamerauLevenshtein.Distance("a", "abcd", maxDistance: 2);
-        Assert.Equal(int.MaxValue, result);
-    }
-
-    [Fact]
-    public void SingleCharacterStrings_Same()
-    {
-        Assert.Equal(0, DamerauLevenshtein.Distance("a", "a"));
-    }
-
-    [Fact]
-    public void SingleCharacterStrings_Different()
-    {
-        Assert.Equal(1, DamerauLevenshtein.Distance("a", "b"));
-    }
-
-    [Fact]
-    public void MultipleOperations()
-    {
-        // "kitten" -> "sitting" = 3 (substitute k->s, substitute e->i, insert g)
-        Assert.Equal(3, DamerauLevenshtein.Distance("kitten", "sitting"));
+        Assert.Equal(expected, DamerauLevenshtein.Distance(source, target, maxDistance));
     }
 }

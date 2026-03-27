@@ -36,6 +36,21 @@ public sealed class SearchIndex : IDisposable
     public int Count => _allPaths.Count;
 
     /// <summary>
+    /// Task that completes when the active query's initial index scan finishes.
+    /// Returns null if no query is active.
+    /// </summary>
+    internal Task? SnapshotCompleteTask
+    {
+        get
+        {
+            lock (_queryLock)
+            {
+                return _activeQuery?.SnapshotComplete;
+            }
+        }
+    }
+
+    /// <summary>
     /// Add a path to the index. Thread-safe: may be called concurrently with
     /// <see cref="Search"/> and other <see cref="Add"/> calls. If an active query
     /// exists, checks the new path against it and pushes matching results to the
