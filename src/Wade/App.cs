@@ -93,6 +93,7 @@ internal sealed class App
     private Wade.Search.SearchIndex? _fileFinderSearchIndex;
     private string _fileFinderLastSearchQuery = "";
     private long _fileFinderSearchId;
+    private CancellationTokenSource? _fileFinderSearchCts;
     private List<Wade.Search.SearchResult>? _fileFinderSearchResults;
     private Dictionary<string, FileSystemEntry>? _fileFinderEntryCache;
     private List<FileSystemEntry>? _fileFinderDisplayCache;
@@ -4456,6 +4457,9 @@ internal sealed class App
         _inputMode = InputMode.Normal;
         _fileFinderInput = null;
         _fileFinderAllEntries = null;
+        _fileFinderSearchCts?.Cancel();
+        _fileFinderSearchCts?.Dispose();
+        _fileFinderSearchCts = null;
         _fileFinderSearchIndex?.Dispose();
         _fileFinderSearchIndex = null;
         _fileFinderSearchResults = null;
@@ -4729,14 +4733,20 @@ internal sealed class App
         _fileFinderSearchResults = null;
         _fileFinderDisplayCache = null;
         _fileFinderDisplayDirty = false;
+        _fileFinderSearchCts?.Cancel();
+        _fileFinderSearchCts?.Dispose();
         long searchId = Interlocked.Increment(ref _fileFinderSearchId);
 
         if (string.IsNullOrEmpty(query) || _fileFinderSearchIndex is null)
         {
+            _fileFinderSearchCts = null;
             _fileFinderSearchIndex?.CancelSearch();
             return;
         }
 
+        var searchCts = new CancellationTokenSource();
+        _fileFinderSearchCts = searchCts;
+        CancellationToken searchCt = searchCts.Token;
         var reader = _fileFinderSearchIndex.Search(query);
         string basePath = _currentPath;
 
@@ -4747,7 +4757,7 @@ internal sealed class App
                 var batch = new List<Wade.Search.SearchResult>();
                 long lastFlush = Environment.TickCount64;
 
-                await foreach (Wade.Search.SearchResult result in reader.ReadAllAsync())
+                await foreach (Wade.Search.SearchResult result in reader.ReadAllAsync(searchCt))
                 {
                     batch.Add(result);
 
@@ -4770,7 +4780,7 @@ internal sealed class App
             {
                 // Suppress unexpected exceptions to avoid unobserved task faults.
             }
-        });
+        }, searchCt);
     }
 
     private void HandleFileFinderKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer, InputPipeline pipeline)
@@ -4879,8 +4889,10 @@ internal sealed class App
                 break;
         }
 
-        // Adjust scroll offset to keep selection visible
-        filtered = GetFinderDisplayEntries();
+        // Adjust scroll offset to keep selection visible — reuse cached result
+        // to avoid redundant sort when display is dirty.
+        if (_fileFinderDisplayDirty)
+            filtered = GetFinderDisplayEntries();
 
         if (filtered.Count > 0)
         {

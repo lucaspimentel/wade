@@ -274,6 +274,10 @@ public sealed class SearchIndex : IDisposable
         string queryLower = query.ToLowerInvariant();
 
         // Upper bound for GetViewBetween: the query prefix with the highest possible trailing char.
+        // Note: GetViewBetween uses the OrdinalIgnoreCase comparer, while keys are ToLowerInvariant().
+        // These can disagree on non-ASCII (e.g. Turkish İ/ı), potentially missing some matches.
+        // The StartsWith filter below prevents false positives; false negatives are acceptable
+        // since file paths are overwhelmingly ASCII.
         string upperBound = queryLower + "\uffff";
 
         // Collect matching segments under the read lock, then release before doing path lookups.
