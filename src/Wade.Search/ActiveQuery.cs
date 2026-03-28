@@ -33,6 +33,7 @@ internal sealed class ActiveQuery : IDisposable
     internal CancellationToken CancellationToken => _cts.Token;
     internal string Query => _query;
     internal Task SnapshotComplete => _snapshotTcs.Task;
+    internal bool IsMaxResultsReached => Volatile.Read(ref _resultCount) >= _options.MaxResults;
 
     /// <summary>
     /// Evaluate a path against this query. If it matches, write to the channel.
@@ -106,13 +107,11 @@ internal sealed class ActiveQuery : IDisposable
             }
 
             _resultCount++;
+
+            var result = new SearchResult(path, bestDistance, isPrefixMatch);
+            _channel.Writer.TryWrite(result);
         }
 
-        // Write to channel outside the lock intentionally — TryWrite on an unbounded channel
-        // is thread-safe (SingleWriter = false), and holding the lock during the write would
-        // unnecessarily block other TryMatch callers.
-        var result = new SearchResult(path, bestDistance, isPrefixMatch);
-        _channel.Writer.TryWrite(result);
         return true;
     }
 

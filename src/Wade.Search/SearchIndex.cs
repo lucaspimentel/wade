@@ -221,6 +221,11 @@ public sealed class SearchIndex : IDisposable
                 }
             }
 
+            if (query.IsMaxResultsReached)
+            {
+                return;
+            }
+
             // Phase 2: Fuzzy scan all remaining paths.
             // Note: _allPaths iteration is weakly consistent — concurrent Add() calls may cause
             // some paths to be visited here AND via live push in Add(). This is harmless because

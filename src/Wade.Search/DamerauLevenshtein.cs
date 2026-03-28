@@ -29,6 +29,20 @@ internal static class DamerauLevenshtein
             return sourceLen <= maxDistance ? sourceLen : int.MaxValue;
         }
 
+        // Pre-lowercase both inputs to avoid repeated char.ToLowerInvariant in the inner loop.
+        Span<char> sourceLower = sourceLen <= 128 ? stackalloc char[sourceLen] : new char[sourceLen];
+        Span<char> targetLower = targetLen <= 128 ? stackalloc char[targetLen] : new char[targetLen];
+
+        for (int i = 0; i < sourceLen; i++)
+        {
+            sourceLower[i] = char.ToLowerInvariant(source[i]);
+        }
+
+        for (int j = 0; j < targetLen; j++)
+        {
+            targetLower[j] = char.ToLowerInvariant(target[j]);
+        }
+
         // Use stackalloc for small inputs (typical file/folder names).
         int matrixRows = sourceLen + 1;
         int matrixCols = targetLen + 1;
@@ -54,12 +68,12 @@ internal static class DamerauLevenshtein
 
         for (int i = 1; i <= sourceLen; i++)
         {
-            char sc = char.ToLowerInvariant(source[i - 1]);
+            char sc = sourceLower[i - 1];
             int rowMin = int.MaxValue;
 
             for (int j = 1; j <= targetLen; j++)
             {
-                char tc = char.ToLowerInvariant(target[j - 1]);
+                char tc = targetLower[j - 1];
                 int cost = sc == tc ? 0 : 1;
 
                 int deletion = matrix[(i - 1) * matrixCols + j] + 1;
@@ -70,8 +84,8 @@ internal static class DamerauLevenshtein
 
                 // Adjacent transposition.
                 if (i > 1 && j > 1
-                    && sc == char.ToLowerInvariant(target[j - 2])
-                    && char.ToLowerInvariant(source[i - 2]) == tc)
+                    && sc == targetLower[j - 2]
+                    && sourceLower[i - 2] == tc)
                 {
                     int transposition = matrix[(i - 2) * matrixCols + (j - 2)] + cost;
                     distance = Math.Min(distance, transposition);

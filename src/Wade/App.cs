@@ -4692,7 +4692,7 @@ internal sealed class App
 
         foreach (Wade.Search.SearchResult sr in _fileFinderSearchResults)
         {
-            if (_fileFinderEntryCache!.TryGetValue(sr.Path, out FileSystemEntry? entry))
+            if (_fileFinderEntryCache?.TryGetValue(sr.Path, out FileSystemEntry? entry) == true)
             {
                 entries.Add(entry);
             }
