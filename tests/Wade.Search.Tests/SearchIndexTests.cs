@@ -5,12 +5,14 @@ namespace Wade.Search.Tests;
 
 public class SearchIndexTests
 {
+    private static readonly string s_basePath = Path.GetTempPath();
+
     [Fact]
     public void Add_IncrementsCount()
     {
-        var index = new SearchIndex();
-        index.Add(MakePath("src", "Wade", "App.cs"));
-        index.Add(MakePath("src", "Wade", "Program.cs"));
+        var index = new SearchIndex(s_basePath);
+        index.Add(MakeAbsPath("src", "Wade", "App.cs"));
+        index.Add(MakeAbsPath("src", "Wade", "Program.cs"));
 
         Assert.Equal(2, index.Count);
     }
@@ -18,8 +20,8 @@ public class SearchIndexTests
     [Fact]
     public void Add_DuplicatePath_NotCounted()
     {
-        var index = new SearchIndex();
-        string path = MakePath("src", "Wade", "App.cs");
+        var index = new SearchIndex(s_basePath);
+        string path = MakeAbsPath("src", "Wade", "App.cs");
         index.Add(path);
         index.Add(path);
 
@@ -27,54 +29,53 @@ public class SearchIndexTests
     }
 
     [Fact]
-    public async Task Search_PrefixMatch_FindsResults()
+    public async Task Search_SubsequenceMatch_FindsResults()
     {
-        var index = new SearchIndex();
-        index.Add(MakePath("src", "Wade", "App.cs"));
-        index.Add(MakePath("src", "Wade", "Program.cs"));
-        index.Add(MakePath("tests", "Wade.Tests", "Test.cs"));
+        var index = new SearchIndex(s_basePath);
+        index.Add(MakeAbsPath("src", "Wade", "App.cs"));
+        index.Add(MakeAbsPath("src", "Wade", "Program.cs"));
+        index.Add(MakeAbsPath("tests", "Wade.Tests", "Test.cs"));
 
         ChannelReader<SearchResult> reader = index.Search("App");
         List<SearchResult> results = await DrainResultsAsync(index, reader);
 
-        Assert.Contains(results, r => r.Path == MakePath("src", "Wade", "App.cs") && r.IsPrefixMatch);
+        Assert.Contains(results, r => r.Path == MakeAbsPath("src", "Wade", "App.cs"));
     }
 
     [Fact]
-    public async Task Search_PrefixMatch_CaseInsensitive()
+    public async Task Search_CaseInsensitive()
     {
-        var index = new SearchIndex();
-        index.Add(MakePath("src", "Wade", "App.cs"));
+        var index = new SearchIndex(s_basePath);
+        index.Add(MakeAbsPath("src", "Wade", "App.cs"));
 
         ChannelReader<SearchResult> reader = index.Search("app");
         List<SearchResult> results = await DrainResultsAsync(index, reader);
 
         Assert.Single(results);
-        Assert.True(results[0].IsPrefixMatch);
+        Assert.True(results[0].Score > int.MinValue);
     }
 
     [Fact]
-    public async Task Search_FuzzyMatch_FindsNearMatches()
+    public async Task Search_SubstringInFileName_FindsResults()
     {
-        var index = new SearchIndex();
-        index.Add(MakePath("src", "Wade", "App.cs"));
+        var index = new SearchIndex(s_basePath);
+        index.Add(MakeAbsPath("Documents", "report.pdf"));
+        index.Add(MakeAbsPath("Documents", "notes.txt"));
 
-        // "Wede" is 1 edit from "Wade" (substitution a→e). Not a prefix of any segment.
-        ChannelReader<SearchResult> reader = index.Search("Wede", new SearchOptions { MaxEditDistance = 1 });
+        ChannelReader<SearchResult> reader = index.Search("pdf");
         List<SearchResult> results = await DrainResultsAsync(index, reader);
 
         Assert.Single(results);
-        Assert.False(results[0].IsPrefixMatch);
-        Assert.Equal(1, results[0].EditDistance);
+        Assert.Equal(MakeAbsPath("Documents", "report.pdf"), results[0].Path);
     }
 
     [Fact]
-    public async Task Search_FuzzyMatch_BeyondMaxDistance_NoResults()
+    public async Task Search_NoMatch_ReturnsEmpty()
     {
-        var index = new SearchIndex();
-        index.Add(MakePath("src", "Wade", "App.cs"));
+        var index = new SearchIndex(s_basePath);
+        index.Add(MakeAbsPath("src", "Wade", "App.cs"));
 
-        ChannelReader<SearchResult> reader = index.Search("xyz", new SearchOptions { MaxEditDistance = 1 });
+        ChannelReader<SearchResult> reader = index.Search("xyz");
         List<SearchResult> results = await DrainResultsAsync(index, reader);
 
         Assert.Empty(results);
@@ -83,9 +84,9 @@ public class SearchIndexTests
     [Fact]
     public async Task Search_DistinctResults()
     {
-        var index = new SearchIndex();
+        var index = new SearchIndex(s_basePath);
         // Path with duplicate segment names — should still appear only once.
-        index.Add(MakePath("src", "src", "file.cs"));
+        index.Add(MakeAbsPath("src", "src", "file.cs"));
 
         ChannelReader<SearchResult> reader = index.Search("src");
         List<SearchResult> results = await DrainResultsAsync(index, reader);
@@ -96,8 +97,8 @@ public class SearchIndexTests
     [Fact]
     public async Task Search_EmptyQuery_NoResults()
     {
-        var index = new SearchIndex();
-        index.Add(MakePath("src", "Wade", "App.cs"));
+        var index = new SearchIndex(s_basePath);
+        index.Add(MakeAbsPath("src", "Wade", "App.cs"));
 
         ChannelReader<SearchResult> reader = index.Search("");
         List<SearchResult> results = await DrainResultsAsync(index, reader);
@@ -108,10 +109,10 @@ public class SearchIndexTests
     [Fact]
     public async Task Search_MaxResults_LimitsOutput()
     {
-        var index = new SearchIndex();
+        var index = new SearchIndex(s_basePath);
         for (int i = 0; i < 100; i++)
         {
-            index.Add(MakePath("src", $"File{i}.cs"));
+            index.Add(MakeAbsPath("src", $"File{i}.cs"));
         }
 
         ChannelReader<SearchResult> reader = index.Search("File", new SearchOptions { MaxResults = 5 });
@@ -123,8 +124,8 @@ public class SearchIndexTests
     [Fact]
     public async Task Search_NewQuery_CancelsPrevious()
     {
-        var index = new SearchIndex();
-        index.Add(MakePath("src", "Wade", "App.cs"));
+        var index = new SearchIndex(s_basePath);
+        index.Add(MakeAbsPath("src", "Wade", "App.cs"));
 
         ChannelReader<SearchResult> reader1 = index.Search("App");
         ChannelReader<SearchResult> reader2 = index.Search("Wade");
@@ -134,15 +135,15 @@ public class SearchIndexTests
         // reader2 should have results.
         List<SearchResult> results2 = await DrainResultsAsync(index, reader2);
 
-        Assert.Contains(results2, r => r.Path == MakePath("src", "Wade", "App.cs"));
+        Assert.Contains(results2, r => r.Path == MakeAbsPath("src", "Wade", "App.cs"));
         // reader1 was cancelled so may or may not have results — but it should complete.
     }
 
     [Fact]
     public async Task CancelSearch_CompletesChannel()
     {
-        var index = new SearchIndex();
-        index.Add(MakePath("src", "Wade", "App.cs"));
+        var index = new SearchIndex(s_basePath);
+        index.Add(MakeAbsPath("src", "Wade", "App.cs"));
 
         ChannelReader<SearchResult> reader = index.Search("App");
         index.CancelSearch();
@@ -154,15 +155,15 @@ public class SearchIndexTests
     [Fact]
     public void CancelSearch_NoActiveQuery_IsNoop()
     {
-        var index = new SearchIndex();
+        var index = new SearchIndex(s_basePath);
         index.CancelSearch(); // Should not throw.
     }
 
     [Fact]
     public async Task LivePush_AddAfterSearch_PushesNewMatch()
     {
-        var index = new SearchIndex();
-        index.Add(MakePath("src", "existing.cs"));
+        var index = new SearchIndex(s_basePath);
+        index.Add(MakeAbsPath("src", "existing.cs"));
 
         ChannelReader<SearchResult> reader = index.Search("newfile");
 
@@ -174,19 +175,19 @@ public class SearchIndexTests
         }
 
         // Add a new path that matches — live push should emit it immediately.
-        index.Add(MakePath("src", "newfile.cs"));
+        index.Add(MakeAbsPath("src", "newfile.cs"));
 
         index.CancelSearch();
         List<SearchResult> results = await DrainResultsAsync(reader);
 
-        Assert.Contains(results, r => r.Path == MakePath("src", "newfile.cs"));
+        Assert.Contains(results, r => r.Path == MakeAbsPath("src", "newfile.cs"));
     }
 
     [Fact]
     public void Clear_EmptiesIndex()
     {
-        var index = new SearchIndex();
-        index.Add(MakePath("src", "file.cs"));
+        var index = new SearchIndex(s_basePath);
+        index.Add(MakeAbsPath("src", "file.cs"));
         Assert.Equal(1, index.Count);
 
         index.Clear();
@@ -194,27 +195,28 @@ public class SearchIndexTests
     }
 
     [Fact]
-    public async Task PrefixMatches_RankedBeforeFuzzy()
+    public async Task ExactMatch_RankedAboveFuzzy()
     {
-        var index = new SearchIndex();
-        index.Add(MakePath("src", "Wade"));         // "Wade" is a prefix match for "Wade"
-        index.Add(MakePath("src", "Wede"));         // "Wede" is 1 edit from "Wade" (not a prefix match)
+        var index = new SearchIndex(s_basePath);
+        index.Add(MakeAbsPath("src", "Wade"));         // "Wade" is exact/consecutive
+        index.Add(MakeAbsPath("src", "W_a_d_e"));      // "Wade" is spread out
 
-        ChannelReader<SearchResult> reader = index.Search("Wade", new SearchOptions { MaxEditDistance = 2 });
+        ChannelReader<SearchResult> reader = index.Search("Wade");
         List<SearchResult> results = await DrainResultsAsync(index, reader);
 
         Assert.True(results.Count >= 2);
 
-        SearchResult prefixResult = results.First(r => r.Path == MakePath("src", "Wade"));
-        SearchResult fuzzyResult = results.First(r => r.Path == MakePath("src", "Wede"));
+        SearchResult exactResult = results.First(r => r.Path == MakeAbsPath("src", "Wade"));
+        SearchResult spreadResult = results.First(r => r.Path == MakeAbsPath("src", "W_a_d_e"));
 
-        Assert.True(prefixResult.Score < fuzzyResult.Score);
+        Assert.True(exactResult.Score > spreadResult.Score,
+            $"Exact score {exactResult.Score} should be > spread score {spreadResult.Score}");
     }
 
     [Fact]
     public async Task ConcurrentAddAndSearch_NoExceptions()
     {
-        var index = new SearchIndex();
+        var index = new SearchIndex(s_basePath);
 
         // Start a search.
         ChannelReader<SearchResult> reader = index.Search("test");
@@ -224,19 +226,38 @@ public class SearchIndexTests
         for (int i = 0; i < 100; i++)
         {
             int n = i;
-            tasks.Add(Task.Run(() => index.Add(MakePath("dir", $"test{n}.cs"))));
+            tasks.Add(Task.Run(() => index.Add(MakeAbsPath("dir", $"test{n}.cs"))));
         }
 
         await Task.WhenAll(tasks);
         index.CancelSearch();
 
         List<SearchResult> results = await DrainResultsAsync(reader);
-        // Should have some results (all paths have "test" as prefix of a segment).
+        // Should have some results (all paths contain "test" as a subsequence).
         Assert.True(results.Count > 0);
     }
 
-    private static string MakePath(params string[] parts) =>
-        string.Join(Path.DirectorySeparatorChar, parts);
+    [Fact]
+    public async Task FileNamePriority_RanksFileNameMatchHigher()
+    {
+        var index = new SearchIndex(s_basePath);
+        index.Add(MakeAbsPath("src", "Wade", "App.cs"));
+        index.Add(MakeAbsPath("src", "Applications", "Config.cs"));
+
+        ChannelReader<SearchResult> reader = index.Search("App");
+        List<SearchResult> results = await DrainResultsAsync(index, reader);
+
+        Assert.True(results.Count >= 2);
+
+        SearchResult appResult = results.First(r => r.Path == MakeAbsPath("src", "Wade", "App.cs"));
+        SearchResult configResult = results.First(r => r.Path == MakeAbsPath("src", "Applications", "Config.cs"));
+
+        Assert.True(appResult.Score > configResult.Score,
+            $"App.cs score {appResult.Score} should be > Config.cs score {configResult.Score}");
+    }
+
+    private static string MakeAbsPath(params string[] parts) =>
+        Path.Combine(s_basePath, string.Join(Path.DirectorySeparatorChar, parts));
 
     /// <summary>
     /// Drain all results from a channel reader, waiting for the snapshot scan to complete before cancelling.

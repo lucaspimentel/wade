@@ -5,12 +5,13 @@ namespace Wade.Search.Tests;
 public class SearchResultTests
 {
     [Theory]
-    [InlineData(0, true, 0)]   // prefix match → score 0
-    [InlineData(3, true, 0)]   // prefix match → score 0 regardless of edit distance
-    [InlineData(2, false, 2)]  // fuzzy match → score equals edit distance
-    public void Score_ReflectsMatchType(int editDistance, bool isPrefixMatch, int expectedScore)
+    [InlineData("path/file.txt", 100)]
+    [InlineData("other/file.cs", 0)]
+    [InlineData("deep/nested/path.rs", -5)]
+    public void Score_ReflectsConstructorValue(string path, int score)
     {
-        var result = new SearchResult("path/file.txt", editDistance, isPrefixMatch);
-        Assert.Equal(expectedScore, result.Score);
+        var result = new SearchResult(path, score);
+        Assert.Equal(path, result.Path);
+        Assert.Equal(score, result.Score);
     }
 }

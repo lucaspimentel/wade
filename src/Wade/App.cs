@@ -4431,7 +4431,7 @@ internal sealed class App
         _fileFinderScrollOffset = 0;
         _fileFinderInput = new TextInput();
         _fileFinderAllEntries = null;
-        _fileFinderSearchIndex = new Wade.Search.SearchIndex();
+        _fileFinderSearchIndex = new Wade.Search.SearchIndex(_currentPath);
         _fileFinderLastSearchQuery = "";
         _fileFinderSearchResults = null;
         _fileFinderEntryCache = new Dictionary<string, FileSystemEntry>(StringComparer.Ordinal);
@@ -4682,10 +4682,10 @@ internal sealed class App
             return _fileFinderDisplayCache;
         }
 
-        // Sort results by score (prefix matches first), then alphabetically for stability.
+        // Sort results by score descending (higher is better), then alphabetically for stability.
         _fileFinderSearchResults.Sort((a, b) =>
         {
-            int c = a.Score.CompareTo(b.Score);
+            int c = b.Score.CompareTo(a.Score);
             return c != 0 ? c : string.Compare(a.Path, b.Path, StringComparison.Ordinal);
         });
 
@@ -4757,11 +4757,26 @@ internal sealed class App
                 var batch = new List<Wade.Search.SearchResult>();
                 long lastFlush = Environment.TickCount64;
 
-                await foreach (Wade.Search.SearchResult result in reader.ReadAllAsync(searchCt))
+                // Use WaitToReadAsync + TryRead drain pattern instead of await foreach.
+                // This lets us flush the batch after draining all currently available items,
+                // even when the channel stays open (for live pushes). Without this, a fast
+                // ScanExistingIndex burst could leave results unflushed in the batch indefinitely.
+                while (await reader.WaitToReadAsync(searchCt))
                 {
-                    batch.Add(result);
+                    while (reader.TryRead(out Wade.Search.SearchResult? result) && result != null)
+                    {
+                        batch.Add(result);
 
-                    if (Environment.TickCount64 - lastFlush >= 100)
+                        if (Environment.TickCount64 - lastFlush >= 100)
+                        {
+                            pipeline.Inject(new FileFinderSearchResultEvent(basePath, batch, IsComplete: false, SearchId: searchId));
+                            batch = new List<Wade.Search.SearchResult>();
+                            lastFlush = Environment.TickCount64;
+                        }
+                    }
+
+                    // Flush after draining all currently available items.
+                    if (batch.Count > 0)
                     {
                         pipeline.Inject(new FileFinderSearchResultEvent(basePath, batch, IsComplete: false, SearchId: searchId));
                         batch = new List<Wade.Search.SearchResult>();
@@ -4769,8 +4784,11 @@ internal sealed class App
                     }
                 }
 
-                // Final flush
-                pipeline.Inject(new FileFinderSearchResultEvent(basePath, batch, IsComplete: true, SearchId: searchId));
+                // Channel completed — final flush.
+                if (batch.Count > 0)
+                {
+                    pipeline.Inject(new FileFinderSearchResultEvent(basePath, batch, IsComplete: true, SearchId: searchId));
+                }
             }
             catch (OperationCanceledException)
             {

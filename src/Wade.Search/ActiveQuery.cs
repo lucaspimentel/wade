@@ -36,10 +36,11 @@ internal sealed class ActiveQuery : IDisposable
     internal bool IsMaxResultsReached => Volatile.Read(ref _resultCount) >= _options.MaxResults;
 
     /// <summary>
-    /// Evaluate a path against this query. If it matches, write to the channel.
+    /// Evaluate a path against this query using fuzzy subsequence scoring.
+    /// If it matches, write to the channel.
     /// Thread-safe: may be called from multiple threads concurrently.
     /// </summary>
-    internal bool TryMatch(string path, string[] segments)
+    internal bool TryMatch(string absolutePath, string relativePath, int fileNameStart)
     {
         try
         {
@@ -58,26 +59,9 @@ internal sealed class ActiveQuery : IDisposable
             return false;
         }
 
-        int bestDistance = int.MaxValue;
-        bool isPrefixMatch = false;
+        int score = FuzzyScorer.ScoreWithFileNamePriority(_query.AsSpan(), relativePath.AsSpan(), fileNameStart);
 
-        foreach (string segment in segments)
-        {
-            if (segment.StartsWith(_query, StringComparison.OrdinalIgnoreCase))
-            {
-                isPrefixMatch = true;
-                bestDistance = 0;
-                break;
-            }
-
-            int distance = DamerauLevenshtein.Distance(_query.AsSpan(), segment.AsSpan(), _options.MaxEditDistance);
-            if (distance < bestDistance)
-            {
-                bestDistance = distance;
-            }
-        }
-
-        if (!isPrefixMatch && bestDistance > _options.MaxEditDistance)
+        if (score == int.MinValue)
         {
             return false;
         }
@@ -101,14 +85,14 @@ internal sealed class ActiveQuery : IDisposable
                 return false;
             }
 
-            if (!_emittedPaths.Add(path))
+            if (!_emittedPaths.Add(absolutePath))
             {
                 return false; // Already emitted.
             }
 
             _resultCount++;
 
-            var result = new SearchResult(path, bestDistance, isPrefixMatch);
+            var result = new SearchResult(absolutePath, score);
             _channel.Writer.TryWrite(result);
         }
 

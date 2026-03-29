@@ -4,35 +4,37 @@ using System.Threading.Channels;
 namespace Wade.Search;
 
 /// <summary>
-/// A thread-safe, segment-based search index for file paths.
-/// Supports prefix search and fuzzy (Damerau-Levenshtein) matching with results
-/// streamed via <see cref="System.Threading.Channels.Channel{T}"/>.
-/// Results are streamed in two phases (prefix matches first, then fuzzy matches),
-/// but are unordered within each phase. Consumers must sort by
-/// <see cref="SearchResult.Score"/> if display ordering matters.
+/// A thread-safe search index for file paths.
+/// Supports fuzzy subsequence matching with boundary-aware scoring and filename priority.
+/// Results streamed via <see cref="System.Threading.Channels.Channel{T}"/>.
+/// Consumers should sort by <see cref="SearchResult.Score"/> descending (higher is better).
 /// </summary>
 public sealed class SearchIndex : IDisposable
 {
-    // segment (case-insensitive) → set of full paths containing that segment.
-    // NOTE: Keys use OrdinalIgnoreCase, while _sortedSegments stores ToLowerInvariant() copies.
-    // FindPrefixMatchPaths looks up lowercased segments from _sortedSegments in this dictionary,
-    // which works because of the OrdinalIgnoreCase comparer. Keep these two in sync.
-    private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _segmentToPaths
-        = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly char[] s_separators = Path.DirectorySeparatorChar == Path.AltDirectorySeparatorChar
+        ? [Path.DirectorySeparatorChar]
+        : [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar];
 
-    // Sorted segments (lowercased) for prefix range lookup (SortedSet = O(log n) insert via red-black tree)
-    private readonly SortedSet<string> _sortedSegments = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ReaderWriterLockSlim _sortedLock = new();
+    private readonly string _basePath;
 
     // All indexed paths (for dedup) — case-sensitive to preserve distinct paths on Linux
     private readonly ConcurrentDictionary<string, byte> _allPaths = new(StringComparer.Ordinal);
 
-    // Per-path segment cache so we don't re-split during search
-    private readonly ConcurrentDictionary<string, string[]> _pathSegments = new(StringComparer.Ordinal);
+    // Per-path precomputed data for scoring
+    private readonly ConcurrentDictionary<string, PathEntry> _pathEntries = new(StringComparer.Ordinal);
 
     // Active query state
     private readonly object _queryLock = new();
     private ActiveQuery? _activeQuery;
+
+    /// <summary>
+    /// Create a new search index rooted at the given base path.
+    /// Paths added via <see cref="Add"/> will be scored against their relative path from this base.
+    /// </summary>
+    public SearchIndex(string basePath)
+    {
+        _basePath = basePath;
+    }
 
     /// <summary>
     /// Number of distinct paths in the index.
@@ -67,42 +69,14 @@ public sealed class SearchIndex : IDisposable
             return; // Already indexed.
         }
 
-        string[] segments = PathSegmenter.Split(path);
-        _pathSegments[path] = segments;
-
-        // Update the concurrent segment→paths map outside the lock (ConcurrentDictionary is thread-safe).
-        // Collect lowercased segments to batch-insert into _sortedSegments under a short write lock.
-        var loweredSegments = new string[segments.Length];
-
-        for (int i = 0; i < segments.Length; i++)
-        {
-            string segment = segments[i];
-
-            ConcurrentDictionary<string, byte> pathSet = _segmentToPaths.GetOrAdd(
-                segment,
-                static _ => new ConcurrentDictionary<string, byte>(StringComparer.Ordinal));
-            pathSet.TryAdd(path, 0);
-
-            loweredSegments[i] = segment.ToLowerInvariant();
-        }
-
-        _sortedLock.EnterWriteLock();
-        try
-        {
-            foreach (string lowered in loweredSegments)
-            {
-                _sortedSegments.Add(lowered);
-            }
-        }
-        finally
-        {
-            _sortedLock.ExitWriteLock();
-        }
+        string relative = Path.GetRelativePath(_basePath, path);
+        int fileNameStart = relative.LastIndexOfAny(s_separators) + 1;
+        _pathEntries[path] = new PathEntry(path, relative, fileNameStart);
 
         // Live push: if there's an active query, check this new path immediately.
         lock (_queryLock)
         {
-            _activeQuery?.TryMatch(path, segments);
+            _activeQuery?.TryMatch(path, relative, fileNameStart);
         }
     }
 
@@ -173,30 +147,17 @@ public sealed class SearchIndex : IDisposable
     {
         CancelSearch();
         _allPaths.Clear();
-        _pathSegments.Clear();
-        _segmentToPaths.Clear();
-
-        _sortedLock.EnterWriteLock();
-        try
-        {
-            _sortedSegments.Clear();
-        }
-        finally
-        {
-            _sortedLock.ExitWriteLock();
-        }
+        _pathEntries.Clear();
     }
 
     public void Dispose()
     {
         CancelSearch();
-        _sortedLock.Dispose();
     }
 
     /// <summary>
     /// Scan all existing indexed paths against the given query.
-    /// Uses the sorted segment structure for efficient prefix range lookup,
-    /// then falls back to fuzzy matching on all segments for remaining paths.
+    /// Single pass: iterate all paths and score each one.
     /// </summary>
     private void ScanExistingIndex(ActiveQuery query)
     {
@@ -204,48 +165,17 @@ public sealed class SearchIndex : IDisposable
 
         try
         {
-            // Phase 1: Find prefix-matching paths via sorted structure.
-            HashSet<string> prefixMatchedPaths = FindPrefixMatchPaths(query.Query, ct);
-
-            // Emit prefix matches first (they have the best score).
-            foreach (string path in prefixMatchedPaths)
-            {
-                if (ct.IsCancellationRequested)
-                {
-                    return;
-                }
-
-                if (_pathSegments.TryGetValue(path, out string[]? segments))
-                {
-                    query.TryMatch(path, segments);
-                }
-            }
-
-            if (query.IsMaxResultsReached)
-            {
-                return;
-            }
-
-            // Phase 2: Fuzzy scan all remaining paths.
-            // Note: _allPaths iteration is weakly consistent — concurrent Add() calls may cause
+            // Note: _pathEntries iteration is weakly consistent — concurrent Add() calls may cause
             // some paths to be visited here AND via live push in Add(). This is harmless because
             // ActiveQuery.TryMatch deduplicates via _emittedPaths.
-            foreach (string path in _allPaths.Keys)
+            foreach (PathEntry entry in _pathEntries.Values)
             {
-                if (ct.IsCancellationRequested)
+                if (ct.IsCancellationRequested || query.IsMaxResultsReached)
                 {
                     return;
                 }
 
-                if (prefixMatchedPaths.Contains(path))
-                {
-                    continue; // Already emitted in phase 1.
-                }
-
-                if (_pathSegments.TryGetValue(path, out string[]? segments))
-                {
-                    query.TryMatch(path, segments);
-                }
+                query.TryMatch(entry.AbsolutePath, entry.RelativePath, entry.FileNameStart);
             }
         }
         catch (OperationCanceledException)
@@ -261,69 +191,5 @@ public sealed class SearchIndex : IDisposable
         {
             query.MarkSnapshotComplete();
         }
-    }
-
-    /// <summary>
-    /// Use the sorted segment structure to find all paths that have at least one
-    /// segment starting with the query string (prefix match). O(log n + k) where
-    /// k is the number of matching segments.
-    /// </summary>
-    private HashSet<string> FindPrefixMatchPaths(string query, CancellationToken ct)
-    {
-        var result = new HashSet<string>(StringComparer.Ordinal);
-        string queryLower = query.ToLowerInvariant();
-
-        // Upper bound for GetViewBetween: the query prefix with the highest possible trailing char.
-        // Note: GetViewBetween uses the OrdinalIgnoreCase comparer, while keys are ToLowerInvariant().
-        // These can disagree on non-ASCII (e.g. Turkish İ/ı), potentially missing some matches.
-        // The StartsWith filter below prevents false positives; false negatives are acceptable
-        // since file paths are overwhelmingly ASCII.
-        string upperBound = queryLower + "\uffff";
-
-        // Collect matching segments under the read lock, then release before doing path lookups.
-        // This keeps the lock hold time short — only the SortedSet iteration, not the path expansion.
-        List<string> matchingSegments;
-
-        _sortedLock.EnterReadLock();
-        try
-        {
-            matchingSegments = new List<string>();
-
-            foreach (string segment in _sortedSegments.GetViewBetween(queryLower, upperBound))
-            {
-                if (ct.IsCancellationRequested)
-                {
-                    break;
-                }
-
-                if (segment.StartsWith(queryLower, StringComparison.OrdinalIgnoreCase))
-                {
-                    matchingSegments.Add(segment);
-                }
-            }
-        }
-        finally
-        {
-            _sortedLock.ExitReadLock();
-        }
-
-        // Expand segments to paths outside the lock — _segmentToPaths is a ConcurrentDictionary.
-        foreach (string segment in matchingSegments)
-        {
-            if (ct.IsCancellationRequested)
-            {
-                break;
-            }
-
-            if (_segmentToPaths.TryGetValue(segment, out ConcurrentDictionary<string, byte>? pathSet))
-            {
-                foreach (string path in pathSet.Keys)
-                {
-                    result.Add(path);
-                }
-            }
-        }
-
-        return result;
     }
 }
