@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.8.0] - 2026-03-28
 
 ### Added
 - Add syntax highlighting and "URL Shortcut" file type label for `.url` files (uses existing INI/TOML highlighter)
@@ -11,8 +11,6 @@
 - Change go-to-path keybinding from `g` to `Ctrl+G` for consistency with other dialog shortcuts
 - Use breadth-first search in file finder so current-directory entries appear before deeper nested ones
 - Stream file finder results incrementally as directories are scanned instead of waiting for the full scan to complete
-- Replace file finder substring filtering with SearchIndex-based prefix and fuzzy matching — results scored and sorted by relevance
-- Show clean empty dialog when file finder opens instead of immediately showing "scanning..."
 
 ## [1.7.0] - 2026-03-25
 
