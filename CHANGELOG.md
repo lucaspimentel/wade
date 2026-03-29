@@ -4,11 +4,12 @@
 
 ### Added
 - Add directories to file finder (Ctrl+F) results with file-type icons
+- Add Wade.Search library with segment-based prefix and fuzzy (Damerau-Levenshtein) file path search
 
 ### Changed
 - Use breadth-first search in file finder so current-directory entries appear before deeper nested ones
 - Stream file finder results incrementally as directories are scanned instead of waiting for the full scan to complete
-- Cache filtered file finder results incrementally — new batches filter only the delta, full recompute only on filter text change
+- Replace file finder substring filtering with SearchIndex-based prefix and fuzzy matching — results scored and sorted by relevance
 - Show clean empty dialog when file finder opens instead of immediately showing "scanning..."
 
 ## [1.7.0] - 2026-03-25

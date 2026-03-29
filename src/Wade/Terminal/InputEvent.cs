@@ -61,6 +61,12 @@ internal sealed record FileFinderPartialResultEvent(string BasePath, List<FileSy
 
 internal sealed record FileFinderScanCompleteEvent(string BasePath) : InputEvent;
 
+internal sealed record FileFinderSearchResultEvent(
+    string BasePath,
+    List<Wade.Search.SearchResult> Results,
+    bool IsComplete,
+    long SearchId) : InputEvent;
+
 internal sealed record GitStatusReadyEvent(
     string RepoRoot,
     string? BranchName,

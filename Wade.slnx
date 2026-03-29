@@ -1,9 +1,11 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Wade/Wade.csproj" />
+    <Project Path="src/Wade.Search/Wade.Search.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Wade.Tests/Wade.Tests.csproj" />
+    <Project Path="tests/Wade.Search.Tests/Wade.Search.Tests.csproj" />
   </Folder>
   <Folder Name="/benchmarks/">
     <Project Path="benchmarks/Wade.Benchmarks/Wade.Benchmarks.csproj" />

@@ -90,8 +90,14 @@ internal sealed class App
 
     // File finder state
     private int _fileFinderSelectedIndex;
-    private List<FileSystemEntry>? _fileFinderFilteredCache;
-    private string _fileFinderCacheFilter = "";
+    private Wade.Search.SearchIndex? _fileFinderSearchIndex;
+    private string _fileFinderLastSearchQuery = "";
+    private long _fileFinderSearchId;
+    private CancellationTokenSource? _fileFinderSearchCts;
+    private List<Wade.Search.SearchResult>? _fileFinderSearchResults;
+    private Dictionary<string, FileSystemEntry>? _fileFinderEntryCache;
+    private List<FileSystemEntry>? _fileFinderDisplayCache;
+    private bool _fileFinderDisplayDirty;
     private List<FileSystemEntry>? _filteredEntries;
 
     // Filesystem watcher state
@@ -315,8 +321,14 @@ internal sealed class App
                     {
                         _fileFinderAllEntries ??= new List<FileSystemEntry>();
                         _fileFinderAllEntries.AddRange(partialExtra.Entries);
-                        AppendToFinderFilterCache(partialExtra.Entries);
+
+                        foreach (FileSystemEntry entry in partialExtra.Entries)
+                            _fileFinderEntryCache?.TryAdd(entry.FullPath, entry);
                     }
+                }
+                else if (extra is FileFinderSearchResultEvent searchExtra)
+                {
+                    HandleFileFinderSearchResult(searchExtra);
                 }
                 else if (extra is FileFinderScanCompleteEvent scanExtra)
                 {
@@ -453,9 +465,17 @@ internal sealed class App
                 {
                     _fileFinderAllEntries ??= new List<FileSystemEntry>();
                     _fileFinderAllEntries.AddRange(partialEvt.Entries);
-                    AppendToFinderFilterCache(partialEvt.Entries);
+
+                    foreach (FileSystemEntry entry in partialEvt.Entries)
+                        _fileFinderEntryCache?.TryAdd(entry.FullPath, entry);
                 }
 
+                continue;
+            }
+
+            if (inputEvent is FileFinderSearchResultEvent searchResultEvt)
+            {
+                HandleFileFinderSearchResult(searchResultEvt);
                 continue;
             }
 
@@ -580,7 +600,7 @@ internal sealed class App
                     continue;
 
                 case InputMode.FileFinder:
-                    HandleFileFinderKey(keyEvent, previewLoader, buffer);
+                    HandleFileFinderKey(keyEvent, previewLoader, buffer, pipeline);
                     continue;
 
                 case InputMode.Normal:
@@ -4406,13 +4426,22 @@ internal sealed class App
 
     private void ShowFileFinder(InputPipeline pipeline)
     {
+        if (_currentPath == DirectoryContents.DrivesPath)
+        {
+            return;
+        }
+
         _inputMode = InputMode.FileFinder;
         _fileFinderSelectedIndex = 0;
         _fileFinderScrollOffset = 0;
         _fileFinderInput = new TextInput();
         _fileFinderAllEntries = null;
-        _fileFinderFilteredCache = null;
-        _fileFinderCacheFilter = "";
+        _fileFinderSearchIndex = new Wade.Search.SearchIndex(_currentPath);
+        _fileFinderLastSearchQuery = "";
+        _fileFinderSearchResults = null;
+        _fileFinderEntryCache = new Dictionary<string, FileSystemEntry>(StringComparer.Ordinal);
+        _fileFinderDisplayCache = null;
+        _fileFinderDisplayDirty = false;
         _fileFinderScanning = true;
         _fileFinderCts?.Cancel();
         _fileFinderCts = new CancellationTokenSource();
@@ -4421,8 +4450,9 @@ internal sealed class App
         bool showHidden = _directoryContents.ShowHiddenFiles;
         bool showSystem = _directoryContents.ShowSystemFiles;
         CancellationToken ct = _fileFinderCts.Token;
+        var searchIndex = _fileFinderSearchIndex;
 
-        Task.Run(() => ScanFilesForFinder(basePath, showHidden, showSystem, pipeline, ct), ct);
+        Task.Run(() => ScanFilesForFinder(basePath, showHidden, showSystem, pipeline, ct, searchIndex), ct);
     }
 
     private void CloseFileFinder()
@@ -4432,8 +4462,16 @@ internal sealed class App
         _inputMode = InputMode.Normal;
         _fileFinderInput = null;
         _fileFinderAllEntries = null;
-        _fileFinderFilteredCache = null;
-        _fileFinderCacheFilter = "";
+        _fileFinderSearchCts?.Cancel();
+        _fileFinderSearchCts?.Dispose();
+        _fileFinderSearchCts = null;
+        _fileFinderSearchIndex?.Dispose();
+        _fileFinderSearchIndex = null;
+        _fileFinderSearchResults = null;
+        _fileFinderEntryCache = null;
+        _fileFinderDisplayCache = null;
+        _fileFinderDisplayDirty = false;
+        _fileFinderLastSearchQuery = "";
         _fileFinderScanning = false;
     }
 
@@ -4442,7 +4480,8 @@ internal sealed class App
         bool showHidden,
         bool showSystem,
         InputPipeline pipeline,
-        CancellationToken ct)
+        CancellationToken ct,
+        Wade.Search.SearchIndex? searchIndex = null)
     {
         const int maxEntries = 50_000;
         const int flushIntervalMs = 200;
@@ -4513,6 +4552,7 @@ internal sealed class App
                             IsBrokenSymlink: false,
                             IsDrive: false));
 
+                        searchIndex?.Add(fileInfo.FullName);
                         totalCount++;
                     }
                     catch
@@ -4585,6 +4625,7 @@ internal sealed class App
                             IsBrokenSymlink: false,
                             IsDrive: false));
 
+                        searchIndex?.Add(dirInfo.FullName);
                         totalCount++;
                     }
                     catch
@@ -4626,80 +4667,148 @@ internal sealed class App
         }
     }
 
-    private void AppendToFinderFilterCache(List<FileSystemEntry> newEntries)
+    private List<FileSystemEntry> GetFinderDisplayEntries()
     {
         string filter = _fileFinderInput?.Value ?? "";
 
         if (string.IsNullOrEmpty(filter))
         {
-            // No filter — filtered cache is the same as the full list
-            _fileFinderFilteredCache = _fileFinderAllEntries;
-            _fileFinderCacheFilter = "";
-            return;
+            return _fileFinderAllEntries ?? [];
         }
 
-        // Incrementally filter only the new entries
-        _fileFinderFilteredCache ??= new List<FileSystemEntry>();
-
-        if (filter != _fileFinderCacheFilter)
-        {
-            // Filter changed since last cache — full recompute
-            _fileFinderFilteredCache = GetFilteredFileFinderEntries(
-                _fileFinderAllEntries, filter, _currentPath);
-            _fileFinderCacheFilter = filter;
-            return;
-        }
-
-        _fileFinderFilteredCache.AddRange(
-            GetFilteredFileFinderEntries(newEntries, filter, _currentPath));
-    }
-
-    private List<FileSystemEntry> GetOrFilterFinderEntries()
-    {
-        string filter = _fileFinderInput?.Value ?? "";
-
-        if (filter != _fileFinderCacheFilter)
-        {
-            // Filter changed — full recompute
-            _fileFinderFilteredCache = GetFilteredFileFinderEntries(
-                _fileFinderAllEntries, filter, _currentPath);
-            _fileFinderCacheFilter = filter;
-        }
-
-        return _fileFinderFilteredCache ?? [];
-    }
-
-    internal static List<FileSystemEntry> GetFilteredFileFinderEntries(
-        List<FileSystemEntry>? allEntries, string filter, string basePath)
-    {
-        if (allEntries is null)
+        if (_fileFinderSearchResults is null)
         {
             return [];
         }
 
-        if (string.IsNullOrEmpty(filter))
+        // Return cached display list if results haven't changed since last build.
+        if (!_fileFinderDisplayDirty && _fileFinderDisplayCache is not null)
         {
-            return allEntries;
+            return _fileFinderDisplayCache;
         }
 
-        var result = new List<FileSystemEntry>();
-
-        foreach (FileSystemEntry entry in allEntries)
+        // Sort results by score descending (higher is better), then alphabetically for stability.
+        _fileFinderSearchResults.Sort((a, b) =>
         {
-            string relativePath = Path.GetRelativePath(basePath, entry.FullPath);
+            int c = b.Score.CompareTo(a.Score);
+            return c != 0 ? c : string.Compare(a.Path, b.Path, StringComparison.Ordinal);
+        });
 
-            if (relativePath.Contains(filter, StringComparison.OrdinalIgnoreCase))
+        // Convert SearchResults to FileSystemEntries using the entry cache.
+        // Skip entries not yet received from the scanner — they'll appear on the next
+        // render cycle when the corresponding FileFinderPartialResultEvent arrives.
+        var entries = new List<FileSystemEntry>(_fileFinderSearchResults.Count);
+
+        foreach (Wade.Search.SearchResult sr in _fileFinderSearchResults)
+        {
+            if (_fileFinderEntryCache?.TryGetValue(sr.Path, out FileSystemEntry? entry) == true)
             {
-                result.Add(entry);
+                entries.Add(entry);
             }
         }
 
-        return result;
+        _fileFinderDisplayCache = entries;
+        _fileFinderDisplayDirty = false;
+        return entries;
     }
 
-    private void HandleFileFinderKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer)
+    private void HandleFileFinderSearchResult(FileFinderSearchResultEvent evt)
     {
-        List<FileSystemEntry> filtered = GetOrFilterFinderEntries();
+        if (_inputMode == InputMode.FileFinder
+            && evt.BasePath == _currentPath
+            && evt.SearchId == _fileFinderSearchId
+            && evt.Results.Count > 0)
+        {
+            _fileFinderSearchResults ??= new List<Wade.Search.SearchResult>();
+            _fileFinderSearchResults.AddRange(evt.Results);
+            _fileFinderDisplayDirty = true;
+        }
+    }
+
+    private void StartFinderSearch(InputPipeline pipeline)
+    {
+        string query = _fileFinderInput?.Value ?? "";
+
+        if (query == _fileFinderLastSearchQuery)
+        {
+            return;
+        }
+
+        _fileFinderLastSearchQuery = query;
+        _fileFinderSearchResults = null;
+        _fileFinderDisplayCache = null;
+        _fileFinderDisplayDirty = false;
+        _fileFinderSearchCts?.Cancel();
+        _fileFinderSearchCts?.Dispose();
+        long searchId = Interlocked.Increment(ref _fileFinderSearchId);
+
+        if (string.IsNullOrEmpty(query) || _fileFinderSearchIndex is null)
+        {
+            _fileFinderSearchCts = null;
+            _fileFinderSearchIndex?.CancelSearch();
+            return;
+        }
+
+        var searchCts = new CancellationTokenSource();
+        _fileFinderSearchCts = searchCts;
+        CancellationToken searchCt = searchCts.Token;
+        var reader = _fileFinderSearchIndex.Search(query);
+        string basePath = _currentPath;
+
+        Task.Run(async () =>
+        {
+            try
+            {
+                var batch = new List<Wade.Search.SearchResult>();
+                long lastFlush = Environment.TickCount64;
+
+                // Use WaitToReadAsync + TryRead drain pattern instead of await foreach.
+                // This lets us flush the batch after draining all currently available items,
+                // even when the channel stays open (for live pushes). Without this, a fast
+                // ScanExistingIndex burst could leave results unflushed in the batch indefinitely.
+                while (await reader.WaitToReadAsync(searchCt))
+                {
+                    while (reader.TryRead(out Wade.Search.SearchResult? result) && result != null)
+                    {
+                        batch.Add(result);
+
+                        if (Environment.TickCount64 - lastFlush >= 100)
+                        {
+                            pipeline.Inject(new FileFinderSearchResultEvent(basePath, batch, IsComplete: false, SearchId: searchId));
+                            batch = new List<Wade.Search.SearchResult>();
+                            lastFlush = Environment.TickCount64;
+                        }
+                    }
+
+                    // Flush after draining all currently available items.
+                    if (batch.Count > 0)
+                    {
+                        pipeline.Inject(new FileFinderSearchResultEvent(basePath, batch, IsComplete: false, SearchId: searchId));
+                        batch = new List<Wade.Search.SearchResult>();
+                        lastFlush = Environment.TickCount64;
+                    }
+                }
+
+                // Channel completed — final flush.
+                if (batch.Count > 0)
+                {
+                    pipeline.Inject(new FileFinderSearchResultEvent(basePath, batch, IsComplete: true, SearchId: searchId));
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when search is cancelled.
+            }
+            catch
+            {
+                // Suppress unexpected exceptions to avoid unobserved task faults.
+            }
+        }, searchCt);
+    }
+
+    private void HandleFileFinderKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer, InputPipeline pipeline)
+    {
+        List<FileSystemEntry> filtered = GetFinderDisplayEntries();
 
         switch (key.Key)
         {
@@ -4759,12 +4868,14 @@ internal sealed class App
                 _fileFinderInput!.DeleteBackward();
                 _fileFinderSelectedIndex = 0;
                 _fileFinderScrollOffset = 0;
+                StartFinderSearch(pipeline);
                 break;
 
             case ConsoleKey.Delete:
                 _fileFinderInput!.DeleteForward();
                 _fileFinderSelectedIndex = 0;
                 _fileFinderScrollOffset = 0;
+                StartFinderSearch(pipeline);
                 break;
 
             case ConsoleKey.LeftArrow:
@@ -4795,13 +4906,16 @@ internal sealed class App
                     _fileFinderInput!.InsertChar(key.KeyChar);
                     _fileFinderSelectedIndex = 0;
                     _fileFinderScrollOffset = 0;
+                    StartFinderSearch(pipeline);
                 }
 
                 break;
         }
 
-        // Adjust scroll offset to keep selection visible
-        filtered = GetOrFilterFinderEntries();
+        // Adjust scroll offset to keep selection visible — reuse cached result
+        // to avoid redundant sort when display is dirty.
+        if (_fileFinderDisplayDirty)
+            filtered = GetFinderDisplayEntries();
 
         if (filtered.Count > 0)
         {
@@ -4826,10 +4940,10 @@ internal sealed class App
 
     private void RenderFileFinder(ScreenBuffer buffer, int width, int height)
     {
-        List<FileSystemEntry> filtered = GetOrFilterFinderEntries();
+        List<FileSystemEntry> filtered = GetFinderDisplayEntries();
         int contentWidth = Math.Min(70, width - 8);
-        int itemRows = Math.Min(filtered.Count, 18);
-        int contentHeight = itemRows + 2; // 1 row for text input + 1 separator + item rows
+        const int maxItemRows = 18;
+        int contentHeight = maxItemRows + 2; // 1 row for text input + 1 separator + item rows
         const string Footer = "[↑↓] Navigate  [Enter] Open  [Esc] Cancel";
         string title = _fileFinderScanning && _fileFinderAllEntries != null ? "Find File [scanning...]" : "Find File";
 
