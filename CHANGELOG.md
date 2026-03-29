@@ -3,8 +3,9 @@
 ## [Unreleased]
 
 ### Added
+- Add syntax highlighting and "URL Shortcut" file type label for `.url` files (uses existing INI/TOML highlighter)
 - Add directories to file finder (Ctrl+F) results with file-type icons
-- Add Wade.Search library with segment-based prefix and fuzzy (Damerau-Levenshtein) file path search
+- Add Wade.Search library with subsequence matching and boundary-aware scoring for file path search
 
 ### Changed
 - Use breadth-first search in file finder so current-directory entries appear before deeper nested ones
