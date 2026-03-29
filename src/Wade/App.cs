@@ -2874,7 +2874,7 @@ internal sealed class App
         items.Add(new ActionMenuItem { Label = "Reverse sort direction", Shortcut = "S", Action = AppAction.ToggleSortDirection });
         items.Add(new ActionMenuItem { Label = "Bookmarks", Shortcut = "b", Action = AppAction.ShowBookmarks });
         items.Add(new ActionMenuItem { Label = "Toggle bookmark", Shortcut = "B", Action = AppAction.ToggleBookmark });
-        items.Add(new ActionMenuItem { Label = "Go to path", Shortcut = "g", Action = AppAction.GoToPath });
+        items.Add(new ActionMenuItem { Label = "Go to path", Shortcut = "Ctrl+G", Action = AppAction.GoToPath });
         items.Add(new ActionMenuItem { Label = "Search / Find file", Shortcut = "Ctrl+F", Action = AppAction.ShowFileFinder });
         items.Add(new ActionMenuItem { Label = "Filter", Shortcut = "/", Action = AppAction.Search });
         items.Add(new ActionMenuItem { Label = "Open terminal here", Shortcut = "Ctrl+T", Action = AppAction.OpenTerminal });

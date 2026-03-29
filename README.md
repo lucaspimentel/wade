@@ -173,7 +173,7 @@ Then use `wd` instead of `wade` to browse. Press `q` to quit and cd to the last 
 | . | Toggle hidden files |
 | s | Cycle sort (name / time / size / ext) |
 | S | Reverse sort direction |
-| g | Go to path (Esc clears input, Up goes up a directory) |
+| Ctrl+G | Go to path (Esc clears input, Up goes up a directory) |
 | b | Open bookmarks dialog |
 | B | Toggle current directory as bookmark |
 | / | Filter |

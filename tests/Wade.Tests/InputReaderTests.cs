@@ -101,10 +101,10 @@ public class InputReaderTests
     // ── Go-to-path ────────────────────────────────────────────────────────────
 
     [Fact]
-    public void MapKey_G_ReturnsGoToPath()
+    public void MapKey_G_ReturnsNone()
     {
         var evt = new KeyEvent(ConsoleKey.G, 'g', false, false, false);
-        Assert.Equal(AppAction.GoToPath, InputReader.MapKey(evt));
+        Assert.Equal(AppAction.None, InputReader.MapKey(evt));
     }
 
     // ── File actions ─────────────────────────────────────────────────────────
@@ -193,10 +193,10 @@ public class InputReaderTests
     }
 
     [Fact]
-    public void MapKey_CtrlG_ReturnsNone()
+    public void MapKey_CtrlG_ReturnsGoToPath()
     {
         var evt = new KeyEvent(ConsoleKey.G, '\a', false, false, true);
-        Assert.Equal(AppAction.None, InputReader.MapKey(evt));
+        Assert.Equal(AppAction.GoToPath, InputReader.MapKey(evt));
     }
 
     // ── File finder ─────────────────────────────────────────────────────

@@ -109,7 +109,7 @@ internal static class InputReader
             return AppAction.ShowProperties;
         }
 
-        if (key.KeyChar == 'g')
+        if (key.Key == ConsoleKey.G && key.Control && !key.Shift)
         {
             return AppAction.GoToPath;
         }

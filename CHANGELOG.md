@@ -8,6 +8,7 @@
 - Add Wade.Search library with subsequence matching and boundary-aware scoring for file path search
 
 ### Changed
+- Change go-to-path keybinding from `g` to `Ctrl+G` for consistency with other dialog shortcuts
 - Use breadth-first search in file finder so current-directory entries appear before deeper nested ones
 - Stream file finder results incrementally as directories are scanned instead of waiting for the full scan to complete
 - Replace file finder substring filtering with SearchIndex-based prefix and fuzzy matching — results scored and sorted by relevance
