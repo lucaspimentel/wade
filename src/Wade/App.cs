@@ -4426,6 +4426,11 @@ internal sealed class App
 
     private void ShowFileFinder(InputPipeline pipeline)
     {
+        if (_currentPath == DirectoryContents.DrivesPath)
+        {
+            return;
+        }
+
         _inputMode = InputMode.FileFinder;
         _fileFinderSelectedIndex = 0;
         _fileFinderScrollOffset = 0;
@@ -4937,8 +4942,8 @@ internal sealed class App
     {
         List<FileSystemEntry> filtered = GetFinderDisplayEntries();
         int contentWidth = Math.Min(70, width - 8);
-        int itemRows = Math.Min(filtered.Count, 18);
-        int contentHeight = itemRows + 2; // 1 row for text input + 1 separator + item rows
+        const int maxItemRows = 18;
+        int contentHeight = maxItemRows + 2; // 1 row for text input + 1 separator + item rows
         const string Footer = "[↑↓] Navigate  [Enter] Open  [Esc] Cancel";
         string title = _fileFinderScanning && _fileFinderAllEntries != null ? "Find File [scanning...]" : "Find File";
 
