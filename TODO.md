@@ -143,4 +143,5 @@ Directories are now included in finder results with file-type icons. `ScanFilesF
 
 ### Keyboard shortcut convention audit
 
-- [ ] Review keybinding consistency. Current mix: some dialogs/tools use `Ctrl+` (`Ctrl+F` finder, `Ctrl+T` terminal, `Ctrl+L` symlink, `Ctrl+R` refresh, `Ctrl+P` command palette) while others use bare keys (`g` go-to-path, `n`/`N` new file/dir, `b`/`B` bookmarks, `/` filter, `,` config, `?` help, `i` properties). Consider a convention: `Ctrl+<key>` for opening tools/dialogs/overlays, bare keys for direct actions.
+- [x] Move go-to-path from `g` to `Ctrl+G` for consistency with other dialog shortcuts
+- [ ] Review remaining keybinding consistency. Current mix: some dialogs/tools use `Ctrl+` (`Ctrl+F` finder, `Ctrl+T` terminal, `Ctrl+L` symlink, `Ctrl+R` refresh, `Ctrl+P` command palette, `Ctrl+G` go-to-path) while others use bare keys (`n`/`N` new file/dir, `b`/`B` bookmarks, `/` filter, `,` config, `?` help, `i` properties). Convention: `Ctrl+<key>` for opening tools/dialogs/overlays, bare keys for direct actions.
