@@ -2,8 +2,8 @@
 
 ## [Unreleased]
 
-### Fixed
-- Fix file finder filename and path columns touching with no gap between them
+### Changed
+- Redesign file finder dialog — show full relative paths in a single column with matched characters highlighted in green, and a live result count (`matching/total`)
 
 ## [1.8.0] - 2026-03-28
 

@@ -159,4 +159,70 @@ public class FuzzyScorerTests
         Assert.True(delimiterScore > midScore,
             $"Delimiter boundary score {delimiterScore} should be > mid-word score {midScore}");
     }
+
+    [Fact]
+    public void Score_MatchPositions_ExactMatch()
+    {
+        int score = FuzzyScorer.Score("abc", "abc", out int[] positions);
+        Assert.True(score > int.MinValue);
+        Assert.Equal([0, 1, 2], positions);
+    }
+
+    [Fact]
+    public void Score_MatchPositions_SubsequenceWithGaps()
+    {
+        int score = FuzzyScorer.Score("ac", "abc", out int[] positions);
+        Assert.True(score > int.MinValue);
+        Assert.Equal([0, 2], positions);
+    }
+
+    [Fact]
+    public void Score_MatchPositions_NoMatch_ReturnsEmpty()
+    {
+        int score = FuzzyScorer.Score("xyz", "abc", out int[] positions);
+        Assert.Equal(int.MinValue, score);
+        Assert.Empty(positions);
+    }
+
+    [Fact]
+    public void Score_MatchPositions_EmptyQuery_ReturnsEmpty()
+    {
+        int score = FuzzyScorer.Score("", "abc", out int[] positions);
+        Assert.Equal(0, score);
+        Assert.Empty(positions);
+    }
+
+    [Fact]
+    public void ScoreWithFileNamePriority_MatchPositions_FileNameMatch_OffsetsPositions()
+    {
+        // "App" matches filename "App.cs" at positions 0,1,2 within filename,
+        // which is at offset fileNameStart in the full path.
+        string path = string.Join(
+            Path.DirectorySeparatorChar.ToString(), "src", "Wade", "App.cs");
+        int fileNameStart = path.LastIndexOf(Path.DirectorySeparatorChar) + 1;
+
+        FuzzyScorer.ScoreWithFileNamePriority(
+            "App", path, fileNameStart, out int[] positions);
+
+        // Positions should be offset by fileNameStart
+        Assert.Equal(
+            [fileNameStart, fileNameStart + 1, fileNameStart + 2], positions);
+    }
+
+    [Fact]
+    public void ScoreWithFileNamePriority_MatchPositions_PathMatch_NoOffset()
+    {
+        // "Wade" matches in directory part, not filename — positions relative to full path
+        string path = string.Join(
+            Path.DirectorySeparatorChar.ToString(), "src", "Wade", "App.cs");
+        int fileNameStart = path.LastIndexOf(Path.DirectorySeparatorChar) + 1;
+
+        FuzzyScorer.ScoreWithFileNamePriority(
+            "Wade", path, fileNameStart, out int[] positions);
+
+        int wadeStart = path.IndexOf("Wade");
+        Assert.Equal(
+            [wadeStart, wadeStart + 1, wadeStart + 2, wadeStart + 3],
+            positions);
+    }
 }

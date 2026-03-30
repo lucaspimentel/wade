@@ -31,16 +31,23 @@ internal static class FuzzyScorer
     /// </summary>
     internal static int Score(ReadOnlySpan<char> query, ReadOnlySpan<char> target)
     {
+        return Score(query, target, out _);
+    }
+
+    internal static int Score(ReadOnlySpan<char> query, ReadOnlySpan<char> target, out int[] matchPositionsResult)
+    {
         int queryLen = query.Length;
         int targetLen = target.Length;
 
         if (queryLen == 0)
         {
+            matchPositionsResult = [];
             return 0;
         }
 
         if (queryLen > targetLen)
         {
+            matchPositionsResult = [];
             return int.MinValue;
         }
 
@@ -66,6 +73,7 @@ internal static class FuzzyScorer
 
         if (qi < queryLen)
         {
+            matchPositionsResult = [];
             return int.MinValue; // Not all query chars found.
         }
 
@@ -84,6 +92,8 @@ internal static class FuzzyScorer
             }
         }
 
+        matchPositionsResult = matchPositions[..queryLen].ToArray();
+
         // Score the matched positions.
         return ComputeScore(query, target, matchPositions);
     }
@@ -95,13 +105,22 @@ internal static class FuzzyScorer
     /// </summary>
     internal static int ScoreWithFileNamePriority(ReadOnlySpan<char> query, ReadOnlySpan<char> relativePath, int fileNameStart)
     {
-        int fullScore = Score(query, relativePath);
+        return ScoreWithFileNamePriority(query, relativePath, fileNameStart, out _);
+    }
+
+    internal static int ScoreWithFileNamePriority(
+        ReadOnlySpan<char> query,
+        ReadOnlySpan<char> relativePath,
+        int fileNameStart,
+        out int[] matchPositions)
+    {
+        int fullScore = Score(query, relativePath, out int[] fullPositions);
 
         // If the filename portion exists and is different from the full path, try scoring it.
         if (fileNameStart > 0 && fileNameStart < relativePath.Length)
         {
             ReadOnlySpan<char> fileName = relativePath[fileNameStart..];
-            int fileNameScore = Score(query, fileName);
+            int fileNameScore = Score(query, fileName, out int[] fnPositions);
 
             if (fileNameScore != int.MinValue)
             {
@@ -109,11 +128,19 @@ internal static class FuzzyScorer
 
                 if (fileNameScore > fullScore)
                 {
+                    // Offset positions to be relative to the full path.
+                    for (int i = 0; i < fnPositions.Length; i++)
+                    {
+                        fnPositions[i] += fileNameStart;
+                    }
+
+                    matchPositions = fnPositions;
                     return fileNameScore;
                 }
             }
         }
 
+        matchPositions = fullPositions;
         return fullScore;
     }
 

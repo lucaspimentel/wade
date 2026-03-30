@@ -59,7 +59,8 @@ internal sealed class ActiveQuery : IDisposable
             return false;
         }
 
-        int score = FuzzyScorer.ScoreWithFileNamePriority(_query.AsSpan(), relativePath.AsSpan(), fileNameStart);
+        int score = FuzzyScorer.ScoreWithFileNamePriority(
+            _query.AsSpan(), relativePath.AsSpan(), fileNameStart, out int[] matchPositions);
 
         if (score == int.MinValue)
         {
@@ -92,7 +93,7 @@ internal sealed class ActiveQuery : IDisposable
 
             _resultCount++;
 
-            var result = new SearchResult(absolutePath, score);
+            var result = new SearchResult(absolutePath, score, matchPositions);
             _channel.Writer.TryWrite(result);
         }
 

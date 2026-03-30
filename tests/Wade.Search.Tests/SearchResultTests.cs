@@ -10,8 +10,9 @@ public class SearchResultTests
     [InlineData("deep/nested/path.rs", -5)]
     public void Score_ReflectsConstructorValue(string path, int score)
     {
-        var result = new SearchResult(path, score);
+        var result = new SearchResult(path, score, []);
         Assert.Equal(path, result.Path);
         Assert.Equal(score, result.Score);
+        Assert.Empty(result.MatchPositions);
     }
 }
