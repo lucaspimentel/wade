@@ -12,6 +12,7 @@
 ### Fixed
 - Fix expanded preview (Right/Enter on a file) showing empty screen when right pane is hidden
 - Fix Sixel image previews not rendering in expanded preview when right pane is hidden
+- Hide empty metadata divider line when file details section has only a filename and no entries
 
 ## [1.8.0] - 2026-03-28
 
