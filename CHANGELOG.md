@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.9.0] - 2026-03-30
 
 ### Added
 - Add `parent_pane_enabled` config to hide the left (parent directory) pane — supports 3-pane, 2-pane, or single-pane layouts
