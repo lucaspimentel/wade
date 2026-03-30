@@ -306,30 +306,26 @@ public class ConfigDialogStateTests
 
     // ── Enabled predicates ───────────────────────────────────────────────────
 
-    [Theory]
-    [InlineData("Show File Details")]
-    [InlineData("Show File Previews")]
-    public void IndentedItems_DisabledWhenPreviewPaneOff(string label)
+    [Fact]
+    public void FileDetails_DisabledWhenPreviewPaneOff()
     {
         ConfigDialogState state = CreateDefaultState();
         state.PreviewPane = false;
         state.BuildItems();
 
-        ConfigItem? item = state.Items.Find(i => i.Label == label);
+        ConfigItem? item = state.Items.Find(i => i.Label == "Show File Details");
         Assert.NotNull(item);
         Assert.False(item.IsEnabled);
     }
 
-    [Theory]
-    [InlineData("Show File Details")]
-    [InlineData("Show File Previews")]
-    public void IndentedItems_EnabledWhenPreviewPaneOn(string label)
+    [Fact]
+    public void FileDetails_EnabledWhenPreviewPaneOn()
     {
         ConfigDialogState state = CreateDefaultState();
         state.PreviewPane = true;
         state.BuildItems();
 
-        ConfigItem? item = state.Items.Find(i => i.Label == label);
+        ConfigItem? item = state.Items.Find(i => i.Label == "Show File Details");
         Assert.NotNull(item);
         Assert.True(item.IsEnabled);
     }
@@ -358,7 +354,6 @@ public class ConfigDialogStateTests
     public void PreviewSubItems_DisabledWhenFilePreviewsOff(string label)
     {
         ConfigDialogState state = CreateDefaultState();
-        state.PreviewPane = true;
         state.FilePreviews = false;
         state.BuildItems();
 
@@ -374,7 +369,6 @@ public class ConfigDialogStateTests
     public void PreviewSubItems_EnabledWhenFilePreviewsOn(string label)
     {
         ConfigDialogState state = CreateDefaultState();
-        state.PreviewPane = true;
         state.FilePreviews = true;
         state.BuildItems();
 

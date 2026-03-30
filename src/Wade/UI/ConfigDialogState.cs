@@ -348,42 +348,40 @@ internal sealed class ConfigDialogState
             new ConfigItem
             {
                 Label = "Show File Previews",
-                Indent = 1,
                 FormatValue = () => FormatBool(FilePreviews),
                 Toggle = () => FilePreviews = !FilePreviews,
-                EnabledWhen = () => PreviewPane,
             },
             new ConfigItem
             {
                 Label = "Show Image Previews",
-                Indent = 2,
+                Indent = 1,
                 FormatValue = () => FormatBool(ImagePreviews),
                 Toggle = () => ImagePreviews = !ImagePreviews,
-                EnabledWhen = () => PreviewPane && FilePreviews,
+                EnabledWhen = () => FilePreviews,
             },
             new ConfigItem
             {
                 Label = "Show PDF Previews (pdftopng)",
-                Indent = 2,
+                Indent = 1,
                 FormatValue = () => FormatBool(PdfPreview),
                 Toggle = () => PdfPreview = !PdfPreview,
-                EnabledWhen = () => PreviewPane && FilePreviews,
+                EnabledWhen = () => FilePreviews,
             },
             new ConfigItem
             {
                 Label = "Show Archive Contents",
-                Indent = 2,
+                Indent = 1,
                 FormatValue = () => FormatBool(ZipPreview),
                 Toggle = () => ZipPreview = !ZipPreview,
-                EnabledWhen = () => PreviewPane && FilePreviews,
+                EnabledWhen = () => FilePreviews,
             },
             new ConfigItem
             {
                 Label = "Show Markdown Preview (built-in)",
-                Indent = 2,
+                Indent = 1,
                 FormatValue = () => FormatBool(MarkdownPreview),
                 Toggle = () => MarkdownPreview = !MarkdownPreview,
-                EnabledWhen = () => PreviewPane && FilePreviews,
+                EnabledWhen = () => FilePreviews,
             },
         ]);
     }

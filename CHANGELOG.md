@@ -7,6 +7,11 @@
 
 ### Changed
 - Redesign file finder dialog — show full relative paths in a single column with matched characters highlighted in green, and a live result count (`matching/total`)
+- Move "Show File Previews" config group out from under "Show Right Pane" — previews work in expanded preview mode regardless of the right pane setting
+
+### Fixed
+- Fix expanded preview (Right/Enter on a file) showing empty screen when right pane is hidden
+- Fix Sixel image previews not rendering in expanded preview when right pane is hidden
 
 ## [1.8.0] - 2026-03-28
 

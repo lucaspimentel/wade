@@ -232,7 +232,8 @@ internal sealed class App
             buffer.Flush(_flushBuffer);
 
             // Write Sixel data after flush (bypasses cell grid)
-            if (_sixelPending && _cachedSixelData is not null && _config.PreviewPaneEnabled
+            if (_sixelPending && _cachedSixelData is not null
+                && (_config.PreviewPaneEnabled || _inputMode == InputMode.ExpandedPreview)
                 && _inputMode is InputMode.Normal or InputMode.Search or InputMode.ExpandedPreview)
             {
                 _sixelPending = false;
@@ -1891,6 +1892,28 @@ internal sealed class App
             _cachedStyledLines = null;
             _activePreviewContext = BuildPreviewContext(_layout.ExpandedPane.Width, _layout.ExpandedPane.Height);
             ReloadActiveProvider(path, previewLoader, includeMetadata: false);
+        }
+        else
+        {
+            // No preview cached (e.g. right pane was hidden) — load from the selected file.
+            List<FileSystemEntry> entries = GetVisibleEntries();
+
+            if (entries.Count > 0 && _selectedIndex < entries.Count)
+            {
+                FileSystemEntry selected = entries[_selectedIndex];
+                _activeProviderIndex = 0;
+                _activePreviewContext = BuildPreviewContext(
+                    _layout.ExpandedPane.Width, _layout.ExpandedPane.Height);
+                _applicableMetadataProviders = _config.FileMetadataEnabled
+                    ? MetadataProviderRegistry.GetApplicableProviders(
+                        selected.FullPath, _activePreviewContext)
+                    : null;
+                _applicableProviders = _config.FilePreviewsEnabled
+                    ? PreviewProviderRegistry.GetApplicableProviders(
+                        selected.FullPath, _activePreviewContext)
+                    : [];
+                ReloadActiveProvider(selected.FullPath, previewLoader);
+            }
         }
 
         buffer.ForceFullRedraw();
