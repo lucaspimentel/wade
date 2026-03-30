@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- Fix file finder filename and path columns touching with no gap between them
+
 ## [1.8.0] - 2026-03-28
 
 ### Added

@@ -5007,7 +5007,7 @@ internal sealed class App
             // Left: icon + filename
             Rune icon = FileIcons.GetIcon(entry);
             buffer.Put(row, content.Left + 1, icon, nameStyle);
-            buffer.WriteString(row, content.Left + 3, entry.Name, nameStyle, content.Width / 2 - 3);
+            buffer.WriteString(row, content.Left + 3, entry.Name, nameStyle, content.Width / 2 - 4);
 
             // Right: relative parent path (dim hint)
             string? parentDir = Path.GetDirectoryName(Path.GetRelativePath(_currentPath, entry.FullPath));
