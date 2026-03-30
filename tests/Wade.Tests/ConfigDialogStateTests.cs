@@ -18,6 +18,7 @@ public class ConfigDialogStateTests
         config.SortMode = SortMode.Extension;
         config.SortAscending = false;
         config.ConfirmDeleteEnabled = false;
+        config.ParentPaneEnabled = false;
         config.PreviewPaneEnabled = false;
         config.SizeColumnEnabled = false;
         config.DateColumnEnabled = false;
@@ -39,6 +40,7 @@ public class ConfigDialogStateTests
         Assert.Equal(SortMode.Extension, state.SortMode);
         Assert.False(state.SortAscending);
         Assert.False(state.ConfirmDelete);
+        Assert.False(state.ParentPane);
         Assert.False(state.PreviewPane);
         Assert.False(state.SizeColumn);
         Assert.False(state.DateColumn);
@@ -77,6 +79,7 @@ public class ConfigDialogStateTests
         state.SortMode = SortMode.Size;
         state.SortAscending = false;
         state.ConfirmDelete = false;
+        state.ParentPane = false;
         state.PreviewPane = false;
         state.SizeColumn = false;
         state.DateColumn = false;
@@ -98,6 +101,7 @@ public class ConfigDialogStateTests
         Assert.Equal(SortMode.Size, config.SortMode);
         Assert.False(config.SortAscending);
         Assert.False(config.ConfirmDeleteEnabled);
+        Assert.False(config.ParentPaneEnabled);
         Assert.False(config.PreviewPaneEnabled);
         Assert.False(config.SizeColumnEnabled);
         Assert.False(config.DateColumnEnabled);

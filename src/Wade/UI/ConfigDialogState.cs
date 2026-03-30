@@ -18,6 +18,8 @@ internal sealed class ConfigDialogState
 
     public bool ConfirmDelete { get; set; }
 
+    public bool ParentPane { get; set; }
+
     public bool PreviewPane { get; set; }
 
     public bool SizeColumn { get; set; }
@@ -69,6 +71,7 @@ internal sealed class ConfigDialogState
             SortMode = config.SortMode,
             SortAscending = config.SortAscending,
             ConfirmDelete = config.ConfirmDeleteEnabled,
+            ParentPane = config.ParentPaneEnabled,
             PreviewPane = config.PreviewPaneEnabled,
             SizeColumn = config.SizeColumnEnabled,
             DateColumn = config.DateColumnEnabled,
@@ -103,6 +106,7 @@ internal sealed class ConfigDialogState
         config.SortMode = SortMode;
         config.SortAscending = SortAscending;
         config.ConfirmDeleteEnabled = ConfirmDelete;
+        config.ParentPaneEnabled = ParentPane;
         config.PreviewPaneEnabled = PreviewPane;
         config.SizeColumnEnabled = SizeColumn;
         config.DateColumnEnabled = DateColumn;
@@ -288,6 +292,12 @@ internal sealed class ConfigDialogState
                 Label = "Show Git Status",
                 FormatValue = () => FormatBool(GitStatus),
                 Toggle = () => GitStatus = !GitStatus,
+            },
+            new ConfigItem
+            {
+                Label = "Show Left Pane",
+                FormatValue = () => FormatBool(ParentPane),
+                Toggle = () => ParentPane = !ParentPane,
             },
             new ConfigItem
             {

@@ -18,6 +18,8 @@ internal sealed class WadeConfig
 
     public bool ConfirmDeleteEnabled { get; set; } = true;
 
+    public bool ParentPaneEnabled { get; set; } = true;
+
     public bool PreviewPaneEnabled { get; set; } = true;
 
     public bool SizeColumnEnabled { get; set; } = true;
@@ -139,6 +141,9 @@ internal sealed class WadeConfig
                         break;
                     case "confirm_delete_enabled":
                         config.ConfirmDeleteEnabled = ParseBool(value, config.ConfirmDeleteEnabled);
+                        break;
+                    case "parent_pane_enabled":
+                        config.ParentPaneEnabled = ParseBool(value, config.ParentPaneEnabled);
                         break;
                     case "preview_pane_enabled":
                         config.PreviewPaneEnabled = ParseBool(value, config.PreviewPaneEnabled);
@@ -303,6 +308,7 @@ internal sealed class WadeConfig
                           sort_mode = {sortModeStr}
                           sort_ascending = {(SortAscending ? "true" : "false")}
                           confirm_delete_enabled = {(ConfirmDeleteEnabled ? "true" : "false")}
+                          parent_pane_enabled = {(ParentPaneEnabled ? "true" : "false")}
                           preview_pane_enabled = {(PreviewPaneEnabled ? "true" : "false")}
                           size_column_enabled = {(SizeColumnEnabled ? "true" : "false")}
                           date_column_enabled = {(DateColumnEnabled ? "true" : "false")}
@@ -339,6 +345,7 @@ internal sealed class WadeConfig
                $"\"sort_mode\":\"{sortModeStr}\"," +
                $"\"sort_ascending\":{(SortAscending ? "true" : "false")}," +
                $"\"confirm_delete_enabled\":{(ConfirmDeleteEnabled ? "true" : "false")}," +
+               $"\"parent_pane_enabled\":{(ParentPaneEnabled ? "true" : "false")}," +
                $"\"preview_pane_enabled\":{(PreviewPaneEnabled ? "true" : "false")}," +
                $"\"size_column_enabled\":{(SizeColumnEnabled ? "true" : "false")}," +
                $"\"date_column_enabled\":{(DateColumnEnabled ? "true" : "false")}," +

@@ -207,7 +207,7 @@ internal sealed class App
         int lastHeight = Console.WindowHeight;
 
         var buffer = new ScreenBuffer(lastWidth, lastHeight);
-        _layout.Calculate(lastWidth, lastHeight, _config.PreviewPaneEnabled);
+        _layout.Calculate(lastWidth, lastHeight, _config.PreviewPaneEnabled, _config.ParentPaneEnabled);
 
         UpdateTerminalTitle();
         RefreshGitStatus();
@@ -355,7 +355,7 @@ internal sealed class App
                     lastWidth = resize.Width;
                     lastHeight = resize.Height;
                     buffer.Resize(lastWidth, lastHeight);
-                    _layout.Calculate(lastWidth, lastHeight, _config.PreviewPaneEnabled);
+                    _layout.Calculate(lastWidth, lastHeight, _config.PreviewPaneEnabled, _config.ParentPaneEnabled);
                     Rect resizePane = _inputMode == InputMode.ExpandedPreview ? _layout.ExpandedPane : _layout.RightPane;
                     Console.Write(AnsiCodes.ClearScreen);
 
@@ -1088,9 +1088,8 @@ internal sealed class App
         }
 
         // Left pane: parent directory (or drives list)
-        if (_currentPath == DirectoryContents.DrivesPath)
+        if (!_config.ParentPaneEnabled || _currentPath == DirectoryContents.DrivesPath)
         {
-            // At the drives list — no parent to show
             _leftPaneEntries = null;
         }
         else
@@ -1234,7 +1233,7 @@ internal sealed class App
         }
 
         // Borders
-        PaneRenderer.RenderBorders(buffer, _layout, height, _config.PreviewPaneEnabled);
+        PaneRenderer.RenderBorders(buffer, _layout, height, _config.PreviewPaneEnabled, _config.ParentPaneEnabled);
 
         // Status bar
         FileSystemEntry? selectedEntry = entries.Count > 0 && _selectedIndex < entries.Count
@@ -4337,7 +4336,7 @@ internal sealed class App
 
         _directoryContents.InvalidateAll();
         ClearPreviewCache(previewLoader, buffer);
-        _layout.Calculate(Console.WindowWidth, Console.WindowHeight, _config.PreviewPaneEnabled);
+        _layout.Calculate(Console.WindowWidth, Console.WindowHeight, _config.PreviewPaneEnabled, _config.ParentPaneEnabled);
         UpdateTerminalTitle();
         RefreshGitStatus();
 

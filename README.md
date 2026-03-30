@@ -12,7 +12,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 
 ## Features
 
-- **Miller columns** — three-pane layout: parent / current directory / preview; preview pane can be hidden for a 2-pane layout via `preview_pane_enabled` config
+- **Miller columns** — three-pane layout: parent / current directory / preview; each side pane can be hidden independently via `parent_pane_enabled` and `preview_pane_enabled` config, supporting 3-pane, 2-pane, or single-pane layouts
 - **File-type icons** — Nerd Fonts v3 glyphs per file extension (enabled by default; requires a Nerd Font)
 - **Syntax highlighting** — per-token coloring for common languages using a hand-rolled tokenizer; VS Code Dark+ inspired palette
 - **File preview** — displays first 100 lines of text files; multiple preview modes per file type (source, hex dump, git diff, archive contents, image, etc.) switchable via `p` or the "Change preview" submenu in the action palette (`Ctrl+P`); zip-format archives (`.zip`, `.jar`, `.war`, `.ear`, `.docx`, `.xlsx`, `.pptx`, `.odt`, `.ods`, `.odp`, `.apk`, `.vsix`, `.whl`, `.epub`) show a content listing with entry names and sizes (toggle with `zip_preview_enabled` config, default: on); PDF files render the first page as a Sixel image (requires `pdftopng` from xpdf on PATH; toggle with `pdf_preview_enabled` config, default: on); MSI installer files show an installer file listing (Windows only)
@@ -103,6 +103,7 @@ show_system_files = false       # Windows only; requires show_hidden_files
 sort_mode = name                # name, modified, size, extension
 sort_ascending = true
 confirm_delete_enabled = true
+parent_pane_enabled = true
 preview_pane_enabled = true
 size_column_enabled = true
 date_column_enabled = true

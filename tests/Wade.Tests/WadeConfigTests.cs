@@ -401,6 +401,7 @@ public class WadeConfigTests
             original.SortMode = SortMode.Extension;
             original.SortAscending = false;
             original.ConfirmDeleteEnabled = false;
+            original.ParentPaneEnabled = false;
             original.PreviewPaneEnabled = false;
             original.SizeColumnEnabled = false;
             original.DateColumnEnabled = false;
@@ -425,6 +426,7 @@ public class WadeConfigTests
             Assert.Equal(SortMode.Extension, loaded.SortMode);
             Assert.False(loaded.SortAscending);
             Assert.False(loaded.ConfirmDeleteEnabled);
+            Assert.False(loaded.ParentPaneEnabled);
             Assert.False(loaded.PreviewPaneEnabled);
             Assert.False(loaded.SizeColumnEnabled);
             Assert.False(loaded.DateColumnEnabled);

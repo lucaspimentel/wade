@@ -621,15 +621,24 @@ internal static class PaneRenderer
         return new CellStyle(FileColor, bg);
     }
 
-    public static void RenderBorders(ScreenBuffer buffer, Layout layout, int terminalHeight, bool previewPaneEnabled = true)
+    public static void RenderBorders(
+        ScreenBuffer buffer,
+        Layout layout,
+        int terminalHeight,
+        bool previewPaneEnabled = true,
+        bool parentPaneEnabled = true)
     {
         var style = new CellStyle(BorderColor, null);
-        int borderCol1 = layout.LeftPane.Right;
         int contentHeight = terminalHeight - 1;
 
-        for (int row = 0; row < contentHeight; row++)
+        if (parentPaneEnabled)
         {
-            buffer.Put(row, borderCol1, '│', style);
+            int borderCol1 = layout.LeftPane.Right;
+
+            for (int row = 0; row < contentHeight; row++)
+            {
+                buffer.Put(row, borderCol1, '│', style);
+            }
         }
 
         if (previewPaneEnabled)
