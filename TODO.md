@@ -90,16 +90,9 @@ When switching preview providers (e.g., from Glow-rendered Markdown to None, or 
 - Reproduce: select a Markdown file → switch to Glow preview → switch to None → observe residual rendered lines
 - Key files: `App.cs` (render dispatch ~line 1096), `src/Wade/UI/PaneRenderer.cs` (`RenderPreview`), sixel write path (~line 215)
 
-### Drive list view improvements (Windows)
+### ~~Drive list view improvements (Windows)~~ ✅
 
-When at the top level (listing drives via `DirectoryContents.GetDriveEntries()`):
-
-- [ ] Hide the date column (not meaningful for drives)
-- [ ] Show drive info columns instead: file system type, free space, total size, percent-full bar (see reference screenshot)
-  - Key files: `PaneRenderer` (column rendering), `DirectoryContents.cs:53` (`GetDriveEntries`), `FileSystemEntry` (may need additional drive properties)
-  - `DriveInfo` already provides `DriveFormat`, `AvailableFreeSpace`, `TotalSize`
-- [ ] Add drive details to the properties overlay (`i` key) — file system, free/total space, percent full, volume label, drive type
-  - Key file: `PropertiesOverlay.cs`
+Implemented — drive list shows volume label, file system, free space, total size, and percent-full bar with responsive column tiers. Properties overlay shows free/total with usage percentage, volume label, and file system.
 
 ### Column headers in center pane
 
@@ -107,12 +100,9 @@ When at the top level (listing drives via `DirectoryContents.GetDriveEntries()`)
   - Should be a config toggle (e.g. `column_headers_enabled`, default on)
   - Key files: `PaneRenderer.RenderFileList` (renders columns), `WadeConfig`, `ConfigDialogState`
 
-### Restore terminal title on exit
+### ~~Restore terminal title on exit~~ ✅
 
-- [ ] Save and restore the original terminal title instead of clearing it on exit
-  - `AnsiCodes.SaveTitle` / `RestoreTitle` constants already exist (`AnsiCodes.cs:33-34`) but are unused
-  - Currently `App.cs:176` writes `AnsiCodes.ClearTitle` on exit and `App.cs:172` sets title on navigation
-  - Fix: write `SaveTitle` on startup, `RestoreTitle` on exit instead of `ClearTitle`
+Fixed — `RestoreTitle` was being written before `LeaveAlternateScreen`, so the restore applied to the alternate buffer. Reordered to restore after leaving alternate screen and added explicit flush.
 
 ### Keyboard shortcut convention audit
 
