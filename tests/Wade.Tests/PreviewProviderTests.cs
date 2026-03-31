@@ -326,7 +326,6 @@ public class PreviewProviderTests
                 Assert.NotNull(result.TextLines);
                 Assert.False(result.IsRendered);
                 Assert.False(result.IsPlaceholder);
-                Assert.NotNull(result.Encoding);
                 Assert.NotNull(result.FileTypeLabel);
                 Assert.True(result.TextLines.Length >= 2);
             }

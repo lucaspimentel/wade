@@ -21,8 +21,6 @@ internal sealed record PreviewReadyEvent(
     string Path,
     StyledLine[] StyledLines,
     string? FileTypeLabel,
-    string? Encoding,
-    string? LineEnding,
     bool IsRendered = false,
     bool IsPlaceholder = false) : InputEvent;
 
@@ -40,14 +38,14 @@ internal sealed record CombinedPreviewReadyEvent(
     int PixelWidth,
     int PixelHeight,
     string? FileTypeLabel,
-    string? Encoding,
-    string? LineEnding,
     bool IsRendered = false) : InputEvent;
 
 internal sealed record MetadataReadyEvent(
     string Path,
     MetadataSection[] Sections,
-    string? FileTypeLabel) : InputEvent;
+    string? FileTypeLabel,
+    string? Encoding = null,
+    string? LineEnding = null) : InputEvent;
 
 internal sealed record PreviewLoadingCompleteEvent(string Path) : InputEvent;
 

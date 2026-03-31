@@ -1366,8 +1366,6 @@ internal sealed class App
         _cachedPreviewPath = evt.Path;
         _cachedStyledLines = evt.StyledLines;
         _cachedPreviewFileTypeLabel = evt.FileTypeLabel;
-        _cachedPreviewEncoding = evt.Encoding;
-        _cachedPreviewLineEnding = evt.LineEnding;
         _previewLoading = false;
         _isImagePreview = false;
         _isCombinedPreview = false;
@@ -1390,8 +1388,6 @@ internal sealed class App
         _cachedImagePixelWidth = evt.PixelWidth;
         _cachedImagePixelHeight = evt.PixelHeight;
         _cachedPreviewFileTypeLabel = evt.FileTypeLabel;
-        _cachedPreviewEncoding = null;
-        _cachedPreviewLineEnding = null;
         _cachedStyledLines = null;
         _isImagePreview = true;
         _isCombinedPreview = false;
@@ -1412,8 +1408,6 @@ internal sealed class App
         _cachedImagePixelWidth = evt.PixelWidth;
         _cachedImagePixelHeight = evt.PixelHeight;
         _cachedPreviewFileTypeLabel = evt.FileTypeLabel;
-        _cachedPreviewEncoding = evt.Encoding;
-        _cachedPreviewLineEnding = evt.LineEnding;
         _isImagePreview = false;
         _isCombinedPreview = true;
         _isRenderedPreview = evt.IsRendered;
@@ -1440,6 +1434,8 @@ internal sealed class App
 
         _cachedMetadataSections = evt.Sections;
         _cachedMetadataFileTypeLabel = evt.FileTypeLabel;
+        _cachedPreviewEncoding = evt.Encoding;
+        _cachedPreviewLineEnding = evt.LineEnding;
 
         // Use metadata file type label if preview hasn't provided one
         if (_cachedPreviewFileTypeLabel is null && evt.FileTypeLabel is not null)

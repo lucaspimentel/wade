@@ -43,10 +43,6 @@ internal sealed record PreviewResult
 
     public string? FileTypeLabel { get; init; }
 
-    public string? Encoding { get; init; }
-
-    public string? LineEnding { get; init; }
-
     /// <summary>
     /// When true, line numbers are suppressed in the preview pane
     /// (used for rendered previews like zip contents, hex dump, diff).

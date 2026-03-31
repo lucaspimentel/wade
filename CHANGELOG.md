@@ -11,6 +11,7 @@
 - Enhance drive properties overlay — show free/total space with usage percentage, volume label, and file system type alongside drive media type
 
 ### Fixed
+- Fix encoding and line endings not shown in status bar for non-text previews (e.g. rendered markdown) — detection moved from preview providers to metadata loading
 - Fix BOM-less UTF-16 files incorrectly detected as binary — heuristic detects alternating null-byte pattern when no BOM is present
 - Fix terminal title not cleared on exit on Linux — reorder cleanup to write after leaving alternate screen
 - Fix go-to-path (Ctrl+G) failing for "/" on Linux — `TrimEnd` stripped the root path to an empty string
