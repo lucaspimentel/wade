@@ -2,7 +2,17 @@
 
 ## Bugs (open)
 
-(none)
+### Linux: go-to-path (Ctrl+G) "/" not working
+
+- [ ] Navigating to `/` via the go-to-path dialog fails on Linux
+  - Likely related to `IsDriveRoot` / `DrivesPath` logic being Windows-centric
+  - Key files: `App.cs:2327` (`HandleGoToPathKey`), `DirectoryContents.cs:47` (`IsDriveRoot`)
+
+### Linux: root mount "/" shows empty name in drive list
+
+- [ ] On Linux, the `/` mount shows an empty string in the drive list instead of `"/"`
+  - Cause: `drive.Name` is `"/"` and `TrimEnd(Path.DirectorySeparatorChar)` strips it to `""`
+  - Key file: `DirectoryContents.cs:63` (`GetDriveEntries`)
 
 ---
 
@@ -90,6 +100,19 @@ When at the top level (listing drives via `DirectoryContents.GetDriveEntries()`)
   - `DriveInfo` already provides `DriveFormat`, `AvailableFreeSpace`, `TotalSize`
 - [ ] Add drive details to the properties overlay (`i` key) — file system, free/total space, percent full, volume label, drive type
   - Key file: `PropertiesOverlay.cs`
+
+### Column headers in center pane
+
+- [ ] Add column headers row to the center pane (name, size, date, or drive-specific columns like file system/free/size/bar)
+  - Should be a config toggle (e.g. `column_headers_enabled`, default on)
+  - Key files: `PaneRenderer.RenderFileList` (renders columns), `WadeConfig`, `ConfigDialogState`
+
+### Restore terminal title on exit
+
+- [ ] Save and restore the original terminal title instead of clearing it on exit
+  - `AnsiCodes.SaveTitle` / `RestoreTitle` constants already exist (`AnsiCodes.cs:33-34`) but are unused
+  - Currently `App.cs:176` writes `AnsiCodes.ClearTitle` on exit and `App.cs:172` sets title on navigation
+  - Fix: write `SaveTitle` on startup, `RestoreTitle` on exit instead of `ClearTitle`
 
 ### Keyboard shortcut convention audit
 
