@@ -12,41 +12,50 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 
 ## Features
 
-- **Miller columns** — three-pane layout: parent / current directory / preview; each side pane can be hidden independently via `parent_pane_enabled` and `preview_pane_enabled` config, supporting 3-pane, 2-pane, or single-pane layouts
-- **File-type icons** — Nerd Fonts v3 glyphs per file extension (enabled by default; requires a Nerd Font)
-- **Syntax highlighting** — per-token coloring for common languages using a hand-rolled tokenizer; VS Code Dark+ inspired palette
-- **File preview** — displays first 100 lines of text files; multiple preview modes per file type (source, hex dump, git diff, archive contents, image, etc.) switchable via `p` or the "Change preview" submenu in the action palette (`Ctrl+P`); zip-format archives (`.zip`, `.jar`, `.war`, `.ear`, `.docx`, `.xlsx`, `.pptx`, `.odt`, `.ods`, `.odp`, `.apk`, `.vsix`, `.whl`, `.epub`) show a content listing with entry names and sizes (toggle with `zip_preview_enabled` config, default: on); PDF files render the first page as a Sixel image (requires `pdftopng` from xpdf on PATH; toggle with `pdf_preview_enabled` config, default: on); MSI installer files show an installer file listing (Windows only)
-- **File metadata** — structured metadata displayed above the preview pane and in the properties overlay (`i` key); all files show filename and git status (when inside a repo); format-specific providers add richer detail: images (`.png`, `.jpg`, `.gif`, `.bmp`, `.webp`, etc.) show resolution, format, color depth, frame count (animated GIFs), and EXIF data (camera, date taken, exposure, focal length, GPS, software); NuGet packages (`.nupkg`, `.snupkg`) show Id, Version, Authors, Description, Tags, License, and Dependencies; executables (`.exe`, `.dll`) show PE metadata (architecture, subsystem, timestamp), .NET assembly info, and Win32 version info on Windows; Office documents (`.docx`, `.xlsx`, `.pptx`) show document metadata (title, author, dates, keywords) and statistics (page/word/slide counts, sheet names); zip-based archives (`.zip`, `.jar`, `.nupkg`, `.docx`, etc.) show file count, total size, compressed size, and compression ratio; PDF files show title, author, subject, creator, and page count (requires `pdfinfo` from xpdf on PATH); media files (`.mp3`, `.mp4`, `.mkv`, `.flac`, etc.) show format, duration, codec, resolution, bitrate, and audio details (requires `ffprobe` or `mediainfo` on PATH); MSI installer files (`.msi`) show ProductName, Version, Manufacturer, ProductCode, UpgradeCode, and summary info via the Windows Installer database API (Windows only)
-- **Image preview** — renders image thumbnails in the preview pane using Sixel graphics (auto-detects Sixel support; works with Windows Terminal v1.22+, kitty, WezTerm, and other Sixel-capable terminals; enabled by default; disable with `image_previews_enabled = false` in config)
-- **Expanded preview** — press Right/Enter on a file to expand the preview to full terminal width; scroll with Up/Down/J/K/PageUp/PageDown/Home/End/mouse wheel; press Left/Escape to collapse back to 3-pane view
-- **Directory preview** — shows contents of the selected directory
-- **Drive navigation** — browse across drives on Windows (Backspace from a drive root); drive list shows volume label, file system, free space, total size, and a visual percent-full bar with responsive column hiding; drive type detection distinguishes SSD from HDD (Windows via DeviceIoControl, Linux via `/sys/block`), with Network and Removable detection via `DriveInfo`; properties overlay shows free/total space, usage percentage, volume label, file system, and detected drive type
-- **Detail columns** — file size and modification date in the center pane with column headers (Name, Size, Date) shown in all three panes; each column toggleable independently via `size_column_enabled` / `date_column_enabled` config; headers togglable via `column_headers_enabled` (default: on); columns adapt responsively as the terminal narrows (full date → date only → short date → size only → name only); directory sizes computed asynchronously and displayed inline, gated per drive type (`dir_size_ssd_enabled` default on, `dir_size_hdd_enabled` and `dir_size_network_enabled` default off)
-- **Git status** — files and directories colored by git status (modified=yellow, staged=cyan, untracked=green, conflict=red); Nerd Font status icons shown in a dedicated column between the filename and size; directory-level aggregate status; branch name with branch icon shown in status bar; async loading for large repos (toggle with `git_status_enabled` config, default: on)
-- **Git actions in action palette** — git-related actions are available in the action palette (`Ctrl+P`), prefixed with "Git:" and shown only when actionable; includes diff preview for modified/staged files (select "Git diff" via "Change preview" submenu; colored diff output with added/removed/hunk highlighting), stage/unstage files (single or multi-select), stage all changes, unstage all, commit with message, push, push (force with lease), pull, pull (rebase), and fetch
-- **Status bar** — current path, git branch name with ahead/behind commit counts (↑/↓), item count, file type label (language name, "Text", or "Binary"), encoding (UTF-8, UTF-8 BOM, UTF-16 LE/BE), line endings (CRLF, LF, CR, Mixed), file size, and sort indicator
-- **Hidden files toggle** — dotfiles and system-hidden files are hidden by default; press `.` to toggle visibility at runtime, or set `show_hidden_files = true` in config; on Windows, system files (e.g. `$Recycle.Bin`) can be shown separately via `show_system_files = true` in config
-- **Sort order** — sort by name (default), modification time, size, or extension; press `s` to cycle modes, `S` to reverse direction; directories always listed first; configurable via `sort_mode` and `sort_ascending` in config; current sort mode shown in status bar
-- **Go-to-path bar** — press `Ctrl+G` to type an arbitrary path and jump to it; Tab auto-completes from the filesystem; navigates to directories or selects files
-- **Filter** — press `/` to type a query that narrows visible entries in real-time; Enter persists the filter, Escape clears it; filter auto-clears on directory change
-- **Multi-select** — press Space to mark/unmark entries for future bulk operations; marks are path-based and survive scrolling and filtering; marked entries highlighted with a distinct background; mark count shown in status bar
-- **Cloud file handling** — OneDrive, Dropbox, and other cloud-synced placeholder files are detected automatically (Windows only); retains the original file-type icon with a cloud status icon in the status column; dim styling; metadata pane shows filename and "Cloud: not downloaded"; preview pane shows "[cloud file – not downloaded]" instead of attempting to read the file; properties overlay shows "Cloud file" in the Attributes field
-- **Symlink awareness** — symlinks shown with dedicated icons, cyan text, and ` → target` suffix; broken symlinks highlighted in red; preview pane shows "[broken symlink]" for broken symlinks
-- **Symlink creation** — press `Ctrl+L` to create a symbolic link to the selected item; prompts for the link name
-- **File actions** — open files with default app, rename, delete (with optional confirmation), copy/cut/paste with OS clipboard interop (files copied in wade can be pasted in Explorer and vice versa; Windows only); multi-select supported for delete/copy/cut; delete confirmation can be toggled via `confirm_delete_enabled` config
-- **Copy path to clipboard** — press `y` to copy the selected item's absolute path to the OS clipboard; press `Y` to copy the path relative to the git repo root (shows an error if not inside a git repo); works in both normal view and expanded preview mode
-- **Mouse support** — click to select entries in any pane, scroll wheel to navigate; left/right pane clicks navigate directories; right-click opens a context menu with common file actions (open, rename, delete, copy, cut, paste, properties, git stage/unstage)
-- **File properties** — press `i` to open a scrollable properties overlay showing detailed metadata: name, full path, type (extension-based labels like "PDF" or "C#", symlink-aware labels like "Symlink → File"), link target, formatted size with raw bytes (directories calculate size asynchronously), created/modified/accessed timestamps, file attributes, read-only status, git status (colored: modified=yellow, staged=cyan, untracked=green, conflict=red), and extracted file metadata when available (NuGet package info, PE/assembly details, Office document properties, media info); scroll with arrow keys, Page Up/Down, Home/End when content exceeds screen height
-- **Markdown preview** — renders markdown files with styled headings, lists, code blocks (with syntax highlighting), blockquotes, tables, links, and more using a built-in [Markdig](https://github.com/xoofx/markdig)-based renderer (no external tools needed; enabled by default)
-- **In-app configuration** — press `,` to open a config dialog with toggleable options organized in a hierarchy: icons, hidden/system files, sort mode/direction, columns, delete confirmation, copy-symlinks-as-links, terminal title, git status, right pane (with nested file details and file previews sub-groups controlling metadata providers and preview providers independently); changes are saved directly to the config file
-- **Bookmarks** — press `b` to open a filterable bookmarks dialog; press `B` to toggle the current directory as a bookmark; quick-jump with `1`-`9`, `Enter` to navigate, `d`/`Delete` to remove; bookmarks persist to `~/.config/wade/bookmarks` in MRU order
-- **File finder** — press `Ctrl+F` to recursively search for files and directories by name in the current directory tree; type to filter, Up/Down to navigate, Enter to open; results stream in progressively and prioritize the current directory (breadth-first); shows full relative paths with matched characters highlighted in green and a live result count; automatically skips `.git` directories and respects hidden/system file visibility settings
-- **Action palette** — press `Ctrl+P` or `Ctrl+K` to open a searchable action palette listing all available commands; type to filter, Up/Down to navigate, Enter to execute; supports submenus (e.g., "Change preview" opens a submenu of available preview modes for the selected file)
-- **Shell integration** — press `Ctrl+T` to open a new terminal in the current directory; use shell wrapper functions (`wd`) to cd to the final directory on exit (bash, zsh, fish, PowerShell wrappers provided)
-- **Terminal title** — sets the terminal tab title to the current directory; uses xterm title stack to restore the original title on exit (toggle with `terminal_title_enabled` config, default: on)
-- **Auto-refresh** — file list updates automatically when files are created, deleted, renamed, or modified externally (via `FileSystemWatcher` with 300ms debounce; selection preserved across refreshes)
-- **Wrap-around navigation** — pressing Up at the top of a list jumps to the bottom, and Down at the bottom jumps to the top (applies to file list and settings dialog)
-- **Minimal rendering** — raw VT/ANSI escape sequences, double-buffered with dirty-row tracking, cell diff, and style diffing
+### Layout & Navigation
+
+- **Miller columns** — three-pane layout (parent / current / preview), each pane independently hideable
+- **Column headers** — labeled header row with separator line in all panes; adapts to visible columns and drive view
+- **Detail columns** — file size and modification date with responsive column tiers; async directory sizes (gated per drive type)
+- **Drive navigation** — browse drives on Windows with file system, free/total space, and percent-full bar columns; SSD/HDD detection
+- **File-type icons** — Nerd Fonts v3 glyphs per extension
+- **Sort order** — by name, date, size, or extension (`s` to cycle, `S` to reverse)
+- **Filter** — `/` to narrow entries in real-time
+- **Go-to-path** — `Ctrl+G` with Tab autocomplete
+- **File finder** — `Ctrl+F` recursive breadth-first search with fuzzy matching and highlighted results
+- **Bookmarks** — `b` to open, `B` to toggle; persists in MRU order
+- **Hidden files** — `.` to toggle; separate system files toggle on Windows
+
+### Preview & Metadata
+
+- **File preview** — text, hex, git diff, archive contents, images (Sixel), PDF (via `pdftopng`), MSI file listing, and Markdown (built-in Markdig renderer); multiple modes per file switchable via `p`
+- **Expanded preview** — Right/Enter expands to full width; scrollable
+- **Image preview** — Sixel graphics (Windows Terminal 1.22+, kitty, WezTerm, etc.)
+- **File metadata** — structured metadata above preview and in properties overlay (`i`); format-specific providers for images (EXIF), executables (PE/.NET), Office docs, NuGet packages, archives, PDF, media files, and MSI installers
+- **File properties** — `i` for scrollable overlay with timestamps, attributes, git status, and extracted metadata
+
+### Git Integration
+
+- **Git status** — color-coded files/dirs (modified, staged, untracked, conflict); status icons; branch name with ahead/behind counts in status bar
+- **Git actions** — action palette (`Ctrl+P`) offers diff preview, stage/unstage, commit, push, pull, fetch
+
+### File Operations
+
+- **File actions** — open, rename, delete (with confirmation), copy/cut/paste with Windows clipboard interop; multi-select supported
+- **Copy path** — `y` for absolute path, `Y` for git-relative path
+- **Symlinks** — visual distinction with target display; `Ctrl+L` to create
+- **Cloud files** — auto-detected OneDrive/Dropbox placeholders shown with cloud icon (Windows)
+
+### Interface
+
+- **Mouse support** — click, scroll, right-click context menu in all panes
+- **Action palette** — `Ctrl+P` / `Ctrl+K` searchable command list with submenus
+- **In-app config** — `,` opens hierarchical settings dialog
+- **Status bar** — path, git branch, item count, file type, encoding, line endings, size, sort mode
+- **Shell integration** — `Ctrl+T` opens terminal; `wd` wrapper for cd-on-exit (bash, zsh, fish, PowerShell)
+- **Auto-refresh** — `FileSystemWatcher` with 300ms debounce
+- **Terminal title** — shows current directory; clears on exit
+- **Minimal rendering** — raw VT/ANSI, double-buffered with dirty-row tracking
 
 ## Requirements
 
