@@ -309,6 +309,13 @@ internal static class PaneRenderer
                 }
             }
         }
+
+        // Separator line below headers
+        if (headerRect.Height > 1)
+        {
+            CellStyle separatorStyle = new(BorderColor, null);
+            buffer.FillRow(row + 1, left, headerRect.Width, '\u2500', separatorStyle);
+        }
     }
 
     public static void RenderFileList(

@@ -1077,16 +1077,16 @@ internal sealed class App
         // Center pane: current directory
         bool isDriveView = _currentPath == DirectoryContents.DrivesPath;
 
-        // Column headers
-        if (_config.ColumnHeadersEnabled && fileListPane.Height > 1)
+        // Column headers + separator line
+        if (_config.ColumnHeadersEnabled && fileListPane.Height > 2)
         {
             bool hasStatusCol = _gitStatuses is not null || entries.Any(e => e.IsCloudPlaceholder);
-            Rect headerRect = fileListPane with { Height = 1 };
+            Rect headerRect = fileListPane with { Height = 2 };
             PaneRenderer.RenderColumnHeaders(
                 buffer, headerRect, _config.ShowIconsEnabled,
                 _config.SizeColumnEnabled, _config.DateColumnEnabled,
                 isDriveView, hasStatusCol);
-            fileListPane = fileListPane with { Top = fileListPane.Top + 1, Height = fileListPane.Height - 1 };
+            fileListPane = fileListPane with { Top = fileListPane.Top + 2, Height = fileListPane.Height - 2 };
         }
 
         PaneRenderer.RenderFileList(
@@ -1140,8 +1140,21 @@ internal sealed class App
                 parentSelected = 0;
             }
 
-            int parentScroll = CalculateScroll(parentSelected, _layout.LeftPane.Height, parentEntries.Count);
-            PaneRenderer.RenderFileList(buffer, _layout.LeftPane, parentEntries, parentSelected, parentScroll, isActive: false,
+            Rect leftPane = _layout.LeftPane;
+
+            // Column headers + separator line
+            if (_config.ColumnHeadersEnabled && leftPane.Height > 2)
+            {
+                Rect leftHeaderRect = leftPane with { Height = 2 };
+                PaneRenderer.RenderColumnHeaders(
+                    buffer, leftHeaderRect, _config.ShowIconsEnabled,
+                    showSize: false, showDate: false,
+                    isDriveView: false, hasStatusCol: false);
+                leftPane = leftPane with { Top = leftPane.Top + 2, Height = leftPane.Height - 2 };
+            }
+
+            int parentScroll = CalculateScroll(parentSelected, leftPane.Height, parentEntries.Count);
+            PaneRenderer.RenderFileList(buffer, leftPane, parentEntries, parentSelected, parentScroll, isActive: false,
                 showIcons: _config.ShowIconsEnabled);
 
             // Cache for mouse hit-testing
@@ -1159,7 +1172,19 @@ internal sealed class App
                 List<FileSystemEntry> previewEntries = _directoryContents.GetEntries(selected.FullPath);
                 if (previewEntries.Count > 0)
                 {
-                    PaneRenderer.RenderFileList(buffer, _layout.RightPane, previewEntries, -1, 0, isActive: false,
+                    Rect rightListPane = _layout.RightPane;
+
+                    if (_config.ColumnHeadersEnabled && rightListPane.Height > 2)
+                    {
+                        Rect rightHeaderRect = rightListPane with { Height = 2 };
+                        PaneRenderer.RenderColumnHeaders(
+                            buffer, rightHeaderRect, _config.ShowIconsEnabled,
+                            showSize: false, showDate: false,
+                            isDriveView: false, hasStatusCol: false);
+                        rightListPane = rightListPane with { Top = rightListPane.Top + 2, Height = rightListPane.Height - 2 };
+                    }
+
+                    PaneRenderer.RenderFileList(buffer, rightListPane, previewEntries, -1, 0, isActive: false,
                         showIcons: _config.ShowIconsEnabled);
                 }
                 else
@@ -1774,7 +1799,8 @@ internal sealed class App
         if (HitTestPane(_layout.CenterPane, row, col))
         {
             // Center pane click — select the entry (same as arrow keys)
-            int entryIndex = _scrollOffset + (row - _layout.CenterPane.Top);
+            int headerOffset = _config.ColumnHeadersEnabled ? 2 : 0;
+            int entryIndex = _scrollOffset + (row - _layout.CenterPane.Top - headerOffset);
             if (entryIndex >= 0 && entryIndex < entries.Count)
             {
                 _selectedIndex = entryIndex;
@@ -1791,7 +1817,8 @@ internal sealed class App
         else if (HitTestPane(_layout.LeftPane, row, col) && _leftPaneEntries is not null)
         {
             // Left pane click
-            int entryIndex = _leftPaneScroll + (row - _layout.LeftPane.Top);
+            int leftHeaderOffset = _config.ColumnHeadersEnabled ? 2 : 0;
+            int entryIndex = _leftPaneScroll + (row - _layout.LeftPane.Top - leftHeaderOffset);
             if (entryIndex >= 0 && entryIndex < _leftPaneEntries.Count)
             {
                 FileSystemEntry clicked = _leftPaneEntries[entryIndex];
@@ -1837,7 +1864,8 @@ internal sealed class App
                 if (selected.IsDirectory)
                 {
                     List<FileSystemEntry> previewEntries = _directoryContents.GetEntries(selected.FullPath);
-                    int entryIndex = row - _layout.RightPane.Top; // scroll is always 0 for preview
+                    int rightHeaderOffset = _config.ColumnHeadersEnabled ? 2 : 0;
+                    int entryIndex = row - _layout.RightPane.Top - rightHeaderOffset; // scroll is always 0 for preview
                     if (entryIndex >= 0 && entryIndex < previewEntries.Count)
                     {
                         FileSystemEntry clicked = previewEntries[entryIndex];
