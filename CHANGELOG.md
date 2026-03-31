@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Add drive list view with drive-specific columns: volume label, file system type, free space, total size, and a visual percent-full bar with centered percent text — replaces the normal date/size columns when viewing drives; columns hide responsively (label first, bar last)
+- Add TB (terabyte) tier to `FormatSize` for drives and files larger than 1 TB
+
+### Changed
+- Enhance drive properties overlay — show free/total space with usage percentage, volume label, and file system type alongside drive media type
+
 ## [1.9.0] - 2026-03-30
 
 ### Added
