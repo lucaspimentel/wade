@@ -3,7 +3,7 @@
 ## [1.10.0] - 2026-03-30
 
 ### Added
-- Add column headers row to center pane — shows column labels (Name, Size, Date, or drive-specific: Label, Format, Free, Size, % Full) that adapt with responsive column tiers; togglable via `column_headers_enabled` config (default: on)
+- Add column headers to all three panes — shows column labels (Name, Size, Date, or drive-specific: Label, Format, Free, Size, % Full) that adapt with responsive column tiers; togglable via `column_headers_enabled` config (default: on)
 - Add drive list view with drive-specific columns: volume label, file system type, free space, total size, and a visual percent-full bar with centered percent text — replaces the normal date/size columns when viewing drives; columns hide responsively (label first, bar last)
 - Add TB (terabyte) tier to `FormatSize` for drives and files larger than 1 TB
 
