@@ -1075,12 +1075,13 @@ internal sealed class App
             : _layout.CenterPane;
 
         // Center pane: current directory
+        bool isDriveView = _currentPath == DirectoryContents.DrivesPath;
         PaneRenderer.RenderFileList(
             buffer, fileListPane, entries, _selectedIndex, _scrollOffset,
             isActive: true, showIcons: _config.ShowIconsEnabled,
             showSize: _config.SizeColumnEnabled, showDate: _config.DateColumnEnabled,
             markedPaths: _markedPaths, gitStatuses: _gitStatuses,
-            dirSizes: _inlineDirSizes);
+            dirSizes: _inlineDirSizes, isDriveView: isDriveView);
 
         // Search bar at bottom of center pane
         if (showSearchBar)
