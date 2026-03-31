@@ -60,7 +60,9 @@ internal sealed class DirectoryContents
                 continue;
             }
 
-            string name = drive.Name.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string name = drive.Name.Length > 1
+                ? drive.Name.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                : drive.Name;
             list.Add(new FileSystemEntry(
                 name,
                 PathCompletion.CapitalizeDriveLetter(drive.RootDirectory.FullName),

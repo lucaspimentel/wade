@@ -2344,7 +2344,8 @@ internal sealed class App
                 break;
 
             case ConsoleKey.Enter:
-                string path = _goToPathInput!.Value.TrimEnd('/', '\\');
+                string rawPath = _goToPathInput!.Value;
+                string path = rawPath.Length > 1 ? rawPath.TrimEnd('/', '\\') : rawPath;
                 _inputMode = InputMode.Normal;
                 _goToPathInput = null;
                 _goToPathSuggestion = null;
