@@ -90,11 +90,9 @@ When switching preview providers (e.g., from Glow-rendered Markdown to None, or 
 
 Implemented — drive list shows volume label, file system, free space, total size, and percent-full bar with responsive column tiers. Properties overlay shows free/total with usage percentage, volume label, and file system.
 
-### Column headers in center pane
+### ~~Column headers in center pane~~ ✅
 
-- [ ] Add column headers row to the center pane (name, size, date, or drive-specific columns like file system/free/size/bar)
-  - Should be a config toggle (e.g. `column_headers_enabled`, default on)
-  - Key files: `PaneRenderer.RenderFileList` (renders columns), `WadeConfig`, `ConfigDialogState`
+Implemented — header row shows column labels (Name, Size, Date or drive-specific: Label, Format, Free, Size, % Full). Togglable via `column_headers_enabled` config (default on). Column widths shared via extracted `ComputeColumnLayout` helper.
 
 ### ~~Restore terminal title on exit~~ ✅
 
