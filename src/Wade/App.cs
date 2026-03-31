@@ -1076,6 +1076,19 @@ internal sealed class App
 
         // Center pane: current directory
         bool isDriveView = _currentPath == DirectoryContents.DrivesPath;
+
+        // Column headers
+        if (_config.ColumnHeadersEnabled && fileListPane.Height > 1)
+        {
+            bool hasStatusCol = _gitStatuses is not null || entries.Any(e => e.IsCloudPlaceholder);
+            Rect headerRect = fileListPane with { Height = 1 };
+            PaneRenderer.RenderColumnHeaders(
+                buffer, headerRect, _config.ShowIconsEnabled,
+                _config.SizeColumnEnabled, _config.DateColumnEnabled,
+                isDriveView, hasStatusCol);
+            fileListPane = fileListPane with { Top = fileListPane.Top + 1, Height = fileListPane.Height - 1 };
+        }
+
         PaneRenderer.RenderFileList(
             buffer, fileListPane, entries, _selectedIndex, _scrollOffset,
             isActive: true, showIcons: _config.ShowIconsEnabled,

@@ -26,6 +26,8 @@ internal sealed class WadeConfig
 
     public bool DateColumnEnabled { get; set; } = true;
 
+    public bool ColumnHeadersEnabled { get; set; } = true;
+
     public bool CopySymlinksAsLinksEnabled { get; set; } = true;
 
     public bool ZipPreviewEnabled { get; set; } = true;
@@ -153,6 +155,9 @@ internal sealed class WadeConfig
                         break;
                     case "date_column_enabled":
                         config.DateColumnEnabled = ParseBool(value, config.DateColumnEnabled);
+                        break;
+                    case "column_headers_enabled":
+                        config.ColumnHeadersEnabled = ParseBool(value, config.ColumnHeadersEnabled);
                         break;
                     case "copy_symlinks_as_links_enabled":
                         config.CopySymlinksAsLinksEnabled = ParseBool(value, config.CopySymlinksAsLinksEnabled);
@@ -312,6 +317,7 @@ internal sealed class WadeConfig
                           preview_pane_enabled = {(PreviewPaneEnabled ? "true" : "false")}
                           size_column_enabled = {(SizeColumnEnabled ? "true" : "false")}
                           date_column_enabled = {(DateColumnEnabled ? "true" : "false")}
+                          column_headers_enabled = {(ColumnHeadersEnabled ? "true" : "false")}
                           copy_symlinks_as_links_enabled = {(CopySymlinksAsLinksEnabled ? "true" : "false")}
                           zip_preview_enabled = {(ZipPreviewEnabled ? "true" : "false")}
                           terminal_title_enabled = {(TerminalTitleEnabled ? "true" : "false")}
@@ -349,6 +355,7 @@ internal sealed class WadeConfig
                $"\"preview_pane_enabled\":{(PreviewPaneEnabled ? "true" : "false")}," +
                $"\"size_column_enabled\":{(SizeColumnEnabled ? "true" : "false")}," +
                $"\"date_column_enabled\":{(DateColumnEnabled ? "true" : "false")}," +
+               $"\"column_headers_enabled\":{(ColumnHeadersEnabled ? "true" : "false")}," +
                $"\"copy_symlinks_as_links_enabled\":{(CopySymlinksAsLinksEnabled ? "true" : "false")}," +
                $"\"zip_preview_enabled\":{(ZipPreviewEnabled ? "true" : "false")}," +
                $"\"terminal_title_enabled\":{(TerminalTitleEnabled ? "true" : "false")}," +

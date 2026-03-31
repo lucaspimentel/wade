@@ -26,6 +26,8 @@ internal sealed class ConfigDialogState
 
     public bool DateColumn { get; set; }
 
+    public bool ColumnHeaders { get; set; }
+
     public bool ZipPreview { get; set; }
 
     public bool PdfPreview { get; set; }
@@ -75,6 +77,7 @@ internal sealed class ConfigDialogState
             PreviewPane = config.PreviewPaneEnabled,
             SizeColumn = config.SizeColumnEnabled,
             DateColumn = config.DateColumnEnabled,
+            ColumnHeaders = config.ColumnHeadersEnabled,
             ZipPreview = config.ZipPreviewEnabled,
             PdfPreview = config.PdfPreviewEnabled,
             PdfMetadata = config.PdfMetadataEnabled,
@@ -110,6 +113,7 @@ internal sealed class ConfigDialogState
         config.PreviewPaneEnabled = PreviewPane;
         config.SizeColumnEnabled = SizeColumn;
         config.DateColumnEnabled = DateColumn;
+        config.ColumnHeadersEnabled = ColumnHeaders;
         config.ZipPreviewEnabled = ZipPreview;
         config.PdfPreviewEnabled = PdfPreview;
         config.PdfMetadataEnabled = PdfMetadata;
@@ -268,6 +272,12 @@ internal sealed class ConfigDialogState
                 Label = "Show Date Column",
                 FormatValue = () => FormatBool(DateColumn),
                 Toggle = () => DateColumn = !DateColumn,
+            },
+            new ConfigItem
+            {
+                Label = "Show Column Headers",
+                FormatValue = () => FormatBool(ColumnHeaders),
+                Toggle = () => ColumnHeaders = !ColumnHeaders,
             },
             new ConfigItem
             {
