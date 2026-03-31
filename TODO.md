@@ -2,17 +2,13 @@
 
 ## Bugs (open)
 
-### Linux: go-to-path (Ctrl+G) "/" not working
+### ~~Linux: go-to-path (Ctrl+G) "/" not working~~ ✅
 
-- [ ] Navigating to `/` via the go-to-path dialog fails on Linux
-  - Likely related to `IsDriveRoot` / `DrivesPath` logic being Windows-centric
-  - Key files: `App.cs:2327` (`HandleGoToPathKey`), `DirectoryContents.cs:47` (`IsDriveRoot`)
+Fixed — `TrimEnd('/', '\\')` stripped single-char `/` to empty string. Now preserves paths of length 1.
 
-### Linux: root mount "/" shows empty name in drive list
+### ~~Linux: root mount "/" shows empty name in drive list~~ ✅
 
-- [ ] On Linux, the `/` mount shows an empty string in the drive list instead of `"/"`
-  - Cause: `drive.Name` is `"/"` and `TrimEnd(Path.DirectorySeparatorChar)` strips it to `""`
-  - Key file: `DirectoryContents.cs:63` (`GetDriveEntries`)
+Fixed — same root cause: `TrimEnd` on `drive.Name` stripped `/` to `""`. Now skips trimming for single-char names.
 
 ---
 
