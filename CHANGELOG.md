@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.10.0] - 2026-03-30
 
 ### Added
 - Add column headers row to center pane — shows column labels (Name, Size, Date, or drive-specific: Label, Format, Free, Size, % Full) that adapt with responsive column tiers; togglable via `column_headers_enabled` config (default: on)
