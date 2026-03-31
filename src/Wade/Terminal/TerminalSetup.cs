@@ -120,7 +120,7 @@ internal sealed class TerminalSetup : IDisposable
         Console.Write(AnsiCodes.ResetAttributes);
         Console.Write(AnsiCodes.ShowCursor);
         Console.Write(AnsiCodes.LeaveAlternateScreen);
-        Console.Write(AnsiCodes.RestoreTitle);
+        Console.Write(AnsiCodes.ClearTitle);
         Console.Out.Flush();
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
