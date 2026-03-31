@@ -388,4 +388,97 @@ public class FilePreviewTests
             File.Delete(tempFile);
         }
     }
+
+    [Theory]
+    [InlineData(true, "UTF-16 LE")]
+    [InlineData(false, "UTF-16 BE")]
+    public void DetectFileMetadata_Utf16NoBom_ReturnsCorrectEncoding(bool littleEndian, string expectedEncoding)
+    {
+        Encoding encoding = littleEndian ? Encoding.Unicode : Encoding.BigEndianUnicode;
+        byte[] content = encoding.GetBytes("Hello World, this is a test file.");
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllBytes(tempFile, content);
+            FileMetadata metadata = FilePreview.DetectFileMetadata(tempFile);
+            Assert.False(metadata.IsBinary);
+            Assert.Equal(expectedEncoding, metadata.Encoding);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public void IsBinary_Utf16LeNoBom_ReturnsFalse()
+    {
+        byte[] content = Encoding.Unicode.GetBytes("Hello World, this is a test file.");
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllBytes(tempFile, content);
+            Assert.False(FilePreview.IsBinary(tempFile));
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public void GetPreviewLines_Utf16LeNoBom_ReturnsDecodedText()
+    {
+        byte[] content = Encoding.Unicode.GetBytes("line1\nline2\nline3");
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllBytes(tempFile, content);
+            string[] lines = FilePreview.GetPreviewLines(tempFile, out FileMetadata metadata);
+            Assert.Equal("UTF-16 LE", metadata.Encoding);
+            Assert.Equal(3, lines.Length);
+            Assert.Equal("line1", lines[0]);
+            Assert.Equal("line2", lines[1]);
+            Assert.Equal("line3", lines[2]);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public void DetectFileMetadata_ShortUtf16Pattern_ReturnsBinary()
+    {
+        // Only 4 bytes (2 code units) — below the 8-byte minimum for heuristic
+        byte[] content = [0x48, 0x00, 0x65, 0x00];
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllBytes(tempFile, content);
+            FileMetadata metadata = FilePreview.DetectFileMetadata(tempFile);
+            Assert.True(metadata.IsBinary);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public void DetectFileMetadata_AllZeroes_ReturnsBinary()
+    {
+        byte[] content = new byte[16];
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllBytes(tempFile, content);
+            FileMetadata metadata = FilePreview.DetectFileMetadata(tempFile);
+            Assert.True(metadata.IsBinary);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
 }

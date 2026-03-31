@@ -11,6 +11,7 @@
 - Enhance drive properties overlay — show free/total space with usage percentage, volume label, and file system type alongside drive media type
 
 ### Fixed
+- Fix BOM-less UTF-16 files incorrectly detected as binary — heuristic detects alternating null-byte pattern when no BOM is present
 - Fix terminal title not cleared on exit on Linux — reorder cleanup to write after leaving alternate screen
 - Fix go-to-path (Ctrl+G) failing for "/" on Linux — `TrimEnd` stripped the root path to an empty string
 - Fix root mount "/" showing empty name in Linux drive list — same `TrimEnd` issue
