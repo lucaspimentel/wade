@@ -5014,7 +5014,7 @@ internal sealed class App
     private void RenderFileFinder(ScreenBuffer buffer, int width, int height)
     {
         List<FinderDisplayEntry> filtered = GetFinderDisplayEntries();
-        int contentWidth = Math.Min(70, width - 8);
+        int contentWidth = Math.Clamp(width * 3 / 4, 70, width - 8);
         const int maxItemRows = 18;
         int contentHeight = maxItemRows + 3; // text input + separator + count + item rows
         const string Footer = "[↑↓] Navigate  [Enter] Open  [Esc] Cancel";

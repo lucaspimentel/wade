@@ -18,6 +18,7 @@ internal static class FuzzyScorer
     internal const int BonusConsecutive = 4;
     internal const int BonusFirstCharMultiplier = 2;
     internal const int BonusCaseMatch = 1;
+    internal const int PenaltyTrailingGap = -1;
     internal const int FileNameBonus = 1000;
 
     private static readonly char[] s_separators = Path.DirectorySeparatorChar == Path.AltDirectorySeparatorChar
@@ -51,11 +52,14 @@ internal static class FuzzyScorer
             return int.MinValue;
         }
 
-        // Pre-lowercase the query once.
+        // Pre-lowercase the query once, normalizing path separators.
         Span<char> queryLower = queryLen <= 64 ? stackalloc char[queryLen] : new char[queryLen];
         for (int i = 0; i < queryLen; i++)
         {
-            queryLower[i] = char.ToLowerInvariant(query[i]);
+            char c = query[i];
+            queryLower[i] = c is '/' or '\\'
+                ? char.ToLowerInvariant(Path.DirectorySeparatorChar)
+                : char.ToLowerInvariant(c);
         }
 
         // Forward scan: greedily find the first subsequence match.
@@ -157,8 +161,10 @@ internal static class FuzzyScorer
             // Base match score.
             score += ScoreMatch;
 
-            // Case-sensitive bonus.
-            if (query[qi] == target[pos])
+            // Case-sensitive bonus (treat '/' and '\' as equivalent).
+            char qc = query[qi];
+            char tc = target[pos];
+            if (qc == tc || (qc is '/' or '\\' && tc is '/' or '\\'))
             {
                 score += BonusCaseMatch;
             }
@@ -199,6 +205,14 @@ internal static class FuzzyScorer
 
             prevPosition = pos;
             prevBonus = bonus;
+        }
+
+        // Trailing gap penalty: penalize unmatched characters after the last match.
+        // This favors tighter matches (e.g. "src\Foo" over "src\Foo.Bar.Baz").
+        if (prevPosition >= 0)
+        {
+            int trailingGap = target.Length - prevPosition - 1;
+            score += PenaltyTrailingGap * trailingGap;
         }
 
         return score;
