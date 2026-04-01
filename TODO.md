@@ -107,6 +107,11 @@ Fixed — `RestoreTitle` was being written before `LeaveAlternateScreen`, so the
 
 Implemented — `HasExpandablePreview()` checks that at least one real preview provider (not None/Hex) or metadata provider exists before entering expanded preview mode.
 
+### Use JSON highlighting for `.slnf` files (Visual Studio Solution Filter)
+
+- [ ] Add `[".slnf"] = Json` to `LanguageMap.cs` — `.slnf` files are JSON; already mapped nearby: `.json` at line 50, `.slnx` (XmlHtml) at line 70.
+  - File: `src/Wade/Highlighting/LanguageMap.cs`
+
 ### Keyboard shortcut convention audit
 
 - [ ] Review remaining keybinding consistency. Current mix: some dialogs/tools use `Ctrl+` (`Ctrl+F` finder, `Ctrl+T` terminal, `Ctrl+L` symlink, `Ctrl+R` refresh, `Ctrl+P` command palette, `Ctrl+G` go-to-path) while others use bare keys (`n`/`N` new file/dir, `b`/`B` bookmarks, `/` filter, `,` config, `?` help, `i` properties). Convention: `Ctrl+<key>` for opening tools/dialogs/overlays, bare keys for direct actions.
