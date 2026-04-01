@@ -4,6 +4,12 @@
 
 ### Changed
 - Update and pin all NuGet package references to latest exact versions
+- Scale file finder dialog width to 75% of terminal width (was capped at 70 columns)
+
+### Fixed
+- Fix crash on lone surrogate characters in preview rendering
+- Normalize `/` and `\` in file finder search so either works as a path separator on Windows
+- Add trailing gap penalty to fuzzy scorer so tighter path matches rank higher (e.g. `src/Foo` ranks above `src/Foo.Bar.Baz`)
 
 ## [1.10.0] - 2026-03-30
 
