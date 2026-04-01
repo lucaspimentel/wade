@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- Update and pin all NuGet package references to latest exact versions
+
 ## [1.10.0] - 2026-03-30
 
 ### Added
