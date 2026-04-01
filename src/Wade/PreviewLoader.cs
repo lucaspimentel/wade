@@ -1,3 +1,4 @@
+using Wade.FileSystem;
 using Wade.Highlighting;
 using Wade.Preview;
 using Wade.Terminal;
@@ -85,7 +86,12 @@ internal sealed class PreviewLoader
 
                 if (allSections.Count > 0 && !ct.IsCancellationRequested)
                 {
-                    _pipeline.Inject(new MetadataReadyEvent(path, [.. allSections], fileTypeLabel));
+                    // Detect encoding/line ending for non-binary files
+                    FileMetadata fileMetadata = FilePreview.DetectFileMetadata(path);
+                    string? encoding = fileMetadata.IsBinary ? null : fileMetadata.Encoding;
+                    string? lineEnding = fileMetadata.IsBinary ? null : fileMetadata.LineEnding;
+
+                    _pipeline.Inject(new MetadataReadyEvent(path, [.. allSections], fileTypeLabel, encoding, lineEnding));
 
                     // Reduce available height for preview so image providers don't size to the full pane
                     StyledLine[] renderedMetadata = MetadataRenderer.Render([.. allSections], context.PaneWidthCells);
@@ -149,8 +155,6 @@ internal sealed class PreviewLoader
                     result.SixelPixelWidth,
                     result.SixelPixelHeight,
                     result.FileTypeLabel,
-                    result.Encoding,
-                    result.LineEnding,
                     result.IsRendered));
             }
             else if (result.SixelData is not null)
@@ -168,8 +172,6 @@ internal sealed class PreviewLoader
                     path,
                     result.TextLines,
                     result.FileTypeLabel,
-                    result.Encoding,
-                    result.LineEnding,
                     result.IsRendered,
                     result.IsPlaceholder));
             }

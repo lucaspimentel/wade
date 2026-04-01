@@ -188,8 +188,6 @@ internal sealed class TextPreviewProvider : IPreviewProvider
             TextLines = styledLines,
             IsPlaceholder = metadata.PlaceholderMessage is not null,
             FileTypeLabel = FilePreview.GetFileTypeLabel(path) ?? "Text",
-            Encoding = metadata.Encoding,
-            LineEnding = metadata.LineEnding,
         };
     }
 }

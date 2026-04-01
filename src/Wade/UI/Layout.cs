@@ -26,7 +26,11 @@ internal sealed class Layout
 
     public Rect StatusBar { get; private set; }
 
-    public void Calculate(int terminalWidth, int terminalHeight, bool previewPaneEnabled = true)
+    public void Calculate(
+        int terminalWidth,
+        int terminalHeight,
+        bool previewPaneEnabled = true,
+        bool parentPaneEnabled = true)
     {
         // Reserve 1 row for status bar at the bottom
         int contentHeight = terminalHeight - 1;
@@ -35,10 +39,10 @@ internal sealed class Layout
             contentHeight = 1;
         }
 
-        if (previewPaneEnabled)
+        if (parentPaneEnabled && previewPaneEnabled)
         {
-            // Split: 20% / 40% / 40% with 1-char border (vertical line) between panes
-            int usableWidth = terminalWidth - 2; // 2 border columns
+            // 3 panes: 20% / 40% / 40% with 2 border columns
+            int usableWidth = terminalWidth - 2;
             int leftWidth = Math.Max(1, usableWidth * 20 / 100);
             int centerWidth = Math.Max(1, usableWidth * 40 / 100);
             int rightWidth = Math.Max(1, usableWidth - leftWidth - centerWidth);
@@ -47,15 +51,33 @@ internal sealed class Layout
             CenterPane = new Rect(leftWidth + 1, 0, centerWidth, contentHeight);
             RightPane = new Rect(leftWidth + 1 + centerWidth + 1, 0, rightWidth, contentHeight);
         }
-        else
+        else if (parentPaneEnabled)
         {
-            // No preview pane: 25% / 75% with 1 border column
-            int usableWidth = terminalWidth - 1; // 1 border column
+            // Left + center: 25% / 75% with 1 border column
+            int usableWidth = terminalWidth - 1;
             int leftWidth = Math.Max(1, usableWidth * 25 / 100);
             int centerWidth = Math.Max(1, usableWidth - leftWidth);
 
             LeftPane = new Rect(0, 0, leftWidth, contentHeight);
             CenterPane = new Rect(leftWidth + 1, 0, centerWidth, contentHeight);
+            RightPane = new Rect(0, 0, 0, 0);
+        }
+        else if (previewPaneEnabled)
+        {
+            // Center + right: 50% / 50% with 1 border column
+            int usableWidth = terminalWidth - 1;
+            int centerWidth = Math.Max(1, usableWidth / 2);
+            int rightWidth = Math.Max(1, usableWidth - centerWidth);
+
+            LeftPane = new Rect(0, 0, 0, 0);
+            CenterPane = new Rect(0, 0, centerWidth, contentHeight);
+            RightPane = new Rect(centerWidth + 1, 0, rightWidth, contentHeight);
+        }
+        else
+        {
+            // Center only: full width, no borders
+            LeftPane = new Rect(0, 0, 0, 0);
+            CenterPane = new Rect(0, 0, terminalWidth, contentHeight);
             RightPane = new Rect(0, 0, 0, 0);
         }
 

@@ -60,7 +60,9 @@ internal sealed class DirectoryContents
                 continue;
             }
 
-            string name = drive.Name.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string name = drive.Name.Length > 1
+                ? drive.Name.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                : drive.Name;
             list.Add(new FileSystemEntry(
                 name,
                 PathCompletion.CapitalizeDriveLetter(drive.RootDirectory.FullName),
@@ -70,7 +72,11 @@ internal sealed class DirectoryContents
                 LinkTarget: null,
                 IsBrokenSymlink: false,
                 IsDrive: true,
-                DriveMediaType: DriveTypeDetector.Detect(drive)));
+                DriveMediaType: DriveTypeDetector.Detect(drive),
+                DriveFormat: drive.DriveFormat,
+                DriveLabel: string.IsNullOrEmpty(drive.VolumeLabel) ? null : drive.VolumeLabel,
+                DriveFreeSpace: drive.TotalFreeSpace,
+                DriveTotalSize: drive.TotalSize));
         }
 
         return list;
@@ -241,7 +247,11 @@ internal sealed record FileSystemEntry(
     bool IsBrokenSymlink,
     bool IsDrive,
     bool IsCloudPlaceholder = false,
-    DriveMediaType DriveMediaType = DriveMediaType.Unknown)
+    DriveMediaType DriveMediaType = DriveMediaType.Unknown,
+    string? DriveFormat = null,
+    string? DriveLabel = null,
+    long DriveFreeSpace = 0,
+    long DriveTotalSize = 0)
 {
     public bool IsSymlink => LinkTarget != null;
 }

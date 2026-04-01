@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using System.Text;
 
 namespace Wade.FileSystem;
 
@@ -68,6 +69,7 @@ internal static class FilePreview
             [".yml"] = "YAML",
             [".xml"] = "XML",
             [".ini"] = "INI",
+            [".url"] = "URL Shortcut",
             [".env"] = "Env",
             [".csv"] = "CSV",
             [".tsv"] = "TSV",
@@ -179,7 +181,16 @@ internal static class FilePreview
             }
 
             var lines = new List<string>(MaxPreviewLines);
-            using var reader = new StreamReader(filePath);
+            Encoding? readerEncoding = metadata.Encoding switch
+            {
+                "UTF-16 LE" => Encoding.Unicode,
+                "UTF-16 BE" => Encoding.BigEndianUnicode,
+                _ => null,
+            };
+
+            using var reader = readerEncoding is not null
+                ? new StreamReader(filePath, readerEncoding)
+                : new StreamReader(filePath);
 
             while (lines.Count < MaxPreviewLines && reader.ReadLine() is { } line)
             {
@@ -250,6 +261,12 @@ internal static class FilePreview
                 return new FileMetadata(IsBinary: false, Encoding: "UTF-16 BE", LineEnding: null);
             }
 
+            // BOM-less UTF-16 heuristic: only when no BOM was detected
+            if (dataStart == 0 && TryDetectBomlessUtf16(buffer, out string bomlessEncoding))
+            {
+                return new FileMetadata(IsBinary: false, Encoding: bomlessEncoding, LineEnding: null);
+            }
+
             // Scan for null bytes (binary) and line endings
             bool hasCrLf = false;
             bool hasLf = false;
@@ -298,6 +315,47 @@ internal static class FilePreview
     }
 
     internal static bool IsBinary(string filePath) => DetectFileMetadata(filePath).IsBinary;
+
+    private static bool TryDetectBomlessUtf16(ReadOnlySpan<byte> buffer, out string encoding)
+    {
+        encoding = "";
+
+        // Need at least 4 code units (8 bytes) for a reliable heuristic
+        if (buffer.Length < 8)
+            return false;
+
+        // Analyze only complete code units (even byte count)
+        int analysisLength = buffer.Length & ~1;
+        int pairCount = analysisLength / 2;
+
+        int evenNullCount = 0; // nulls at positions 0, 2, 4, ...
+        int oddNullCount = 0;  // nulls at positions 1, 3, 5, ...
+
+        for (int i = 0; i < analysisLength; i += 2)
+        {
+            if (buffer[i] == 0) evenNullCount++;
+            if (buffer[i + 1] == 0) oddNullCount++;
+        }
+
+        int highThreshold = pairCount * 80 / 100;
+        int lowThreshold = pairCount * 10 / 100;
+
+        // UTF-16 LE: high byte (odd position) is mostly null, low byte (even) mostly non-null
+        if (oddNullCount >= highThreshold && evenNullCount <= lowThreshold)
+        {
+            encoding = "UTF-16 LE";
+            return true;
+        }
+
+        // UTF-16 BE: high byte (even position) is mostly null, low byte (odd) mostly non-null
+        if (evenNullCount >= highThreshold && oddNullCount <= lowThreshold)
+        {
+            encoding = "UTF-16 BE";
+            return true;
+        }
+
+        return false;
+    }
 }
 
 internal readonly record struct FileMetadata(bool IsBinary, string Encoding, string? LineEnding, string? PlaceholderMessage = null);

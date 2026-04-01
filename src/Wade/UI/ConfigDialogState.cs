@@ -18,11 +18,15 @@ internal sealed class ConfigDialogState
 
     public bool ConfirmDelete { get; set; }
 
+    public bool ParentPane { get; set; }
+
     public bool PreviewPane { get; set; }
 
     public bool SizeColumn { get; set; }
 
     public bool DateColumn { get; set; }
+
+    public bool ColumnHeaders { get; set; }
 
     public bool ZipPreview { get; set; }
 
@@ -69,9 +73,11 @@ internal sealed class ConfigDialogState
             SortMode = config.SortMode,
             SortAscending = config.SortAscending,
             ConfirmDelete = config.ConfirmDeleteEnabled,
+            ParentPane = config.ParentPaneEnabled,
             PreviewPane = config.PreviewPaneEnabled,
             SizeColumn = config.SizeColumnEnabled,
             DateColumn = config.DateColumnEnabled,
+            ColumnHeaders = config.ColumnHeadersEnabled,
             ZipPreview = config.ZipPreviewEnabled,
             PdfPreview = config.PdfPreviewEnabled,
             PdfMetadata = config.PdfMetadataEnabled,
@@ -103,9 +109,11 @@ internal sealed class ConfigDialogState
         config.SortMode = SortMode;
         config.SortAscending = SortAscending;
         config.ConfirmDeleteEnabled = ConfirmDelete;
+        config.ParentPaneEnabled = ParentPane;
         config.PreviewPaneEnabled = PreviewPane;
         config.SizeColumnEnabled = SizeColumn;
         config.DateColumnEnabled = DateColumn;
+        config.ColumnHeadersEnabled = ColumnHeaders;
         config.ZipPreviewEnabled = ZipPreview;
         config.PdfPreviewEnabled = PdfPreview;
         config.PdfMetadataEnabled = PdfMetadata;
@@ -267,6 +275,12 @@ internal sealed class ConfigDialogState
             },
             new ConfigItem
             {
+                Label = "Show Column Headers",
+                FormatValue = () => FormatBool(ColumnHeaders),
+                Toggle = () => ColumnHeaders = !ColumnHeaders,
+            },
+            new ConfigItem
+            {
                 Label = "Confirm Delete",
                 FormatValue = () => FormatBool(ConfirmDelete),
                 Toggle = () => ConfirmDelete = !ConfirmDelete,
@@ -288,6 +302,12 @@ internal sealed class ConfigDialogState
                 Label = "Show Git Status",
                 FormatValue = () => FormatBool(GitStatus),
                 Toggle = () => GitStatus = !GitStatus,
+            },
+            new ConfigItem
+            {
+                Label = "Show Left Pane",
+                FormatValue = () => FormatBool(ParentPane),
+                Toggle = () => ParentPane = !ParentPane,
             },
             new ConfigItem
             {
@@ -338,42 +358,40 @@ internal sealed class ConfigDialogState
             new ConfigItem
             {
                 Label = "Show File Previews",
-                Indent = 1,
                 FormatValue = () => FormatBool(FilePreviews),
                 Toggle = () => FilePreviews = !FilePreviews,
-                EnabledWhen = () => PreviewPane,
             },
             new ConfigItem
             {
                 Label = "Show Image Previews",
-                Indent = 2,
+                Indent = 1,
                 FormatValue = () => FormatBool(ImagePreviews),
                 Toggle = () => ImagePreviews = !ImagePreviews,
-                EnabledWhen = () => PreviewPane && FilePreviews,
+                EnabledWhen = () => FilePreviews,
             },
             new ConfigItem
             {
                 Label = "Show PDF Previews (pdftopng)",
-                Indent = 2,
+                Indent = 1,
                 FormatValue = () => FormatBool(PdfPreview),
                 Toggle = () => PdfPreview = !PdfPreview,
-                EnabledWhen = () => PreviewPane && FilePreviews,
+                EnabledWhen = () => FilePreviews,
             },
             new ConfigItem
             {
                 Label = "Show Archive Contents",
-                Indent = 2,
+                Indent = 1,
                 FormatValue = () => FormatBool(ZipPreview),
                 Toggle = () => ZipPreview = !ZipPreview,
-                EnabledWhen = () => PreviewPane && FilePreviews,
+                EnabledWhen = () => FilePreviews,
             },
             new ConfigItem
             {
                 Label = "Show Markdown Preview (built-in)",
-                Indent = 2,
+                Indent = 1,
                 FormatValue = () => FormatBool(MarkdownPreview),
                 Toggle = () => MarkdownPreview = !MarkdownPreview,
-                EnabledWhen = () => PreviewPane && FilePreviews,
+                EnabledWhen = () => FilePreviews,
             },
         ]);
     }

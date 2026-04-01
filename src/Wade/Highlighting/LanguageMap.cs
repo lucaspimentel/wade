@@ -54,6 +54,7 @@ internal static class LanguageMap
             [".conf"] = Toml,
             [".properties"] = Toml,
             [".inf"] = Toml,
+            [".url"] = Toml,
             [".editorconfig"] = Toml,
             [".gitconfig"] = Toml,
             [".yaml"] = Yaml,

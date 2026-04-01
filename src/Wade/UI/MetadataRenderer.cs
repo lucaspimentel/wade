@@ -50,10 +50,14 @@ internal static class MetadataRenderer
                 Array.Fill(headerStyles, headerStyle);
                 lines.Add(new StyledLine(headerText, null, headerStyles));
 
-                string divider = "  " + new string('\u2500', Math.Min(section.Header.Length + 4, maxWidth > 4 ? maxWidth - 4 : 20));
-                var dividerStyles = new CellStyle[divider.Length];
-                Array.Fill(dividerStyles, new CellStyle(DividerColor, null));
-                lines.Add(new StyledLine(divider, null, dividerStyles));
+                // Only draw divider if section has entries below it
+                if (section.Entries.Length > 0)
+                {
+                    string divider = "  " + new string('\u2500', Math.Min(section.Header.Length + 4, maxWidth > 4 ? maxWidth - 4 : 20));
+                    var dividerStyles = new CellStyle[divider.Length];
+                    Array.Fill(dividerStyles, new CellStyle(DividerColor, null));
+                    lines.Add(new StyledLine(divider, null, dividerStyles));
+                }
             }
 
             // Entries

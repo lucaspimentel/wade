@@ -186,7 +186,16 @@ internal static class PropertiesOverlay
         string target = entry.LinkTarget ?? "\u2014";
 
         string size;
-        if (entry.IsDirectory || entry.IsDrive)
+        if (entry.IsDrive && entry.DriveTotalSize > 0)
+        {
+            Span<char> freeBuf = stackalloc char[32];
+            Span<char> totalBuf = stackalloc char[32];
+            int freeLen = FormatHelpers.FormatSize(freeBuf, entry.DriveFreeSpace);
+            int totalLen = FormatHelpers.FormatSize(totalBuf, entry.DriveTotalSize);
+            double usedPercent = 100.0 * (entry.DriveTotalSize - entry.DriveFreeSpace) / entry.DriveTotalSize;
+            size = $"{freeBuf[..freeLen]} free of {totalBuf[..totalLen]} ({usedPercent:F0}% used)";
+        }
+        else if (entry.IsDirectory || entry.IsDrive)
         {
             size = directorySizeText ?? "\u2014";
         }
@@ -210,12 +219,28 @@ internal static class PropertiesOverlay
                 var driveInfo = new DriveInfo(entry.FullPath);
                 created = "\u2014";
                 accessed = "\u2014";
-                attributes = entry.DriveMediaType switch
+
+                string mediaType = entry.DriveMediaType switch
                 {
                     DriveMediaType.Ssd => "SSD",
                     DriveMediaType.Hdd => "HDD",
                     _ => driveInfo.DriveType.ToString(),
                 };
+
+                // Combine media type, file system, and volume label
+                var parts = new List<string> { mediaType };
+                if (entry.DriveFormat != null)
+                {
+                    parts.Add(entry.DriveFormat);
+                }
+
+                string volumeLabel = driveInfo.VolumeLabel;
+                if (!string.IsNullOrEmpty(volumeLabel))
+                {
+                    parts.Add($"\"{volumeLabel}\"");
+                }
+
+                attributes = string.Join(", ", parts);
                 readOnly = !driveInfo.IsReady;
             }
             else if (entry.IsDirectory)

@@ -25,6 +25,17 @@ internal static class PaneRenderer
     private const int Tier2MinWidth = 22 + Tier2Detail; // 44 — name >= 22
     private const int Tier3MinWidth = 14 + Tier3Detail; // 32 — name >= 14
     private const int Tier4MinWidth = SizeWidth + Tier4Detail; // 18 — name >= Size(8)
+
+    // Drive view column widths
+    private const int DriveFormatWidth = 7;   // "exFAT  " / "NTFS   "
+    private const int DriveLabelWidth = 16;   // volume label
+    private const int DriveBarMinWidth = 10;
+
+    // Drive view colors
+    private static readonly Color DriveBarLowColor = new(60, 160, 200);    // teal — <70% used
+    private static readonly Color DriveBarMedColor = new(220, 180, 50);    // yellow — 70-90%
+    private static readonly Color DriveBarHighColor = new(220, 80, 80);    // red — >90%
+    private static readonly Color DriveBarEmptyColor = new(50, 50, 50);    // dark gray
     private static readonly char DirSeparatorChar = Path.DirectorySeparatorChar;
 
     private static readonly Color DirColor = new(80, 160, 255);
@@ -77,6 +88,236 @@ internal static class PaneRenderer
     private static readonly CellStyle MarkedGitUntrackedStyle = new(GitUntrackedColor, MarkedBg);
     private static readonly CellStyle MarkedGitConflictStyle = new(GitConflictColor, MarkedBg);
 
+    private readonly record struct ColumnLayout(
+        int DetailWidth,
+        int DateWidth,
+        int StatusColWidth,
+        int NameWidth,
+        int DriveLabelWidth,
+        int DriveFormatWidth,
+        int DriveFreeWidth,
+        int DriveSizeWidth,
+        int DriveBarWidth);
+
+    private static ColumnLayout ComputeColumnLayout(
+        int paneWidth,
+        bool showSize,
+        bool showDate,
+        bool isDriveView,
+        bool hasStatusCol)
+    {
+        int dateWidth = 0;
+        int detailWidth = 0;
+        int driveLabelWidth = 0;
+        int driveFormatWidth = 0;
+        int driveFreeWidth = 0;
+        int driveSizeWidth = 0;
+        int driveBarWidth = 0;
+
+        if (isDriveView)
+        {
+            int minName = 8;
+            int barCol = DriveBarMinWidth + GapWidth;
+            int fixedWithLabel = DriveLabelWidth + GapWidth + DriveFormatWidth + GapWidth
+                + SizeWidth + GapWidth + SizeWidth + GapWidth + barCol;
+            int fixedFull = DriveFormatWidth + GapWidth + SizeWidth + GapWidth + SizeWidth + GapWidth + barCol;
+            int fixedMedium = SizeWidth + GapWidth + SizeWidth + GapWidth + barCol;
+            int fixedNarrow = SizeWidth + GapWidth + barCol;
+
+            if (paneWidth >= minName + fixedWithLabel)
+            {
+                driveLabelWidth = DriveLabelWidth;
+                driveFormatWidth = DriveFormatWidth;
+                driveFreeWidth = SizeWidth;
+                driveSizeWidth = SizeWidth;
+                driveBarWidth = paneWidth - minName - DriveLabelWidth - GapWidth
+                    - DriveFormatWidth - GapWidth - SizeWidth - GapWidth - SizeWidth - GapWidth - GapWidth;
+                driveBarWidth = Math.Clamp(driveBarWidth, DriveBarMinWidth, 30);
+                detailWidth = driveLabelWidth + GapWidth + driveFormatWidth + GapWidth
+                    + driveFreeWidth + GapWidth + driveSizeWidth + GapWidth + driveBarWidth + GapWidth;
+            }
+            else if (paneWidth >= minName + fixedFull)
+            {
+                driveFormatWidth = DriveFormatWidth;
+                driveFreeWidth = SizeWidth;
+                driveSizeWidth = SizeWidth;
+                driveBarWidth = paneWidth - minName
+                    - DriveFormatWidth - GapWidth - SizeWidth - GapWidth - SizeWidth - GapWidth - GapWidth;
+                driveBarWidth = Math.Clamp(driveBarWidth, DriveBarMinWidth, 30);
+                detailWidth = driveFormatWidth + GapWidth
+                    + driveFreeWidth + GapWidth + driveSizeWidth + GapWidth + driveBarWidth + GapWidth;
+            }
+            else if (paneWidth >= minName + fixedMedium)
+            {
+                driveFreeWidth = SizeWidth;
+                driveSizeWidth = SizeWidth;
+                driveBarWidth = paneWidth - minName - SizeWidth - GapWidth - SizeWidth - GapWidth - GapWidth;
+                driveBarWidth = Math.Clamp(driveBarWidth, DriveBarMinWidth, 30);
+                detailWidth = driveFreeWidth + GapWidth + driveSizeWidth + GapWidth + driveBarWidth + GapWidth;
+            }
+            else if (paneWidth >= minName + fixedNarrow)
+            {
+                driveSizeWidth = SizeWidth;
+                driveBarWidth = paneWidth - minName - SizeWidth - GapWidth - GapWidth;
+                driveBarWidth = Math.Clamp(driveBarWidth, DriveBarMinWidth, 30);
+                detailWidth = driveSizeWidth + GapWidth + driveBarWidth + GapWidth;
+            }
+            else if (paneWidth >= minName + barCol)
+            {
+                driveBarWidth = paneWidth - minName - GapWidth;
+                driveBarWidth = Math.Clamp(driveBarWidth, DriveBarMinWidth, 30);
+                detailWidth = driveBarWidth + GapWidth;
+            }
+        }
+        else if (showSize || showDate)
+        {
+            if (showSize && showDate)
+            {
+                if (paneWidth >= Tier1MinWidth)
+                {
+                    dateWidth = FullDateWidth;
+                    detailWidth = SizeWidth + GapWidth + FullDateWidth + GapWidth;
+                }
+                else if (paneWidth >= Tier2MinWidth)
+                {
+                    dateWidth = DateOnlyWidth;
+                    detailWidth = SizeWidth + GapWidth + DateOnlyWidth + GapWidth;
+                }
+                else if (paneWidth >= Tier3MinWidth)
+                {
+                    dateWidth = ShortDateWidth;
+                    detailWidth = SizeWidth + GapWidth + ShortDateWidth + GapWidth;
+                }
+                else if (paneWidth >= Tier4MinWidth)
+                {
+                    detailWidth = SizeWidth + GapWidth;
+                }
+            }
+            else if (showDate)
+            {
+                if (paneWidth >= Tier1MinWidth)
+                {
+                    dateWidth = FullDateWidth;
+                    detailWidth = FullDateWidth + GapWidth;
+                }
+                else if (paneWidth >= Tier2MinWidth)
+                {
+                    dateWidth = DateOnlyWidth;
+                    detailWidth = DateOnlyWidth + GapWidth;
+                }
+                else if (paneWidth >= Tier3MinWidth)
+                {
+                    dateWidth = ShortDateWidth;
+                    detailWidth = ShortDateWidth + GapWidth;
+                }
+            }
+            else
+            {
+                if (paneWidth >= Tier4MinWidth)
+                {
+                    detailWidth = SizeWidth + GapWidth;
+                }
+            }
+        }
+
+        int statusCol = hasStatusCol ? StatusColWidth : 0;
+        int nameWidth = paneWidth - detailWidth - statusCol;
+
+        return new ColumnLayout(
+            detailWidth, dateWidth, statusCol, nameWidth,
+            driveLabelWidth, driveFormatWidth, driveFreeWidth, driveSizeWidth, driveBarWidth);
+    }
+
+    public static void RenderColumnHeaders(
+        ScreenBuffer buffer,
+        Rect headerRect,
+        bool showIcons,
+        bool showSize,
+        bool showDate,
+        bool isDriveView,
+        bool hasStatusCol)
+    {
+        var layout = ComputeColumnLayout(headerRect.Width, showSize, showDate, isDriveView, hasStatusCol);
+        int row = headerRect.Top;
+        int left = headerRect.Left;
+        CellStyle headerStyle = new(new Color(140, 140, 140), null);
+
+        // Fill background
+        buffer.FillRow(row, left, headerRect.Width, ' ', headerStyle);
+
+        // Name column header (left-aligned, after icon space)
+        int nameCol = left + (showIcons ? 2 : 1);
+        buffer.WriteString(row, nameCol, "Name", headerStyle, layout.NameWidth - (showIcons ? 2 : 1));
+
+        if (layout.DetailWidth > 0)
+        {
+            int detailCol = left + headerRect.Width;
+
+            if (isDriveView)
+            {
+                if (layout.DriveBarWidth > 0)
+                {
+                    detailCol -= GapWidth + layout.DriveBarWidth;
+                    // Center "% Full" in the bar column
+                    string label = "% Full";
+                    int labelStart = (layout.DriveBarWidth - label.Length) / 2;
+                    if (labelStart >= 0)
+                    {
+                        buffer.WriteString(row, detailCol + GapWidth + labelStart, label, headerStyle, label.Length);
+                    }
+                }
+
+                if (layout.DriveSizeWidth > 0)
+                {
+                    detailCol -= GapWidth + layout.DriveSizeWidth;
+                    buffer.WriteString(row, detailCol + GapWidth + (SizeWidth - 4), "Size", headerStyle, 4);
+                }
+
+                if (layout.DriveFreeWidth > 0)
+                {
+                    detailCol -= GapWidth + layout.DriveFreeWidth;
+                    buffer.WriteString(row, detailCol + GapWidth + (SizeWidth - 4), "Free", headerStyle, 4);
+                }
+
+                if (layout.DriveFormatWidth > 0)
+                {
+                    detailCol -= GapWidth + layout.DriveFormatWidth;
+                    buffer.WriteString(row, detailCol + GapWidth, "Format", headerStyle, 6);
+                }
+
+                if (layout.DriveLabelWidth > 0)
+                {
+                    detailCol -= GapWidth + layout.DriveLabelWidth;
+                    buffer.WriteString(row, detailCol + GapWidth, "Label", headerStyle, 5);
+                }
+            }
+            else
+            {
+                if (layout.DateWidth > 0)
+                {
+                    detailCol -= GapWidth + layout.DateWidth;
+                    // Right-align "Date" in the date column
+                    string label = "Date";
+                    int offset = layout.DateWidth - label.Length;
+                    buffer.WriteString(row, detailCol + GapWidth + offset, label, headerStyle, label.Length);
+                }
+
+                if (showSize && layout.DetailWidth > (layout.DateWidth > 0 ? layout.DateWidth + GapWidth : 0))
+                {
+                    detailCol -= GapWidth + SizeWidth;
+                    buffer.WriteString(row, detailCol + GapWidth + (SizeWidth - 4), "Size", headerStyle, 4);
+                }
+            }
+        }
+
+        // Separator line below headers
+        if (headerRect.Height > 1)
+        {
+            CellStyle separatorStyle = new(BorderColor, null);
+            buffer.FillRow(row + 1, left, headerRect.Width, '\u2500', separatorStyle);
+        }
+    }
+
     public static void RenderFileList(
         ScreenBuffer buffer,
         Rect pane,
@@ -89,64 +330,9 @@ internal static class PaneRenderer
         bool showDate = false,
         HashSet<string>? markedPaths = null,
         Dictionary<string, GitFileStatus>? gitStatuses = null,
-        Dictionary<string, long>? dirSizes = null)
+        Dictionary<string, long>? dirSizes = null,
+        bool isDriveView = false)
     {
-        // Determine detail tier based on pane width
-        int dateWidth = 0;
-        int detailWidth = 0;
-
-        if (showSize || showDate)
-        {
-            if (showSize && showDate)
-            {
-                if (pane.Width >= Tier1MinWidth)
-                {
-                    dateWidth = FullDateWidth;
-                    detailWidth = SizeWidth + GapWidth + FullDateWidth + GapWidth;
-                }
-                else if (pane.Width >= Tier2MinWidth)
-                {
-                    dateWidth = DateOnlyWidth;
-                    detailWidth = SizeWidth + GapWidth + DateOnlyWidth + GapWidth;
-                }
-                else if (pane.Width >= Tier3MinWidth)
-                {
-                    dateWidth = ShortDateWidth;
-                    detailWidth = SizeWidth + GapWidth + ShortDateWidth + GapWidth;
-                }
-                else if (pane.Width >= Tier4MinWidth)
-                {
-                    detailWidth = SizeWidth + GapWidth;
-                }
-            }
-            else if (showDate)
-            {
-                // Date only (no size column)
-                if (pane.Width >= Tier1MinWidth)
-                {
-                    dateWidth = FullDateWidth;
-                    detailWidth = FullDateWidth + GapWidth;
-                }
-                else if (pane.Width >= Tier2MinWidth)
-                {
-                    dateWidth = DateOnlyWidth;
-                    detailWidth = DateOnlyWidth + GapWidth;
-                }
-                else if (pane.Width >= Tier3MinWidth)
-                {
-                    dateWidth = ShortDateWidth;
-                    detailWidth = ShortDateWidth + GapWidth;
-                }
-            }
-            else // showSize only
-            {
-                if (pane.Width >= Tier4MinWidth)
-                {
-                    detailWidth = SizeWidth + GapWidth;
-                }
-            }
-        }
-
         bool hasCloudEntries = false;
         for (int i = 0; i < entries.Count; i++)
         {
@@ -157,12 +343,22 @@ internal static class PaneRenderer
             }
         }
 
-        int statusColWidth = gitStatuses is not null || hasCloudEntries ? StatusColWidth : 0;
-        int nameWidth = pane.Width - detailWidth - statusColWidth;
+        bool hasStatusCol = gitStatuses is not null || hasCloudEntries;
+        var col = ComputeColumnLayout(pane.Width, showSize, showDate, isDriveView, hasStatusCol);
+        int dateWidth = col.DateWidth;
+        int detailWidth = col.DetailWidth;
+        int statusColWidth = col.StatusColWidth;
+        int nameWidth = col.NameWidth;
+        int driveLabelWidth = col.DriveLabelWidth;
+        int driveFormatWidth = col.DriveFormatWidth;
+        int driveFreeWidth = col.DriveFreeWidth;
+        int driveSizeWidth = col.DriveSizeWidth;
+        int driveBarWidth = col.DriveBarWidth;
 
         Span<char> sizeBuf = stackalloc char[SizeWidth];
         Span<char> tempBuf = stackalloc char[32];
         Span<char> dateBuf = stackalloc char[FullDateWidth];
+        Span<char> barBuf = driveBarWidth > 0 ? stackalloc char[driveBarWidth] : [];
 
         for (int row = 0; row < pane.Height; row++)
         {
@@ -324,47 +520,153 @@ internal static class PaneRenderer
             {
                 int detailCol = pane.Left + pane.Width;
 
-                // Date column (rightmost)
-                if (dateWidth > 0)
+                if (isDriveView)
                 {
-                    detailCol -= GapWidth + dateWidth;
-                    int dateLen = FormatHelpers.FormatDate(dateBuf, entry.LastModified, dateWidth);
-                    buffer.WriteString(screenRow, detailCol + GapWidth, dateBuf[..dateLen], detailStyle, dateWidth);
-                }
+                    // Drive columns right to left: bar | size | free | format | label
+                    // Always adjust detailCol for allocated columns so left columns stay aligned.
 
-                // Size column
-                if (showSize)
-                {
-                    detailCol -= GapWidth + SizeWidth;
-                    long? displaySize = null;
+                    // Percent bar (rightmost)
+                    if (driveBarWidth > 0)
+                    {
+                        detailCol -= GapWidth + driveBarWidth;
 
-                    if (!entry.IsDirectory)
-                    {
-                        displaySize = entry.Size;
-                    }
-                    else if (dirSizes != null && dirSizes.TryGetValue(entry.FullPath, out long dirSize))
-                    {
-                        displaySize = dirSize;
-                    }
-
-                    if (displaySize.HasValue)
-                    {
-                        sizeBuf.Fill(' ');
-                        int sizeLen = FormatHelpers.FormatSize(tempBuf, displaySize.Value);
-                        // Right-align size in the field
-                        if (sizeLen <= SizeWidth)
+                        if (entry.DriveTotalSize > 0)
                         {
-                            tempBuf[..sizeLen].CopyTo(sizeBuf[(SizeWidth - sizeLen)..]);
+                            double fraction = (double)(entry.DriveTotalSize - entry.DriveFreeSpace) / entry.DriveTotalSize;
+                            var bar = FormatHelpers.FormatPercentBar(barBuf, fraction, driveBarWidth);
+
+                            Color barColor = fraction > 0.9 ? DriveBarHighColor
+                                : fraction > 0.7 ? DriveBarMedColor
+                                : DriveBarLowColor;
+
+                            int barCol = detailCol + GapWidth;
+                            int labelEnd = bar.LabelStart + bar.LabelLength;
+
+                            for (int c = 0; c < driveBarWidth; c++)
+                            {
+                                bool isLabel = c >= bar.LabelStart && c < labelEnd;
+                                bool isFilled = c < bar.FilledCount;
+
+                                CellStyle charStyle;
+                                if (isLabel)
+                                {
+                                    Color bg = isFilled ? barColor : DriveBarEmptyColor;
+                                    charStyle = new CellStyle(new Color(0, 0, 0), bg);
+                                }
+                                else
+                                {
+                                    charStyle = isFilled ? new CellStyle(barColor, null) : new CellStyle(DriveBarEmptyColor, null);
+                                }
+
+                                buffer.Put(screenRow, barCol + c, barBuf[c], charStyle);
+                            }
+                        }
+                    }
+
+                    // Total size
+                    if (driveSizeWidth > 0)
+                    {
+                        detailCol -= GapWidth + driveSizeWidth;
+
+                        if (entry.DriveTotalSize > 0)
+                        {
+                            sizeBuf.Fill(' ');
+                            int sizeLen = FormatHelpers.FormatSize(tempBuf, entry.DriveTotalSize);
+                            if (sizeLen <= SizeWidth)
+                            {
+                                tempBuf[..sizeLen].CopyTo(sizeBuf[(SizeWidth - sizeLen)..]);
+                            }
+
+                            buffer.WriteString(screenRow, detailCol + GapWidth, sizeBuf, detailStyle, SizeWidth);
+                        }
+                    }
+
+                    // Free space
+                    if (driveFreeWidth > 0)
+                    {
+                        detailCol -= GapWidth + driveFreeWidth;
+
+                        if (entry.DriveTotalSize > 0)
+                        {
+                            sizeBuf.Fill(' ');
+                            int freeLen = FormatHelpers.FormatSize(tempBuf, entry.DriveFreeSpace);
+                            if (freeLen <= SizeWidth)
+                            {
+                                tempBuf[..freeLen].CopyTo(sizeBuf[(SizeWidth - freeLen)..]);
+                            }
+
+                            buffer.WriteString(screenRow, detailCol + GapWidth, sizeBuf, detailStyle, SizeWidth);
+                        }
+                    }
+
+                    // File system format
+                    if (driveFormatWidth > 0)
+                    {
+                        detailCol -= GapWidth + driveFormatWidth;
+
+                        if (entry.DriveFormat is { } fmt)
+                        {
+                            int fmtLen = Math.Min(fmt.Length, driveFormatWidth);
+                            buffer.WriteString(screenRow, detailCol + GapWidth, fmt, detailStyle, fmtLen);
+                        }
+                    }
+
+                    // Volume label
+                    if (driveLabelWidth > 0)
+                    {
+                        detailCol -= GapWidth + driveLabelWidth;
+
+                        if (entry.DriveLabel is { } label)
+                        {
+                            int lblLen = Math.Min(label.Length, driveLabelWidth);
+                            buffer.WriteString(screenRow, detailCol + GapWidth, label, detailStyle, lblLen);
+                        }
+                    }
+                }
+                else
+                {
+                    // Date column (rightmost)
+                    if (dateWidth > 0)
+                    {
+                        detailCol -= GapWidth + dateWidth;
+                        int dateLen = FormatHelpers.FormatDate(dateBuf, entry.LastModified, dateWidth);
+                        buffer.WriteString(screenRow, detailCol + GapWidth, dateBuf[..dateLen], detailStyle, dateWidth);
+                    }
+
+                    // Size column
+                    if (showSize)
+                    {
+                        detailCol -= GapWidth + SizeWidth;
+                        long? displaySize = null;
+
+                        if (!entry.IsDirectory)
+                        {
+                            displaySize = entry.Size;
+                        }
+                        else if (dirSizes != null && dirSizes.TryGetValue(entry.FullPath, out long dirSize))
+                        {
+                            displaySize = dirSize;
                         }
 
-                        buffer.WriteString(screenRow, detailCol + GapWidth, sizeBuf, detailStyle, SizeWidth);
-                    }
-                    else if (entry.IsDirectory && dirSizes != null)
-                    {
-                        // Directory size is loading — show indicator right-aligned
-                        sizeBuf.Fill(' ');
-                        sizeBuf[SizeWidth - 1] = '\u2026'; // …
-                        buffer.WriteString(screenRow, detailCol + GapWidth, sizeBuf, detailStyle, SizeWidth);
+                        if (displaySize.HasValue)
+                        {
+                            sizeBuf.Fill(' ');
+                            int sizeLen = FormatHelpers.FormatSize(tempBuf, displaySize.Value);
+                            // Right-align size in the field
+                            if (sizeLen <= SizeWidth)
+                            {
+                                tempBuf[..sizeLen].CopyTo(sizeBuf[(SizeWidth - sizeLen)..]);
+                            }
+
+                            buffer.WriteString(screenRow, detailCol + GapWidth, sizeBuf, detailStyle, SizeWidth);
+                        }
+                        else if (entry.IsDirectory && dirSizes != null)
+                        {
+                            // Directory size is loading — show indicator right-aligned
+                            sizeBuf.Fill(' ');
+                            sizeBuf[SizeWidth - 1] = '\u2026'; // …
+                            buffer.WriteString(screenRow, detailCol + GapWidth, sizeBuf, detailStyle, SizeWidth);
+                        }
                     }
                 }
             }
@@ -621,15 +923,24 @@ internal static class PaneRenderer
         return new CellStyle(FileColor, bg);
     }
 
-    public static void RenderBorders(ScreenBuffer buffer, Layout layout, int terminalHeight, bool previewPaneEnabled = true)
+    public static void RenderBorders(
+        ScreenBuffer buffer,
+        Layout layout,
+        int terminalHeight,
+        bool previewPaneEnabled = true,
+        bool parentPaneEnabled = true)
     {
         var style = new CellStyle(BorderColor, null);
-        int borderCol1 = layout.LeftPane.Right;
         int contentHeight = terminalHeight - 1;
 
-        for (int row = 0; row < contentHeight; row++)
+        if (parentPaneEnabled)
         {
-            buffer.Put(row, borderCol1, '│', style);
+            int borderCol1 = layout.LeftPane.Right;
+
+            for (int row = 0; row < contentHeight; row++)
+            {
+                buffer.Put(row, borderCol1, '│', style);
+            }
         }
 
         if (previewPaneEnabled)

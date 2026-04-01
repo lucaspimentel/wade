@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <IsAotCompatible>true</IsAotCompatible>
+        <IsPackable>true</IsPackable>
+        <PackageId>Wade.Search</PackageId>
+        <Description>Segment-based prefix and fuzzy file path search index with streaming results.</Description>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Wade.Search.Tests"/>
+    </ItemGroup>
+
+</Project>

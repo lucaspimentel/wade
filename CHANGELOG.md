@@ -1,15 +1,47 @@
 # Changelog
 
-## [Unreleased]
+## [1.10.0] - 2026-03-30
 
 ### Added
-- Add directories to file finder (Ctrl+F) results with file-type icons
+- Add column headers to all three panes — shows column labels (Name, Size, Date, or drive-specific: Label, Format, Free, Size, % Full) that adapt with responsive column tiers; togglable via `column_headers_enabled` config (default: on)
+- Add drive list view with drive-specific columns: volume label, file system type, free space, total size, and a visual percent-full bar with centered percent text — replaces the normal date/size columns when viewing drives; columns hide responsively (label first, bar last)
+- Add TB (terabyte) tier to `FormatSize` for drives and files larger than 1 TB
 
 ### Changed
+- Enhance drive properties overlay — show free/total space with usage percentage, volume label, and file system type alongside drive media type
+
+### Fixed
+- Fix encoding and line endings not shown in status bar for non-text previews (e.g. rendered markdown) — detection moved from preview providers to metadata loading
+- Fix BOM-less UTF-16 files incorrectly detected as binary — heuristic detects alternating null-byte pattern when no BOM is present
+- Fix terminal title not cleared on exit on Linux — reorder cleanup to write after leaving alternate screen
+- Fix go-to-path (Ctrl+G) failing for "/" on Linux — `TrimEnd` stripped the root path to an empty string
+- Fix root mount "/" showing empty name in Linux drive list — same `TrimEnd` issue
+
+## [1.9.0] - 2026-03-30
+
+### Added
+- Add `parent_pane_enabled` config to hide the left (parent directory) pane — supports 3-pane, 2-pane, or single-pane layouts
+
+### Changed
+- Redesign file finder dialog — show full relative paths in a single column with matched characters highlighted in green, and a live result count (`matching/total`)
+- Move "Show File Previews" config group out from under "Show Right Pane" — previews work in expanded preview mode regardless of the right pane setting
+
+### Fixed
+- Fix expanded preview (Right/Enter on a file) showing empty screen when right pane is hidden
+- Fix Sixel image previews not rendering in expanded preview when right pane is hidden
+- Hide empty metadata divider line when file details section has only a filename and no entries
+
+## [1.8.0] - 2026-03-28
+
+### Added
+- Add syntax highlighting and "URL Shortcut" file type label for `.url` files (uses existing INI/TOML highlighter)
+- Add directories to file finder (Ctrl+F) results with file-type icons
+- Add Wade.Search library with subsequence matching and boundary-aware scoring for file path search
+
+### Changed
+- Change go-to-path keybinding from `g` to `Ctrl+G` for consistency with other dialog shortcuts
 - Use breadth-first search in file finder so current-directory entries appear before deeper nested ones
 - Stream file finder results incrementally as directories are scanned instead of waiting for the full scan to complete
-- Cache filtered file finder results incrementally — new batches filter only the delta, full recompute only on filter text change
-- Show clean empty dialog when file finder opens instead of immediately showing "scanning..."
 
 ## [1.7.0] - 2026-03-25
 

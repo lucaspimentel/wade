@@ -1,0 +1,3 @@
+[*.cs]
+# Test method names use underscores for readability (e.g., Method_Condition_Expected)
+dotnet_diagnostic.CA1707.severity = none
