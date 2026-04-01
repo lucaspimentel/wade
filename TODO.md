@@ -98,6 +98,16 @@ Implemented — header row shows column labels (Name, Size, Date or drive-specif
 
 Fixed — `RestoreTitle` was being written before `LeaveAlternateScreen`, so the restore applied to the alternate buffer. Reordered to restore after leaving alternate screen and added explicit flush.
 
+### Better handling of non-existent path passed via CLI args
+
+- [ ] When a path passed as a CLI argument doesn't exist, handle it gracefully instead of crashing or showing confusing state.
+  - Entry point: `WadeConfig.Load(args)` in `Program.cs:4` parses the CLI path argument.
+
+### Don't open expanded preview for files with no preview
+
+- [ ] When a file has no preview content (e.g. `NonePreviewProvider` is the only applicable provider), don't enter expanded preview mode — it just shows an empty screen.
+  - `EnterExpandedPreview` in `App.cs:1920` enters the mode unconditionally. Should check `_applicableProviders` and skip if only `NonePreviewProvider` is applicable (or if the list is empty).
+
 ### Keyboard shortcut convention audit
 
 - [ ] Review remaining keybinding consistency. Current mix: some dialogs/tools use `Ctrl+` (`Ctrl+F` finder, `Ctrl+T` terminal, `Ctrl+L` symlink, `Ctrl+R` refresh, `Ctrl+P` command palette, `Ctrl+G` go-to-path) while others use bare keys (`n`/`N` new file/dir, `b`/`B` bookmarks, `/` filter, `,` config, `?` help, `i` properties). Convention: `Ctrl+<key>` for opening tools/dialogs/overlays, bare keys for direct actions.
