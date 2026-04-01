@@ -643,7 +643,10 @@ internal sealed class App
                         UpdateTerminalTitle();
                         RefreshGitStatus();
                     }
-                    else if (entries.Count > 0 && !entries[_selectedIndex].IsDirectory)
+                    else if (entries.Count > 0 && !entries[_selectedIndex].IsDirectory
+                        && _applicableProviders is not null
+                        && _activeProviderIndex < _applicableProviders.Count
+                        && _applicableProviders[_activeProviderIndex] is not NonePreviewProvider)
                     {
                         EnterExpandedPreview(previewLoader, buffer);
                     }

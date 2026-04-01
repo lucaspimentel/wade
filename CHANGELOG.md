@@ -7,6 +7,7 @@
 - Scale file finder dialog width to 75% of terminal width (was capped at 70 columns)
 
 ### Fixed
+- Prevent expanded preview from opening when the active preview is "None"
 - Fix crash on lone surrogate characters in preview rendering
 - Normalize `/` and `\` in file finder search so either works as a path separator on Windows
 - Add trailing gap penalty to fuzzy scorer so tighter path matches rank higher (e.g. `src/Foo` ranks above `src/Foo.Bar.Baz`)
