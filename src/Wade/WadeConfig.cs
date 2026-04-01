@@ -60,6 +60,8 @@ internal sealed class WadeConfig
 
     public string StartPath { get; set; } = Directory.GetCurrentDirectory();
 
+    public string? StartFileName { get; set; }
+
     public bool ShowConfig { get; set; }
 
     public bool ShowHelp { get; set; }

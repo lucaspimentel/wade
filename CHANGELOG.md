@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Added
+- Add CLI path validation — file paths open the parent directory with the file selected; non-existent paths print an error and exit with code 1
+
 ### Changed
 - Update and pin all NuGet package references to latest exact versions
 - Scale file finder dialog width to 75% of terminal width (was capped at 70 columns)

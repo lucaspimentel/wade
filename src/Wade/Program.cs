@@ -6,19 +6,39 @@ var config = WadeConfig.Load(args);
 if (config.ShowVersion)
 {
     PrintVersion();
-    return;
+    return 0;
 }
 
 if (config.ShowHelp)
 {
     PrintHelp();
-    return;
+    return 0;
 }
 
 if (config.ShowConfig)
 {
     Console.WriteLine(config.ToJson());
-    return;
+    return 0;
+}
+
+// Validate the start path before entering the TUI
+string fullStartPath = Path.GetFullPath(config.StartPath);
+
+if (File.Exists(fullStartPath))
+{
+    // Path points to a file — open its parent directory and select the file
+    string? parent = Path.GetDirectoryName(fullStartPath);
+
+    if (parent is not null)
+    {
+        config.StartPath = parent;
+        config.StartFileName = Path.GetFileName(fullStartPath);
+    }
+}
+else if (!Directory.Exists(fullStartPath))
+{
+    Console.Error.WriteLine($"wade: path does not exist: {config.StartPath}");
+    return 1;
 }
 
 string? finalPath = new App(config).Run();
@@ -34,6 +54,8 @@ if (config.CwdFilePath is not null && finalPath is not null)
         /* silently ignore */
     }
 }
+
+return 0;
 
 static void PrintVersion()
 {

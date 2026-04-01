@@ -42,6 +42,7 @@ public class WadeConfigTests
         Assert.True(config.FilePreviewsEnabled);
         Assert.True(config.ArchiveMetadataEnabled);
         Assert.Equal(Directory.GetCurrentDirectory(), config.StartPath);
+        Assert.Null(config.StartFileName);
     }
 
     // ── Config file parsing ───────────────────────────────────────────────────

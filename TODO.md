@@ -98,10 +98,9 @@ Implemented — header row shows column labels (Name, Size, Date or drive-specif
 
 Fixed — `RestoreTitle` was being written before `LeaveAlternateScreen`, so the restore applied to the alternate buffer. Reordered to restore after leaving alternate screen and added explicit flush.
 
-### Better handling of non-existent path passed via CLI args
+### ~~Better handling of non-existent path passed via CLI args~~ ✅
 
-- [ ] When a path passed as a CLI argument doesn't exist, handle it gracefully instead of crashing or showing confusing state.
-  - Entry point: `WadeConfig.Load(args)` in `Program.cs:4` parses the CLI path argument.
+Implemented — `Program.cs` validates the start path before entering the TUI. Non-existent paths print an error to stderr and exit. File paths open the parent directory with the file selected.
 
 ### ~~Don't open expanded preview for files with no preview~~ ✅
 

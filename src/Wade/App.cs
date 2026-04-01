@@ -186,6 +186,17 @@ internal sealed class App
         _directoryContents.SortAscending = _config.SortAscending;
         _bookmarkStore.Load();
 
+        if (_config.StartFileName is not null)
+        {
+            List<FileSystemEntry> entries = _directoryContents.GetEntries(_currentPath);
+            int idx = entries.FindIndex(e => e.Name.Equals(_config.StartFileName, StringComparison.OrdinalIgnoreCase));
+
+            if (idx >= 0)
+            {
+                _selectedIndex = idx;
+            }
+        }
+
         using var terminal = new TerminalSetup();
         using IInputSource inputSource = InputPipeline.CreatePlatformSource();
         using var pipeline = new InputPipeline(inputSource);
