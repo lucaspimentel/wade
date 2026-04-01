@@ -48,6 +48,7 @@ internal static class LanguageMap
             [".scss"] = Css,
             [".sass"] = Css,
             [".json"] = Json,
+            [".slnf"] = Json,
             [".toml"] = Toml,
             [".ini"] = Toml,
             [".cfg"] = Toml,

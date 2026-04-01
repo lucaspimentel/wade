@@ -109,7 +109,7 @@ Implemented — `HasExpandablePreview()` checks that at least one real preview p
 
 ### Use JSON highlighting for `.slnf` files (Visual Studio Solution Filter)
 
-- [ ] Add `[".slnf"] = Json` to `LanguageMap.cs` — `.slnf` files are JSON; already mapped nearby: `.json` at line 50, `.slnx` (XmlHtml) at line 70.
+- [x] Add `[".slnf"] = Json` to `LanguageMap.cs` — `.slnf` files are JSON; already mapped nearby: `.json` at line 50, `.slnx` (XmlHtml) at line 70.
   - File: `src/Wade/Highlighting/LanguageMap.cs`
 
 ### Keyboard shortcut convention audit

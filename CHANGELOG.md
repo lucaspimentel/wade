@@ -5,6 +5,7 @@
 ### Changed
 - Update and pin all NuGet package references to latest exact versions
 - Scale file finder dialog width to 75% of terminal width (was capped at 70 columns)
+- Use JSON syntax highlighting for `.slnf` (Visual Studio Solution Filter) files
 
 ### Fixed
 - Prevent expanded preview from opening when the active preview is "None"
