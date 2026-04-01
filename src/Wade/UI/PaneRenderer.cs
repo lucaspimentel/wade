@@ -773,12 +773,20 @@ internal static class PaneRenderer
                 }
             }
 
-            var rune = new Rune(text[pos]);
+            Rune rune;
             // Handle surrogate pairs
             if (char.IsHighSurrogate(text[pos]) && pos + 1 < textLen && char.IsLowSurrogate(text[pos + 1]))
             {
                 rune = new Rune(text[pos], text[pos + 1]);
                 pos++;
+            }
+            else if (char.IsSurrogate(text[pos]))
+            {
+                rune = Rune.ReplacementChar;
+            }
+            else
+            {
+                rune = new Rune(text[pos]);
             }
 
             int w = RuneWidth.GetWidth(rune);
@@ -812,12 +820,20 @@ internal static class PaneRenderer
         {
             CellStyle style = styleIndex < charStyles.Length ? charStyles[styleIndex] : defaultStyle;
 
-            var rune = new Rune(text[pos]);
+            Rune rune;
             if (char.IsHighSurrogate(text[pos]) && pos + 1 < text.Length && char.IsLowSurrogate(text[pos + 1]))
             {
                 rune = new Rune(text[pos], text[pos + 1]);
                 pos++;
                 styleIndex++;
+            }
+            else if (char.IsSurrogate(text[pos]))
+            {
+                rune = Rune.ReplacementChar;
+            }
+            else
+            {
+                rune = new Rune(text[pos]);
             }
 
             int w = RuneWidth.GetWidth(rune);
