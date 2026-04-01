@@ -1,23 +1,5 @@
 # TODO
 
-## Bugs (open)
-
-### ~~Linux: go-to-path (Ctrl+G) "/" not working~~ ✅
-
-Fixed — `TrimEnd('/', '\\')` stripped single-char `/` to empty string. Now preserves paths of length 1.
-
-### ~~Linux: root mount "/" shows empty name in drive list~~ ✅
-
-Fixed — same root cause: `TrimEnd` on `drive.Name` stripped `/` to `""`. Now skips trimming for single-char names.
-
----
-
-## Refactoring
-
-(none)
-
----
-
 ## Features
 
 ### File action progress indicator
@@ -76,40 +58,6 @@ Research and implement image previews for Office Open XML formats (`.docx`, `.xl
   - These are zero-byte reparse points used by Windows for MSIX/UWP packaged apps (e.g., `C:\Users\...\WindowsApps\wt.exe`).
   - Display the resolved target and package info in properties overlay and preview pane.
   - Windows-only.
-
-### Fix stale/leftover content when switching preview types
-
-When switching preview providers (e.g., from Glow-rendered Markdown to None, or from an image to text), residual content from the previous render can remain visible.
-
-- Sixel images bypass the `ScreenBuffer` cell grid (written directly to stdout after flush); when switching away from an image preview, the sixel graphics are not explicitly erased — need to emit a Sixel erase/overwrite or use DEC terminal erase sequence (`\e[2J` scoped to the pane region) before rendering the new content
-- Text previews of different lengths: if the new preview is shorter than the previous, leftover lines below the new content stay visible — ensure the pane rect is fully cleared (fill with spaces) before writing new content in `PaneRenderer.RenderPreview`
-- Reproduce: select a Markdown file → switch to Glow preview → switch to None → observe residual rendered lines
-- Key files: `App.cs` (render dispatch ~line 1096), `src/Wade/UI/PaneRenderer.cs` (`RenderPreview`), sixel write path (~line 215)
-
-### ~~Drive list view improvements (Windows)~~ ✅
-
-Implemented — drive list shows volume label, file system, free space, total size, and percent-full bar with responsive column tiers. Properties overlay shows free/total with usage percentage, volume label, and file system.
-
-### ~~Column headers in center pane~~ ✅
-
-Implemented — header row shows column labels (Name, Size, Date or drive-specific: Label, Format, Free, Size, % Full). Togglable via `column_headers_enabled` config (default on). Column widths shared via extracted `ComputeColumnLayout` helper.
-
-### ~~Restore terminal title on exit~~ ✅
-
-Fixed — `RestoreTitle` was being written before `LeaveAlternateScreen`, so the restore applied to the alternate buffer. Reordered to restore after leaving alternate screen and added explicit flush.
-
-### ~~Better handling of non-existent path passed via CLI args~~ ✅
-
-Implemented — `Program.cs` validates the start path before entering the TUI. Non-existent paths print an error to stderr and exit. File paths open the parent directory with the file selected.
-
-### ~~Don't open expanded preview for files with no preview~~ ✅
-
-Implemented — `HasExpandablePreview()` checks that at least one real preview provider (not None/Hex) or metadata provider exists before entering expanded preview mode.
-
-### Use JSON highlighting for `.slnf` files (Visual Studio Solution Filter)
-
-- [x] Add `[".slnf"] = Json` to `LanguageMap.cs` — `.slnf` files are JSON; already mapped nearby: `.json` at line 50, `.slnx` (XmlHtml) at line 70.
-  - File: `src/Wade/Highlighting/LanguageMap.cs`
 
 ### Keyboard shortcut convention audit
 
