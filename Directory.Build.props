@@ -1,7 +1,7 @@
 <Project>
 
   <PropertyGroup>
-    <Version>1.10.0</Version>
+    <Version>1.11.0</Version>
     <UseArtifactsOutput>true</UseArtifactsOutput>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

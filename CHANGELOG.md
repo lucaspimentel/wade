@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-04-01
+
 ### Added
 - Add CLI path validation — file paths open the parent directory with the file selected; non-existent paths print an error and exit with code 1
 
