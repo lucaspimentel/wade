@@ -54,10 +54,13 @@ public class LanguageMapTests
         Assert.NotNull(lang);
     }
 
-    [Fact]
-    public void Dockerfile_ReturnsShellLanguage()
+    [Theory]
+    [InlineData("Dockerfile")]
+    [InlineData("Containerfile")]
+    [InlineData("build.dockerfile")]
+    public void Dockerfile_ReturnsDockerfileLanguage(string fileName)
     {
-        ILanguage? lang = LanguageMap.GetLanguage("Dockerfile");
-        Assert.IsType<ShellLanguage>(lang);
+        ILanguage? lang = LanguageMap.GetLanguage(fileName);
+        Assert.IsType<DockerfileLanguage>(lang);
     }
 }

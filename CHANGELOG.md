@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Added
+- Add Dockerfile syntax highlighting — instruction keywords, variables, flags, `AS` keyword, comments, and strings; supports `Dockerfile`, `Containerfile`, and `.dockerfile` extension
+
 ## [1.11.0] - 2026-04-01
 
 ### Added

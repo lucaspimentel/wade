@@ -21,6 +21,7 @@ internal static class LanguageMap
     private static readonly XmlHtmlLanguage XmlHtml = new();
     private static readonly MarkdownLanguage Markdown = new();
     private static readonly GitIgnoreLanguage GitIgnore = new();
+    private static readonly DockerfileLanguage Dockerfile = new();
 
     private static readonly FrozenDictionary<string, ILanguage> ByExtension =
         new Dictionary<string, ILanguage>(StringComparer.OrdinalIgnoreCase)
@@ -75,10 +76,11 @@ internal static class LanguageMap
             [".xaml"] = XmlHtml,
             [".md"] = Markdown,
             [".markdown"] = Markdown,
+            [".dockerfile"] = Dockerfile,
         }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
     private static readonly FrozenSet<string> NoExtensionShellNames =
-        new[] { "Dockerfile", "Makefile", "Jenkinsfile", "Brewfile" }
+        new[] { "Makefile", "Jenkinsfile", "Brewfile" }
             .ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     private static readonly FrozenDictionary<string, ILanguage> ByFilename =
@@ -90,6 +92,8 @@ internal static class LanguageMap
             [".prettierignore"] = GitIgnore,
             [".eslintignore"] = GitIgnore,
             [".gitattributes"] = GitIgnore,
+            ["Dockerfile"] = Dockerfile,
+            ["Containerfile"] = Dockerfile,
         }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
     public static ILanguage? GetLanguage(string filePath)
