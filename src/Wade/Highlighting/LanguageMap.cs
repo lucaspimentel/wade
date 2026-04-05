@@ -5,6 +5,8 @@ namespace Wade.Highlighting;
 
 internal static class LanguageMap
 {
+    private static readonly CLanguage C = new();
+    private static readonly CppLanguage Cpp = new();
     private static readonly CSharpLanguage CSharp = new();
     private static readonly JavaScriptLanguage JavaScript = new();
     private static readonly TypeScriptLanguage TypeScript = new();
@@ -26,6 +28,17 @@ internal static class LanguageMap
     private static readonly FrozenDictionary<string, ILanguage> ByExtension =
         new Dictionary<string, ILanguage>(StringComparer.OrdinalIgnoreCase)
         {
+            [".c"] = C,
+            [".h"] = Cpp,
+            [".cpp"] = Cpp,
+            [".cxx"] = Cpp,
+            [".cc"] = Cpp,
+            [".c++"] = Cpp,
+            [".hpp"] = Cpp,
+            [".hxx"] = Cpp,
+            [".hh"] = Cpp,
+            [".h++"] = Cpp,
+            [".ino"] = Cpp,
             [".cs"] = CSharp,
             [".csx"] = CSharp,
             [".js"] = JavaScript,

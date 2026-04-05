@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Add C/C++ syntax highlighting — C language with preprocessor directives, keywords, and standard types; C++ extends C with class/template/concept keywords and STL types; supports `.c`, `.h`, `.cpp`, `.cxx`, `.cc`, `.hpp`, `.hxx`, `.hh`, `.ino`, and more
 - Add Dockerfile syntax highlighting — instruction keywords, variables, flags, `AS` keyword, comments, and strings; supports `Dockerfile`, `Containerfile`, and `.dockerfile` extension
 
 ## [1.11.0] - 2026-04-01
