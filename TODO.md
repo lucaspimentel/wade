@@ -63,8 +63,12 @@ Research and implement image previews for Office Open XML formats (`.docx`, `.xl
 
 ### Text input improvements
 
-- [ ] Support paste in text input fields (file finder, filter, go-to-path, rename dialog). Detect terminal-native paste via bracketed paste mode (`ESC[200~` ... `ESC[201~`) to batch rapid character input.
+- [x] Support paste in text input fields (file finder, filter, go-to-path, rename dialog). Unix: bracketed paste mode (`ESC[200~` ... `ESC[201~`). Windows: heuristic batch detection from `ReadConsoleInput`.
 - [x] Support word-navigation shortcuts in text input fields: `Ctrl+Left`/`Ctrl+Right` to skip words, `Ctrl+Backspace` to delete previous word.
+
+### Windows Terminal VT input mode
+
+Investigate enabling `ENABLE_VIRTUAL_TERMINAL_INPUT` on Windows Terminal (detected via `WT_SESSION`) to get proper bracketed paste and modifier key support via VT sequences instead of structured `ReadConsoleInput` records. This would unify the input pipeline with Unix but requires significant refactoring of `WindowsInputSource`.
 
 ### Keyboard shortcut convention audit
 

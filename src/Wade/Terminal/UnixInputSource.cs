@@ -96,6 +96,9 @@ internal sealed class UnixInputSource : IInputSource
 
 internal static class VtParser
 {
+    private static bool s_inBracketedPaste;
+    private static StringBuilder? s_pasteBuffer;
+
     public static List<InputEvent> Parse(ReadOnlySpan<byte> data)
     {
         var events = new List<InputEvent>();
@@ -104,6 +107,33 @@ internal static class VtParser
         while (i < data.Length)
         {
             byte b = data[i];
+
+            // Inside bracketed paste: collect bytes until ESC[201~
+            if (s_inBracketedPaste)
+            {
+                if (b == 0x1B && i + 5 <= data.Length
+                    && data[i + 1] == '[' && data[i + 2] == '2' && data[i + 3] == '0' && data[i + 4] == '1' && data[i + 5] == '~')
+                {
+                    // End of paste
+                    string pasted = s_pasteBuffer!.ToString();
+                    s_pasteBuffer = null;
+                    s_inBracketedPaste = false;
+
+                    if (pasted.Length > 0)
+                    {
+                        events.Add(new PasteEvent(pasted));
+                    }
+
+                    i += 6;
+                }
+                else
+                {
+                    s_pasteBuffer!.Append((char)b);
+                    i++;
+                }
+
+                continue;
+            }
 
             if (b == 0x1B) // ESC
             {
@@ -269,7 +299,15 @@ internal static class VtParser
             case (byte)'Z': // Shift+Tab
                 events.Add(new KeyEvent(ConsoleKey.Tab, '\0', true, false, false));
                 break;
-            case (byte)'~': // Extended keys with parameter
+            case (byte)'~': // Extended keys with parameter or bracketed paste
+                if (param1 == 200)
+                {
+                    // Start of bracketed paste — collect bytes until ESC[201~
+                    s_inBracketedPaste = true;
+                    s_pasteBuffer = new StringBuilder();
+                    break;
+                }
+
                 ConsoleKey key = param1 switch
                 {
                     1 => ConsoleKey.Home,

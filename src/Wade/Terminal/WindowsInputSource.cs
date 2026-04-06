@@ -23,10 +23,17 @@ internal sealed class WindowsInputSource : IInputSource
         _stdinHandle = GetStdHandle(StdInputHandle);
     }
 
+    private readonly Queue<InputEvent> _pending = new();
+
     public InputEvent? ReadNext(CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)
         {
+            if (_pending.TryDequeue(out InputEvent? queued))
+            {
+                return queued;
+            }
+
             uint waitResult = WaitForSingleObject(_stdinHandle, 100);
 
             if (waitResult != WaitObject0)
@@ -39,73 +46,138 @@ internal sealed class WindowsInputSource : IInputSource
                 continue;
             }
 
-            var record = new INPUT_RECORD();
-            if (!ReadConsoleInput(_stdinHandle, ref record, 1, out uint eventsRead) || eventsRead == 0)
+            // Read all pending records at once to detect paste bursts
+            var records = new INPUT_RECORD[count];
+            if (!ReadConsoleInputBatch(_stdinHandle, records, count, out uint eventsRead) || eventsRead == 0)
             {
                 continue;
             }
+
+            ProcessRecords(records.AsSpan(0, (int)eventsRead));
+        }
+
+        return null;
+    }
+
+    private void ProcessRecords(ReadOnlySpan<INPUT_RECORD> records)
+    {
+        int i = 0;
+
+        while (i < records.Length)
+        {
+            INPUT_RECORD record = records[i];
 
             switch (record.EventType)
             {
                 case KeyEventType:
                     if (record.Event.KeyEvent.bKeyDown == 0)
                     {
+                        i++;
                         break; // skip key-up events
                     }
 
                     KEY_EVENT_RECORD k = record.Event.KeyEvent;
-                    var modifiers = (ControlKeyState)k.dwControlKeyState;
-                    bool shift = (modifiers & ControlKeyState.ShiftPressed) != 0;
-                    bool alt = (modifiers & (ControlKeyState.LeftAltPressed | ControlKeyState.RightAltPressed)) != 0;
-                    bool control = (modifiers & (ControlKeyState.LeftCtrlPressed | ControlKeyState.RightCtrlPressed)) != 0;
 
-                    return new KeyEvent((ConsoleKey)k.wVirtualKeyCode, k.UnicodeChar, shift, alt, control);
+                    // Check for paste burst: consecutive printable key-down events
+                    if (k.UnicodeChar >= ' ')
+                    {
+                        int start = i;
+                        var pasteChars = new System.Text.StringBuilder();
+                        pasteChars.Append(k.UnicodeChar);
+                        i++;
+
+                        while (i < records.Length && records[i].EventType == KeyEventType)
+                        {
+                            // Skip key-up events (pasted text interleaves key-down/key-up)
+                            if (records[i].Event.KeyEvent.bKeyDown == 0)
+                            {
+                                i++;
+                                continue;
+                            }
+
+                            if (records[i].Event.KeyEvent.UnicodeChar < ' ')
+                            {
+                                break;
+                            }
+
+                            pasteChars.Append(records[i].Event.KeyEvent.UnicodeChar);
+                            i++;
+                        }
+
+                        if (pasteChars.Length > 1)
+                        {
+                            // Multiple chars in one batch = paste
+                            _pending.Enqueue(new PasteEvent(pasteChars.ToString()));
+                        }
+                        else
+                        {
+                            // Single char = normal keystroke
+                            var modifiers = (ControlKeyState)k.dwControlKeyState;
+                            bool shift = (modifiers & ControlKeyState.ShiftPressed) != 0;
+                            bool alt = (modifiers & (ControlKeyState.LeftAltPressed | ControlKeyState.RightAltPressed)) != 0;
+                            bool control = (modifiers & (ControlKeyState.LeftCtrlPressed | ControlKeyState.RightCtrlPressed)) != 0;
+                            _pending.Enqueue(new KeyEvent((ConsoleKey)k.wVirtualKeyCode, k.UnicodeChar, shift, alt, control));
+                        }
+
+                        break;
+                    }
+
+                    {
+                        var modifiers = (ControlKeyState)k.dwControlKeyState;
+                        bool shift = (modifiers & ControlKeyState.ShiftPressed) != 0;
+                        bool alt = (modifiers & (ControlKeyState.LeftAltPressed | ControlKeyState.RightAltPressed)) != 0;
+                        bool control = (modifiers & (ControlKeyState.LeftCtrlPressed | ControlKeyState.RightCtrlPressed)) != 0;
+                        _pending.Enqueue(new KeyEvent((ConsoleKey)k.wVirtualKeyCode, k.UnicodeChar, shift, alt, control));
+                    }
+
+                    i++;
+                    break;
 
                 case MouseEventType:
                     MOUSE_EVENT_RECORD m = record.Event.MouseEvent;
                     if (m.dwEventFlags == MouseMoved)
                     {
+                        i++;
                         break; // ignore mouse move
                     }
 
                     if (m.dwEventFlags == MouseWheeled)
                     {
-                        // High word of dwButtonState determines direction
                         short hiWord = (short)(m.dwButtonState >> 16);
                         MouseButton scrollButton = hiWord > 0 ? MouseButton.ScrollUp : MouseButton.ScrollDown;
-                        return new MouseEvent(scrollButton, m.Y, m.X, false);
+                        _pending.Enqueue(new MouseEvent(scrollButton, m.Y, m.X, false));
                     }
-
-                    if (m.dwEventFlags == 0) // button press or release
+                    else if (m.dwEventFlags == 0) // button press or release
                     {
                         if ((m.dwButtonState & FromLeft1stButtonPressed) != 0)
                         {
-                            return new MouseEvent(MouseButton.Left, m.Y, m.X, false);
+                            _pending.Enqueue(new MouseEvent(MouseButton.Left, m.Y, m.X, false));
                         }
-
-                        if ((m.dwButtonState & RightmostButtonPressed) != 0)
+                        else if ((m.dwButtonState & RightmostButtonPressed) != 0)
                         {
-                            return new MouseEvent(MouseButton.Right, m.Y, m.X, false);
+                            _pending.Enqueue(new MouseEvent(MouseButton.Right, m.Y, m.X, false));
                         }
-
-                        if (m.dwButtonState == 0)
+                        else if (m.dwButtonState == 0)
                         {
-                            return new MouseEvent(MouseButton.Left, m.Y, m.X, true);
+                            _pending.Enqueue(new MouseEvent(MouseButton.Left, m.Y, m.X, true));
                         }
                     }
 
+                    i++;
                     break;
 
                 case WindowBufferSizeEventType:
-                    WINDOW_BUFFER_SIZE_RECORD size = record.Event.WindowBufferSizeEvent;
-                    // Query actual window size instead of buffer size
                     int width = Console.WindowWidth;
                     int height = Console.WindowHeight;
-                    return new ResizeEvent(width, height);
+                    _pending.Enqueue(new ResizeEvent(width, height));
+                    i++;
+                    break;
+
+                default:
+                    i++;
+                    break;
             }
         }
-
-        return null;
     }
 
     public void Dispose()
@@ -118,6 +190,9 @@ internal sealed class WindowsInputSource : IInputSource
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool ReadConsoleInput(nint hConsoleInput, ref INPUT_RECORD lpBuffer, uint nLength, out uint lpNumberOfEventsRead);
+
+    [DllImport("kernel32.dll", EntryPoint = "ReadConsoleInputW", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool ReadConsoleInputBatch(nint hConsoleInput, [Out] INPUT_RECORD[] lpBuffer, uint nLength, out uint lpNumberOfEventsRead);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool GetNumberOfConsoleInputEvents(nint hConsoleInput, out uint lpcNumberOfEvents);

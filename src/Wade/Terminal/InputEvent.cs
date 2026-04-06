@@ -17,6 +17,8 @@ internal sealed record MouseEvent(MouseButton Button, int Row, int Col, bool IsR
 
 internal sealed record ResizeEvent(int Width, int Height) : InputEvent;
 
+internal sealed record PasteEvent(string Text) : InputEvent;
+
 internal sealed record PreviewReadyEvent(
     string Path,
     StyledLine[] StyledLines,

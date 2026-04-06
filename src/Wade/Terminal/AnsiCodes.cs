@@ -27,6 +27,10 @@ internal static class AnsiCodes
     public const string DisableMouseReporting = Csi + "?1000l";
     public const string EnableSgrMouseMode = Csi + "?1006h";
     public const string DisableSgrMouseMode = Csi + "?1006l";
+    // Bracketed paste mode
+    public const string EnableBracketedPaste = Csi + "?2004h";
+    public const string DisableBracketedPaste = Csi + "?2004l";
+
     public const string ClearTitle = "\x1b]0;\x07";
 
     // Terminal title stack (xterm)

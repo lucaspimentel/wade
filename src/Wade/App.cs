@@ -368,7 +368,7 @@ internal sealed class App
                 {
                     inputEvent = extra;
                 }
-                else if (extra is KeyEvent or MouseEvent)
+                else if (extra is KeyEvent or MouseEvent or PasteEvent)
                 {
                     inputEvent = extra;
                 }
@@ -557,6 +557,12 @@ internal sealed class App
             }
 
             // Handle key events
+            if (inputEvent is PasteEvent pasteEvent)
+            {
+                HandlePasteEvent(pasteEvent, pipeline);
+                continue;
+            }
+
             if (inputEvent is not KeyEvent keyEvent)
             {
                 continue;
@@ -2307,6 +2313,44 @@ internal sealed class App
     }
 
     // ── Modal input handlers ────────────────────────────────────────────────
+
+    private void HandlePasteEvent(PasteEvent paste, InputPipeline pipeline)
+    {
+        // Filter to printable characters only
+        string text = new(paste.Text.Where(c => c >= ' ').ToArray());
+
+        if (text.Length == 0)
+        {
+            return;
+        }
+
+        switch (_inputMode)
+        {
+            case InputMode.TextInput:
+                _activeTextInput?.InsertString(text);
+                break;
+
+            case InputMode.Search:
+                _searchInput?.InsertString(text);
+                _searchFilter = _searchInput!.Value;
+                InvalidateFilteredEntries();
+                _selectedIndex = 0;
+                _scrollOffset = 0;
+                break;
+
+            case InputMode.GoToPath:
+                _goToPathInput?.InsertString(text);
+                _goToPathSuggestion = null;
+                break;
+
+            case InputMode.FileFinder:
+                _fileFinderInput?.InsertString(text);
+                _fileFinderSelectedIndex = 0;
+                _fileFinderScrollOffset = 0;
+                StartFinderSearch(pipeline);
+                break;
+        }
+    }
 
     private void HandleTextInputKey(KeyEvent key)
     {

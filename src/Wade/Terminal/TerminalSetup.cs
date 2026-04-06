@@ -92,6 +92,7 @@ internal sealed class TerminalSetup : IDisposable
         {
             Console.Write(AnsiCodes.EnableMouseReporting);
             Console.Write(AnsiCodes.EnableSgrMouseMode);
+            Console.Write(AnsiCodes.EnableBracketedPaste);
         }
     }
 
@@ -108,6 +109,7 @@ internal sealed class TerminalSetup : IDisposable
 
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
+            Console.Write(AnsiCodes.DisableBracketedPaste);
             Console.Write(AnsiCodes.DisableSgrMouseMode);
             Console.Write(AnsiCodes.DisableMouseReporting);
 

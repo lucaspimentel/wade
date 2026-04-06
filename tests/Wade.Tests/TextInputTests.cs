@@ -295,6 +295,37 @@ public class TextInputTests
         Assert.Equal(0, input.CursorPosition);
     }
 
+    // ── Insert string (paste) ─────────────────────────────────────────────
+
+    [Fact]
+    public void InsertString_AtEnd_AppendsText()
+    {
+        var input = new TextInput("hello");
+        input.InsertString(" world");
+        Assert.Equal("hello world", input.Value);
+        Assert.Equal(11, input.CursorPosition);
+    }
+
+    [Fact]
+    public void InsertString_AtMiddle_InsertsAtCursor()
+    {
+        var input = new TextInput("hlo");
+        input.MoveCursorHome();
+        input.MoveCursorRight();
+        input.InsertString("el");
+        Assert.Equal("hello", input.Value);
+        Assert.Equal(3, input.CursorPosition);
+    }
+
+    [Fact]
+    public void InsertString_Empty_IsNoOp()
+    {
+        var input = new TextInput("hello");
+        input.InsertString("");
+        Assert.Equal("hello", input.Value);
+        Assert.Equal(5, input.CursorPosition);
+    }
+
     [Fact]
     public void MoveCursorWordLeft_PathSeparators()
     {

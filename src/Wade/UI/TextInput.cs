@@ -25,6 +25,17 @@ internal sealed class TextInput
         CursorPosition++;
     }
 
+    public void InsertString(string text)
+    {
+        if (text.Length == 0)
+        {
+            return;
+        }
+
+        _buffer.Insert(CursorPosition, text);
+        CursorPosition += text.Length;
+    }
+
     public void DeleteBackward()
     {
         if (CursorPosition <= 0)
