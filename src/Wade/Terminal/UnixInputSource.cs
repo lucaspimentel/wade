@@ -240,25 +240,31 @@ internal static class VtParser
 
         ParseCsiParams(paramSpan, out int param1, out int param2);
 
+        // Decode xterm modifier from param2: 1+flags where Shift=1, Alt=2, Ctrl=4
+        int mod = param2 > 0 ? param2 - 1 : 0;
+        bool shift = (mod & 1) != 0;
+        bool alt = (mod & 2) != 0;
+        bool ctrl = (mod & 4) != 0;
+
         switch (finalByte)
         {
             case (byte)'A': // Cursor Up
-                events.Add(new KeyEvent(ConsoleKey.UpArrow, '\0', false, false, false));
+                events.Add(new KeyEvent(ConsoleKey.UpArrow, '\0', shift, alt, ctrl));
                 break;
             case (byte)'B': // Cursor Down
-                events.Add(new KeyEvent(ConsoleKey.DownArrow, '\0', false, false, false));
+                events.Add(new KeyEvent(ConsoleKey.DownArrow, '\0', shift, alt, ctrl));
                 break;
             case (byte)'C': // Cursor Right
-                events.Add(new KeyEvent(ConsoleKey.RightArrow, '\0', false, false, false));
+                events.Add(new KeyEvent(ConsoleKey.RightArrow, '\0', shift, alt, ctrl));
                 break;
             case (byte)'D': // Cursor Left
-                events.Add(new KeyEvent(ConsoleKey.LeftArrow, '\0', false, false, false));
+                events.Add(new KeyEvent(ConsoleKey.LeftArrow, '\0', shift, alt, ctrl));
                 break;
             case (byte)'H': // Home
-                events.Add(new KeyEvent(ConsoleKey.Home, '\0', false, false, false));
+                events.Add(new KeyEvent(ConsoleKey.Home, '\0', shift, alt, ctrl));
                 break;
             case (byte)'F': // End
-                events.Add(new KeyEvent(ConsoleKey.End, '\0', false, false, false));
+                events.Add(new KeyEvent(ConsoleKey.End, '\0', shift, alt, ctrl));
                 break;
             case (byte)'Z': // Shift+Tab
                 events.Add(new KeyEvent(ConsoleKey.Tab, '\0', true, false, false));
@@ -284,7 +290,7 @@ internal static class VtParser
                 };
                 if (key != 0)
                 {
-                    events.Add(new KeyEvent(key, '\0', false, false, false));
+                    events.Add(new KeyEvent(key, '\0', shift, alt, ctrl));
                 }
 
                 break;

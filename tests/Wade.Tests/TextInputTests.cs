@@ -212,6 +212,101 @@ public class TextInputTests
         Assert.DoesNotContain("abcde", output);
     }
 
+    // ── Word navigation ─────────────────────────────────────────────────────
+
+    [Fact]
+    public void MoveCursorWordLeft_SkipsToWordBoundary()
+    {
+        var input = new TextInput("hello world");
+        // cursor at end (11)
+        input.MoveCursorWordLeft();
+        Assert.Equal(6, input.CursorPosition); // before "world"
+        input.MoveCursorWordLeft();
+        Assert.Equal(0, input.CursorPosition); // before "hello"
+    }
+
+    [Fact]
+    public void MoveCursorWordLeft_SkipsNonWordChars()
+    {
+        var input = new TextInput("foo--bar");
+        // cursor at end (8)
+        input.MoveCursorWordLeft();
+        Assert.Equal(5, input.CursorPosition); // before "bar"
+        input.MoveCursorWordLeft();
+        Assert.Equal(0, input.CursorPosition); // before "foo"
+    }
+
+    [Fact]
+    public void MoveCursorWordLeft_AtStart_IsNoOp()
+    {
+        var input = new TextInput("hello");
+        input.MoveCursorHome();
+        input.MoveCursorWordLeft();
+        Assert.Equal(0, input.CursorPosition);
+    }
+
+    [Fact]
+    public void MoveCursorWordRight_SkipsToNextWordBoundary()
+    {
+        var input = new TextInput("hello world");
+        input.MoveCursorHome();
+        input.MoveCursorWordRight();
+        Assert.Equal(6, input.CursorPosition); // after "hello "
+        input.MoveCursorWordRight();
+        Assert.Equal(11, input.CursorPosition); // end
+    }
+
+    [Fact]
+    public void MoveCursorWordRight_AtEnd_IsNoOp()
+    {
+        var input = new TextInput("hello");
+        input.MoveCursorWordRight();
+        Assert.Equal(5, input.CursorPosition);
+    }
+
+    [Fact]
+    public void DeleteWordBackward_DeletesWord()
+    {
+        var input = new TextInput("hello world");
+        input.DeleteWordBackward();
+        Assert.Equal("hello ", input.Value);
+        Assert.Equal(6, input.CursorPosition);
+    }
+
+    [Fact]
+    public void DeleteWordBackward_DeletesWordAndSeparators()
+    {
+        var input = new TextInput("foo--bar");
+        input.DeleteWordBackward();
+        Assert.Equal("foo--", input.Value);
+        Assert.Equal(5, input.CursorPosition);
+        input.DeleteWordBackward();
+        Assert.Equal("", input.Value);
+        Assert.Equal(0, input.CursorPosition);
+    }
+
+    [Fact]
+    public void DeleteWordBackward_AtStart_IsNoOp()
+    {
+        var input = new TextInput("hello");
+        input.MoveCursorHome();
+        input.DeleteWordBackward();
+        Assert.Equal("hello", input.Value);
+        Assert.Equal(0, input.CursorPosition);
+    }
+
+    [Fact]
+    public void MoveCursorWordLeft_PathSeparators()
+    {
+        string sep = Path.DirectorySeparatorChar.ToString();
+        var input = new TextInput($"src{sep}Wade{sep}App.cs");
+        // cursor at end
+        input.MoveCursorWordLeft(); // before "cs"
+        input.MoveCursorWordLeft(); // before "App"
+        input.MoveCursorWordLeft(); // before "Wade"
+        Assert.Equal(4, input.CursorPosition);
+    }
+
     [Fact]
     public void Render_ScrollsWhenCursorMovesLeft()
     {

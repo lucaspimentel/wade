@@ -62,6 +62,58 @@ internal sealed class TextInput
         }
     }
 
+    public void MoveCursorWordLeft()
+    {
+        if (CursorPosition <= 0)
+        {
+            return;
+        }
+
+        // Skip non-word characters
+        while (CursorPosition > 0 && !char.IsLetterOrDigit(_buffer[CursorPosition - 1]))
+        {
+            CursorPosition--;
+        }
+
+        // Skip word characters
+        while (CursorPosition > 0 && char.IsLetterOrDigit(_buffer[CursorPosition - 1]))
+        {
+            CursorPosition--;
+        }
+    }
+
+    public void MoveCursorWordRight()
+    {
+        if (CursorPosition >= _buffer.Length)
+        {
+            return;
+        }
+
+        // Skip word characters
+        while (CursorPosition < _buffer.Length && char.IsLetterOrDigit(_buffer[CursorPosition]))
+        {
+            CursorPosition++;
+        }
+
+        // Skip non-word characters
+        while (CursorPosition < _buffer.Length && !char.IsLetterOrDigit(_buffer[CursorPosition]))
+        {
+            CursorPosition++;
+        }
+    }
+
+    public void DeleteWordBackward()
+    {
+        if (CursorPosition <= 0)
+        {
+            return;
+        }
+
+        int oldPosition = CursorPosition;
+        MoveCursorWordLeft();
+        _buffer.Remove(CursorPosition, oldPosition - CursorPosition);
+    }
+
     public void MoveCursorHome() => CursorPosition = 0;
 
     public void MoveCursorEnd() => CursorPosition = _buffer.Length;

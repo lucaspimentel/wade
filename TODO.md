@@ -64,7 +64,7 @@ Research and implement image previews for Office Open XML formats (`.docx`, `.xl
 ### Text input improvements
 
 - [ ] Support paste in text input fields (file finder, filter, go-to-path, rename dialog). Detect terminal-native paste via bracketed paste mode (`ESC[200~` ... `ESC[201~`) to batch rapid character input.
-- [ ] Support word-navigation shortcuts in text input fields: `Ctrl+Left`/`Ctrl+Right` to skip words, `Ctrl+Backspace` to delete previous word.
+- [x] Support word-navigation shortcuts in text input fields: `Ctrl+Left`/`Ctrl+Right` to skip words, `Ctrl+Backspace` to delete previous word.
 
 ### Keyboard shortcut convention audit
 

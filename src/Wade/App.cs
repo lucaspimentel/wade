@@ -2310,6 +2310,22 @@ internal sealed class App
 
     private void HandleTextInputKey(KeyEvent key)
     {
+        if (key.Control)
+        {
+            switch (key.Key)
+            {
+                case ConsoleKey.LeftArrow:
+                    _activeTextInput!.MoveCursorWordLeft();
+                    return;
+                case ConsoleKey.RightArrow:
+                    _activeTextInput!.MoveCursorWordRight();
+                    return;
+                case ConsoleKey.Backspace:
+                    _activeTextInput!.DeleteWordBackward();
+                    return;
+            }
+        }
+
         switch (key.Key)
         {
             case ConsoleKey.Escape:
@@ -2392,6 +2408,23 @@ internal sealed class App
 
     private void HandleGoToPathKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer)
     {
+        if (key.Control)
+        {
+            switch (key.Key)
+            {
+                case ConsoleKey.LeftArrow:
+                    _goToPathInput!.MoveCursorWordLeft();
+                    return;
+                case ConsoleKey.RightArrow:
+                    _goToPathInput!.MoveCursorWordRight();
+                    return;
+                case ConsoleKey.Backspace:
+                    _goToPathInput!.DeleteWordBackward();
+                    _goToPathSuggestion = null;
+                    return;
+            }
+        }
+
         switch (key.Key)
         {
             case ConsoleKey.Escape:
@@ -2762,6 +2795,26 @@ internal sealed class App
 
     private void HandleSearchKey(KeyEvent key)
     {
+        if (key.Control)
+        {
+            switch (key.Key)
+            {
+                case ConsoleKey.LeftArrow:
+                    _searchInput!.MoveCursorWordLeft();
+                    return;
+                case ConsoleKey.RightArrow:
+                    _searchInput!.MoveCursorWordRight();
+                    return;
+                case ConsoleKey.Backspace:
+                    _searchInput!.DeleteWordBackward();
+                    _searchFilter = _searchInput.Value;
+                    InvalidateFilteredEntries();
+                    _selectedIndex = 0;
+                    _scrollOffset = 0;
+                    return;
+            }
+        }
+
         switch (key.Key)
         {
             case ConsoleKey.Escape:
@@ -4923,6 +4976,25 @@ internal sealed class App
 
     private void HandleFileFinderKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer, InputPipeline pipeline)
     {
+        if (key.Control)
+        {
+            switch (key.Key)
+            {
+                case ConsoleKey.LeftArrow:
+                    _fileFinderInput!.MoveCursorWordLeft();
+                    return;
+                case ConsoleKey.RightArrow:
+                    _fileFinderInput!.MoveCursorWordRight();
+                    return;
+                case ConsoleKey.Backspace:
+                    _fileFinderInput!.DeleteWordBackward();
+                    _fileFinderSelectedIndex = 0;
+                    _fileFinderScrollOffset = 0;
+                    StartFinderSearch(pipeline);
+                    return;
+            }
+        }
+
         List<FinderDisplayEntry> filtered = GetFinderDisplayEntries();
 
         switch (key.Key)
