@@ -533,7 +533,11 @@ internal static class PaneRenderer
                         if (entry.DriveTotalSize > 0)
                         {
                             double fraction = (double)(entry.DriveTotalSize - entry.DriveFreeSpace) / entry.DriveTotalSize;
-                            var bar = FormatHelpers.FormatPercentBar(barBuf, fraction, driveBarWidth);
+
+                            // Reserve first char as a spacer so the bar doesn't blend
+                            // with the selection background color.
+                            int actualBarWidth = driveBarWidth - 1;
+                            var bar = FormatHelpers.FormatPercentBar(barBuf, fraction, actualBarWidth);
 
                             Color barColor = fraction > 0.9 ? DriveBarHighColor
                                 : fraction > 0.7 ? DriveBarMedColor
@@ -542,7 +546,9 @@ internal static class PaneRenderer
                             int barCol = detailCol + GapWidth;
                             int labelEnd = bar.LabelStart + bar.LabelLength;
 
-                            for (int c = 0; c < driveBarWidth; c++)
+                            buffer.Put(screenRow, barCol, ' ', default);
+
+                            for (int c = 0; c < actualBarWidth; c++)
                             {
                                 bool isLabel = c >= bar.LabelStart && c < labelEnd;
                                 bool isFilled = c < bar.FilledCount;
@@ -558,7 +564,7 @@ internal static class PaneRenderer
                                     charStyle = isFilled ? new CellStyle(barColor, null) : new CellStyle(DriveBarEmptyColor, null);
                                 }
 
-                                buffer.Put(screenRow, barCol + c, barBuf[c], charStyle);
+                                buffer.Put(screenRow, barCol + 1 + c, barBuf[c], charStyle);
                             }
                         }
                     }
