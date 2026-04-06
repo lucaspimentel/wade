@@ -474,14 +474,18 @@ internal static class PaneRenderer
                 nameCharsUsed = 1 + nameLen;
             }
 
-            // Append " → target" suffix for symlinks
-            if (entry.IsSymlink && entry.LinkTarget is { } linkTarget)
+            // Append " → target" suffix for symlinks and app exec aliases
+            string? targetPath = entry.IsSymlink ? entry.LinkTarget
+                : entry.IsAppExecLink ? entry.AppExecLinkTarget
+                : null;
+
+            if (targetPath is { } linkTarget)
             {
                 int remaining = nameWidth - nameCharsUsed;
                 if (remaining > 4) // need room for at least " → X"
                 {
                     CellStyle suffixStyle = isSelected ? style : entry.IsBrokenSymlink ? BrokenSymlinkStyle : DetailStyle;
-                    string arrow = " → ";
+                    string arrow = " \u2192 ";
                     int suffixCol = entryCol + nameCharsUsed;
                     buffer.WriteString(screenRow, suffixCol, arrow, suffixStyle, remaining);
                     remaining -= arrow.Length;

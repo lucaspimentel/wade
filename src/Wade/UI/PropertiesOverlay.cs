@@ -177,15 +177,17 @@ internal static class PropertiesOverlay
             ? "Drive"
             : entry.IsBrokenSymlink
                 ? "Broken Symlink"
-                : entry.IsJunctionPoint
-                    ? "Junction \u2192 Directory"
-                    : entry.IsSymlink
-                        ? entry.IsDirectory ? "Symlink \u2192 Directory" : "Symlink \u2192 File"
-                        : entry.IsDirectory
-                            ? "Directory"
-                            : FilePreview.GetFileTypeLabel(entry.FullPath) ?? "File";
+                : entry.IsAppExecLink
+                    ? "App Execution Alias"
+                    : entry.IsJunctionPoint
+                        ? "Junction \u2192 Directory"
+                        : entry.IsSymlink
+                            ? entry.IsDirectory ? "Symlink \u2192 Directory" : "Symlink \u2192 File"
+                            : entry.IsDirectory
+                                ? "Directory"
+                                : FilePreview.GetFileTypeLabel(entry.FullPath) ?? "File";
 
-        string target = entry.LinkTarget ?? "\u2014";
+        string target = entry.AppExecLinkTarget ?? entry.LinkTarget ?? "\u2014";
 
         string size;
         if (entry.IsDrive && entry.DriveTotalSize > 0)
@@ -270,7 +272,11 @@ internal static class PropertiesOverlay
             readOnly = false;
         }
 
-        if (entry.IsJunctionPoint)
+        if (entry.IsAppExecLink)
+        {
+            attributes = attributes.Replace("ReparsePoint", "AppExecLink");
+        }
+        else if (entry.IsJunctionPoint)
         {
             attributes = attributes.Replace("ReparsePoint", "Junction");
         }

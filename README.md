@@ -45,6 +45,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Copy path** — `y` for absolute path, `Y` for git-relative path
 - **Symlinks** — visual distinction with target display; `Ctrl+L` to create
 - **Junction points** — detected and distinguished from symlinks with dedicated icon and "Junction" label (Windows)
+- **App execution aliases** — MSIX/UWP packaged app aliases detected with resolved target path (Windows)
 - **Cloud files** — auto-detected OneDrive/Dropbox placeholders shown with cloud icon (Windows)
 
 ### Interface

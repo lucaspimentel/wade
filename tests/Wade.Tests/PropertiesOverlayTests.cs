@@ -202,6 +202,23 @@ public class PropertiesOverlayTests
     }
 
     [Fact]
+    public void Render_AppExecLink_ShowsAppExecType()
+    {
+        var buf = new ScreenBuffer(120, 30);
+        string targetPath = @"C:\Program Files\WindowsApps\Microsoft.WindowsTerminal\wt.exe";
+        var entry = new FileSystemEntry(
+            "wt.exe", @"C:\Users\test\AppData\Local\Microsoft\WindowsApps\wt.exe", false, 0, DateTime.Now,
+            LinkTarget: null, IsBrokenSymlink: false, IsDrive: false,
+            IsAppExecLink: true, AppExecLinkTarget: targetPath);
+
+        PropertiesOverlay.Render(buf, 120, 30, entry, null);
+
+        string output = Flush(buf);
+        Assert.Contains("App Execution Alias", output);
+        Assert.Contains(targetPath, output);
+    }
+
+    [Fact]
     public void Render_RegularFile_ShowsEmDashForTarget()
     {
         var buf = new ScreenBuffer(120, 30);

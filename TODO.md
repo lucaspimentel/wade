@@ -53,11 +53,12 @@ Research and implement image previews for Office Open XML formats (`.docx`, `.xl
   - Junction-specific icon (`nf-md-folder_arrow_right`). Cyan symlink styling and " -> target" suffix in file list.
   - Windows-only (junctions don't exist on Unix).
 
-### Reparse point type detection — app execution aliases (`IO_REPARSE_TAG_APPEXECLINK`)
+### ~~Reparse point type detection — app execution aliases (`IO_REPARSE_TAG_APPEXECLINK`)~~ (Done)
 
-- [ ] Detect app execution aliases (reparse tag `0x8000001B`) via `FSCTL_GET_REPARSE_POINT` and parse the custom reparse data buffer to extract the target executable path, package family name, and app entry point (three null-terminated UTF-16 strings).
-  - These are zero-byte reparse points used by Windows for MSIX/UWP packaged apps (e.g., `C:\Users\...\WindowsApps\wt.exe`).
-  - Display the resolved target and package info in properties overlay and preview pane.
+- [x] Detect app execution aliases (reparse tag `0x8000001B`) via `FSCTL_GET_REPARSE_POINT` and parse the reparse data buffer to extract the target executable path.
+  - `ReparsePointDetector.IsAppExecLink()` and `GetAppExecLinkTarget()` with `ParseAppExecLinkTarget` (internal static, testable).
+  - Properties overlay shows "App Execution Alias" type and target path. Attributes show "AppExecLink" instead of "ReparsePoint".
+  - Dedicated icon (`nf-md-application_outline`). Target shown with " → " suffix in file list.
   - Windows-only.
 
 ### Keyboard shortcut convention audit

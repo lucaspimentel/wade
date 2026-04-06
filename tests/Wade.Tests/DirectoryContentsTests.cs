@@ -363,6 +363,25 @@ public class DirectoryContentsTests
         Assert.True(entry.IsSymlink); // LinkTarget is set, so IsSymlink is also true
     }
 
+    // ── App execution alias support ─────────────────────────────────────────
+
+    [Fact]
+    public void FileSystemEntry_IsAppExecLink_DefaultsToFalse()
+    {
+        var entry = new FileSystemEntry("wt.exe", "/tmp/wt.exe", false, 0, DateTime.Now, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
+        Assert.False(entry.IsAppExecLink);
+        Assert.Null(entry.AppExecLinkTarget);
+    }
+
+    [Fact]
+    public void FileSystemEntry_IsAppExecLink_CanBeSet()
+    {
+        var entry = new FileSystemEntry("wt.exe", "/tmp/wt.exe", false, 0, DateTime.Now, LinkTarget: null, IsBrokenSymlink: false,
+            IsDrive: false, IsAppExecLink: true, AppExecLinkTarget: @"C:\Program Files\WindowsApps\wt.exe");
+        Assert.True(entry.IsAppExecLink);
+        Assert.Equal(@"C:\Program Files\WindowsApps\wt.exe", entry.AppExecLinkTarget);
+    }
+
     // ── System+Hidden filtering (Windows only) ─────────────────────────────
 
     [Fact]

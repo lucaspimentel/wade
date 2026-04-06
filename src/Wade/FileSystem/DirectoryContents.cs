@@ -137,6 +137,8 @@ internal sealed class DirectoryContents
                     continue;
                 }
 
+                bool isAppExecLink = CheckIsAppExecLink(file);
+
                 list.Add(new FileSystemEntry(
                     file.Name,
                     file.FullName,
@@ -146,7 +148,9 @@ internal sealed class DirectoryContents
                     LinkTarget: file.LinkTarget,
                     IsBrokenSymlink: CheckBrokenSymlink(file),
                     IsDrive: false,
-                    IsCloudPlaceholder: CheckIsCloudPlaceholder(file)));
+                    IsCloudPlaceholder: CheckIsCloudPlaceholder(file),
+                    IsAppExecLink: isAppExecLink,
+                    AppExecLinkTarget: isAppExecLink ? ReparsePointDetector.GetAppExecLinkTarget(file.FullName) : null));
             }
         }
         catch (UnauthorizedAccessException)
@@ -219,6 +223,16 @@ internal sealed class DirectoryContents
         return (attributeBits & (RecallOnDataAccess | RecallOnOpen)) != 0;
     }
 
+    private static bool CheckIsAppExecLink(FileInfo file)
+    {
+        if (!file.Attributes.HasFlag(FileAttributes.ReparsePoint))
+        {
+            return false;
+        }
+
+        return ReparsePointDetector.IsAppExecLink(file.FullName);
+    }
+
     private static bool CheckIsJunctionPoint(DirectoryInfo dir)
     {
         if (!dir.Attributes.HasFlag(FileAttributes.ReparsePoint))
@@ -259,6 +273,8 @@ internal sealed record FileSystemEntry(
     bool IsDrive,
     bool IsCloudPlaceholder = false,
     bool IsJunctionPoint = false,
+    bool IsAppExecLink = false,
+    string? AppExecLinkTarget = null,
     DriveMediaType DriveMediaType = DriveMediaType.Unknown,
     string? DriveFormat = null,
     string? DriveLabel = null,
