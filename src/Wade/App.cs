@@ -119,6 +119,13 @@ internal sealed class App
     private InlineDirSizeLoader? _inlineDirSizeLoader;
     private Dictionary<string, long>? _inlineDirSizes;
 
+    // File operation progress
+    private FileOperationRunner? _fileOperationRunner;
+    private string _fileOpLabel = "";
+    private int _fileOpFilesProcessed;
+    private int _fileOpTotalFiles;
+    private string _fileOpCurrentFile = "";
+
     // Modal input state
     private InputMode _inputMode = InputMode.Normal;
     private bool _isCombinedPreview;
@@ -219,6 +226,7 @@ internal sealed class App
         _dirSizeLoader = new DirectorySizeLoader(pipeline);
         _inlineDirSizeLoader = new InlineDirSizeLoader(pipeline);
         _gitStatusLoader = new GitStatusLoader(pipeline);
+        _fileOperationRunner = new FileOperationRunner(pipeline);
         _gitActionRunner = new GitActionRunner(pipeline);
         _fsWatcher = new FileSystemWatcherManager(pipeline);
         PreviewLoader? previewLoader = _previewLoader;
@@ -364,6 +372,17 @@ internal sealed class App
                         _fileFinderScanning = false;
                     }
                 }
+                else if (extra is FileOperationProgressEvent progressEvt)
+                {
+                    _fileOpLabel = progressEvt.OperationLabel;
+                    _fileOpFilesProcessed = progressEvt.FilesProcessed;
+                    _fileOpTotalFiles = progressEvt.TotalFiles;
+                    _fileOpCurrentFile = progressEvt.CurrentFile;
+                }
+                else if (extra is FileOperationCompleteEvent completeEvt)
+                {
+                    HandleFileOperationComplete(completeEvt);
+                }
                 else if (extra is ResizeEvent)
                 {
                     inputEvent = extra;
@@ -447,6 +466,21 @@ internal sealed class App
             if (inputEvent is MetadataReadyEvent metadataEvt)
             {
                 HandleMetadataReady(metadataEvt);
+                continue;
+            }
+
+            if (inputEvent is FileOperationProgressEvent progressEvtMain)
+            {
+                _fileOpLabel = progressEvtMain.OperationLabel;
+                _fileOpFilesProcessed = progressEvtMain.FilesProcessed;
+                _fileOpTotalFiles = progressEvtMain.TotalFiles;
+                _fileOpCurrentFile = progressEvtMain.CurrentFile;
+                continue;
+            }
+
+            if (inputEvent is FileOperationCompleteEvent completeEvtMain)
+            {
+                HandleFileOperationComplete(completeEvtMain);
                 continue;
             }
 
@@ -634,6 +668,20 @@ internal sealed class App
 
                 case InputMode.FileFinder:
                     HandleFileFinderKey(keyEvent, previewLoader, buffer, pipeline);
+                    continue;
+
+                case InputMode.FileOperation:
+                    if (keyEvent.Key == ConsoleKey.Escape)
+                    {
+                        _fileOperationRunner?.Cancel();
+                        _inputMode = InputMode.Normal;
+                        _directoryContents.Invalidate(_currentPath);
+                        InvalidateFilteredEntries();
+                        _markedPaths.Clear();
+                        RefreshGitStatus();
+                        ShowNotification("Operation cancelled", NotificationKind.Info);
+                    }
+
                     continue;
 
                 case InputMode.Normal:
@@ -962,133 +1010,17 @@ internal sealed class App
 
     private void ExecutePaste(bool overwrite)
     {
-        int errors = 0;
-        int success = 0;
-        var sourceParents = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (string sourcePath in _clipboardPaths)
-        {
-            string destName = Path.GetFileName(sourcePath);
-            string destPath = Path.Combine(_currentPath, destName);
-
-            if (Path.Exists(destPath))
-            {
-                if (!overwrite)
-                {
-                    errors++;
-                    continue;
-                }
-
-                try
-                {
-                    // Check symlink FIRST — Directory.Exists follows the link on Windows
-                    var destInfo = new FileInfo(destPath);
-                    if (destInfo.LinkTarget != null)
-                    {
-                        if (Directory.Exists(destPath))
-                        {
-                            Directory.Delete(destPath, false);
-                        }
-                        else
-                        {
-                            File.Delete(destPath);
-                        }
-                    }
-                    else if (Directory.Exists(destPath))
-                    {
-                        Directory.Delete(destPath, true);
-                    }
-                    else
-                    {
-                        File.Delete(destPath);
-                    }
-                }
-                catch
-                {
-                    errors++;
-                    continue;
-                }
-            }
-
-            try
-            {
-                if (_clipboardIsCut)
-                {
-                    if (Directory.Exists(sourcePath))
-                    {
-                        Directory.Move(sourcePath, destPath);
-                    }
-                    else
-                    {
-                        File.Move(sourcePath, destPath);
-                    }
-
-                    sourceParents.Add(Path.GetDirectoryName(sourcePath)!);
-                }
-                else
-                {
-                    var sourceInfo = new FileInfo(sourcePath);
-                    if (_config.CopySymlinksAsLinksEnabled && sourceInfo.LinkTarget != null)
-                    {
-                        try
-                        {
-                            if (Directory.Exists(sourcePath))
-                            {
-                                Directory.CreateSymbolicLink(destPath, sourceInfo.LinkTarget);
-                            }
-                            else
-                            {
-                                File.CreateSymbolicLink(destPath, sourceInfo.LinkTarget);
-                            }
-
-                            success++;
-                            continue;
-                        }
-                        catch (UnauthorizedAccessException)
-                        {
-                        }
-                    }
-
-                    if (Directory.Exists(sourcePath))
-                    {
-                        FileOperations.CopyDirectory(sourcePath, destPath, _config.CopySymlinksAsLinksEnabled);
-                    }
-                    else
-                    {
-                        File.Copy(sourcePath, destPath);
-                    }
-                }
-
-                success++;
-            }
-            catch
-            {
-                errors++;
-            }
-        }
-
-        _directoryContents.Invalidate(_currentPath);
-        InvalidateFilteredEntries();
-        foreach (string parent in sourceParents)
-        {
-            _directoryContents.Invalidate(parent);
-        }
-
-        if (_clipboardIsCut && errors == 0)
-        {
-            _clipboardPaths.Clear();
-        }
-
-        RefreshGitStatus();
-
-        if (errors > 0)
-        {
-            ShowNotification($"Pasted {success}, {errors} failed", NotificationKind.Error);
-        }
-        else
-        {
-            ShowNotification($"Pasted {success} item(s)", NotificationKind.Success);
-        }
+        _fileOperationRunner!.BeginPaste(
+            new List<string>(_clipboardPaths),
+            _currentPath,
+            _clipboardIsCut,
+            overwrite,
+            _config.CopySymlinksAsLinksEnabled);
+        _inputMode = InputMode.FileOperation;
+        _fileOpLabel = _clipboardIsCut ? "Moving" : "Copying";
+        _fileOpFilesProcessed = 0;
+        _fileOpTotalFiles = _clipboardPaths.Count;
+        _fileOpCurrentFile = "";
     }
 
     private void Render(ScreenBuffer buffer)
@@ -1375,6 +1307,9 @@ internal sealed class App
                 break;
             case InputMode.FileFinder:
                 RenderFileFinder(buffer, width, height);
+                break;
+            case InputMode.FileOperation:
+                ProgressOverlay.Render(buffer, width, height, _fileOpLabel, _fileOpFilesProcessed, _fileOpTotalFiles, _fileOpCurrentFile);
                 break;
         }
     }
@@ -2768,20 +2703,39 @@ internal sealed class App
 
     private void ExecuteDelete(List<string> targets, bool permanent)
     {
-        int errors = FileOperations.Delete(targets, permanent);
+        _fileOperationRunner!.BeginDelete(targets, permanent);
+        _inputMode = InputMode.FileOperation;
+        _fileOpLabel = "Deleting";
+        _fileOpFilesProcessed = 0;
+        _fileOpTotalFiles = targets.Count;
+        _fileOpCurrentFile = "";
+    }
 
+    private void HandleFileOperationComplete(FileOperationCompleteEvent evt)
+    {
+        _inputMode = InputMode.Normal;
         _directoryContents.Invalidate(_currentPath);
         InvalidateFilteredEntries();
+
+        if (evt.WasCut && evt.ErrorCount == 0)
+        {
+            _clipboardPaths.Clear();
+        }
+
         _markedPaths.Clear();
         RefreshGitStatus();
 
-        if (errors > 0)
+        if (evt.ErrorCount > 0)
         {
-            ShowNotification($"Deleted with {errors} error(s)", NotificationKind.Error);
+            ShowNotification(
+                $"{_fileOpLabel} {evt.SuccessCount}, {evt.ErrorCount} failed",
+                NotificationKind.Error);
         }
         else
         {
-            ShowNotification($"Deleted {targets.Count} item(s)", NotificationKind.Success);
+            ShowNotification(
+                $"{_fileOpLabel} {evt.SuccessCount} item(s)",
+                NotificationKind.Success);
         }
     }
 

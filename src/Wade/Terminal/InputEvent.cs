@@ -19,6 +19,12 @@ internal sealed record ResizeEvent(int Width, int Height) : InputEvent;
 
 internal sealed record PasteEvent(string Text) : InputEvent;
 
+internal sealed record FileOperationProgressEvent(
+    string OperationLabel, int FilesProcessed, int TotalFiles, string CurrentFile) : InputEvent;
+
+internal sealed record FileOperationCompleteEvent(
+    int SuccessCount, int ErrorCount, bool WasCut) : InputEvent;
+
 internal sealed record PreviewReadyEvent(
     string Path,
     StyledLine[] StyledLines,

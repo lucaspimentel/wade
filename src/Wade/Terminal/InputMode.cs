@@ -15,4 +15,5 @@ internal enum InputMode
     Bookmarks,
     FileFinder,
     ContextMenu,
+    FileOperation,
 }

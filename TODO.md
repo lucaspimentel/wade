@@ -2,9 +2,9 @@
 
 ## Features
 
-### File action progress indicator
+### ~~File action progress indicator~~ (Done)
 
-Progress indicator for large copy/move operations.
+Progress dialog with file count, progress bar, current filename, and Esc to cancel. Copy, move, and delete operations run in background via `FileOperationRunner`.
 
 ### System clipboard — Unix/macOS file interop
 
