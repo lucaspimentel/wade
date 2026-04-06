@@ -131,8 +131,9 @@ public class FuzzyScorerTests
         int score = FuzzyScorer.ScoreWithFileNamePriority("Wade", path, fileNameStart);
         int directScore = FuzzyScorer.Score("Wade", path);
 
-        // Should fall back to full path score since "Wade" doesn't match "App.cs"
-        Assert.Equal(directScore, score);
+        // Should fall back to full path score (minus depth penalty for 2 separators)
+        int depth = path.Count(c => c == Path.DirectorySeparatorChar);
+        Assert.Equal(directScore + FuzzyScorer.PenaltyDepth * depth, score);
     }
 
     [Fact]

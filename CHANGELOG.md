@@ -15,6 +15,7 @@
 ### Fixed
 - Fix selection scrolling beyond visible area when column headers are enabled — `VisibleFileListHeight` and PageUp/PageDown now account for header rows
 - Fix file finder skipping hidden directories (e.g. `AppData`) even when "Show Hidden Files" is enabled — hidden check was incorrectly gated by system-files setting
+- Fix file finder ranking — current-directory files now receive filename bonus and depth penalty favors shallower matches, so `wt.exe` ranks above `subdir\wt.exe`
 
 ## [1.11.0] - 2026-04-01
 

@@ -20,6 +20,7 @@ internal static class FuzzyScorer
     internal const int BonusCaseMatch = 1;
     internal const int PenaltyTrailingGap = -1;
     internal const int FileNameBonus = 1000;
+    internal const int PenaltyDepth = -5;
 
     private static readonly char[] s_separators = Path.DirectorySeparatorChar == Path.AltDirectorySeparatorChar
         ? [Path.DirectorySeparatorChar]
@@ -119,9 +120,22 @@ internal static class FuzzyScorer
         out int[] matchPositions)
     {
         int fullScore = Score(query, relativePath, out int[] fullPositions);
+        int bestScore;
 
+        // If the file is in the current directory (no parent path), the full path IS the filename.
+        // Give it the filename bonus directly.
+        if (fileNameStart == 0)
+        {
+            if (fullScore != int.MinValue)
+            {
+                fullScore += FileNameBonus;
+            }
+
+            matchPositions = fullPositions;
+            bestScore = fullScore;
+        }
         // If the filename portion exists and is different from the full path, try scoring it.
-        if (fileNameStart > 0 && fileNameStart < relativePath.Length)
+        else if (fileNameStart < relativePath.Length)
         {
             ReadOnlySpan<char> fileName = relativePath[fileNameStart..];
             int fileNameScore = Score(query, fileName, out int[] fnPositions);
@@ -139,13 +153,49 @@ internal static class FuzzyScorer
                     }
 
                     matchPositions = fnPositions;
-                    return fileNameScore;
+                    bestScore = fileNameScore;
                 }
+                else
+                {
+                    matchPositions = fullPositions;
+                    bestScore = fullScore;
+                }
+            }
+            else
+            {
+                matchPositions = fullPositions;
+                bestScore = fullScore;
+            }
+        }
+        else
+        {
+            matchPositions = fullPositions;
+            bestScore = fullScore;
+        }
+
+        // Depth penalty: favor shallower paths when scores are otherwise equal.
+        if (bestScore != int.MinValue)
+        {
+            int depth = CountSeparators(relativePath);
+            bestScore += PenaltyDepth * depth;
+        }
+
+        return bestScore;
+    }
+
+    private static int CountSeparators(ReadOnlySpan<char> path)
+    {
+        int count = 0;
+
+        for (int i = 0; i < path.Length; i++)
+        {
+            if (IsDelimiter(path[i]))
+            {
+                count++;
             }
         }
 
-        matchPositions = fullPositions;
-        return fullScore;
+        return count;
     }
 
     private static int ComputeScore(ReadOnlySpan<char> query, ReadOnlySpan<char> target, ReadOnlySpan<int> matchPositions)
