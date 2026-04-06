@@ -14,6 +14,7 @@
 
 ### Fixed
 - Fix selection scrolling beyond visible area when column headers are enabled — `VisibleFileListHeight` and PageUp/PageDown now account for header rows
+- Fix file finder skipping hidden directories (e.g. `AppData`) even when "Show Hidden Files" is enabled — hidden check was incorrectly gated by system-files setting
 
 ## [1.11.0] - 2026-04-01
 

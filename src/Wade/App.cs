@@ -4675,10 +4675,10 @@ internal sealed class App
                         continue;
                     }
 
-                    // Skip system directories on Windows when system files are not shown
+                    // Skip hidden directories when hidden files are not shown
                     DirectoryInfo? dirInfo = null;
 
-                    if (!showSystem && OperatingSystem.IsWindows())
+                    if (!showHidden)
                     {
                         try
                         {
@@ -4688,6 +4688,19 @@ internal sealed class App
                             {
                                 continue;
                             }
+                        }
+                        catch
+                        {
+                            continue;
+                        }
+                    }
+
+                    // Skip system directories on Windows when system files are not shown
+                    if (!showSystem && OperatingSystem.IsWindows())
+                    {
+                        try
+                        {
+                            dirInfo ??= new DirectoryInfo(subDir);
 
                             if ((dirInfo.Attributes & FileAttributes.System) != 0)
                             {
