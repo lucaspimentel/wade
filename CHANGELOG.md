@@ -7,6 +7,9 @@
 - Add C/C++ syntax highlighting — C language with preprocessor directives, keywords, and standard types; C++ extends C with class/template/concept keywords and STL types; supports `.c`, `.h`, `.cpp`, `.cxx`, `.cc`, `.hpp`, `.hxx`, `.hh`, `.ino`, and more
 - Add Dockerfile syntax highlighting — instruction keywords, variables, flags, `AS` keyword, comments, and strings; supports `Dockerfile`, `Containerfile`, and `.dockerfile` extension
 
+### Fixed
+- Fix selection scrolling beyond visible area when column headers are enabled — `VisibleFileListHeight` and PageUp/PageDown now account for header rows
+
 ## [1.11.0] - 2026-04-01
 
 ### Added

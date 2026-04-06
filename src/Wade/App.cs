@@ -160,10 +160,25 @@ internal sealed class App
         _config = config;
     }
 
-    private int VisibleFileListHeight =>
-        _inputMode == InputMode.Search || !string.IsNullOrEmpty(_searchFilter)
-            ? _layout.CenterPane.Height - 1
-            : _layout.CenterPane.Height;
+    private int VisibleFileListHeight
+    {
+        get
+        {
+            int height = _layout.CenterPane.Height;
+
+            if (_inputMode == InputMode.Search || !string.IsNullOrEmpty(_searchFilter))
+            {
+                height--;
+            }
+
+            if (_config.ColumnHeadersEnabled && height > 2)
+            {
+                height -= 2;
+            }
+
+            return height;
+        }
+    }
 
     private void UpdateTerminalTitle()
     {
@@ -709,11 +724,11 @@ internal sealed class App
                 }
 
                 case AppAction.PageUp:
-                    _selectedIndex = Math.Max(0, _selectedIndex - _layout.CenterPane.Height);
+                    _selectedIndex = Math.Max(0, _selectedIndex - VisibleFileListHeight);
                     break;
 
                 case AppAction.PageDown:
-                    _selectedIndex = Math.Min(entries.Count - 1, _selectedIndex + _layout.CenterPane.Height);
+                    _selectedIndex = Math.Min(entries.Count - 1, _selectedIndex + VisibleFileListHeight);
                     break;
 
                 case AppAction.Home:
