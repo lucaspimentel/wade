@@ -8,6 +8,9 @@
 - Add Dockerfile syntax highlighting — instruction keywords, variables, flags, `AS` keyword, comments, and strings; supports `Dockerfile`, `Containerfile`, and `.dockerfile` extension
 - Add XML syntax highlighting for `.xsd` (XML Schema Definition) files
 
+### Changed
+- Use descriptive file type labels for SVG, ICO, Paint.NET, CSV, TSV, SQL, JSX, TSX, and `.env` files in properties and status bar
+
 ### Fixed
 - Fix selection scrolling beyond visible area when column headers are enabled — `VisibleFileListHeight` and PageUp/PageDown now account for header rows
 
