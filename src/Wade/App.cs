@@ -122,9 +122,6 @@ internal sealed class App
     // File operation progress
     private FileOperationRunner? _fileOperationRunner;
     private string _fileOpLabel = "";
-    private int _fileOpFilesProcessed;
-    private int _fileOpTotalFiles;
-    private string _fileOpCurrentFile = "";
 
     // Modal input state
     private InputMode _inputMode = InputMode.Normal;
@@ -372,13 +369,6 @@ internal sealed class App
                         _fileFinderScanning = false;
                     }
                 }
-                else if (extra is FileOperationProgressEvent progressEvt)
-                {
-                    _fileOpLabel = progressEvt.OperationLabel;
-                    _fileOpFilesProcessed = progressEvt.FilesProcessed;
-                    _fileOpTotalFiles = progressEvt.TotalFiles;
-                    _fileOpCurrentFile = progressEvt.CurrentFile;
-                }
                 else if (extra is FileOperationCompleteEvent completeEvt)
                 {
                     HandleFileOperationComplete(completeEvt);
@@ -466,15 +456,6 @@ internal sealed class App
             if (inputEvent is MetadataReadyEvent metadataEvt)
             {
                 HandleMetadataReady(metadataEvt);
-                continue;
-            }
-
-            if (inputEvent is FileOperationProgressEvent progressEvtMain)
-            {
-                _fileOpLabel = progressEvtMain.OperationLabel;
-                _fileOpFilesProcessed = progressEvtMain.FilesProcessed;
-                _fileOpTotalFiles = progressEvtMain.TotalFiles;
-                _fileOpCurrentFile = progressEvtMain.CurrentFile;
                 continue;
             }
 
@@ -1018,9 +999,6 @@ internal sealed class App
             _config.CopySymlinksAsLinksEnabled);
         _inputMode = InputMode.FileOperation;
         _fileOpLabel = _clipboardIsCut ? "Moving" : "Copying";
-        _fileOpFilesProcessed = 0;
-        _fileOpTotalFiles = _clipboardPaths.Count;
-        _fileOpCurrentFile = "";
     }
 
     private void Render(ScreenBuffer buffer)
@@ -1309,7 +1287,7 @@ internal sealed class App
                 RenderFileFinder(buffer, width, height);
                 break;
             case InputMode.FileOperation:
-                ProgressOverlay.Render(buffer, width, height, _fileOpLabel, _fileOpFilesProcessed, _fileOpTotalFiles, _fileOpCurrentFile);
+                ProgressOverlay.Render(buffer, width, height, _fileOpLabel);
                 break;
         }
     }
@@ -2706,9 +2684,6 @@ internal sealed class App
         _fileOperationRunner!.BeginDelete(targets, permanent);
         _inputMode = InputMode.FileOperation;
         _fileOpLabel = "Deleting";
-        _fileOpFilesProcessed = 0;
-        _fileOpTotalFiles = targets.Count;
-        _fileOpCurrentFile = "";
     }
 
     private void HandleFileOperationComplete(FileOperationCompleteEvent evt)

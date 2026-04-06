@@ -55,8 +55,6 @@ internal sealed class FileOperationRunner
     {
         int success = 0;
         int errors = 0;
-        int totalFiles = sourcePaths.Count;
-        long lastProgressTick = 0;
 
         for (int i = 0; i < sourcePaths.Count; i++)
         {
@@ -68,14 +66,6 @@ internal sealed class FileOperationRunner
             string sourcePath = sourcePaths[i];
             string destName = Path.GetFileName(sourcePath);
             string destPath = Path.Combine(destination, destName);
-
-            // Throttle progress events to every 100ms
-            long now = Environment.TickCount64;
-            if (now - lastProgressTick >= 100 || i == 0)
-            {
-                _pipeline.Inject(new FileOperationProgressEvent(label, i, totalFiles, destName));
-                lastProgressTick = now;
-            }
 
             if (Path.Exists(destPath))
             {
@@ -159,7 +149,6 @@ internal sealed class FileOperationRunner
     {
         int success = 0;
         int errors = 0;
-        long lastProgressTick = 0;
 
         for (int i = 0; i < paths.Count; i++)
         {
@@ -169,14 +158,6 @@ internal sealed class FileOperationRunner
             }
 
             string path = paths[i];
-            string name = Path.GetFileName(path);
-
-            long now = Environment.TickCount64;
-            if (now - lastProgressTick >= 100 || i == 0)
-            {
-                _pipeline.Inject(new FileOperationProgressEvent("Deleting", i, paths.Count, name));
-                lastProgressTick = now;
-            }
 
             try
             {

@@ -3,7 +3,7 @@
 ## [Unreleased]
 
 ### Added
-- Add file operation progress dialog — copy, move, and delete operations run in the background with a progress overlay showing file count, progress bar, current filename, and Esc to cancel
+- Add file operation busy indicator — copy, move, and delete operations run in the background with a modal overlay and Esc to cancel
 - Add Windows shortcut (`.lnk`) metadata extraction — shows target path, working directory, arguments, description, icon location, hotkey, and volume label in properties and preview pane; parser copied from lucaspimentel/windows-shortcut-parser
 - Add paste support in text input fields — Unix via bracketed paste mode (`ESC[200~`/`ESC[201~`), Windows via heuristic batch detection from `ReadConsoleInput`; works in file finder, filter, go-to-path, and rename dialog
 - Add word-navigation shortcuts in text input fields — `Ctrl+Left`/`Ctrl+Right` to skip words, `Ctrl+Backspace` to delete previous word; works in file finder, filter, go-to-path, and rename dialog; Unix VT parser now extracts modifier flags from CSI sequences
