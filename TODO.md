@@ -61,6 +61,11 @@ Research and implement image previews for Office Open XML formats (`.docx`, `.xl
   - Dedicated icon (`nf-md-application_outline`). Target shown with " → " suffix in file list.
   - Windows-only.
 
+### Text input improvements
+
+- [ ] Support paste in text input fields (file finder, filter, go-to-path, rename dialog). Detect terminal-native paste via bracketed paste mode (`ESC[200~` ... `ESC[201~`) to batch rapid character input.
+- [ ] Support word-navigation shortcuts in text input fields: `Ctrl+Left`/`Ctrl+Right` to skip words, `Ctrl+Backspace` to delete previous word.
+
 ### Keyboard shortcut convention audit
 
 - [ ] Review remaining keybinding consistency. Current mix: some dialogs/tools use `Ctrl+` (`Ctrl+F` finder, `Ctrl+T` terminal, `Ctrl+L` symlink, `Ctrl+R` refresh, `Ctrl+P` command palette, `Ctrl+G` go-to-path) while others use bare keys (`n`/`N` new file/dir, `b`/`B` bookmarks, `/` filter, `,` config, `?` help, `i` properties). Convention: `Ctrl+<key>` for opening tools/dialogs/overlays, bare keys for direct actions.
