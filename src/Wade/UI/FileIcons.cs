@@ -82,6 +82,7 @@ internal static class FileIcons
             [".psd1"] = new(0xF489),
             [".bat"] = new(0xF17A), // nf-fa-windows
             [".cmd"] = new(0xF17A),
+            [".lnk"] = new(0xF1178), // nf-md-file_link_outline
 
             // Docker / CI
             [".dockerfile"] = new(0xF308), // nf-linux-docker

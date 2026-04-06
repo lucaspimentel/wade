@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Add Windows shortcut (`.lnk`) metadata extraction — shows target path, working directory, arguments, description, icon location, hotkey, and volume label in properties and preview pane; parser copied from lucaspimentel/windows-shortcut-parser
 - Add paste support in text input fields — Unix via bracketed paste mode (`ESC[200~`/`ESC[201~`), Windows via heuristic batch detection from `ReadConsoleInput`; works in file finder, filter, go-to-path, and rename dialog
 - Add word-navigation shortcuts in text input fields — `Ctrl+Left`/`Ctrl+Right` to skip words, `Ctrl+Backspace` to delete previous word; works in file finder, filter, go-to-path, and rename dialog; Unix VT parser now extracts modifier flags from CSI sequences
 - Add app execution alias detection — detect Windows MSIX/UWP app aliases (`IO_REPARSE_TAG_APPEXECLINK`) with resolved target path, dedicated icon, and "App Execution Alias" type label; parsed via `FSCTL_GET_REPARSE_POINT`

@@ -11,6 +11,7 @@ internal static class MetadataProviderRegistry
         new MediaMetadataProvider(),
         new NuGetMetadataProvider(),
         new MsiMetadataProvider(),
+        new ShortcutMetadataProvider(),
         new ArchiveMetadataProvider(),
         new PdfMetadataProvider(),
     ];

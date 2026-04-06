@@ -71,6 +71,7 @@ internal static class FilePreview
             [".xsd"] = "XML Schema Definition",
             [".ini"] = "INI",
             [".url"] = "URL Shortcut",
+            [".lnk"] = "Windows Shortcut",
             [".env"] = "Environment Variables",
             [".csv"] = "Comma-Separated Values",
             [".tsv"] = "Tab-Separated Values",
