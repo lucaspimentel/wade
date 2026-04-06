@@ -68,6 +68,7 @@ internal static class FilePreview
             [".yaml"] = "YAML",
             [".yml"] = "YAML",
             [".xml"] = "XML",
+            [".xsd"] = "XML Schema Definition",
             [".ini"] = "INI",
             [".url"] = "URL Shortcut",
             [".env"] = "Env",

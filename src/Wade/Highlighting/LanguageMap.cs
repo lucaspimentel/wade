@@ -75,6 +75,7 @@ internal static class LanguageMap
             [".yaml"] = Yaml,
             [".yml"] = Yaml,
             [".xml"] = XmlHtml,
+            [".xsd"] = XmlHtml,
             [".html"] = XmlHtml,
             [".htm"] = XmlHtml,
             [".csproj"] = XmlHtml,
