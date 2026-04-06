@@ -345,6 +345,24 @@ public class DirectoryContentsTests
         }
     }
 
+    // ── Junction point support ──────────────────────────────────────────────
+
+    [Fact]
+    public void FileSystemEntry_IsJunctionPoint_DefaultsToFalse()
+    {
+        var entry = new FileSystemEntry("dir", "/tmp/dir", true, 0, DateTime.Now, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
+        Assert.False(entry.IsJunctionPoint);
+    }
+
+    [Fact]
+    public void FileSystemEntry_IsJunctionPoint_CanBeSet()
+    {
+        var entry = new FileSystemEntry("junction", "/tmp/junction", true, 0, DateTime.Now, LinkTarget: "/tmp/target", IsBrokenSymlink: false,
+            IsDrive: false, IsJunctionPoint: true);
+        Assert.True(entry.IsJunctionPoint);
+        Assert.True(entry.IsSymlink); // LinkTarget is set, so IsSymlink is also true
+    }
+
     // ── System+Hidden filtering (Windows only) ─────────────────────────────
 
     [Fact]

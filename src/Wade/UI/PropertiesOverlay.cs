@@ -177,11 +177,13 @@ internal static class PropertiesOverlay
             ? "Drive"
             : entry.IsBrokenSymlink
                 ? "Broken Symlink"
-                : entry.IsSymlink
-                    ? entry.IsDirectory ? "Symlink \u2192 Directory" : "Symlink \u2192 File"
-                    : entry.IsDirectory
-                        ? "Directory"
-                        : FilePreview.GetFileTypeLabel(entry.FullPath) ?? "File";
+                : entry.IsJunctionPoint
+                    ? "Junction \u2192 Directory"
+                    : entry.IsSymlink
+                        ? entry.IsDirectory ? "Symlink \u2192 Directory" : "Symlink \u2192 File"
+                        : entry.IsDirectory
+                            ? "Directory"
+                            : FilePreview.GetFileTypeLabel(entry.FullPath) ?? "File";
 
         string target = entry.LinkTarget ?? "\u2014";
 
@@ -266,6 +268,15 @@ internal static class PropertiesOverlay
             accessed = "N/A";
             attributes = "N/A";
             readOnly = false;
+        }
+
+        if (entry.IsJunctionPoint)
+        {
+            attributes = attributes.Replace("ReparsePoint", "Junction");
+        }
+        else if (entry.IsSymlink)
+        {
+            attributes = attributes.Replace("ReparsePoint", "Symlink");
         }
 
         if (entry.IsCloudPlaceholder)

@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Add junction point detection — distinguish Windows junction points (`IO_REPARSE_TAG_MOUNT_POINT`) from symlinks with dedicated icon, "Junction → Directory" type label, and "Junction" attribute label; detected via `GetFileInformationByHandleEx` P/Invoke
 - Add C/C++ syntax highlighting — C language with preprocessor directives, keywords, and standard types; C++ extends C with class/template/concept keywords and STL types; supports `.c`, `.h`, `.cpp`, `.cxx`, `.cc`, `.hpp`, `.hxx`, `.hh`, `.ino`, and more
 - Add Dockerfile syntax highlighting — instruction keywords, variables, flags, `AS` keyword, comments, and strings; supports `Dockerfile`, `Containerfile`, and `.dockerfile` extension
 

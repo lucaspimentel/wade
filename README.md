@@ -44,6 +44,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **File actions** — open, rename, delete (with confirmation), copy/cut/paste with Windows clipboard interop; multi-select supported
 - **Copy path** — `y` for absolute path, `Y` for git-relative path
 - **Symlinks** — visual distinction with target display; `Ctrl+L` to create
+- **Junction points** — detected and distinguished from symlinks with dedicated icon and "Junction" label (Windows)
 - **Cloud files** — auto-detected OneDrive/Dropbox placeholders shown with cloud icon (Windows)
 
 ### Interface

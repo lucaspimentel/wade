@@ -118,7 +118,8 @@ internal sealed class DirectoryContents
                     LinkTarget: dir.LinkTarget,
                     IsBrokenSymlink: CheckBrokenSymlink(dir),
                     IsDrive: false,
-                    IsCloudPlaceholder: CheckIsCloudPlaceholder(dir)));
+                    IsCloudPlaceholder: CheckIsCloudPlaceholder(dir),
+                    IsJunctionPoint: CheckIsJunctionPoint(dir)));
             }
 
             foreach (FileInfo file in dirInfo.EnumerateFiles())
@@ -218,6 +219,16 @@ internal sealed class DirectoryContents
         return (attributeBits & (RecallOnDataAccess | RecallOnOpen)) != 0;
     }
 
+    private static bool CheckIsJunctionPoint(DirectoryInfo dir)
+    {
+        if (!dir.Attributes.HasFlag(FileAttributes.ReparsePoint))
+        {
+            return false;
+        }
+
+        return ReparsePointDetector.IsJunctionPoint(dir.FullName);
+    }
+
     private static bool CheckBrokenSymlink(FileSystemInfo info)
     {
         if (info.LinkTarget == null)
@@ -247,6 +258,7 @@ internal sealed record FileSystemEntry(
     bool IsBrokenSymlink,
     bool IsDrive,
     bool IsCloudPlaceholder = false,
+    bool IsJunctionPoint = false,
     DriveMediaType DriveMediaType = DriveMediaType.Unknown,
     string? DriveFormat = null,
     string? DriveLabel = null,

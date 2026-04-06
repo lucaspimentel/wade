@@ -175,6 +175,33 @@ public class PropertiesOverlayTests
     }
 
     [Fact]
+    public void Render_JunctionPoint_ShowsJunctionType()
+    {
+        var buf = new ScreenBuffer(120, 30);
+        string dir = Path.Combine(Path.GetTempPath(), "wade_test_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        string targetPath = Path.Combine(dir, "real-dir");
+        Directory.CreateDirectory(targetPath);
+        try
+        {
+            string junctionPath = Path.Combine(dir, "junction-dir");
+            var entry = new FileSystemEntry(
+                "junction-dir", junctionPath, true, 0, DateTime.Now, LinkTarget: targetPath, IsBrokenSymlink: false, IsDrive: false,
+                IsJunctionPoint: true);
+
+            PropertiesOverlay.Render(buf, 120, 30, entry, null);
+
+            string output = Flush(buf);
+            Assert.Contains("Junction \u2192 Directory", output);
+            Assert.Contains(targetPath, output);
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
     public void Render_RegularFile_ShowsEmDashForTarget()
     {
         var buf = new ScreenBuffer(120, 30);

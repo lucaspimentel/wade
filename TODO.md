@@ -45,11 +45,12 @@ Research and implement image previews for Office Open XML formats (`.docx`, `.xl
 - Performance concern: LibreOffice startup is slow (~1-2s); consider debouncing or async user feedback
 - Start with DOCX (most common); extend to XLSX/PPTX after proving the concept
 
-### Reparse point type detection — junction points (`IO_REPARSE_TAG_MOUNT_POINT`)
+### ~~Reparse point type detection — junction points (`IO_REPARSE_TAG_MOUNT_POINT`)~~ (Done)
 
-- [ ] Detect junction points via `FSCTL_GET_REPARSE_POINT` / `DeviceIoControl` and parse the `REPARSE_DATA_BUFFER` to extract the target path (substitute name field, UTF-16).
-  - Currently wade only shows `ReparsePoint` as a raw attribute flag in `PropertiesOverlay.cs:358` — no type distinction or target resolution.
-  - Display the resolved target path in properties overlay and preview pane (similar to symlink target display).
+- [x] Detect junction points via `GetFileInformationByHandleEx` with `FileAttributeTagInfo` to read the reparse tag.
+  - `ReparsePointDetector` queries the reparse tag; `IsJunctionPoint` field on `FileSystemEntry`.
+  - Properties overlay shows "Junction -> Directory" for type and "Junction" instead of "ReparsePoint" in attributes.
+  - Junction-specific icon (`nf-md-folder_arrow_right`). Cyan symlink styling and " -> target" suffix in file list.
   - Windows-only (junctions don't exist on Unix).
 
 ### Reparse point type detection — app execution aliases (`IO_REPARSE_TAG_APPEXECLINK`)
