@@ -140,7 +140,7 @@ public class SearchIndexTests
     }
 
     [Fact]
-    public void CancelSearch_CompletesChannel()
+    public async Task CancelSearch_CompletesChannel()
     {
         var index = new SearchIndex(s_basePath);
         index.Add(MakeAbsPath("src", "Wade", "App.cs"));
@@ -148,7 +148,9 @@ public class SearchIndexTests
         ChannelReader<SearchResult> reader = index.Search("App");
         index.CancelSearch();
 
-        // CancelSearch synchronously calls Writer.TryComplete(), so Completion is already resolved.
+        // Drain any items written by the background scan before it was cancelled.
+        // TryComplete() only transitions Completion to completed once the channel is empty.
+        await DrainResultsAsync(reader);
         Assert.True(reader.Completion.IsCompleted);
     }
 
