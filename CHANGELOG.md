@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.12.0] - 2026-04-08
 
 ### Added
 - Add file operation busy indicator — copy, move, and delete operations run in the background with a modal overlay and Esc to cancel
