@@ -6,7 +6,8 @@ public class MetadataProviderRegistryTests
 {
     private static PreviewContext MakeContext(
         bool isCloudPlaceholder = false,
-        bool isBrokenSymlink = false) =>
+        bool isBrokenSymlink = false,
+        bool archiveMetadataEnabled = true) =>
         new(
             PaneWidthCells: 40,
             PaneHeightCells: 30,
@@ -24,7 +25,7 @@ public class MetadataProviderRegistryTests
             ZipPreviewEnabled: true,
             ImagePreviewsEnabled: true,
             SixelSupported: true,
-            ArchiveMetadataEnabled: true);
+            ArchiveMetadataEnabled: archiveMetadataEnabled);
 
     [Theory]
     [InlineData("app.exe")]
@@ -76,6 +77,27 @@ public class MetadataProviderRegistryTests
         List<IMetadataProvider> providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
 
         Assert.Contains(providers, p => p is ArchiveMetadataProvider);
+    }
+
+    [Theory]
+    [InlineData("archive.tar")]
+    [InlineData("archive.tar.gz")]
+    [InlineData("archive.tgz")]
+    [InlineData("foo.log.gz")]
+    public void TarFile_IncludesArchiveMetadataProvider(string path)
+    {
+        List<IMetadataProvider> providers = MetadataProviderRegistry.GetApplicableProviders(path, MakeContext());
+
+        Assert.Contains(providers, p => p is ArchiveMetadataProvider);
+    }
+
+    [Fact]
+    public void TarFile_ArchiveMetadataDisabled_ExcludesArchiveProvider()
+    {
+        PreviewContext context = MakeContext(archiveMetadataEnabled: false);
+        List<IMetadataProvider> providers = MetadataProviderRegistry.GetApplicableProviders("archive.tar", context);
+
+        Assert.DoesNotContain(providers, p => p is ArchiveMetadataProvider);
     }
 
     [Theory]

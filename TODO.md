@@ -19,11 +19,12 @@ Windows file clipboard interop is implemented. Remaining: Unix/macOS file clipbo
 - **EPUB** (`.epub`) — title, author, publisher, language, identifier. Extract from `content.opf` metadata inside the zip archive. Also zip-based; **benefits from** "Support multiple metadata providers per file" for the same reason.
 - ~~**Windows shortcuts** (`.lnk`)~~ (Done) — parser source copied from [lucaspimentel/windows-shortcut-parser](https://github.com/lucaspimentel/windows-shortcut-parser) into `src/Wade/LnkParser/`. `ShortcutMetadataProvider` extracts target path, working dir, arguments, description, icon, hotkey, volume label. `ShortcutPreviewProvider` shows target and key properties as styled text.
 
-### Zip — other archive formats
+### ~~Zip — other archive formats~~ (Done)
 
-Support additional archive formats in the preview pane (`.tar`, `.gz`, `.tar.gz`). Zip preview is already implemented via `System.IO.Compression.ZipFile`.
-
-Archive summary metadata is now handled by `ArchiveMetadataProvider` — new formats should follow the same metadata+file-list pattern.
+- Tar/gzip preview implemented via `System.Formats.Tar` + `System.IO.Compression.GZipStream` in `src/Wade/FileSystem/TarPreview.cs` (NativeAOT-safe, no new packages). Covers `.tar`, `.tar.gz`, `.tgz`, and plain `.gz`.
+- `TarContentsPreviewProvider` registered in `PreviewProviderRegistry` ahead of `TextPreviewProvider`.
+- Plain `.gz` is probed for ustar magic at offset 257 of the decompressed stream; `.gz`-wrapping-tar is auto-detected as `tar.gz`. Single-member gzip shows original filename + ISIZE-based uncompressed hint + head of decompressed text when textual.
+- `ArchiveMetadataProvider` extended to surface tar/gz metadata (Files, Total size, Format, Compressed, Ratio) through the existing `ArchiveMetadataEnabled` gate.
 
 ---
 

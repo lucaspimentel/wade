@@ -4,6 +4,7 @@
 
 ### Added
 - Add `[` and `]` keybindings to toggle the left (parent) and right (preview) panes as a temporary, session-only setting (not persisted to config), mirroring the `.` hidden-files toggle
+- Add tar/gzip archive preview and metadata support — new `TarContentsPreviewProvider` handles `.tar`, `.tar.gz`, `.tgz`, and plain `.gz` via `System.Formats.Tar` and `System.IO.Compression.GZipStream`; `ArchiveMetadataProvider` extended with Files/Total size/Format/Compressed/Ratio for the new formats; `.gz`-wrapping-tar auto-detected via ustar magic probe; single-member gzip shows inferred inner filename plus head of decompressed text when textual
 
 ## [1.12.0] - 2026-04-08
 

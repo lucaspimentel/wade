@@ -11,6 +11,7 @@ internal static class PreviewProviderRegistry
         new MarkdigMarkdownPreviewProvider(),
         new ZipContentsPreviewProvider(),
         new MsiPreviewProvider(),
+        new TarContentsPreviewProvider(),
         new TextPreviewProvider(),
         new DiffPreviewProvider(),
         new NonePreviewProvider(),

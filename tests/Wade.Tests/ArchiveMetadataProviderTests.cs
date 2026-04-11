@@ -38,9 +38,14 @@ public class ArchiveMetadataProviderTests
 
     [Theory]
     [InlineData("file.txt")]
+    public void CanProvideMetadata_UnrelatedExtensions_ReturnsFalse(string path) => Assert.False(_provider.CanProvideMetadata(path, MakeContext()));
+
+    [Theory]
     [InlineData("file.tar")]
+    [InlineData("file.tar.gz")]
+    [InlineData("file.tgz")]
     [InlineData("file.gz")]
-    public void CanProvideMetadata_NonZipExtensions_ReturnsFalse(string path) => Assert.False(_provider.CanProvideMetadata(path, MakeContext()));
+    public void CanProvideMetadata_TarExtensions_ReturnsTrue(string path) => Assert.True(_provider.CanProvideMetadata(path, MakeContext()));
 
     // ── Metadata extraction ───────────────────────────────────────────────────
 
@@ -141,7 +146,130 @@ public class ArchiveMetadataProviderTests
         }
     }
 
+    // ── Tar / gzip metadata ───────────────────────────────────────────────────
+
+    [Fact]
+    public void GetMetadata_PlainTar_ReturnsTarFormat()
+    {
+        string path = CreateTempTar(("a.txt", "abc"), ("b.txt", "1234"));
+        try
+        {
+            MetadataResult? result = _provider.GetMetadata(path, MakeContext(), CancellationToken.None);
+
+            Assert.NotNull(result);
+            MetadataSection section = Assert.Single(result.Sections);
+            Assert.Equal("Archive", section.Header);
+
+            Assert.Equal("Files", section.Entries[0].Label);
+            Assert.Equal("2", section.Entries[0].Value);
+            Assert.Equal("Total size", section.Entries[1].Label);
+            Assert.Equal("Format", section.Entries[2].Label);
+            Assert.Equal("tar", section.Entries[2].Value);
+
+            // Plain tar has no compression metadata.
+            Assert.DoesNotContain(section.Entries, e => e.Label == "Compressed");
+            Assert.DoesNotContain(section.Entries, e => e.Label == "Ratio");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void GetMetadata_TarGz_ReturnsCompressedAndRatio()
+    {
+        string path = CreateTempTarGz(("hello.txt", "hello world hello world"));
+        try
+        {
+            MetadataResult? result = _provider.GetMetadata(path, MakeContext(), CancellationToken.None);
+
+            Assert.NotNull(result);
+            MetadataSection section = Assert.Single(result.Sections);
+
+            Assert.Equal("Files", section.Entries[0].Label);
+            Assert.Equal("1", section.Entries[0].Value);
+            Assert.Equal("Format", section.Entries[2].Label);
+            Assert.Equal("tar.gz", section.Entries[2].Value);
+            Assert.Contains(section.Entries, e => e.Label == "Compressed");
+            Assert.Contains(section.Entries, e => e.Label == "Ratio");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void GetMetadata_PlainGzip_ReturnsFormatGzipAndFilesEquals1()
+    {
+        string path = CreateTempGzipOfText("hello world\n");
+        try
+        {
+            MetadataResult? result = _provider.GetMetadata(path, MakeContext(), CancellationToken.None);
+
+            Assert.NotNull(result);
+            MetadataSection section = Assert.Single(result.Sections);
+
+            Assert.Equal("Files", section.Entries[0].Label);
+            Assert.Equal("1", section.Entries[0].Value);
+            Assert.Equal("Format", section.Entries[2].Label);
+            Assert.Equal("gzip", section.Entries[2].Value);
+            Assert.Contains(section.Entries, e => e.Label == "Compressed");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static string CreateTempTar(params (string Name, string Content)[] entries)
+    {
+        string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".tar");
+        using FileStream fs = File.Create(path);
+        using System.Formats.Tar.TarWriter writer = new(fs, System.Formats.Tar.TarEntryFormat.Pax);
+
+        foreach ((string name, string content) in entries)
+        {
+            System.Formats.Tar.PaxTarEntry entry = new(System.Formats.Tar.TarEntryType.RegularFile, name)
+            {
+                DataStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content)),
+            };
+            writer.WriteEntry(entry);
+        }
+
+        return path;
+    }
+
+    private static string CreateTempTarGz(params (string Name, string Content)[] entries)
+    {
+        string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".tar.gz");
+        using FileStream fs = File.Create(path);
+        using GZipStream gz = new(fs, CompressionLevel.Fastest);
+        using System.Formats.Tar.TarWriter writer = new(gz, System.Formats.Tar.TarEntryFormat.Pax);
+
+        foreach ((string name, string content) in entries)
+        {
+            System.Formats.Tar.PaxTarEntry entry = new(System.Formats.Tar.TarEntryType.RegularFile, name)
+            {
+                DataStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content)),
+            };
+            writer.WriteEntry(entry);
+        }
+
+        return path;
+    }
+
+    private static string CreateTempGzipOfText(string text)
+    {
+        string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".gz");
+        using FileStream fs = File.Create(path);
+        using GZipStream gz = new(fs, CompressionLevel.Fastest);
+        gz.Write(System.Text.Encoding.UTF8.GetBytes(text));
+        return path;
+    }
 
     private static string CreateTempZip(params (string Name, string Content)[] entries)
     {

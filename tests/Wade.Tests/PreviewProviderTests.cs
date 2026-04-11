@@ -54,6 +54,43 @@ public class PreviewProviderTests
         return path;
     }
 
+    private static string CreateTempTar(params (string Name, string Content)[] entries)
+    {
+        string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".tar");
+        using FileStream fs = File.Create(path);
+        using System.Formats.Tar.TarWriter writer = new(fs, System.Formats.Tar.TarEntryFormat.Pax);
+
+        foreach ((string name, string content) in entries)
+        {
+            System.Formats.Tar.PaxTarEntry entry = new(System.Formats.Tar.TarEntryType.RegularFile, name)
+            {
+                DataStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content)),
+            };
+            writer.WriteEntry(entry);
+        }
+
+        return path;
+    }
+
+    private static string CreateTempTarGz(params (string Name, string Content)[] entries)
+    {
+        string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".tar.gz");
+        using FileStream fs = File.Create(path);
+        using GZipStream gz = new(fs, CompressionLevel.Fastest);
+        using System.Formats.Tar.TarWriter writer = new(gz, System.Formats.Tar.TarEntryFormat.Pax);
+
+        foreach ((string name, string content) in entries)
+        {
+            System.Formats.Tar.PaxTarEntry entry = new(System.Formats.Tar.TarEntryType.RegularFile, name)
+            {
+                DataStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content)),
+            };
+            writer.WriteEntry(entry);
+        }
+
+        return path;
+    }
+
     // --- ImagePreviewProvider ---
 
     public class ImagePreviewProviderTests
@@ -274,6 +311,103 @@ public class PreviewProviderTests
 
         [Fact]
         public void Label_IsArchiveContents() => Assert.Equal("Archive contents", new ZipContentsPreviewProvider().Label);
+    }
+
+    // --- TarContentsPreviewProvider ---
+
+    public class TarContentsPreviewProviderTests
+    {
+        [Theory]
+        [InlineData(".tar")]
+        [InlineData(".tar.gz")]
+        [InlineData(".tgz")]
+        [InlineData(".gz")]
+        public void CanPreview_TarExtensions_ReturnsTrue(string ext)
+        {
+            var provider = new TarContentsPreviewProvider();
+            Assert.True(provider.CanPreview($"file{ext}", DefaultContext()));
+        }
+
+        [Theory]
+        [InlineData(".zip")]
+        [InlineData(".txt")]
+        [InlineData(".cs")]
+        public void CanPreview_NonTarExtensions_ReturnsFalse(string ext)
+        {
+            var provider = new TarContentsPreviewProvider();
+            Assert.False(provider.CanPreview($"file{ext}", DefaultContext()));
+        }
+
+        [Fact]
+        public void CanPreview_ZipPreviewDisabled_ReturnsFalse()
+        {
+            var provider = new TarContentsPreviewProvider();
+            Assert.False(provider.CanPreview("file.tar", DefaultContext(zipPreviewEnabled: false)));
+        }
+
+        [Fact]
+        public void GetPreview_ValidTarGz_ReturnsRenderedTextLines()
+        {
+            string path = CreateTempTarGz(("hello.txt", "Hello"));
+            try
+            {
+                var provider = new TarContentsPreviewProvider();
+                PreviewResult? result = provider.GetPreview(path, DefaultContext(), CancellationToken.None);
+
+                Assert.NotNull(result);
+                Assert.NotNull(result.TextLines);
+                Assert.True(result.IsRendered);
+                Assert.Contains(result.TextLines, l => l.Text.Contains("hello.txt"));
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        [Fact]
+        public void GetPreview_ValidTar_StartsWithArchiveContentsHeader()
+        {
+            string path = CreateTempTar(("a.txt", "a"));
+            try
+            {
+                var provider = new TarContentsPreviewProvider();
+                PreviewResult? result = provider.GetPreview(path, DefaultContext(), CancellationToken.None);
+
+                Assert.NotNull(result);
+                Assert.NotNull(result.TextLines);
+                Assert.True(result.TextLines.Length >= 2);
+                Assert.Contains("Archive Contents", result.TextLines[0].Text);
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        [Fact]
+        public void GetPreview_CorruptGzip_ReturnsInvalidMessage()
+        {
+            string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".tar.gz");
+            File.WriteAllBytes(path, [0x00, 0x01, 0x02, 0x03]);
+            try
+            {
+                var provider = new TarContentsPreviewProvider();
+                PreviewResult? result = provider.GetPreview(path, DefaultContext(), CancellationToken.None);
+
+                Assert.NotNull(result);
+                Assert.NotNull(result.TextLines);
+                Assert.True(result.IsRendered);
+                Assert.Contains(result.TextLines, l => l.Text == "[invalid archive]");
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        [Fact]
+        public void Label_IsArchiveContents() => Assert.Equal("Archive contents", new TarContentsPreviewProvider().Label);
     }
 
     // --- TextPreviewProvider ---

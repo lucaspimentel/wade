@@ -164,6 +164,49 @@ public class PreviewProviderRegistryTests : IDisposable
     }
 
     [Fact]
+    public void TarFile_ReturnsTarContentsThenNoneThenHex()
+    {
+        List<IPreviewProvider> providers = PreviewProviderRegistry.GetApplicableProviders("file.tar", MakeContext());
+
+        Assert.Equal(3, providers.Count);
+        Assert.IsType<TarContentsPreviewProvider>(providers[0]);
+        Assert.IsType<NonePreviewProvider>(providers[1]);
+        Assert.IsType<HexPreviewProvider>(providers[2]);
+    }
+
+    [Fact]
+    public void TarGzFile_ReturnsTarContentsThenNoneThenHex()
+    {
+        List<IPreviewProvider> providers = PreviewProviderRegistry.GetApplicableProviders("file.tar.gz", MakeContext());
+
+        Assert.Equal(3, providers.Count);
+        Assert.IsType<TarContentsPreviewProvider>(providers[0]);
+        Assert.IsType<NonePreviewProvider>(providers[1]);
+        Assert.IsType<HexPreviewProvider>(providers[2]);
+    }
+
+    [Fact]
+    public void PlainGzFile_ReturnsTarContentsThenNoneThenHex()
+    {
+        List<IPreviewProvider> providers = PreviewProviderRegistry.GetApplicableProviders("foo.log.gz", MakeContext());
+
+        Assert.Equal(3, providers.Count);
+        Assert.IsType<TarContentsPreviewProvider>(providers[0]);
+        Assert.IsType<NonePreviewProvider>(providers[1]);
+        Assert.IsType<HexPreviewProvider>(providers[2]);
+    }
+
+    [Fact]
+    public void TarFile_ZipPreviewDisabled_ExcludesTarContentsProvider()
+    {
+        List<IPreviewProvider> providers = PreviewProviderRegistry.GetApplicableProviders("file.tar", MakeContext(zipPreviewEnabled: false));
+
+        Assert.DoesNotContain(providers, p => p is TarContentsPreviewProvider);
+        Assert.Contains(providers, p => p is NonePreviewProvider);
+        Assert.Contains(providers, p => p is HexPreviewProvider);
+    }
+
+    [Fact]
     public void ExeFile_DefaultsToNone_WithHexAvailable()
     {
         List<IPreviewProvider> providers = PreviewProviderRegistry.GetApplicableProviders("app.exe", MakeContext());

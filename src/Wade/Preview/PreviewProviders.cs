@@ -155,6 +155,38 @@ internal sealed class ZipContentsPreviewProvider : IPreviewProvider
     }
 }
 
+internal sealed class TarContentsPreviewProvider : IPreviewProvider
+{
+    public string Label => "Archive contents";
+
+    public bool CanPreview(string path, PreviewContext context) =>
+        context.ZipPreviewEnabled && (TarPreview.IsTarArchive(path) || TarPreview.IsPlainGzip(path));
+
+    public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct)
+    {
+        string[]? tarLines = TarPreview.GetPreviewLines(path, ct);
+        if (tarLines is null)
+        {
+            return null;
+        }
+
+        var styledLines = new StyledLine[tarLines.Length + 2];
+        styledLines[0] = new StyledLine("  Archive Contents", null);
+        styledLines[1] = new StyledLine("  " + new string('\u2500', 16), null);
+        for (int i = 0; i < tarLines.Length; i++)
+        {
+            styledLines[i + 2] = new StyledLine(tarLines[i], null);
+        }
+
+        return new PreviewResult
+        {
+            TextLines = styledLines,
+            IsRendered = true,
+            FileTypeLabel = FilePreview.GetFileTypeLabel(path) ?? "Archive",
+        };
+    }
+}
+
 internal sealed class TextPreviewProvider : IPreviewProvider
 {
     public string Label => "Text";
