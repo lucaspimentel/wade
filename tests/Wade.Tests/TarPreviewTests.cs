@@ -2,6 +2,7 @@ using System.Formats.Tar;
 using System.IO.Compression;
 using System.Text;
 using Wade.FileSystem;
+using Wade.Highlighting;
 
 namespace Wade.Tests;
 
@@ -360,6 +361,154 @@ public class TarPreviewTests
         }
     }
 
+    // ── GetGzipStyledPreview / syntax highlighting ───────────────────────────
+
+    [Fact]
+    public void GetGzipStyledPreview_PythonSource_HighlightsContent()
+    {
+        string path = CreateTempGzipWithInnerName("script.py", "def foo():\n    return 42\nclass Bar:\n    pass\n");
+        try
+        {
+            StyledLine[]? lines = TarPreview.GetGzipStyledPreview(path, CancellationToken.None);
+
+            Assert.NotNull(lines);
+
+            // Metadata header and separator are plain.
+            Assert.StartsWith("[gzip]", lines[0].Text);
+            Assert.Null(lines[0].Spans);
+            Assert.Null(lines[1].Spans);
+
+            // At least one content line should have been tokenized by PythonLanguage
+            // (def / class / return are keywords).
+            Assert.Contains(lines, l => l.Spans is { Length: > 0 });
+
+            // Text is preserved.
+            Assert.Contains(lines, l => l.Text == "def foo():");
+            Assert.Contains(lines, l => l.Text == "class Bar:");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void GetGzipStyledPreview_UnknownInnerExtension_ReturnsPlainContent()
+    {
+        string path = CreateTempGzipWithInnerName("access.log", "2026-04-11 INFO hello\n2026-04-11 WARN uh oh\n");
+        try
+        {
+            StyledLine[]? lines = TarPreview.GetGzipStyledPreview(path, CancellationToken.None);
+
+            Assert.NotNull(lines);
+            Assert.StartsWith("[gzip]", lines[0].Text);
+
+            // All content lines should be plain (no language for .log).
+            Assert.Contains(lines, l => l.Text == "2026-04-11 INFO hello");
+            Assert.All(lines, l => Assert.Null(l.Spans));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void GetGzipStyledPreview_BinaryContent_ReturnsBinaryMarker()
+    {
+        byte[] binary = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D];
+        string path = CreateTempGzipOfBytes(binary);
+        try
+        {
+            StyledLine[]? lines = TarPreview.GetGzipStyledPreview(path, CancellationToken.None);
+
+            Assert.NotNull(lines);
+            Assert.Contains(lines, l => l.Text == "[binary content]");
+            Assert.All(lines, l => Assert.Null(l.Spans));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void GetGzipStyledPreview_GzWrappingTar_ReturnsPlainTarListing()
+    {
+        byte[] tarBytes;
+        using (MemoryStream ms = new())
+        {
+            using (TarWriter writer = new(ms, TarEntryFormat.Pax, leaveOpen: true))
+            {
+                PaxTarEntry entry = new(TarEntryType.RegularFile, "inside-tar.txt")
+                {
+                    DataStream = new MemoryStream("payload"u8.ToArray()),
+                };
+                writer.WriteEntry(entry);
+            }
+            tarBytes = ms.ToArray();
+        }
+
+        string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".gz");
+        using (FileStream fs = File.Create(path))
+        using (GZipStream gz = new(fs, CompressionLevel.Fastest))
+        {
+            gz.Write(tarBytes);
+        }
+
+        try
+        {
+            StyledLine[]? lines = TarPreview.GetGzipStyledPreview(path, CancellationToken.None);
+
+            Assert.NotNull(lines);
+            Assert.Contains(lines, l => l.Text.Contains("inside-tar.txt"));
+            Assert.DoesNotContain(lines, l => l.Text.StartsWith("[gzip]"));
+            // Tar file listings carry no source highlighting.
+            Assert.All(lines, l => Assert.Null(l.Spans));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void GetGzipStyledPreview_CorruptGzip_ReturnsInvalidMarker()
+    {
+        string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".gz");
+        File.WriteAllBytes(path, [0x00, 0x01, 0x02, 0x03]);
+        try
+        {
+            StyledLine[]? lines = TarPreview.GetGzipStyledPreview(path, CancellationToken.None);
+
+            Assert.NotNull(lines);
+            Assert.Contains(lines, l => l.Text.Contains("invalid", StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void GetGzipStyledPreview_Cancelled_ReturnsNull()
+    {
+        string path = CreateTempGzipOfText("hello\n");
+        try
+        {
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            StyledLine[]? lines = TarPreview.GetGzipStyledPreview(path, cts.Token);
+
+            Assert.Null(lines);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     // ── Fixture helpers ───────────────────────────────────────────────────────
 
     private static string CreateTempTar(params (string Name, string Content)[] entries)
@@ -411,6 +560,18 @@ public class TarPreviewTests
         using FileStream fs = File.Create(path);
         using GZipStream gz = new(fs, CompressionLevel.Fastest);
         gz.Write(data);
+        return path;
+    }
+
+    // Creates a temp file named "<random>.<innerName>.gz" so that
+    // Path.GetFileNameWithoutExtension yields "<random>.<innerName>" and
+    // LanguageMap picks the language by innerName's extension.
+    private static string CreateTempGzipWithInnerName(string innerName, string text)
+    {
+        string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + "." + innerName + ".gz");
+        using FileStream fs = File.Create(path);
+        using GZipStream gz = new(fs, CompressionLevel.Fastest);
+        gz.Write(Encoding.UTF8.GetBytes(text));
         return path;
     }
 }

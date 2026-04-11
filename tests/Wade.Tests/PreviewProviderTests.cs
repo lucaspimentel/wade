@@ -408,6 +408,40 @@ public class PreviewProviderTests
 
         [Fact]
         public void Label_IsArchiveContents() => Assert.Equal("Archive contents", new TarContentsPreviewProvider().Label);
+
+        [Fact]
+        public void GetPreview_PythonGz_ContentIsHighlighted()
+        {
+            string path = Path.Combine(
+                Path.GetTempPath(),
+                Path.GetRandomFileName() + ".script.py.gz");
+            using (FileStream fs = File.Create(path))
+            using (GZipStream gz = new(fs, CompressionLevel.Fastest))
+            {
+                gz.Write("def foo():\n    return 42\nclass Bar:\n    pass\n"u8);
+            }
+
+            try
+            {
+                var provider = new TarContentsPreviewProvider();
+                PreviewResult? result = provider.GetPreview(path, DefaultContext(), CancellationToken.None);
+
+                Assert.NotNull(result);
+                Assert.NotNull(result.TextLines);
+
+                // Outer "Archive Contents" header remains plain.
+                Assert.Equal("  Archive Contents", result.TextLines[0].Text);
+                Assert.Null(result.TextLines[0].Spans);
+
+                // Content is syntax-highlighted (Python keywords tokenized).
+                Assert.Contains(result.TextLines, l => l.Spans is { Length: > 0 });
+                Assert.Contains(result.TextLines, l => l.Text == "def foo():");
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
     }
 
     // --- TextPreviewProvider ---

@@ -1,6 +1,7 @@
 using System.Formats.Tar;
 using System.IO.Compression;
 using System.Text;
+using Wade.Highlighting;
 using Wade.UI;
 
 namespace Wade.FileSystem;
@@ -316,12 +317,88 @@ internal static class TarPreview
             return RenderTarEntries(gz, ct);
         }
 
+        List<string> lines =
+        [
+            BuildGzipMetadataLine(path),
+            new string('\u2500', 16),
+        ];
+
+        GzipContent content = ReadGzipContent(path, ct);
+        lines.AddRange(content.Lines);
+        return [.. lines];
+    }
+
+    public static StyledLine[]? GetGzipStyledPreview(string path, CancellationToken ct)
+    {
+        try
+        {
+            if (LooksLikeTarGzip(path, ct))
+            {
+                using FileStream fs = File.OpenRead(path);
+                using GZipStream gz = new(fs, CompressionMode.Decompress);
+                string[] tarLines = RenderTarEntries(gz, ct);
+                return WrapPlain(tarLines);
+            }
+
+            List<StyledLine> result =
+            [
+                new StyledLine(BuildGzipMetadataLine(path), null),
+                new StyledLine(new string('\u2500', 16), null),
+            ];
+
+            GzipContent content = ReadGzipContent(path, ct);
+
+            if (content.IsText && content.Lines.Length > 0)
+            {
+                string innerName = Path.GetFileNameWithoutExtension(path);
+                StyledLine[] highlighted = SyntaxHighlighter.Highlight(content.Lines, innerName);
+                result.AddRange(highlighted);
+            }
+            else
+            {
+                foreach (string line in content.Lines)
+                {
+                    result.Add(new StyledLine(line, null));
+                }
+            }
+
+            return [.. result];
+        }
+        catch (InvalidDataException)
+        {
+            return [new StyledLine("[invalid archive]", null)];
+        }
+        catch (EndOfStreamException)
+        {
+            return [new StyledLine("[invalid archive]", null)];
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
+        }
+        catch (IOException)
+        {
+            return [new StyledLine("[invalid archive]", null)];
+        }
+    }
+
+    private static StyledLine[] WrapPlain(string[] lines)
+    {
+        var result = new StyledLine[lines.Length];
+        for (int i = 0; i < lines.Length; i++)
+        {
+            result[i] = new StyledLine(lines[i], null);
+        }
+
+        return result;
+    }
+
+    private static string BuildGzipMetadataLine(string path)
+    {
         string innerName = Path.GetFileNameWithoutExtension(path);
         long compressed = new FileInfo(path).Length;
         uint? isize = ReadGzipIsize(path);
         long? uncompressed = (isize is not null && compressed < IsizeSafetyLimit) ? isize.Value : null;
-
-        List<string> lines = [];
 
         Span<char> sizeBuf = stackalloc char[16];
         int sn = FormatHelpers.FormatSize(sizeBuf, compressed);
@@ -331,16 +408,16 @@ internal static class TarPreview
         {
             int un = FormatHelpers.FormatSize(sizeBuf, uSize);
             string uText = sizeBuf[..un].ToString();
-            lines.Add($"[gzip] original: {innerName}  compressed: {compressedText}  uncompressed: ~{uText}");
-        }
-        else
-        {
-            lines.Add($"[gzip] original: {innerName}  compressed: {compressedText}");
+            return $"[gzip] original: {innerName}  compressed: {compressedText}  uncompressed: ~{uText}";
         }
 
-        lines.Add(new string('\u2500', 16));
+        return $"[gzip] original: {innerName}  compressed: {compressedText}";
+    }
 
-        // Attempt to show a head of decompressed text when the content looks textual.
+    private readonly record struct GzipContent(string[] Lines, bool IsText);
+
+    private static GzipContent ReadGzipContent(string path, CancellationToken ct)
+    {
         try
         {
             using FileStream fs = File.OpenRead(path);
@@ -356,18 +433,17 @@ internal static class TarPreview
 
             if (read == 0)
             {
-                lines.Add("[empty]");
-                return [.. lines];
+                return new GzipContent(["[empty]"], IsText: false);
             }
 
             if (HasNullByte(buffer.AsSpan(0, read)))
             {
-                lines.Add("[binary content]");
-                return [.. lines];
+                return new GzipContent(["[binary content]"], IsText: false);
             }
 
             string text = Encoding.UTF8.GetString(buffer, 0, read);
             using StringReader sr = new(text);
+            List<string> textLines = [];
             int shown = 0;
             while (shown < TextHeadLines)
             {
@@ -377,9 +453,11 @@ internal static class TarPreview
                     break;
                 }
 
-                lines.Add(line);
+                textLines.Add(line);
                 shown++;
             }
+
+            return new GzipContent([.. textLines], IsText: true);
         }
         catch (OperationCanceledException)
         {
@@ -387,14 +465,12 @@ internal static class TarPreview
         }
         catch (InvalidDataException)
         {
-            lines.Add("[invalid gzip content]");
+            return new GzipContent(["[invalid gzip content]"], IsText: false);
         }
         catch (IOException)
         {
-            lines.Add("[read error]");
+            return new GzipContent(["[read error]"], IsText: false);
         }
-
-        return [.. lines];
     }
 
     private static int ReadFully(Stream stream, Span<byte> buffer)

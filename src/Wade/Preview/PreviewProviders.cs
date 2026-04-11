@@ -164,19 +164,36 @@ internal sealed class TarContentsPreviewProvider : IPreviewProvider
 
     public PreviewResult? GetPreview(string path, PreviewContext context, CancellationToken ct)
     {
-        string[]? tarLines = TarPreview.GetPreviewLines(path, ct);
-        if (tarLines is null)
+        StyledLine[]? body;
+
+        if (TarPreview.IsPlainGzip(path))
+        {
+            body = TarPreview.GetGzipStyledPreview(path, ct);
+        }
+        else
+        {
+            string[]? tarLines = TarPreview.GetPreviewLines(path, ct);
+            if (tarLines is null)
+            {
+                return null;
+            }
+
+            body = new StyledLine[tarLines.Length];
+            for (int i = 0; i < tarLines.Length; i++)
+            {
+                body[i] = new StyledLine(tarLines[i], null);
+            }
+        }
+
+        if (body is null)
         {
             return null;
         }
 
-        var styledLines = new StyledLine[tarLines.Length + 2];
+        var styledLines = new StyledLine[body.Length + 2];
         styledLines[0] = new StyledLine("  Archive Contents", null);
         styledLines[1] = new StyledLine("  " + new string('\u2500', 16), null);
-        for (int i = 0; i < tarLines.Length; i++)
-        {
-            styledLines[i + 2] = new StyledLine(tarLines[i], null);
-        }
+        Array.Copy(body, 0, styledLines, 2, body.Length);
 
         return new PreviewResult
         {
