@@ -14,7 +14,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 
 ### Layout & Navigation
 
-- **Miller columns** — three-pane layout (parent / current / preview), each pane independently hideable
+- **Miller columns** — three-pane layout (parent / current / preview); `[` and `]` toggle the left and right panes (session only; unchanged in saved config)
 - **Column headers** — labeled header row with separator line in all panes; adapts to visible columns and drive view
 - **Detail columns** — file size and modification date with responsive column tiers; async directory sizes (gated per drive type)
 - **Drive navigation** — browse drives on Windows with file system, free/total space, and percent-full bar columns; SSD/HDD detection
@@ -184,6 +184,8 @@ Then use `wd` instead of `wade` to browse. Press `q` to quit and cd to the last 
 | Ctrl+R / F5 | Refresh |
 | Ctrl+T | Open terminal here |
 | . | Toggle hidden files |
+| [ | Toggle left (parent) pane |
+| ] | Toggle right (preview) pane |
 | s | Cycle sort (name / time / size / ext) |
 | S | Reverse sort direction |
 | Ctrl+G | Go to path (Esc clears input, Up goes up a directory) |

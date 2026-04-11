@@ -16,6 +16,8 @@ internal enum AppAction
     Refresh,
     Search,
     ToggleHiddenFiles,
+    ToggleParentPane,
+    TogglePreviewPane,
     ToggleMark,
     CycleSortMode,
     ToggleSortDirection,
@@ -77,6 +79,16 @@ internal static class InputReader
         if (key.KeyChar == '.')
         {
             return AppAction.ToggleHiddenFiles;
+        }
+
+        if (key.KeyChar == '[')
+        {
+            return AppAction.ToggleParentPane;
+        }
+
+        if (key.KeyChar == ']')
+        {
+            return AppAction.TogglePreviewPane;
         }
 
         if (key.KeyChar == 's')

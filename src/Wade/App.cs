@@ -137,6 +137,10 @@ internal sealed class App
 
     // Notification state
     private Notification? _notification;
+
+    // Pane visibility (runtime state, initialized from config, toggled via keybind without persisting)
+    private bool _parentPaneEnabled;
+    private bool _previewPaneEnabled;
     private string? _pendingPreviewPath;
     private PreviewLoader? _previewLoader;
     private bool _previewLoading;
@@ -203,6 +207,8 @@ internal sealed class App
         _directoryContents.ShowSystemFiles = _config.ShowSystemFiles;
         _directoryContents.SortMode = _config.SortMode;
         _directoryContents.SortAscending = _config.SortAscending;
+        _parentPaneEnabled = _config.ParentPaneEnabled;
+        _previewPaneEnabled = _config.PreviewPaneEnabled;
         _bookmarkStore.Load();
 
         if (_config.StartFileName is not null)
@@ -238,7 +244,7 @@ internal sealed class App
         int lastHeight = Console.WindowHeight;
 
         var buffer = new ScreenBuffer(lastWidth, lastHeight);
-        _layout.Calculate(lastWidth, lastHeight, _config.PreviewPaneEnabled, _config.ParentPaneEnabled);
+        _layout.Calculate(lastWidth, lastHeight, _previewPaneEnabled, _parentPaneEnabled);
 
         UpdateTerminalTitle();
         RefreshGitStatus();
@@ -264,7 +270,7 @@ internal sealed class App
 
             // Write Sixel data after flush (bypasses cell grid)
             if (_sixelPending && _cachedSixelData is not null
-                && (_config.PreviewPaneEnabled || _inputMode == InputMode.ExpandedPreview)
+                && (_previewPaneEnabled || _inputMode == InputMode.ExpandedPreview)
                 && _inputMode is InputMode.Normal or InputMode.Search or InputMode.ExpandedPreview)
             {
                 _sixelPending = false;
@@ -391,7 +397,7 @@ internal sealed class App
                     lastWidth = resize.Width;
                     lastHeight = resize.Height;
                     buffer.Resize(lastWidth, lastHeight);
-                    _layout.Calculate(lastWidth, lastHeight, _config.PreviewPaneEnabled, _config.ParentPaneEnabled);
+                    _layout.Calculate(lastWidth, lastHeight, _previewPaneEnabled, _parentPaneEnabled);
                     Rect resizePane = _inputMode == InputMode.ExpandedPreview ? _layout.ExpandedPane : _layout.RightPane;
                     Console.Write(AnsiCodes.ClearScreen);
 
@@ -883,6 +889,21 @@ internal sealed class App
                     ClearPreviewCache(previewLoader, buffer);
                     break;
 
+                case AppAction.ToggleParentPane:
+                    _parentPaneEnabled = !_parentPaneEnabled;
+                    _layout.Calculate(lastWidth, lastHeight, _previewPaneEnabled, _parentPaneEnabled);
+                    Console.Write(AnsiCodes.ClearScreen);
+                    buffer.ForceFullRedraw();
+                    break;
+
+                case AppAction.TogglePreviewPane:
+                    _previewPaneEnabled = !_previewPaneEnabled;
+                    _layout.Calculate(lastWidth, lastHeight, _previewPaneEnabled, _parentPaneEnabled);
+                    Console.Write(AnsiCodes.ClearScreen);
+                    ClearPreviewCache(previewLoader, buffer);
+                    buffer.ForceFullRedraw();
+                    break;
+
                 case AppAction.CycleSortMode:
                     _directoryContents.SortMode = _directoryContents.SortMode switch
                     {
@@ -1048,7 +1069,7 @@ internal sealed class App
         }
 
         // Left pane: parent directory (or drives list)
-        if (!_config.ParentPaneEnabled || _currentPath == DirectoryContents.DrivesPath)
+        if (!_parentPaneEnabled || _currentPath == DirectoryContents.DrivesPath)
         {
             _leftPaneEntries = null;
         }
@@ -1109,7 +1130,7 @@ internal sealed class App
         }
 
         // Right pane: preview
-        if (_config.PreviewPaneEnabled && entries.Count > 0 && _selectedIndex < entries.Count)
+        if (_previewPaneEnabled && entries.Count > 0 && _selectedIndex < entries.Count)
         {
             FileSystemEntry selected = entries[_selectedIndex];
             if (selected.IsDirectory)
@@ -1218,7 +1239,7 @@ internal sealed class App
         }
 
         // Borders
-        PaneRenderer.RenderBorders(buffer, _layout, height, _config.PreviewPaneEnabled, _config.ParentPaneEnabled);
+        PaneRenderer.RenderBorders(buffer, _layout, height, _previewPaneEnabled, _parentPaneEnabled);
 
         // Status bar
         FileSystemEntry? selectedEntry = entries.Count > 0 && _selectedIndex < entries.Count
@@ -2986,6 +3007,8 @@ internal sealed class App
         }
 
         items.Add(new ActionMenuItem { Label = "Toggle hidden files", Shortcut = ".", Action = AppAction.ToggleHiddenFiles });
+        items.Add(new ActionMenuItem { Label = "Toggle left pane", Shortcut = "[", Action = AppAction.ToggleParentPane });
+        items.Add(new ActionMenuItem { Label = "Toggle right pane", Shortcut = "]", Action = AppAction.TogglePreviewPane });
         items.Add(new ActionMenuItem { Label = "Cycle sort mode", Shortcut = "s", Action = AppAction.CycleSortMode });
         items.Add(new ActionMenuItem { Label = "Reverse sort direction", Shortcut = "S", Action = AppAction.ToggleSortDirection });
         items.Add(new ActionMenuItem { Label = "Bookmarks", Shortcut = "b", Action = AppAction.ShowBookmarks });
@@ -3678,6 +3701,21 @@ internal sealed class App
                 _directoryContents.ShowHiddenFiles = !_directoryContents.ShowHiddenFiles;
                 _directoryContents.InvalidateAll();
                 ClearPreviewCache(previewLoader, buffer);
+                break;
+
+            case AppAction.ToggleParentPane:
+                _parentPaneEnabled = !_parentPaneEnabled;
+                _layout.Calculate(Console.WindowWidth, Console.WindowHeight, _previewPaneEnabled, _parentPaneEnabled);
+                Console.Write(AnsiCodes.ClearScreen);
+                buffer.ForceFullRedraw();
+                break;
+
+            case AppAction.TogglePreviewPane:
+                _previewPaneEnabled = !_previewPaneEnabled;
+                _layout.Calculate(Console.WindowWidth, Console.WindowHeight, _previewPaneEnabled, _parentPaneEnabled);
+                Console.Write(AnsiCodes.ClearScreen);
+                ClearPreviewCache(previewLoader, buffer);
+                buffer.ForceFullRedraw();
                 break;
 
             case AppAction.CycleSortMode:
@@ -4451,9 +4489,12 @@ internal sealed class App
         _directoryContents.SortAscending = _config.SortAscending;
         _imagePreviewsEffective = _config.ImagePreviewsEnabled && _sixelSupported;
 
+        _parentPaneEnabled = _config.ParentPaneEnabled;
+        _previewPaneEnabled = _config.PreviewPaneEnabled;
+
         _directoryContents.InvalidateAll();
         ClearPreviewCache(previewLoader, buffer);
-        _layout.Calculate(Console.WindowWidth, Console.WindowHeight, _config.PreviewPaneEnabled, _config.ParentPaneEnabled);
+        _layout.Calculate(Console.WindowWidth, Console.WindowHeight, _previewPaneEnabled, _parentPaneEnabled);
         UpdateTerminalTitle();
         RefreshGitStatus();
 
