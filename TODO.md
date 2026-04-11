@@ -74,3 +74,14 @@ Investigate enabling `ENABLE_VIRTUAL_TERMINAL_INPUT` on Windows Terminal (detect
 ### Keyboard shortcut convention audit
 
 - [ ] Review remaining keybinding consistency. Current mix: some dialogs/tools use `Ctrl+` (`Ctrl+F` finder, `Ctrl+T` terminal, `Ctrl+L` symlink, `Ctrl+R` refresh, `Ctrl+P` command palette, `Ctrl+G` go-to-path) while others use bare keys (`n`/`N` new file/dir, `b`/`B` bookmarks, `/` filter, `,` config, `?` help, `i` properties). Convention: `Ctrl+<key>` for opening tools/dialogs/overlays, bare keys for direct actions.
+
+### CSS color swatches in preview
+
+Render an inline color swatch after hex color literals (`#RGB`, `#RRGGBB`, `#RGBA`, `#RRGGBBAA`) in the CSS preview pane. A few trailing cells would get their background painted to the actual RGB color, giving at-a-glance color visualization next to the literal.
+
+- Detection happens in `src/Wade/Highlighting/Languages/CssLanguage.cs` (extends `RegexLanguage`). Add hex-color matching during `TokenizeLine` — probably a simple regex or span scan for `#[0-9a-fA-F]{3,8}`.
+- `StyledLine` in `src/Wade/Highlighting/StyledLine.cs` already supports per-cell styling via `CellStyle[]? CharStyles` alongside the token-based `Spans`. `PaneRenderer` already consumes `CharStyles` for per-cell background colors (used by the drive-view percent bar and diff previews), so no renderer changes are needed — the language just needs to emit the right `CharStyles` entries.
+- Approach: after the literal, append (or reserve space for) ~2-3 trailing characters whose `CharStyles` entries carry the parsed RGB color as a background. Decide whether to inject new characters into `line.Text` (easier rendering, but changes the string) or reserve trailing-whitespace cells (preserves the raw text).
+- Scope decision: start with hex literals only. Extend later to `rgb()`/`rgba()`/`hsl()` function notation and named CSS colors (`red`, `rebeccapurple`, etc.) if the infrastructure proves out.
+- Consider whether this should also apply to SCSS/SASS files (currently mapped to `CssLanguage` in `LanguageMap.cs`).
+- Similar precedent for per-character non-token styling in `PercentBarResult` (drives view) and `DiffLanguage` — worth glancing at those for reference on how existing code populates `CharStyles`.
