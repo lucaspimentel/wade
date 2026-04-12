@@ -3,31 +3,31 @@
 ## [1.13.0] - 2026-04-11
 
 ### Added
-- Add `[` and `]` keybindings to toggle the left (parent) and right (preview) panes as a temporary, session-only setting (not persisted to config), mirroring the `.` hidden-files toggle
-- Add tar/gzip archive preview and metadata support — new `TarContentsPreviewProvider` handles `.tar`, `.tar.gz`, `.tgz`, and plain `.gz` via `System.Formats.Tar` and `System.IO.Compression.GZipStream`; `ArchiveMetadataProvider` extended with Files/Total size/Format/Compressed/Ratio for the new formats; `.gz`-wrapping-tar auto-detected via ustar magic probe; single-member gzip shows inferred inner filename plus head of decompressed text when textual
-- Add syntax highlighting to single-member `.gz` previews — the decompressed text head is passed through the same highlighter used by text previews, keyed off the `.gz`-stripped inner filename so `script.py.gz` picks up Python, `notes.md.gz` picks up Markdown, etc.; unknown inner extensions fall through to plain text
-- Add inline color swatches in CSS/SCSS/Sass previews — hex literals (`#RGB`, `#RGBA`, `#RRGGBB`, `#RRGGBBAA`) now render a colored ` ██` swatch immediately after the literal; value-position tracking avoids false positives on ID selectors like `#main`; alpha is discarded for v1
+- Add `[` and `]` keybindings to toggle the left (parent) and right (preview) panes (session-only, not saved to config)
+- Add preview and metadata support for tar and gzip archives (`.tar`, `.tar.gz`, `.tgz`, `.gz`); single-member gzip also shows the decompressed text
+- Add syntax highlighting in single-member `.gz` previews — language detected from the inner filename (e.g. `script.py.gz` gets Python highlighting)
+- Add inline color swatches in CSS/SCSS/Sass previews — a colored `██` block is shown next to each hex color literal
 
 ## [1.12.0] - 2026-04-08
 
 ### Added
-- Add file operation busy indicator — copy, move, and delete operations run in the background with a modal overlay and Esc to cancel
-- Add Windows shortcut (`.lnk`) metadata extraction — shows target path, working directory, arguments, description, icon location, hotkey, and volume label in properties and preview pane; parser copied from lucaspimentel/windows-shortcut-parser
-- Add paste support in text input fields — Unix via bracketed paste mode (`ESC[200~`/`ESC[201~`), Windows via heuristic batch detection from `ReadConsoleInput`; works in file finder, filter, go-to-path, and rename dialog
-- Add word-navigation shortcuts in text input fields — `Ctrl+Left`/`Ctrl+Right` to skip words, `Ctrl+Backspace` to delete previous word; works in file finder, filter, go-to-path, and rename dialog; Unix VT parser now extracts modifier flags from CSI sequences
-- Add app execution alias detection — detect Windows MSIX/UWP app aliases (`IO_REPARSE_TAG_APPEXECLINK`) with resolved target path, dedicated icon, and "App Execution Alias" type label; parsed via `FSCTL_GET_REPARSE_POINT`
-- Add junction point detection — distinguish Windows junction points (`IO_REPARSE_TAG_MOUNT_POINT`) from symlinks with dedicated icon, "Junction → Directory" type label, and "Junction" attribute label; detected via `GetFileInformationByHandleEx` P/Invoke
-- Add C/C++ syntax highlighting — C language with preprocessor directives, keywords, and standard types; C++ extends C with class/template/concept keywords and STL types; supports `.c`, `.h`, `.cpp`, `.cxx`, `.cc`, `.hpp`, `.hxx`, `.hh`, `.ino`, and more
-- Add Dockerfile syntax highlighting — instruction keywords, variables, flags, `AS` keyword, comments, and strings; supports `Dockerfile`, `Containerfile`, and `.dockerfile` extension
-- Add XML syntax highlighting for `.xsd` (XML Schema Definition) files
+- Add busy indicator for file operations — copy, move, and delete run in the background with a modal overlay and Esc to cancel
+- Add Windows shortcut (`.lnk`) metadata — shows target path, working directory, arguments, description, icon, and hotkey in properties and preview pane
+- Add paste support in text input fields (file finder, filter, go-to-path, rename)
+- Add word-navigation shortcuts in text input fields — `Ctrl+Left`/`Ctrl+Right` to skip words, `Ctrl+Backspace` to delete previous word
+- Add app execution alias detection — MSIX/UWP app aliases shown with resolved target path and dedicated icon (Windows)
+- Add junction point detection — junction points distinguished from symlinks with dedicated icon and "Junction" label (Windows)
+- Add C/C++ syntax highlighting (`.c`, `.h`, `.cpp`, `.hpp`, `.ino`, and more)
+- Add Dockerfile syntax highlighting (`Dockerfile`, `Containerfile`, `.dockerfile`)
+- Add XML syntax highlighting for `.xsd` files
 
 ### Changed
-- Use descriptive file type labels for SVG, ICO, Paint.NET, CSV, TSV, SQL, JSX, TSX, and `.env` files in properties and status bar
+- Use descriptive file type labels for SVG, ICO, Paint.NET, CSV, TSV, SQL, JSX, TSX, and `.env` files
 
 ### Fixed
-- Fix selection scrolling beyond visible area when column headers are enabled — `VisibleFileListHeight` and PageUp/PageDown now account for header rows
-- Fix file finder skipping hidden directories (e.g. `AppData`) even when "Show Hidden Files" is enabled — hidden check was incorrectly gated by system-files setting
-- Fix file finder ranking — current-directory files now receive filename bonus and depth penalty favors shallower matches, so `wt.exe` ranks above `subdir\wt.exe`
+- Fix selection scrolling past the visible area when column headers are enabled
+- Fix file finder skipping hidden directories (e.g. `AppData`) when "Show Hidden Files" is enabled
+- Fix file finder ranking — files in the current directory now rank above deeper matches with the same name
 
 ## [1.11.0] - 2026-04-01
 
