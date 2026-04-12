@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.13.0] - 2026-04-11
 
 ### Added
 - Add `[` and `]` keybindings to toggle the left (parent) and right (preview) panes as a temporary, session-only setting (not persisted to config), mirroring the `.` hidden-files toggle
