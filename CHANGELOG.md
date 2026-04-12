@@ -6,6 +6,7 @@
 - Add `[` and `]` keybindings to toggle the left (parent) and right (preview) panes as a temporary, session-only setting (not persisted to config), mirroring the `.` hidden-files toggle
 - Add tar/gzip archive preview and metadata support — new `TarContentsPreviewProvider` handles `.tar`, `.tar.gz`, `.tgz`, and plain `.gz` via `System.Formats.Tar` and `System.IO.Compression.GZipStream`; `ArchiveMetadataProvider` extended with Files/Total size/Format/Compressed/Ratio for the new formats; `.gz`-wrapping-tar auto-detected via ustar magic probe; single-member gzip shows inferred inner filename plus head of decompressed text when textual
 - Add syntax highlighting to single-member `.gz` previews — the decompressed text head is passed through the same highlighter used by text previews, keyed off the `.gz`-stripped inner filename so `script.py.gz` picks up Python, `notes.md.gz` picks up Markdown, etc.; unknown inner extensions fall through to plain text
+- Add inline color swatches in CSS/SCSS/Sass previews — hex literals (`#RGB`, `#RGBA`, `#RRGGBB`, `#RRGGBBAA`) now render a colored ` ██` swatch immediately after the literal; value-position tracking avoids false positives on ID selectors like `#main`; alpha is discarded for v1
 
 ## [1.12.0] - 2026-04-08
 

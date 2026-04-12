@@ -75,13 +75,29 @@ Investigate enabling `ENABLE_VIRTUAL_TERMINAL_INPUT` on Windows Terminal (detect
 
 - [ ] Review remaining keybinding consistency. Current mix: some dialogs/tools use `Ctrl+` (`Ctrl+F` finder, `Ctrl+T` terminal, `Ctrl+L` symlink, `Ctrl+R` refresh, `Ctrl+P` command palette, `Ctrl+G` go-to-path) while others use bare keys (`n`/`N` new file/dir, `b`/`B` bookmarks, `/` filter, `,` config, `?` help, `i` properties). Convention: `Ctrl+<key>` for opening tools/dialogs/overlays, bare keys for direct actions.
 
-### CSS color swatches in preview
+### ~~CSS color swatches in preview~~ (Done)
 
-Render an inline color swatch after hex color literals (`#RGB`, `#RRGGBB`, `#RGBA`, `#RRGGBBAA`) in the CSS preview pane. A few trailing cells would get their background painted to the actual RGB color, giving at-a-glance color visualization next to the literal.
+- Hex color literals (`#RGB`, `#RGBA`, `#RRGGBB`, `#RRGGBBAA`) in CSS/SCSS/Sass previews now render a ` ██` swatch (U+2588 full-block × 2, colored to the literal) immediately after the hex text.
+- New `TokenKind.HexColor`; detection added to `CssLanguage.ScanCss` with line-local value-position tracking (`afterColon` flag + `;`/`{`/`}` reset) so ID selectors like `#main` are not false-positived.
+- Alpha discarded for v1. Invalid hex (`#gg0000`) and non-standard lengths (2, 5, 7) are rejected.
+- Implementation emits a full `CellStyle[]` via `SyntaxTheme.GetStyle` lookups for lines with hex colors; lines without hex colors remain on the token-span path with zero extra allocation. Follows the `DiffLanguage` precedent — no renderer or `StyledLine` changes needed.
+- Known v1 limitation: `:pseudo #abc { }` (pseudo-class followed by an ID selector that happens to be valid hex) can produce a false positive. Acceptable — future work can track brace depth multi-line via the `state` byte. `rgb()`/`hsl()` and named colors still TODO.
 
-- Detection happens in `src/Wade/Highlighting/Languages/CssLanguage.cs` (extends `RegexLanguage`). Add hex-color matching during `TokenizeLine` — probably a simple regex or span scan for `#[0-9a-fA-F]{3,8}`.
-- `StyledLine` in `src/Wade/Highlighting/StyledLine.cs` already supports per-cell styling via `CellStyle[]? CharStyles` alongside the token-based `Spans`. `PaneRenderer` already consumes `CharStyles` for per-cell background colors (used by the drive-view percent bar and diff previews), so no renderer changes are needed — the language just needs to emit the right `CharStyles` entries.
-- Approach: after the literal, append (or reserve space for) ~2-3 trailing characters whose `CharStyles` entries carry the parsed RGB color as a background. Decide whether to inject new characters into `line.Text` (easier rendering, but changes the string) or reserve trailing-whitespace cells (preserves the raw text).
-- Scope decision: start with hex literals only. Extend later to `rgb()`/`rgba()`/`hsl()` function notation and named CSS colors (`red`, `rebeccapurple`, etc.) if the infrastructure proves out.
-- Consider whether this should also apply to SCSS/SASS files (currently mapped to `CssLanguage` in `LanguageMap.cs`).
-- Similar precedent for per-character non-token styling in `PercentBarResult` (drives view) and `DiffLanguage` — worth glancing at those for reference on how existing code populates `CharStyles`.
+### CSS color swatches — disambiguate pseudo-class/element selectors
+
+Follow-up to the shipped hex swatch feature in `src/Wade/Highlighting/Languages/CssLanguage.cs`. Current limitation: `a:hover #abc { }` incorrectly swatches `#abc` as a color because the line-local `afterColon` flag doesn't distinguish a property separator from a pseudo `:`/`::`.
+
+- Track brace depth (or an in-block bit) across lines via the `state` byte — currently `state` only encodes `StateNormal`/`StateBlockComment`. Add a bit (e.g. `StateInBlock = 0b100`) and refactor `state == StateBlockComment` equality checks to mask-aware checks.
+- Only treat `#hex` as a color when both `insideBraces` (across lines) AND `afterColon` (line-local) are true. Selectors live outside `{ }`, values live inside.
+- Handle nested `@media { @supports { ... } }` — a single in-block bit is sufficient for value-position detection since any brace depth ≥ 1 means we're inside a declaration block.
+- Update tests to cover `a:hover #abc { }`, multi-line rules (`color:\n  #abc;`), and `@media (min-width: 600px) { .x { color: #abc; } }`.
+
+### CSS color swatches — `rgb()` / `rgba()` / `hsl()` / `hsla()` / named colors
+
+Extend the swatch feature to cover the remaining CSS color notations.
+
+- Detection sites in `CssLanguage.ScanCss`: `rgb(`, `rgba(`, `hsl(`, `hsla(` function-call syntax. Parse decimal/percent arguments, handle both comma-separated (legacy) and space-separated (CSS Colors Level 4) syntaxes, and both `hsl(360, 50%, 50%)` and `hsl(360deg 50% 50%)` forms.
+- HSL → RGB conversion helper alongside `TryParseHexColor` in `CssLanguage`.
+- Named CSS colors (`red`, `rebeccapurple`, `cornflowerblue`, etc.) — full list is ~148 entries. Use a `FrozenDictionary<string, Color>` for lookup. Only match when `afterColon` is true and the identifier is followed by a non-identifier char (so `.red { }` selectors are not swatched).
+- Modern CSS Color 4 syntax (`color(display-p3 ...)`, `lab()`, `lch()`, `oklab()`, `oklch()`) — out of scope; these need proper color-space conversion math.
+- Reuse the existing `BuildSwatchResult` pipeline — it already handles arbitrary `HexColorMatch` positions, so only the detection layer needs extension. Consider renaming `HexColorMatch` to `CssColorMatch` once non-hex sources are added.

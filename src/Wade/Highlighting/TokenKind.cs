@@ -23,4 +23,5 @@ public enum TokenKind : byte
     AttrValue,
     Key,
     Directive,
+    HexColor,
 }

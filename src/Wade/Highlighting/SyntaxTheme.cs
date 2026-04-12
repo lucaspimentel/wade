@@ -49,6 +49,9 @@ internal static class SyntaxTheme
         TokenKind.AttrValue => AttrValueStyle,
         TokenKind.Key => KeyStyle,
         TokenKind.Directive => DirectiveStyle,
+        TokenKind.HexColor => ConstantStyle,
         _ => PlainStyle,
     };
+
+    public static CellStyle Plain => PlainStyle;
 }
