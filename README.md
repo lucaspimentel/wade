@@ -31,7 +31,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **File preview** — text (with syntax highlighting), hex, git diff, archive contents (zip, tar, gzip), images (Sixel), PDF (via `pdftopng`), MSI file listing, and Markdown (built-in Markdig renderer); multiple modes per file switchable via `p`; CSS/SCSS/Sass previews show inline color swatches for hex literals
 - **Expanded preview** — Right/Enter expands to full width; scrollable
 - **Image preview** — Sixel graphics (Windows Terminal 1.22+, kitty, WezTerm, etc.)
-- **File metadata** — structured metadata above preview and in properties overlay (`i`); format-specific providers for images (EXIF), executables (PE/.NET), Office docs, NuGet packages, archives, PDF, media files, and MSI installers
+- **File metadata** — structured metadata above preview and in properties overlay (`i`); format-specific providers for images (EXIF), executables (PE/.NET), Office docs, NuGet packages, archives, PDF, media files, MSI installers, and Windows shortcuts (`.lnk`)
 - **File properties** — `i` for scrollable overlay with timestamps, attributes, git status, and extracted metadata
 
 ### Git Integration

@@ -17,7 +17,7 @@ Windows file clipboard interop is implemented. Remaining: Unix/macOS file clipbo
 - **Font files** (`.ttf`, `.otf`, `.woff2`) — font family, style, weight, glyph count. Parse OpenType/TrueType `name` and `head` tables.
 - **OpenDocument** (`.odt`, `.ods`, `.odp`) — title, author, dates, page/sheet count. Extract from `meta.xml` inside the ODF zip archive (similar to Office OOXML approach). These are zip-based; **benefits from** "Support multiple metadata providers per file" to show document metadata alongside archive metadata.
 - **EPUB** (`.epub`) — title, author, publisher, language, identifier. Extract from `content.opf` metadata inside the zip archive. Also zip-based; **benefits from** "Support multiple metadata providers per file" for the same reason.
-- ~~**Windows shortcuts** (`.lnk`)~~ (Done) — parser source copied from [lucaspimentel/windows-shortcut-parser](https://github.com/lucaspimentel/windows-shortcut-parser) into `src/Wade/LnkParser/`. `ShortcutMetadataProvider` extracts target path, working dir, arguments, description, icon, hotkey, volume label. `ShortcutPreviewProvider` shows target and key properties as styled text.
+- ~~**Windows shortcuts** (`.lnk`)~~ (Done) — parser source copied from [lucaspimentel/windows-shortcut-parser](https://github.com/lucaspimentel/windows-shortcut-parser) into `src/Wade/LnkParser/`. `ShortcutMetadataProvider` extracts target path, working dir, arguments, description, icon, hotkey, and volume label, surfaced in the metadata header above the preview pane and in the properties overlay.
 
 ### ~~Zip — other archive formats~~ (Done)
 
