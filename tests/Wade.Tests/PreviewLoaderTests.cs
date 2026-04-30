@@ -180,6 +180,75 @@ public class PreviewLoaderTests
         }
     }
 
+    [Fact]
+    public void BeginLoad_CloudPlaceholder_DoesNotOpenFileForEncodingDetection()
+    {
+        var source = new FakeInputSource();
+        using var pipeline = new InputPipeline(source);
+        var loader = new PreviewLoader(pipeline);
+        var metadataProvider = new StubMetadataProvider();
+
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(tempFile, "hello world\n");
+            PreviewContext context = DefaultContext() with { IsCloudPlaceholder = true };
+            loader.BeginLoad(tempFile, [metadataProvider], previewProvider: null, context);
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            MetadataReadyEvent? metadata = null;
+            while (metadata is null)
+            {
+                if (pipeline.Take(cts.Token) is MetadataReadyEvent evt)
+                {
+                    metadata = evt;
+                }
+            }
+
+            Assert.Equal(tempFile, metadata.Path);
+            Assert.Null(metadata.Encoding);
+            Assert.Null(metadata.LineEnding);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public void BeginLoad_NonCloudFile_DetectsEncodingAndLineEnding()
+    {
+        var source = new FakeInputSource();
+        using var pipeline = new InputPipeline(source);
+        var loader = new PreviewLoader(pipeline);
+        var metadataProvider = new StubMetadataProvider();
+
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(tempFile, "hello\nworld\n");
+            loader.BeginLoad(tempFile, [metadataProvider], previewProvider: null, DefaultContext());
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            MetadataReadyEvent? metadata = null;
+            while (metadata is null)
+            {
+                if (pipeline.Take(cts.Token) is MetadataReadyEvent evt)
+                {
+                    metadata = evt;
+                }
+            }
+
+            Assert.Equal(tempFile, metadata.Path);
+            Assert.Equal("UTF-8", metadata.Encoding);
+            Assert.Equal("LF", metadata.LineEnding);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
     private sealed class FakeInputSource : IInputSource
     {
         private readonly ManualResetEventSlim _gate = new(false);
@@ -191,6 +260,16 @@ public class PreviewLoaderTests
         }
 
         public void Dispose() => _gate.Set();
+    }
+
+    private sealed class StubMetadataProvider : IMetadataProvider
+    {
+        public string Label => "Stub";
+
+        public bool CanProvideMetadata(string path, PreviewContext context) => true;
+
+        public MetadataResult? GetMetadata(string path, PreviewContext context, CancellationToken ct) =>
+            new() { Sections = [new MetadataSection("File", [new MetadataEntry("Name", Path.GetFileName(path))])] };
     }
 
     private sealed class SlowPreviewProvider : IPreviewProvider

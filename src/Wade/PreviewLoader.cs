@@ -86,10 +86,16 @@ internal sealed class PreviewLoader
 
                 if (allSections.Count > 0 && !ct.IsCancellationRequested)
                 {
-                    // Detect encoding/line ending for non-binary files
-                    FileMetadata fileMetadata = FilePreview.DetectFileMetadata(path);
-                    string? encoding = fileMetadata.IsBinary ? null : fileMetadata.Encoding;
-                    string? lineEnding = fileMetadata.IsBinary ? null : fileMetadata.LineEnding;
+                    // Detect encoding/line ending for non-binary files. Skip for cloud
+                    // placeholders: opening the file would trigger a download.
+                    string? encoding = null;
+                    string? lineEnding = null;
+                    if (!context.IsCloudPlaceholder)
+                    {
+                        FileMetadata fileMetadata = FilePreview.DetectFileMetadata(path);
+                        encoding = fileMetadata.IsBinary ? null : fileMetadata.Encoding;
+                        lineEnding = fileMetadata.IsBinary ? null : fileMetadata.LineEnding;
+                    }
 
                     _pipeline.Inject(new MetadataReadyEvent(path, [.. allSections], fileTypeLabel, encoding, lineEnding));
 

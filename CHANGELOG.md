@@ -5,6 +5,9 @@
 ### Added
 - Add fzf-style exact-substring matching in the file finder — prefix the query with `'` (e.g. `'foo`) to match a literal contiguous substring instead of fuzzy subsequence; smart-case applies (case-insensitive unless the query has an uppercase letter)
 
+### Fixed
+- Fix accidental download of cloud-synced files (OneDrive, Dropbox) when previewing or selecting placeholders; encoding detection no longer opens the file, so cloud files are only fetched via the explicit "Download cloud file" action
+
 ## [1.13.0] - 2026-04-11
 
 ### Added
