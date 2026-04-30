@@ -113,6 +113,134 @@ internal static class FuzzyScorer
         return ScoreWithFileNamePriority(query, relativePath, fileNameStart, out _);
     }
 
+    /// <summary>
+    /// Score a query as an exact contiguous substring match (fzf `'` prefix semantics).
+    /// Path separators in the query are normalized to <see cref="Path.DirectorySeparatorChar"/>.
+    /// Returns <see cref="int.MinValue"/> if the substring is not found in the target.
+    /// Higher scores are better.
+    /// </summary>
+    internal static int ExactScore(ReadOnlySpan<char> query, ReadOnlySpan<char> target, bool caseSensitive)
+    {
+        return ExactScore(query, target, caseSensitive, out _);
+    }
+
+    internal static int ExactScore(
+        ReadOnlySpan<char> query,
+        ReadOnlySpan<char> target,
+        bool caseSensitive,
+        out int[] matchPositions)
+    {
+        int queryLen = query.Length;
+
+        if (queryLen == 0)
+        {
+            matchPositions = [];
+            return 0;
+        }
+
+        if (queryLen > target.Length)
+        {
+            matchPositions = [];
+            return int.MinValue;
+        }
+
+        // Normalize path separators in the query so `/` and `\` are interchangeable
+        // (consistent with the fuzzy path).
+        Span<char> normalizedQuery = queryLen <= 64 ? stackalloc char[queryLen] : new char[queryLen];
+        for (int i = 0; i < queryLen; i++)
+        {
+            char c = query[i];
+            normalizedQuery[i] = c is '/' or '\\' ? Path.DirectorySeparatorChar : c;
+        }
+
+        StringComparison comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        int idx = target.IndexOf((ReadOnlySpan<char>)normalizedQuery, comparison);
+
+        if (idx < 0)
+        {
+            matchPositions = [];
+            return int.MinValue;
+        }
+
+        var positions = new int[queryLen];
+        for (int i = 0; i < queryLen; i++)
+        {
+            positions[i] = idx + i;
+        }
+
+        matchPositions = positions;
+        return ComputeScore(normalizedQuery, target, positions);
+    }
+
+    /// <summary>
+    /// Exact-substring counterpart to <see cref="ScoreWithFileNamePriority(ReadOnlySpan{char}, ReadOnlySpan{char}, int, out int[])"/>.
+    /// </summary>
+    internal static int ExactScoreWithFileNamePriority(
+        ReadOnlySpan<char> query,
+        ReadOnlySpan<char> relativePath,
+        int fileNameStart,
+        bool caseSensitive,
+        out int[] matchPositions)
+    {
+        int fullScore = ExactScore(query, relativePath, caseSensitive, out int[] fullPositions);
+        int bestScore;
+
+        if (fileNameStart == 0)
+        {
+            if (fullScore != int.MinValue)
+            {
+                fullScore += FileNameBonus;
+            }
+
+            matchPositions = fullPositions;
+            bestScore = fullScore;
+        }
+        else if (fileNameStart < relativePath.Length)
+        {
+            ReadOnlySpan<char> fileName = relativePath[fileNameStart..];
+            int fileNameScore = ExactScore(query, fileName, caseSensitive, out int[] fnPositions);
+
+            if (fileNameScore != int.MinValue)
+            {
+                fileNameScore += FileNameBonus;
+
+                if (fileNameScore > fullScore)
+                {
+                    for (int i = 0; i < fnPositions.Length; i++)
+                    {
+                        fnPositions[i] += fileNameStart;
+                    }
+
+                    matchPositions = fnPositions;
+                    bestScore = fileNameScore;
+                }
+                else
+                {
+                    matchPositions = fullPositions;
+                    bestScore = fullScore;
+                }
+            }
+            else
+            {
+                matchPositions = fullPositions;
+                bestScore = fullScore;
+            }
+        }
+        else
+        {
+            matchPositions = fullPositions;
+            bestScore = fullScore;
+        }
+
+        if (bestScore != int.MinValue)
+        {
+            int depth = CountSeparators(relativePath);
+            bestScore += PenaltyDepth * depth;
+        }
+
+        return bestScore;
+    }
+
     internal static int ScoreWithFileNamePriority(
         ReadOnlySpan<char> query,
         ReadOnlySpan<char> relativePath,

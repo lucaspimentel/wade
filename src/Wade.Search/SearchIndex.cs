@@ -88,8 +88,11 @@ public sealed class SearchIndex : IDisposable
     /// </summary>
     public ChannelReader<SearchResult> Search(string query, SearchOptions? options = null)
     {
-        // Empty query: cancel any active query and return an immediately-completed empty channel.
-        if (string.IsNullOrEmpty(query))
+        SearchQuery parsed = SearchQuery.Parse(query);
+
+        // Empty query (or just `'` with no body): cancel any active query and return
+        // an immediately-completed empty channel.
+        if (parsed.IsEmpty)
         {
             CancelSearch();
             var emptyChannel = Channel.CreateUnbounded<SearchResult>();
@@ -98,7 +101,7 @@ public sealed class SearchIndex : IDisposable
         }
 
         options ??= new SearchOptions();
-        var newQuery = new ActiveQuery(query, options);
+        var newQuery = new ActiveQuery(parsed, options);
 
         ActiveQuery? previousQuery;
         lock (_queryLock)

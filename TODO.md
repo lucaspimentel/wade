@@ -30,6 +30,29 @@ Windows file clipboard interop is implemented. Remaining: Unix/macOS file clipbo
 
 ## Backlog
 
+### File finder — deduplicate ScoreWithFileNamePriority paths
+
+`FuzzyScorer.ExactScoreWithFileNamePriority` is a near-verbatim copy of `ScoreWithFileNamePriority` (only the inner scoring call differs). Acceptable at two modes; fix when adding a third `QueryMode` (the `^`/`$`/`!` work below will force this). Extracting a shared helper is non-trivial because `ReadOnlySpan<char>` cannot cross delegate boundaries, so the cleanest fix is likely an enum-dispatched private helper, or `Score`/`ExactScore` becoming overloads of a common generic over a strategy struct.
+
+### File finder — avoid allocating MatchPositions when discarded
+
+`FuzzyScorer.Score` and `ExactScore` always materialize a `new int[queryLen]` for `out int[] matchPositions`, even when the caller passes `out _`. `ExactScoreWithFileNamePriority` calls the inner scorer twice per path (full + filename) and discards one of the two arrays. The pre-existing fuzzy path does the same. Add a fast path that skips the array allocation when not needed, or restructure the priority methods so only the winning array is built. Worth measuring with `Wade.Benchmarks` first to confirm the hot path matters.
+
+### File finder — fzf-style query syntax
+
+Extend `SearchQuery.Parse` (in `src/Wade.Search/SearchQuery.cs`) with the rest of fzf's query operators. The `'foo` exact-substring prefix is already implemented; the parser type is the seam for the rest.
+
+- `^foo` — prefix-anchored match (matches only when the substring starts at the target's beginning, or just after a path separator/boundary)
+- `foo$` — suffix-anchored match (anchor at end of filename or end of full path)
+- `!foo` — negation; combine with the above (`!^foo`, `!'foo`, `!foo$`)
+- Multi-term AND: space-separated terms are ANDed together (e.g. `'src .cs$` → contains `src` AND ends in `.cs`); a path passes only if every term matches
+- Smart-case (case-insensitive unless query has any uppercase) should apply per-term, matching fzf's behavior
+
+Implementation notes:
+- `SearchQuery` will need to grow from a single mode/text into a list of `SearchTerm` records (each with mode, text, negated, case-sensitive)
+- `ActiveQuery.TryMatch` will need to AND the per-term scores; combined score should be the sum (or some weighted combination) so multi-term matches still rank well
+- Match-position highlighting needs to merge positions across terms (union, deduplicated, sorted)
+
 ### Preview for Office/document formats (DOCX, XLSX, PPTX, etc.)
 
 Research and implement image previews for Office Open XML formats (`.docx`, `.xlsx`, `.pptx`, `.dotx`, `.xltx`, `.potx`) by converting the first page to an image, similar to PDF preview.

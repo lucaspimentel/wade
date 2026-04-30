@@ -10,14 +10,14 @@ internal sealed class ActiveQuery : IDisposable
 {
     private readonly Channel<SearchResult> _channel;
     private readonly CancellationTokenSource _cts;
-    private readonly string _query;
+    private readonly SearchQuery _query;
     private readonly SearchOptions _options;
     private readonly HashSet<string> _emittedPaths = new(StringComparer.Ordinal);
     private readonly object _emitLock = new();
     private readonly TaskCompletionSource _snapshotTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private int _resultCount;
 
-    internal ActiveQuery(string query, SearchOptions options)
+    internal ActiveQuery(SearchQuery query, SearchOptions options)
     {
         _query = query;
         _options = options;
@@ -31,7 +31,7 @@ internal sealed class ActiveQuery : IDisposable
 
     internal ChannelReader<SearchResult> Reader => _channel.Reader;
     internal CancellationToken CancellationToken => _cts.Token;
-    internal string Query => _query;
+    internal SearchQuery Query => _query;
     internal Task SnapshotComplete => _snapshotTcs.Task;
     internal bool IsMaxResultsReached => Volatile.Read(ref _resultCount) >= _options.MaxResults;
 
@@ -59,8 +59,21 @@ internal sealed class ActiveQuery : IDisposable
             return false;
         }
 
-        int score = FuzzyScorer.ScoreWithFileNamePriority(
-            _query.AsSpan(), relativePath.AsSpan(), fileNameStart, out int[] matchPositions);
+        int score;
+        int[] matchPositions;
+
+        switch (_query.Mode)
+        {
+            case QueryMode.ExactSubstring:
+                score = FuzzyScorer.ExactScoreWithFileNamePriority(
+                    _query.Text.AsSpan(), relativePath.AsSpan(), fileNameStart, _query.CaseSensitive, out matchPositions);
+                break;
+            case QueryMode.Fuzzy:
+            default:
+                score = FuzzyScorer.ScoreWithFileNamePriority(
+                    _query.Text.AsSpan(), relativePath.AsSpan(), fileNameStart, out matchPositions);
+                break;
+        }
 
         if (score == int.MinValue)
         {

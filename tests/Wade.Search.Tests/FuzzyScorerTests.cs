@@ -226,4 +226,91 @@ public class FuzzyScorerTests
             [wadeStart, wadeStart + 1, wadeStart + 2, wadeStart + 3],
             positions);
     }
+
+    [Theory]
+    [InlineData("foo", "foobar", false)]    // exact substring at start
+    [InlineData("bar", "foobar", false)]    // exact substring at end
+    [InlineData("oob", "foobar", false)]    // exact substring middle
+    [InlineData("FOO", "foobar", false)]    // case-insensitive (smart-case off)
+    public void ExactScore_Match(string query, string target, bool caseSensitive)
+    {
+        int score = FuzzyScorer.ExactScore(query, target, caseSensitive);
+        Assert.True(score > int.MinValue, $"Expected match, got score={score}");
+    }
+
+    [Theory]
+    [InlineData("foB", "foobar", false)]    // not contiguous
+    [InlineData("xyz", "foobar", false)]    // chars absent
+    [InlineData("foobars", "foobar", false)] // longer than target
+    [InlineData("Foo", "foobar", true)]      // case-sensitive miss
+    public void ExactScore_NoMatch_ReturnsMinValue(string query, string target, bool caseSensitive)
+    {
+        Assert.Equal(int.MinValue, FuzzyScorer.ExactScore(query, target, caseSensitive));
+    }
+
+    [Fact]
+    public void ExactScore_EmptyQuery_ReturnsZero()
+    {
+        Assert.Equal(0, FuzzyScorer.ExactScore("", "anything", caseSensitive: false));
+    }
+
+    [Fact]
+    public void ExactScore_MatchPositions_AreContiguous()
+    {
+        FuzzyScorer.ExactScore("oob", "foobar", caseSensitive: false, out int[] positions);
+        Assert.Equal([1, 2, 3], positions);
+    }
+
+    [Fact]
+    public void ExactScore_NormalizesPathSeparators()
+    {
+        // Query uses '/'; target uses platform separator. Should still match.
+        string sep = Path.DirectorySeparatorChar.ToString();
+        string target = "src" + sep + "Wade";
+
+        int score = FuzzyScorer.ExactScore("src/Wade", target, caseSensitive: false);
+
+        Assert.True(score > int.MinValue, "Path separator normalization should let `/` match the platform separator");
+    }
+
+    [Fact]
+    public void ExactScore_CaseSensitive_DistinguishesCase()
+    {
+        Assert.Equal(int.MinValue, FuzzyScorer.ExactScore("App", "app.cs", caseSensitive: true));
+        Assert.True(FuzzyScorer.ExactScore("App", "App.cs", caseSensitive: true) > int.MinValue);
+    }
+
+    [Fact]
+    public void ExactScoreWithFileNamePriority_FileNameMatch_GetsBonus()
+    {
+        string path = string.Join(Path.DirectorySeparatorChar.ToString(), "src", "Wade", "App.cs");
+        int fileNameStart = path.LastIndexOf(Path.DirectorySeparatorChar) + 1;
+
+        int priorityScore = FuzzyScorer.ExactScoreWithFileNamePriority(
+            "App", path, fileNameStart, caseSensitive: false, out _);
+        int fullScore = FuzzyScorer.ExactScore("App", path, caseSensitive: false);
+
+        Assert.True(priorityScore > fullScore,
+            $"Filename-priority score {priorityScore} should beat full-path score {fullScore}");
+    }
+
+    [Fact]
+    public void ExactScoreWithFileNamePriority_MatchPositions_OffsetIntoFullPath()
+    {
+        string path = string.Join(Path.DirectorySeparatorChar.ToString(), "src", "Wade", "App.cs");
+        int fileNameStart = path.LastIndexOf(Path.DirectorySeparatorChar) + 1;
+
+        FuzzyScorer.ExactScoreWithFileNamePriority(
+            "App", path, fileNameStart, caseSensitive: false, out int[] positions);
+
+        Assert.Equal([fileNameStart, fileNameStart + 1, fileNameStart + 2], positions);
+    }
+
+    [Fact]
+    public void ExactScore_NonContiguous_FailsWhereFuzzySucceeds()
+    {
+        // 'aBc' is a fuzzy subsequence of 'aXbXc' but not a contiguous substring.
+        Assert.True(FuzzyScorer.Score("abc", "aXbXc") > int.MinValue);
+        Assert.Equal(int.MinValue, FuzzyScorer.ExactScore("abc", "aXbXc", caseSensitive: false));
+    }
 }

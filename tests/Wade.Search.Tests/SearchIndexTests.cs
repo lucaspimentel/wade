@@ -258,6 +258,75 @@ public class SearchIndexTests
             $"App.cs score {appResult.Score} should be > Config.cs score {configResult.Score}");
     }
 
+    [Fact]
+    public async Task Search_ExactPrefix_OnlyMatchesContiguousSubstring()
+    {
+        var index = new SearchIndex(s_basePath);
+        // Fuzzy would match "abc" in both, but only the first contains the substring "abc".
+        index.Add(MakeAbsPath("src", "abcfile.cs"));
+        index.Add(MakeAbsPath("src", "aXbXc.cs"));
+
+        ChannelReader<SearchResult> reader = index.Search("'abc");
+        List<SearchResult> results = await DrainResultsAsync(index, reader);
+
+        Assert.Single(results);
+        Assert.Equal(MakeAbsPath("src", "abcfile.cs"), results[0].Path);
+    }
+
+    [Fact]
+    public async Task Search_ExactPrefix_SmartCase_LowercaseIsCaseInsensitive()
+    {
+        var index = new SearchIndex(s_basePath);
+        index.Add(MakeAbsPath("src", "App.cs"));
+
+        ChannelReader<SearchResult> reader = index.Search("'app");
+        List<SearchResult> results = await DrainResultsAsync(index, reader);
+
+        Assert.Single(results);
+    }
+
+    [Fact]
+    public async Task Search_ExactPrefix_SmartCase_UppercaseIsCaseSensitive()
+    {
+        var index = new SearchIndex(s_basePath);
+        index.Add(MakeAbsPath("src", "App.cs"));
+        index.Add(MakeAbsPath("src", "app.cs"));
+
+        ChannelReader<SearchResult> reader = index.Search("'App");
+        List<SearchResult> results = await DrainResultsAsync(index, reader);
+
+        Assert.Single(results);
+        Assert.Equal(MakeAbsPath("src", "App.cs"), results[0].Path);
+    }
+
+    [Fact]
+    public async Task Search_QuoteOnly_NoResults()
+    {
+        var index = new SearchIndex(s_basePath);
+        index.Add(MakeAbsPath("src", "App.cs"));
+
+        ChannelReader<SearchResult> reader = index.Search("'");
+        List<SearchResult> results = await DrainResultsAsync(index, reader);
+
+        Assert.Empty(results);
+    }
+
+    [Fact]
+    public async Task Search_ExactPrefix_MatchPositionsAreContiguous()
+    {
+        var index = new SearchIndex(s_basePath);
+        index.Add(MakeAbsPath("Documents", "report.pdf"));
+
+        ChannelReader<SearchResult> reader = index.Search("'pdf");
+        List<SearchResult> results = await DrainResultsAsync(index, reader);
+
+        Assert.Single(results);
+        int[] positions = results[0].MatchPositions;
+        Assert.Equal(3, positions.Length);
+        Assert.Equal(positions[0] + 1, positions[1]);
+        Assert.Equal(positions[1] + 1, positions[2]);
+    }
+
     private static string MakeAbsPath(params string[] parts) =>
         Path.Combine(s_basePath, string.Join(Path.DirectorySeparatorChar, parts));
 
