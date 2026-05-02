@@ -29,17 +29,18 @@ internal static class FuzzyScorer
     /// <summary>
     /// Score a query against a target string using greedy subsequence matching.
     /// Returns <see cref="int.MinValue"/> if the query is not a subsequence of the target.
-    /// Higher scores are better.
+    /// Higher scores are better. Does not allocate a match-positions array.
     /// </summary>
     internal static int Score(ReadOnlySpan<char> query, ReadOnlySpan<char> target)
     {
-        return Score(query, target, out _);
+        int queryLen = query.Length;
+        Span<int> buf = queryLen <= 64 ? stackalloc int[queryLen] : new int[queryLen];
+        return ScoreCore(query, target, buf);
     }
 
     internal static int Score(ReadOnlySpan<char> query, ReadOnlySpan<char> target, out int[] matchPositionsResult)
     {
         int queryLen = query.Length;
-        int targetLen = target.Length;
 
         if (queryLen == 0)
         {
@@ -47,9 +48,39 @@ internal static class FuzzyScorer
             return 0;
         }
 
-        if (queryLen > targetLen)
+        Span<int> buf = queryLen <= 64 ? stackalloc int[queryLen] : new int[queryLen];
+        int score = ScoreCore(query, target, buf);
+
+        if (score == int.MinValue)
         {
             matchPositionsResult = [];
+        }
+        else
+        {
+            matchPositionsResult = buf[..queryLen].ToArray();
+        }
+
+        return score;
+    }
+
+    /// <summary>
+    /// Core scoring logic. Writes tightened match positions into <paramref name="matchPositions"/>
+    /// (must be at least <c>query.Length</c> elements) and returns the score, or
+    /// <see cref="int.MinValue"/> when the query is not a subsequence of the target.
+    /// No heap allocation.
+    /// </summary>
+    private static int ScoreCore(ReadOnlySpan<char> query, ReadOnlySpan<char> target, Span<int> matchPositions)
+    {
+        int queryLen = query.Length;
+        int targetLen = target.Length;
+
+        if (queryLen == 0)
+        {
+            return 0;
+        }
+
+        if (queryLen > targetLen)
+        {
             return int.MinValue;
         }
 
@@ -78,13 +109,11 @@ internal static class FuzzyScorer
 
         if (qi < queryLen)
         {
-            matchPositionsResult = [];
             return int.MinValue; // Not all query chars found.
         }
 
         // Backward scan: from the last forward match, walk backward to tighten the match span.
         // This finds a shorter-span match ending at the same position, which typically scores better.
-        Span<int> matchPositions = queryLen <= 64 ? stackalloc int[queryLen] : new int[queryLen];
         int lastForwardPos = forwardPositions[queryLen - 1];
         qi = queryLen - 1;
 
@@ -97,10 +126,7 @@ internal static class FuzzyScorer
             }
         }
 
-        matchPositionsResult = matchPositions[..queryLen].ToArray();
-
-        // Score the matched positions.
-        return ComputeScore(query, target, matchPositions);
+        return ComputeScore(query, target, matchPositions[..queryLen]);
     }
 
     /// <summary>
@@ -117,11 +143,32 @@ internal static class FuzzyScorer
     /// Score a query as an exact contiguous substring match (fzf `'` prefix semantics).
     /// Path separators in the query are normalized to <see cref="Path.DirectorySeparatorChar"/>.
     /// Returns <see cref="int.MinValue"/> if the substring is not found in the target.
-    /// Higher scores are better.
+    /// Higher scores are better. Does not allocate a match-positions array.
     /// </summary>
     internal static int ExactScore(ReadOnlySpan<char> query, ReadOnlySpan<char> target, bool caseSensitive)
     {
-        return ExactScore(query, target, caseSensitive, out _);
+        int queryLen = query.Length;
+
+        if (queryLen == 0) return 0;
+        if (queryLen > target.Length) return int.MinValue;
+
+        Span<char> normalizedQuery = queryLen <= 64 ? stackalloc char[queryLen] : new char[queryLen];
+        for (int i = 0; i < queryLen; i++)
+        {
+            char c = query[i];
+            normalizedQuery[i] = c is '/' or '\\' ? Path.DirectorySeparatorChar : c;
+        }
+
+        StringComparison comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        int idx = target.IndexOf((ReadOnlySpan<char>)normalizedQuery, comparison);
+
+        if (idx < 0) return int.MinValue;
+
+        // Build positions on the stack to compute the score without a heap allocation.
+        Span<int> positions = queryLen <= 64 ? stackalloc int[queryLen] : new int[queryLen];
+        for (int i = 0; i < queryLen; i++) positions[i] = idx + i;
+
+        return ComputeScore(normalizedQuery, target, positions);
     }
 
     internal static int ExactScore(
@@ -182,63 +229,57 @@ internal static class FuzzyScorer
         bool caseSensitive,
         out int[] matchPositions)
     {
-        int fullScore = ExactScore(query, relativePath, caseSensitive, out int[] fullPositions);
+        // Determine the winning candidate using score-only (no allocation) calls first,
+        // then allocate positions only once for the winner.
         int bestScore;
+        bool useFileName = false;
 
         if (fileNameStart == 0)
         {
-            if (fullScore != int.MinValue)
-            {
-                fullScore += FileNameBonus;
-            }
-
-            matchPositions = fullPositions;
-            bestScore = fullScore;
+            bestScore = ExactScore(query, relativePath, caseSensitive);
+            if (bestScore != int.MinValue) bestScore += FileNameBonus;
         }
         else if (fileNameStart < relativePath.Length)
         {
-            ReadOnlySpan<char> fileName = relativePath[fileNameStart..];
-            int fileNameScore = ExactScore(query, fileName, caseSensitive, out int[] fnPositions);
+            int fullScore = ExactScore(query, relativePath, caseSensitive);
+            int fileNameScore = ExactScore(query, relativePath[fileNameStart..], caseSensitive);
+            if (fileNameScore != int.MinValue) fileNameScore += FileNameBonus;
 
-            if (fileNameScore != int.MinValue)
+            if (fileNameScore > fullScore)
             {
-                fileNameScore += FileNameBonus;
-
-                if (fileNameScore > fullScore)
-                {
-                    for (int i = 0; i < fnPositions.Length; i++)
-                    {
-                        fnPositions[i] += fileNameStart;
-                    }
-
-                    matchPositions = fnPositions;
-                    bestScore = fileNameScore;
-                }
-                else
-                {
-                    matchPositions = fullPositions;
-                    bestScore = fullScore;
-                }
+                bestScore = fileNameScore;
+                useFileName = true;
             }
             else
             {
-                matchPositions = fullPositions;
                 bestScore = fullScore;
             }
         }
         else
         {
-            matchPositions = fullPositions;
-            bestScore = fullScore;
+            bestScore = ExactScore(query, relativePath, caseSensitive);
         }
 
-        if (bestScore != int.MinValue)
+        if (bestScore == int.MinValue)
         {
-            int depth = CountSeparators(relativePath);
-            bestScore += PenaltyDepth * depth;
+            matchPositions = [];
+            return int.MinValue;
         }
 
-        return bestScore;
+        // One allocation: build positions only for the winner.
+        if (useFileName)
+        {
+            ExactScore(query, relativePath[fileNameStart..], caseSensitive, out int[] fnPositions);
+            for (int i = 0; i < fnPositions.Length; i++) fnPositions[i] += fileNameStart;
+            matchPositions = fnPositions;
+        }
+        else
+        {
+            ExactScore(query, relativePath, caseSensitive, out matchPositions);
+        }
+
+        int depth = CountSeparators(relativePath);
+        return bestScore + PenaltyDepth * depth;
     }
 
     internal static int ScoreWithFileNamePriority(
@@ -247,68 +288,59 @@ internal static class FuzzyScorer
         int fileNameStart,
         out int[] matchPositions)
     {
-        int fullScore = Score(query, relativePath, out int[] fullPositions);
+        // Determine the winning candidate using score-only (no allocation) calls first,
+        // then allocate positions only once for the winner.
         int bestScore;
+        bool useFileName = false;
 
-        // If the file is in the current directory (no parent path), the full path IS the filename.
-        // Give it the filename bonus directly.
         if (fileNameStart == 0)
         {
-            if (fullScore != int.MinValue)
-            {
-                fullScore += FileNameBonus;
-            }
-
-            matchPositions = fullPositions;
-            bestScore = fullScore;
+            // Root file: full path IS the filename.
+            bestScore = Score(query, relativePath);
+            if (bestScore != int.MinValue) bestScore += FileNameBonus;
         }
-        // If the filename portion exists and is different from the full path, try scoring it.
         else if (fileNameStart < relativePath.Length)
         {
-            ReadOnlySpan<char> fileName = relativePath[fileNameStart..];
-            int fileNameScore = Score(query, fileName, out int[] fnPositions);
+            int fullScore = Score(query, relativePath);
+            int fileNameScore = Score(query, relativePath[fileNameStart..]);
+            if (fileNameScore != int.MinValue) fileNameScore += FileNameBonus;
 
-            if (fileNameScore != int.MinValue)
+            if (fileNameScore > fullScore)
             {
-                fileNameScore += FileNameBonus;
-
-                if (fileNameScore > fullScore)
-                {
-                    // Offset positions to be relative to the full path.
-                    for (int i = 0; i < fnPositions.Length; i++)
-                    {
-                        fnPositions[i] += fileNameStart;
-                    }
-
-                    matchPositions = fnPositions;
-                    bestScore = fileNameScore;
-                }
-                else
-                {
-                    matchPositions = fullPositions;
-                    bestScore = fullScore;
-                }
+                bestScore = fileNameScore;
+                useFileName = true;
             }
             else
             {
-                matchPositions = fullPositions;
                 bestScore = fullScore;
             }
         }
         else
         {
-            matchPositions = fullPositions;
-            bestScore = fullScore;
+            bestScore = Score(query, relativePath);
+        }
+
+        if (bestScore == int.MinValue)
+        {
+            matchPositions = [];
+            return int.MinValue;
+        }
+
+        // One allocation: build positions only for the winner.
+        if (useFileName)
+        {
+            Score(query, relativePath[fileNameStart..], out int[] fnPositions);
+            for (int i = 0; i < fnPositions.Length; i++) fnPositions[i] += fileNameStart;
+            matchPositions = fnPositions;
+        }
+        else
+        {
+            Score(query, relativePath, out matchPositions);
         }
 
         // Depth penalty: favor shallower paths when scores are otherwise equal.
-        if (bestScore != int.MinValue)
-        {
-            int depth = CountSeparators(relativePath);
-            bestScore += PenaltyDepth * depth;
-        }
-
-        return bestScore;
+        int depth = CountSeparators(relativePath);
+        return bestScore + PenaltyDepth * depth;
     }
 
     private static int CountSeparators(ReadOnlySpan<char> path)

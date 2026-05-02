@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Wade\Wade.csproj" />
+    <ProjectReference Include="..\..\src\Wade.Search\Wade.Search.csproj" />
   </ItemGroup>
 
 </Project>
