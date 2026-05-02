@@ -34,9 +34,13 @@ Windows file clipboard interop is implemented. Remaining: Unix/macOS file clipbo
 
 `FuzzyScorer.ExactScoreWithFileNamePriority` is a near-verbatim copy of `ScoreWithFileNamePriority` (only the inner scoring call differs). Acceptable at two modes; fix when adding a third `QueryMode` (the `^`/`$`/`!` work below will force this). Extracting a shared helper is non-trivial because `ReadOnlySpan<char>` cannot cross delegate boundaries, so the cleanest fix is likely an enum-dispatched private helper, or `Score`/`ExactScore` becoming overloads of a common generic over a strategy struct.
 
-### File finder — avoid allocating MatchPositions when discarded
+### ~~File finder — avoid allocating MatchPositions when discarded~~ (Done)
 
-`FuzzyScorer.Score` and `ExactScore` always materialize a `new int[queryLen]` for `out int[] matchPositions`, even when the caller passes `out _`. `ExactScoreWithFileNamePriority` calls the inner scorer twice per path (full + filename) and discards one of the two arrays. The pre-existing fuzzy path does the same. Add a fast path that skips the array allocation when not needed, or restructure the priority methods so only the winning array is built. Worth measuring with `Wade.Benchmarks` first to confirm the hot path matters.
+- Extracted `ScoreCore` private method writing into a caller-provided `Span<int>` (no heap alloc).
+- `Score(query, target)` and `ExactScore(query, target, caseSensitive)` no-out overloads are now zero-alloc.
+- `ScoreWithFileNamePriority` and `ExactScoreWithFileNamePriority` compare candidates via score-only calls first, then allocate positions once for the winner (was 2 arrays, now 1).
+- `ScoreWithFileNamePriority` score-only overload is now truly zero-alloc (was delegating to the out overload, silently allocating and discarding).
+- Added `FuzzyScorerBenchmarks` to `Wade.Benchmarks` confirming the reduction.
 
 ### File finder — fzf-style query syntax
 

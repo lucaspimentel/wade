@@ -136,7 +136,30 @@ internal static class FuzzyScorer
     /// </summary>
     internal static int ScoreWithFileNamePriority(ReadOnlySpan<char> query, ReadOnlySpan<char> relativePath, int fileNameStart)
     {
-        return ScoreWithFileNamePriority(query, relativePath, fileNameStart, out _);
+        // Score-only: use the zero-alloc Score overloads throughout — no int[] is built.
+        int bestScore;
+
+        if (fileNameStart == 0)
+        {
+            bestScore = Score(query, relativePath);
+            if (bestScore != int.MinValue) bestScore += FileNameBonus;
+        }
+        else if (fileNameStart < relativePath.Length)
+        {
+            int fullScore = Score(query, relativePath);
+            int fileNameScore = Score(query, relativePath[fileNameStart..]);
+            if (fileNameScore != int.MinValue) fileNameScore += FileNameBonus;
+            bestScore = fileNameScore > fullScore ? fileNameScore : fullScore;
+        }
+        else
+        {
+            bestScore = Score(query, relativePath);
+        }
+
+        if (bestScore == int.MinValue) return int.MinValue;
+
+        int depth = CountSeparators(relativePath);
+        return bestScore + PenaltyDepth * depth;
     }
 
     /// <summary>
