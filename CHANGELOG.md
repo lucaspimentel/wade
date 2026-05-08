@@ -2,12 +2,14 @@
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-05-08
+
 ### Added
-- Render YAML frontmatter in the markdown preview — key/value pairs are displayed in a tabular block with aligned columns, per-type syntax coloring (quoted strings, booleans, numbers), and word-wrapped values
+- Add YAML frontmatter rendering in the markdown preview — key/value pairs are displayed in a tabular block with aligned columns, per-type syntax coloring (quoted strings, booleans, numbers), and word-wrapped values
 - Add fzf-style exact-substring matching in the file finder — prefix the query with `'` (e.g. `'foo`) to match a literal contiguous substring instead of fuzzy subsequence; smart-case applies (case-insensitive unless the query has an uppercase letter)
 
 ### Changed
-- Reduce allocations in file finder scoring — score-only paths are now zero-alloc; `WithFileNamePriority` methods allocate one array per match instead of two
+- Update file finder scoring to reduce allocations — score-only paths are now zero-alloc; `WithFileNamePriority` methods allocate one array per match instead of two
 
 ### Fixed
 - Fix accidental download of cloud-synced files (OneDrive, Dropbox) when previewing or selecting placeholders; encoding detection no longer opens the file, so cloud files are only fetched via the explicit "Download cloud file" action
