@@ -34,6 +34,10 @@ internal static class MarkdigRenderer
     private static readonly CellStyle s_listMarkerStyle = new(new Color(180, 180, 180), null);
     private static readonly CellStyle s_tableBarStyle = new(new Color(100, 100, 120), null);
 
+    // YAML frontmatter
+    private static readonly CellStyle s_frontmatterBorderStyle = new(new Color(100, 85, 140), null, Dim: true);
+    private static readonly CellStyle s_frontmatterPunctStyle = new(new Color(130, 130, 145), null, Dim: true);
+
     // Mapping from fenced code block info strings to file extensions for syntax highlighting
     private static readonly FrozenDictionary<string, string> s_infoToExtension =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -69,13 +73,291 @@ internal static class MarkdigRenderer
             return null;
         }
 
+        return RenderText(text, width, ct);
+    }
+
+    internal static StyledLine[] RenderText(string text, int width, CancellationToken ct)
+    {
         if (width < 4)
         {
             width = 4;
         }
 
-        MarkdownDocument doc = Markdown.Parse(text, s_pipeline);
-        return RenderDocument(doc, width, ct);
+        var lines = new List<StyledLine>();
+
+        if (TryExtractFrontmatter(text, out string frontmatterContent, out string remainingText))
+        {
+            RenderFrontmatter(frontmatterContent, lines, width);
+            lines.Add(new StyledLine("", null)); // blank gap between frontmatter and body
+            text = remainingText;
+        }
+
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            MarkdownDocument doc = Markdown.Parse(text, s_pipeline);
+            lines.AddRange(RenderDocument(doc, width, ct));
+        }
+
+        // Remove trailing empty lines
+        while (lines.Count > 0 && lines[^1].Text.Length == 0)
+        {
+            lines.RemoveAt(lines.Count - 1);
+        }
+
+        return lines.ToArray();
+    }
+
+    internal static bool TryExtractFrontmatter(
+        string text,
+        out string frontmatterContent,
+        out string remainingText)
+    {
+        frontmatterContent = "";
+        remainingText = text;
+
+        // Must start with exactly "---" followed by a newline
+        int firstNewline = text.IndexOf('\n');
+        if (firstNewline < 0)
+        {
+            return false;
+        }
+
+        if (text[..firstNewline].TrimEnd('\r') != "---")
+        {
+            return false;
+        }
+
+        int contentStart = firstNewline + 1;
+        int pos = contentStart;
+
+        while (pos < text.Length)
+        {
+            int lineEnd = text.IndexOf('\n', pos);
+            int nextPos = lineEnd < 0 ? text.Length : lineEnd + 1;
+            string line = lineEnd < 0
+                ? text[pos..]
+                : text[pos..lineEnd].TrimEnd('\r');
+
+            if (line == "---")
+            {
+                frontmatterContent = text[contentStart..pos].TrimEnd('\r', '\n');
+                remainingText = nextPos < text.Length ? text[nextPos..] : "";
+                return true;
+            }
+
+            pos = nextPos;
+        }
+
+        return false; // no closing ---
+    }
+
+    private static void RenderFrontmatter(string content, List<StyledLine> lines, int width)
+    {
+        // Parse key-value pairs and find the longest key
+        var entries = new List<(string Key, string Value)>();
+        int maxKeyLen = 0;
+
+        foreach (string rawLine in content.Split('\n'))
+        {
+            string line = rawLine.TrimEnd('\r');
+
+            if (string.IsNullOrEmpty(line))
+            {
+                continue;
+            }
+
+            int colonPos = line.IndexOf(':');
+
+            if (colonPos > 0)
+            {
+                string key = line[..colonPos];
+                string value = colonPos + 1 < line.Length
+                    ? line[(colonPos + 1)..].TrimStart()
+                    : "";
+                entries.Add((key, value));
+
+                if (key.Length > maxKeyLen)
+                {
+                    maxKeyLen = key.Length;
+                }
+            }
+            else
+            {
+                entries.Add(("", line));
+            }
+        }
+
+        if (entries.Count == 0)
+        {
+            return;
+        }
+
+        // Header: ─── frontmatter ─────────...
+        const string label = " frontmatter ";
+        const int prefixDashes = 3;
+        string headerLeft = new string('─', prefixDashes) + label;
+        int headerFill = Math.Max(0, width - headerLeft.Length);
+        string headerLine = (headerLeft + new string('─', headerFill))[..Math.Min(width, headerLeft.Length + headerFill)];
+        var borderStyles = new CellStyle[headerLine.Length];
+        Array.Fill(borderStyles, s_frontmatterBorderStyle);
+        lines.Add(new StyledLine(headerLine, null, borderStyles));
+
+        // Key-value rows
+        const int leftPad = 1;
+        int valueCol = leftPad + maxKeyLen + 2; // " " + key + ": "
+        int valueWidth = Math.Max(6, width - valueCol);
+        CellStyle keyStyle = SyntaxTheme.GetStyle(TokenKind.Key);
+
+        foreach ((string key, string value) in entries)
+        {
+            if (string.IsNullOrEmpty(key))
+            {
+                // Comment or continuation line — emit plain
+                lines.Add(new StyledLine(new string(' ', leftPad) + value, null));
+                continue;
+            }
+
+            // Build first-line prefix: " <padded-key>: "
+            string paddedKey = key.PadRight(maxKeyLen);
+            string firstPrefix = new string(' ', leftPad) + paddedKey + ": ";
+            var prefixStyles = new CellStyle[firstPrefix.Length];
+
+            for (int i = 0; i < leftPad; i++)
+            {
+                prefixStyles[i] = CellStyle.Default;
+            }
+
+            for (int i = 0; i < paddedKey.Length; i++)
+            {
+                prefixStyles[leftPad + i] = keyStyle;
+            }
+
+            prefixStyles[leftPad + paddedKey.Length] = s_frontmatterPunctStyle;     // ':'
+            prefixStyles[leftPad + paddedKey.Length + 1] = s_frontmatterPunctStyle; // ' '
+
+            // Continuation-line prefix: same width, all spaces
+            string contPrefix = new string(' ', valueCol);
+            var contPrefixStyles = new CellStyle[valueCol];
+            Array.Fill(contPrefixStyles, CellStyle.Default);
+
+            if (string.IsNullOrEmpty(value))
+            {
+                lines.Add(new StyledLine(firstPrefix, null, prefixStyles));
+            }
+            else
+            {
+                WrapFrontmatterValue(
+                    value,
+                    GetFrontmatterValueStyle(value),
+                    valueWidth,
+                    firstPrefix, prefixStyles,
+                    contPrefix, contPrefixStyles,
+                    lines);
+            }
+        }
+
+        // Footer: ──────────────────────...
+        string footerLine = new string('─', width);
+        var footerStyles = new CellStyle[footerLine.Length];
+        Array.Fill(footerStyles, s_frontmatterBorderStyle);
+        lines.Add(new StyledLine(footerLine, null, footerStyles));
+    }
+
+    private static void WrapFrontmatterValue(
+        string value,
+        CellStyle valueStyle,
+        int lineWidth,
+        string firstPrefix,
+        CellStyle[] firstPrefixStyles,
+        string contPrefix,
+        CellStyle[] contPrefixStyles,
+        List<StyledLine> lines)
+    {
+        bool first = true;
+        int pos = 0;
+
+        while (pos < value.Length)
+        {
+            string prefix = first ? firstPrefix : contPrefix;
+            CellStyle[] pStyles = first ? firstPrefixStyles : contPrefixStyles;
+
+            int remaining = value.Length - pos;
+            int take = Math.Min(remaining, lineWidth);
+
+            if (take < remaining)
+            {
+                // Walk back to the last space for a clean word break
+                int breakAt = take;
+
+                while (breakAt > 0 && value[pos + breakAt - 1] != ' ')
+                {
+                    breakAt--;
+                }
+
+                if (breakAt == 0)
+                {
+                    breakAt = take; // no space — hard break
+                }
+
+                take = breakAt;
+            }
+
+            // Trim trailing spaces from the chunk
+            int actualTake = take;
+
+            while (actualTake > 0 && value[pos + actualTake - 1] == ' ')
+            {
+                actualTake--;
+            }
+
+            string chunk = value.Substring(pos, actualTake);
+            string lineText = prefix + chunk;
+
+            var allStyles = new CellStyle[lineText.Length];
+            pStyles.CopyTo(allStyles, 0);
+
+            for (int i = 0; i < chunk.Length; i++)
+            {
+                allStyles[prefix.Length + i] = valueStyle;
+            }
+
+            lines.Add(new StyledLine(lineText, null, allStyles));
+
+            // Advance past the chunk + any spaces
+            pos += take;
+
+            while (pos < value.Length && value[pos] == ' ')
+            {
+                pos++;
+            }
+
+            first = false;
+        }
+    }
+
+    private static CellStyle GetFrontmatterValueStyle(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return SyntaxTheme.Plain;
+        }
+
+        if (value[0] is '"' or '\'')
+        {
+            return SyntaxTheme.GetStyle(TokenKind.String); // salmon
+        }
+
+        if (value is "true" or "false" or "yes" or "no" or "null" or "~")
+        {
+            return SyntaxTheme.GetStyle(TokenKind.Constant); // blue
+        }
+
+        if (char.IsDigit(value[0]) || (value[0] == '-' && value.Length > 1 && char.IsDigit(value[1])))
+        {
+            return SyntaxTheme.GetStyle(TokenKind.Number); // light green
+        }
+
+        return SyntaxTheme.Plain;
     }
 
     internal static StyledLine[] RenderDocument(MarkdownDocument document, int width, CancellationToken ct)

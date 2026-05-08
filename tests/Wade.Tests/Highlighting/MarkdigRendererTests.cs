@@ -207,3 +207,179 @@ public sealed class MarkdigRendererTests
         Assert.Contains("[image: alt text]", lines[0].Text);
     }
 }
+
+public sealed class FrontmatterTests
+{
+    // ── TryExtractFrontmatter ────────────────────────────────────────────────
+
+    [Fact]
+    public void TryExtractFrontmatter_ValidBlock_ReturnsTrue()
+    {
+        const string text = "---\nkey: value\n---\n# Body";
+        bool result = MarkdigRenderer.TryExtractFrontmatter(text, out string fm, out string body);
+
+        Assert.True(result);
+        Assert.Equal("key: value", fm);
+        Assert.Equal("# Body", body);
+    }
+
+    [Fact]
+    public void TryExtractFrontmatter_CrLfLineEndings_ReturnsTrue()
+    {
+        const string text = "---\r\nkey: value\r\n---\r\nbody";
+        bool result = MarkdigRenderer.TryExtractFrontmatter(text, out string fm, out string body);
+
+        Assert.True(result);
+        Assert.Equal("key: value", fm);
+        Assert.Equal("body", body);
+    }
+
+    [Fact]
+    public void TryExtractFrontmatter_NoLeadingDashes_ReturnsFalse()
+    {
+        const string text = "# Normal markdown\nno frontmatter";
+        bool result = MarkdigRenderer.TryExtractFrontmatter(text, out _, out _);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void TryExtractFrontmatter_NoClosingDashes_ReturnsFalse()
+    {
+        const string text = "---\nkey: value\n# No closing marker";
+        bool result = MarkdigRenderer.TryExtractFrontmatter(text, out _, out _);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void TryExtractFrontmatter_EmptyBody_SetsEmptyRemainingText()
+    {
+        const string text = "---\nname: test\n---\n";
+        bool result = MarkdigRenderer.TryExtractFrontmatter(text, out string fm, out string body);
+
+        Assert.True(result);
+        Assert.Equal("name: test", fm);
+        Assert.Equal("", body);
+    }
+
+    [Fact]
+    public void TryExtractFrontmatter_MultipleKeys_ExtractsAllContent()
+    {
+        const string text = "---\nname: foo\ndescription: bar baz\nmodel: haiku\n---\ncontent";
+        bool result = MarkdigRenderer.TryExtractFrontmatter(text, out string fm, out _);
+
+        Assert.True(result);
+        Assert.Contains("name: foo", fm);
+        Assert.Contains("description: bar baz", fm);
+        Assert.Contains("model: haiku", fm);
+    }
+
+    // ── RenderText with frontmatter ──────────────────────────────────────────
+
+    private static StyledLine[] RenderText(string text, int width = 80) =>
+        MarkdigRenderer.RenderText(text, width, CancellationToken.None);
+
+    [Fact]
+    public void RenderText_WithFrontmatter_EmitsHeaderAndFooterBorders()
+    {
+        const string text = "---\nname: hello\n---\n# Body";
+        StyledLine[] lines = RenderText(text);
+
+        // Header should contain "frontmatter" label
+        Assert.Contains(lines, l => l.Text.Contains("frontmatter"));
+
+        // Footer should be all horizontal-rule characters
+        StyledLine footer = lines.Last(l => l.Text.Length > 4 && l.Text.All(c => c == '\u2500'));
+        Assert.NotNull(footer.CharStyles);
+        Assert.All(footer.CharStyles!, s => Assert.True(s.Dim));
+    }
+
+    [Fact]
+    public void RenderText_WithFrontmatter_EmitsKeyValueRow()
+    {
+        const string text = "---\nname: hello\n---\n";
+        StyledLine[] lines = RenderText(text);
+
+        StyledLine kvLine = lines.First(l => l.Text.Contains("hello"));
+        Assert.Contains("name", kvLine.Text);
+        Assert.Contains("hello", kvLine.Text);
+    }
+
+    [Fact]
+    public void RenderText_WithFrontmatter_KeyHasLightBlueStyle()
+    {
+        const string text = "---\nname: hello\n---\n";
+        StyledLine[] lines = RenderText(text);
+
+        // The key "name" should be colored light blue (156, 220, 254) = SyntaxTheme Key color
+        StyledLine kvLine = lines.First(l => l.Text.Contains("name") && l.Text.Contains("hello"));
+        Assert.NotNull(kvLine.CharStyles);
+        int nameStart = kvLine.Text.IndexOf('n'); // 'n' of "name"
+        Assert.True(nameStart >= 0);
+        Assert.Equal(new Color(156, 220, 254), kvLine.CharStyles![nameStart].Fg);
+    }
+
+    [Fact]
+    public void RenderText_WithFrontmatter_QuotedValueHasSalmonStyle()
+    {
+        const string text = "---\ndesc: \"some description\"\n---\n";
+        StyledLine[] lines = RenderText(text);
+
+        StyledLine kvLine = lines.First(l => l.Text.Contains("some description"));
+        Assert.NotNull(kvLine.CharStyles);
+        int quoteStart = kvLine.Text.IndexOf('"');
+        Assert.True(quoteStart >= 0);
+        // Salmon color (206, 145, 120)
+        Assert.Equal(new Color(206, 145, 120), kvLine.CharStyles![quoteStart].Fg);
+    }
+
+    [Fact]
+    public void RenderText_WithFrontmatter_BodyStillRendered()
+    {
+        const string text = "---\nname: foo\n---\n# My Heading";
+        StyledLine[] lines = RenderText(text);
+
+        // The H1 heading should appear after the frontmatter block
+        Assert.Contains(lines, l => l.Text.Contains("My Heading"));
+    }
+
+    [Fact]
+    public void RenderText_WithFrontmatter_LongValueWraps()
+    {
+        string longValue = string.Join(" ", Enumerable.Repeat("word", 20));
+        string text = $"---\ntitle: {longValue}\n---\n";
+        StyledLine[] lines = RenderText(text, width: 40);
+
+        // Should produce multiple lines for the wrapped value
+        int valueLines = lines.Count(l => l.Text.TrimStart().StartsWith('"') ||
+                                          l.Text.Contains("word"));
+        Assert.True(valueLines > 1, "Long value should wrap onto multiple lines");
+    }
+
+    [Fact]
+    public void RenderText_WithFrontmatter_ValuesAlignedAtSameColumn()
+    {
+        const string text = "---\nname: foo\ndescription: bar\n---\n";
+        StyledLine[] lines = RenderText(text);
+
+        // Both key-value lines should have their values starting at the same column
+        StyledLine nameLine = lines.First(l => l.Text.Contains("foo"));
+        StyledLine descLine = lines.First(l => l.Text.Contains("bar"));
+
+        int fooStart = nameLine.Text.IndexOf("foo", StringComparison.Ordinal);
+        int barStart = descLine.Text.IndexOf("bar", StringComparison.Ordinal);
+
+        Assert.Equal(fooStart, barStart);
+    }
+
+    [Fact]
+    public void RenderText_WithoutFrontmatter_RendersNormally()
+    {
+        const string text = "# Plain heading\n\nsome text";
+        StyledLine[] lines = RenderText(text);
+
+        Assert.DoesNotContain(lines, l => l.Text.Contains("frontmatter"));
+        Assert.Contains(lines, l => l.Text.Contains("Plain heading"));
+    }
+}
