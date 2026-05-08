@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Render YAML frontmatter in the markdown preview — key/value pairs are displayed in a tabular block with aligned columns, per-type syntax coloring (quoted strings, booleans, numbers), and word-wrapped values
 - Add fzf-style exact-substring matching in the file finder — prefix the query with `'` (e.g. `'foo`) to match a literal contiguous substring instead of fuzzy subsequence; smart-case applies (case-insensitive unless the query has an uppercase letter)
 
 ### Changed

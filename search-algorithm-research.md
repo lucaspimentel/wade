@@ -198,4 +198,4 @@ When query contains a path separator (`/` or `\`), switches to scoring the full 
 1. **Subsequence match against the relative path** — query chars must appear in order, gaps allowed. No segment splitting.
 2. **Score with boundary bonuses** — after path separator, `.`, `_`, `-`, camelCase transitions. Affine gap penalty (-3 start, -1 extend).
 3. **Filename priority** (VS Code's best idea) — score query against just the filename; if it matches, add large bonus.
-4. **Start simple** — greedy O(n) scorer covers 95% of use cases. Multi-mode syntax can come later.
+4. **Start simple** — greedy O(n) scorer covers 95% of use cases. Wade already supports exact-substring queries via a leading `'`; additional multi-mode syntax can come later.

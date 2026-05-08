@@ -22,13 +22,13 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Sort order** — by name, date, size, or extension (`s` to cycle, `S` to reverse)
 - **Filter** — `/` to narrow entries in real-time
 - **Go-to-path** — `Ctrl+G` with Tab autocomplete
-- **File finder** — `Ctrl+F` recursive breadth-first search with fuzzy matching and highlighted results
+- **File finder** — `Ctrl+F` recursive breadth-first search with fuzzy matching, exact-substring queries via a leading `'`, and highlighted results
 - **Bookmarks** — `b` to open, `B` to toggle; persists in MRU order
 - **Hidden files** — `.` to toggle; separate system files toggle on Windows
 
 ### Preview & Metadata
 
-- **File preview** — text (with syntax highlighting), hex, git diff, archive contents (zip, tar, gzip), images (Sixel), PDF (via `pdftopng`), MSI file listing, and Markdown (built-in Markdig renderer); multiple modes per file switchable via `p`; CSS/SCSS/Sass previews show inline color swatches for hex literals
+- **File preview** — text (with syntax highlighting), hex, git diff, archive contents (zip, tar, gzip), images (Sixel), PDF (via `pdftopng`), MSI file listing, and Markdown (built-in Markdig renderer with YAML frontmatter support); multiple modes per file switchable via `p`; CSS/SCSS/Sass previews show inline color swatches for hex literals
 - **Expanded preview** — Right/Enter expands to full width; scrollable
 - **Image preview** — Sixel graphics (Windows Terminal 1.22+, kitty, WezTerm, etc.)
 - **File metadata** — structured metadata above preview and in properties overlay (`i`); format-specific providers for images (EXIF), executables (PE/.NET), Office docs, NuGet packages, archives, PDF, media files, MSI installers, and Windows shortcuts (`.lnk`)
