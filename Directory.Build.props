@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <SixLaborsLicenseFile>$(MSBuildThisFileDirectory)sixlabors.lic</SixLaborsLicenseFile>
   </PropertyGroup>
 
 </Project>

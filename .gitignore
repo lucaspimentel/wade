@@ -11,3 +11,6 @@ BenchmarkDotNet.Artifacts/
 *.user
 *.suo
 .claude/*.local.*
+
+# SixLabors license
+sixlabors.lic
