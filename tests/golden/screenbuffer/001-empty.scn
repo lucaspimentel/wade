@@ -1,0 +1,4 @@
+# Empty frames: flush with nothing drawn, then a second one-shot flush
+resize 20 5
+flush
+flush

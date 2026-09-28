@@ -1,0 +1,8 @@
+# Clear and full-redraw dirty tracking
+resize 10 3
+string 1 1 abc -
+flush
+clear
+flush
+fullredraw
+flush

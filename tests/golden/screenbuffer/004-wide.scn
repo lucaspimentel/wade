@@ -1,0 +1,6 @@
+# Wide runes: continuation cells, cursor-position tracking, flush idempotence
+resize 20 4
+string 1 0 世界X -
+put 2 3 好 -
+flush
+flush

@@ -1,0 +1,11 @@
+# Style transitions: delta-only diffs and reset-then-reapply diffs
+resize 30 6
+fillrow 0 0 30 X 200 100 50 -1 -1 -1 -
+fillrow 1 0 30 Y -1 -1 -1 0 0 100 bi
+flush
+put 0 5 Z -1 -1 -1 -1 -1 -1 -
+put 1 5 W -1 -1 -1 0 0 100 -
+put 2 0 Q 10 200 30 0 0 100 ud
+put 4 0 a 255 0 0 -1 -1 -1 -
+put 4 1 b 0 255 0 -1 -1 -1 -
+flush

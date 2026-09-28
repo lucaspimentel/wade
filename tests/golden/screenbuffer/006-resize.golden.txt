@@ -1,0 +1,6 @@
+=== flush 0 ===
+[1;1H[0mabcdef[0m
+=== flush 1 ===
+
+=== flush 2 ===
+[2;4H[0mxy[0m

@@ -171,6 +171,16 @@ internal sealed class ScreenBuffer
 
     public void Flush(StringBuilder sb)
     {
+        Serialize(sb);
+
+        if (sb.Length > 0)
+        {
+            WriteToStdOut(sb);
+        }
+    }
+
+    internal void Serialize(StringBuilder sb)
+    {
         sb.Clear();
         CellStyle currentStyle = default;
         bool hasStyle = false;
@@ -232,27 +242,29 @@ internal sealed class ScreenBuffer
         if (sb.Length > 0)
         {
             sb.Append(AnsiCodes.ResetAttributes);
+        }
+    }
 
-            // Write via stdout stream to avoid ToString() allocation
-            int totalChars = sb.Length;
-            if (_writeBuffer.Length < totalChars)
-            {
-                _writeBuffer = new char[totalChars * 2];
-            }
+    private void WriteToStdOut(StringBuilder sb)
+    {
+        int totalChars = sb.Length;
+        if (_writeBuffer.Length < totalChars)
+        {
+            _writeBuffer = new char[totalChars * 2];
+        }
 
-            sb.CopyTo(0, _writeBuffer, 0, totalChars);
+        sb.CopyTo(0, _writeBuffer, 0, totalChars);
 
-            byte[] encoded = ArrayPool<byte>.Shared.Rent(Encoding.UTF8.GetMaxByteCount(totalChars));
-            try
-            {
-                int byteCount = Encoding.UTF8.GetBytes(_writeBuffer, 0, totalChars, encoded, 0);
-                StdOut.Write(encoded, 0, byteCount);
-                StdOut.Flush();
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(encoded);
-            }
+        byte[] encoded = ArrayPool<byte>.Shared.Rent(Encoding.UTF8.GetMaxByteCount(totalChars));
+        try
+        {
+            int byteCount = Encoding.UTF8.GetBytes(_writeBuffer, 0, totalChars, encoded, 0);
+            StdOut.Write(encoded, 0, byteCount);
+            StdOut.Flush();
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(encoded);
         }
     }
 

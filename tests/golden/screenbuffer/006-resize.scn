@@ -1,0 +1,8 @@
+# Resize resets both buffers
+resize 10 3
+string 0 0 abcdef -
+flush
+resize 8 2
+flush
+string 1 3 xy -
+flush

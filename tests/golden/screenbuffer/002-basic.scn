@@ -1,0 +1,8 @@
+# Basic put/string ops, out-of-bounds no-ops, negative-column clamping
+resize 20 5
+put 1 2 A 255 0 0 -1 -1 -1 b
+string 3 4 hello -
+put 9 25 x -1 -1 -1 -1 -1 -1 -
+string 0 -2 abc -
+flush
+flush
