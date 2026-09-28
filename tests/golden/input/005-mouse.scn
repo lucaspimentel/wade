@@ -1,0 +1,11 @@
+# Mouse: left press/release, wheel up/down, move-ignored, unknown event types
+size 80 25
+mouse 5 3 1 0 0
+mouse 5 3 2 0 0
+mouse 5 3 0 0 0
+mouse 10 4 0 0 1
+other
+mouse 7 2 65536 0 4
+mouse 7 2 -65536 0 4
+other
+mouse 7 2 16 0 0

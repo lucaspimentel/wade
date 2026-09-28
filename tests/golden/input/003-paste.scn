@@ -1,0 +1,10 @@
+# Paste burst: consecutive printable key-downs interleaved with key-ups
+size 80 25
+kd 72 H -
+ku 72 H -
+kd 65 A -
+ku 65 A -
+kd 66 B -
+ku 66 B -
+kd 67 C -
+ku 67 C -

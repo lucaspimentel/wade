@@ -1,0 +1,5 @@
+# Window buffer size record produces a resize with the header size
+size 100 30
+kd 65 A -
+buf 100 30
+kd 66 B -

@@ -61,6 +61,16 @@ internal sealed class WindowsInputSource : IInputSource
 
     private void ProcessRecords(ReadOnlySpan<INPUT_RECORD> records)
     {
+        List<InputEvent> decoded = DecodeRecords(records, Console.WindowWidth, Console.WindowHeight);
+        foreach (InputEvent evt in decoded)
+        {
+            _pending.Enqueue(evt);
+        }
+    }
+
+    internal static List<InputEvent> DecodeRecords(ReadOnlySpan<INPUT_RECORD> records, int windowWidth, int windowHeight)
+    {
+        var pending = new List<InputEvent>();
         int i = 0;
 
         while (i < records.Length)
@@ -107,7 +117,7 @@ internal sealed class WindowsInputSource : IInputSource
                         if (pasteChars.Length > 1)
                         {
                             // Multiple chars in one batch = paste
-                            _pending.Enqueue(new PasteEvent(pasteChars.ToString()));
+                            pending.Add(new PasteEvent(pasteChars.ToString()));
                         }
                         else
                         {
@@ -116,7 +126,7 @@ internal sealed class WindowsInputSource : IInputSource
                             bool shift = (modifiers & ControlKeyState.ShiftPressed) != 0;
                             bool alt = (modifiers & (ControlKeyState.LeftAltPressed | ControlKeyState.RightAltPressed)) != 0;
                             bool control = (modifiers & (ControlKeyState.LeftCtrlPressed | ControlKeyState.RightCtrlPressed)) != 0;
-                            _pending.Enqueue(new KeyEvent((ConsoleKey)k.wVirtualKeyCode, k.UnicodeChar, shift, alt, control));
+                            pending.Add(new KeyEvent((ConsoleKey)k.wVirtualKeyCode, k.UnicodeChar, shift, alt, control));
                         }
 
                         break;
@@ -127,7 +137,7 @@ internal sealed class WindowsInputSource : IInputSource
                         bool shift = (modifiers & ControlKeyState.ShiftPressed) != 0;
                         bool alt = (modifiers & (ControlKeyState.LeftAltPressed | ControlKeyState.RightAltPressed)) != 0;
                         bool control = (modifiers & (ControlKeyState.LeftCtrlPressed | ControlKeyState.RightCtrlPressed)) != 0;
-                        _pending.Enqueue(new KeyEvent((ConsoleKey)k.wVirtualKeyCode, k.UnicodeChar, shift, alt, control));
+                        pending.Add(new KeyEvent((ConsoleKey)k.wVirtualKeyCode, k.UnicodeChar, shift, alt, control));
                     }
 
                     i++;
@@ -145,21 +155,21 @@ internal sealed class WindowsInputSource : IInputSource
                     {
                         short hiWord = (short)(m.dwButtonState >> 16);
                         MouseButton scrollButton = hiWord > 0 ? MouseButton.ScrollUp : MouseButton.ScrollDown;
-                        _pending.Enqueue(new MouseEvent(scrollButton, m.Y, m.X, false));
+                        pending.Add(new MouseEvent(scrollButton, m.Y, m.X, false));
                     }
                     else if (m.dwEventFlags == 0) // button press or release
                     {
                         if ((m.dwButtonState & FromLeft1stButtonPressed) != 0)
                         {
-                            _pending.Enqueue(new MouseEvent(MouseButton.Left, m.Y, m.X, false));
+                            pending.Add(new MouseEvent(MouseButton.Left, m.Y, m.X, false));
                         }
                         else if ((m.dwButtonState & RightmostButtonPressed) != 0)
                         {
-                            _pending.Enqueue(new MouseEvent(MouseButton.Right, m.Y, m.X, false));
+                            pending.Add(new MouseEvent(MouseButton.Right, m.Y, m.X, false));
                         }
                         else if (m.dwButtonState == 0)
                         {
-                            _pending.Enqueue(new MouseEvent(MouseButton.Left, m.Y, m.X, true));
+                            pending.Add(new MouseEvent(MouseButton.Left, m.Y, m.X, true));
                         }
                     }
 
@@ -167,9 +177,7 @@ internal sealed class WindowsInputSource : IInputSource
                     break;
 
                 case WindowBufferSizeEventType:
-                    int width = Console.WindowWidth;
-                    int height = Console.WindowHeight;
-                    _pending.Enqueue(new ResizeEvent(width, height));
+                    pending.Add(new ResizeEvent(windowWidth, windowHeight));
                     i++;
                     break;
 
@@ -178,6 +186,8 @@ internal sealed class WindowsInputSource : IInputSource
                     break;
             }
         }
+
+        return pending;
     }
 
     public void Dispose()
@@ -211,14 +221,14 @@ internal sealed class WindowsInputSource : IInputSource
     }
 
     [StructLayout(LayoutKind.Explicit)]
-    private struct INPUT_RECORD
+    internal struct INPUT_RECORD
     {
         [FieldOffset(0)] public ushort EventType;
         [FieldOffset(4)] public INPUT_RECORD_UNION Event;
     }
 
     [StructLayout(LayoutKind.Explicit)]
-    private struct INPUT_RECORD_UNION
+    internal struct INPUT_RECORD_UNION
     {
         [FieldOffset(0)] public KEY_EVENT_RECORD KeyEvent;
         [FieldOffset(0)] public MOUSE_EVENT_RECORD MouseEvent;
@@ -226,7 +236,7 @@ internal sealed class WindowsInputSource : IInputSource
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct KEY_EVENT_RECORD
+    internal struct KEY_EVENT_RECORD
     {
         public int bKeyDown; // BOOL
         public ushort wRepeatCount;
@@ -237,7 +247,7 @@ internal sealed class WindowsInputSource : IInputSource
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct MOUSE_EVENT_RECORD
+    internal struct MOUSE_EVENT_RECORD
     {
         public short X; // dwMousePosition.X (column)
         public short Y; // dwMousePosition.Y (row)
@@ -247,7 +257,7 @@ internal sealed class WindowsInputSource : IInputSource
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct WINDOW_BUFFER_SIZE_RECORD
+    internal struct WINDOW_BUFFER_SIZE_RECORD
     {
         public short X;
         public short Y;

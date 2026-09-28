@@ -1,0 +1,7 @@
+# Key-up skipping and repeat key-downs
+size 80 25
+kd 72 H -
+ku 72 H -
+kd 72 H -
+kd 72 H -
+ku 72 H -

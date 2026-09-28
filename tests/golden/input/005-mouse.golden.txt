@@ -1,0 +1,5 @@
+mouse left 3 5 press
+mouse right 3 5 press
+mouse left 3 5 release
+mouse scrollup 2 7 press
+mouse scrolldown 2 7 press

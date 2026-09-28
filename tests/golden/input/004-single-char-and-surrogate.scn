@@ -1,0 +1,9 @@
+# Single trailing printable char stays a normal keystroke; surrogate pair text
+size 80 25
+kd 88 X -
+ku 88 X -
+other
+kd 55 \uD83D -
+ku 55 \uD83D -
+kd 52 \uDE00 -
+ku 52 \uDE00 -

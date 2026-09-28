@@ -1,0 +1,16 @@
+# Single keystrokes with and without modifiers, modifier-only keys.
+# Non-key records separate printable key-downs so paste bursts do not form.
+size 80 25
+kd 65 A -
+other
+kd 65 A s
+other
+kd 67 \u0003 c
+other
+kd 77 M a
+other
+kd 68 \u0004 sac
+other
+kd 16 - -
+kd 17 - -
+kd 18 - -

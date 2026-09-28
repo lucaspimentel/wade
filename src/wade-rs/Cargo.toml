@@ -6,6 +6,9 @@ description = "TUI file browser (Rust port of the C# Native AOT tool)"
 
 [dependencies]
 
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Console", "Win32_System_Threading"] }
+
 [profile.release]
 opt-level = 3
 lto = true

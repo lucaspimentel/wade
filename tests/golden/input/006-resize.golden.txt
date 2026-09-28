@@ -1,0 +1,3 @@
+key 65 A -
+resize 100 30
+key 66 B -
