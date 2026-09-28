@@ -52,3 +52,27 @@ jobs:
       with:
         name: wade-${{ matrix.rid }}
         path: publish/
+
+  rust:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+          - os: ubuntu-latest
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+
+    - name: Build
+      working-directory: src/wade-rs
+      run: cargo build --locked
+
+    - name: Test
+      working-directory: src/wade-rs
+      run: cargo test --locked

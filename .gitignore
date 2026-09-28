@@ -14,3 +14,6 @@ BenchmarkDotNet.Artifacts/
 
 # SixLabors license
 sixlabors.lic
+
+# Rust build artifacts
+src/wade-rs/target/
