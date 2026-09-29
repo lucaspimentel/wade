@@ -1,0 +1,20 @@
+# Config dialog: default state, toggles, navigation.
+# Windows-only: the dialog includes the Windows-only "Show System Files" item.
+size 80 25
+platform windows
+configdlg
+configrender
+flush
+csel 0
+ctoggle
+configrender
+flush
+cnav down
+cnav down
+ctoggle
+configrender
+flush
+csel 1
+ctoggle
+configrender
+flush

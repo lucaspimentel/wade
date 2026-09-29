@@ -1,0 +1,15 @@
+# Right-click context menu: anchored and clamped renderings.
+size 80 25
+ctxmenu 8 20
+citem "Open with default app" "o"
+citem "Rename" "F2"
+citem "Delete" "Del"
+citem "Copy path" "y"
+citem "Properties" "i"
+endctxmenu
+flush
+ctxmenu 22 70
+citem "Copy" "c"
+citem "Cut" "x"
+endctxmenu
+flush

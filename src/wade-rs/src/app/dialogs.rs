@@ -35,9 +35,14 @@ pub(crate) struct ModalState {
     pub active_text_input: Option<TextInput>,
     pub text_input_purpose: Option<TextInputPurpose>,
     pub go_to_path_input: Option<TextInput>,
+    pub go_to_path_suggestion: Option<String>,
     pub action_menu_stack: Vec<ActionMenuLevel>,
     pub search_input: Option<TextInput>,
     pub config_state: Option<ConfigDialogState>,
+    pub bookmark_selected_index: usize,
+    pub bookmark_scroll_offset: usize,
+    pub bookmark_input: Option<TextInput>,
+    pub context_menu: Option<crate::ui::context_menu::ContextMenuState>,
 }
 
 
@@ -76,6 +81,14 @@ impl App {
             }
             InputMode::Config => {
                 self.handle_config_key(key);
+                true
+            }
+            InputMode::Bookmarks => {
+                self.handle_bookmark_key(key);
+                true
+            }
+            InputMode::ContextMenu => {
+                self.handle_context_menu_key(key);
                 true
             }
             _ => false,
@@ -191,6 +204,128 @@ impl App {
         self.filtered_entries = None;
         self.selected_index = 0;
         self.scroll_offset = 0;
+    }
+
+    /// Port of `BuildContextMenuItems` (App.cs:3894). Git stage/unstage
+    /// entries are omitted until git lands in Phase 4; Paste/Copy/Cut only
+    /// appear once clipboard support exists, so they are omitted too.
+    pub fn build_context_menu_items(&self) -> Vec<ActionMenuItem> {
+        vec![
+            ActionMenuItem::new("Open with default app", "o", AppAction::OpenExternal),
+            ActionMenuItem::new("Rename", "F2", AppAction::Rename),
+            ActionMenuItem::new("Delete", "Del", AppAction::Delete),
+            ActionMenuItem::new("Copy path", "y", AppAction::CopyAbsolutePath),
+            ActionMenuItem::new("Properties", "i", AppAction::ShowProperties),
+        ]
+    }
+
+    /// Port of `HandleContextMenuKey` (App.cs:3934).
+    pub fn handle_context_menu_key(&mut self, key: KeyEvent) {
+        use crate::console_key::ConsoleKey;
+
+        let Some(state) = &mut self.modal.context_menu else {
+            self.input_mode = InputMode::Normal;
+            return;
+        };
+
+        match key.key {
+            ConsoleKey::Escape => {
+                self.input_mode = InputMode::Normal;
+                self.modal.context_menu = None;
+            }
+            ConsoleKey::Enter => {
+                let selected = state.items[state.selected_index].clone();
+                self.input_mode = InputMode::Normal;
+                self.modal.context_menu = None;
+                self.dispatch(selected.action);
+            }
+            ConsoleKey::UpArrow => state.move_up(),
+            ConsoleKey::DownArrow => state.move_down(),
+            _ => {
+                // Vim-style navigation
+                if key.key == ConsoleKey::K && !key.control && !key.alt {
+                    state.move_up();
+                } else if key.key == ConsoleKey::J && !key.control && !key.alt {
+                    state.move_down();
+                }
+            }
+        }
+    }
+
+    /// Port of `HandleContextMenuMouse` (App.cs:3979): any click dismisses
+    /// the menu; clicks inside the item rows also execute the item.
+    pub fn handle_context_menu_mouse(&mut self, mouse: crate::input::MouseEvent) {
+        use crate::input::MouseButton;
+
+        if self.modal.context_menu.is_none() {
+            self.input_mode = InputMode::Normal;
+            return;
+        }
+
+        if mouse.is_release || mouse.button == MouseButton::ScrollUp || mouse.button == MouseButton::ScrollDown {
+            return;
+        }
+
+        let screen_width = self.layout.status_bar.width;
+        let screen_height = self.layout.status_bar.top + self.layout.status_bar.height;
+        let menu_rect = crate::ui::context_menu::get_menu_rect(screen_width, screen_height, self.modal.context_menu.as_ref().expect("checked"));
+
+        // Content area is inside the border (top border = row 0, items start
+        // at row 1)
+        let content_top = menu_rect.top + 1;
+        let content_bottom = menu_rect.top + 1 + self.modal.context_menu.as_ref().expect("checked").items.len() as i32;
+
+        let inside = mouse.row >= content_top
+            && mouse.row < content_bottom
+            && mouse.col >= menu_rect.left
+            && mouse.col < menu_rect.left + menu_rect.width;
+
+        if inside {
+            let item_index = (mouse.row - content_top) as usize;
+            let state = self.modal.context_menu.as_ref().expect("checked");
+            if item_index < state.items.len() {
+                let item = state.items[item_index].clone();
+                self.input_mode = InputMode::Normal;
+                self.modal.context_menu = None;
+                self.dispatch(item.action);
+                return;
+            }
+        }
+
+        // Click outside the menu: dismiss
+        self.input_mode = InputMode::Normal;
+        self.modal.context_menu = None;
+    }
+
+    /// Port of `HandlePasteEvent` (App.cs:2251): paste into the active text
+    /// input by mode. FileFinder lands in Phase 5.
+    pub fn handle_paste_event(&mut self, text: &str) {
+        // Filter to printable characters only
+        let text: String = text.chars().filter(|c| *c >= ' ').collect();
+        if text.is_empty() {
+            return;
+        }
+
+        match self.input_mode {
+            InputMode::TextInput => {
+                if let Some(input) = &mut self.modal.active_text_input {
+                    input.insert_string(&text);
+                }
+            }
+            InputMode::Search => {
+                if let Some(input) = &mut self.modal.search_input {
+                    input.insert_string(&text);
+                    self.sync_search_filter();
+                }
+            }
+            InputMode::GoToPath => {
+                if let Some(input) = &mut self.modal.go_to_path_input {
+                    input.insert_string(&text);
+                    self.modal.go_to_path_suggestion = None;
+                }
+            }
+            _ => {}
+        }
     }
 
     /// Port of `HandleTextInputKey` (App.cs:2289).
@@ -311,32 +446,34 @@ impl App {
     /// Port of `HandleGoToPathKey` (App.cs:2387), minus the ghost-suggestion
     /// completion, which is deferred to Phase 3c with PathCompletion.
     fn handle_go_to_path_key(&mut self, key: KeyEvent) {
+        use crate::console_key::ConsoleKey;
+
         if key.control {
             match key.key {
-                crate::console_key::ConsoleKey::LeftArrow => {
+                ConsoleKey::LeftArrow => {
                     if let Some(input) = &mut self.modal.go_to_path_input {
                         input.move_cursor_word_left();
                     }
-                    return;
                 }
-                crate::console_key::ConsoleKey::RightArrow => {
+                ConsoleKey::RightArrow => {
                     if let Some(input) = &mut self.modal.go_to_path_input {
                         input.move_cursor_word_right();
                     }
-                    return;
                 }
-                crate::console_key::ConsoleKey::Backspace => {
+                ConsoleKey::Backspace => {
                     if let Some(input) = &mut self.modal.go_to_path_input {
                         input.delete_word_backward();
                     }
-                    return;
+                    self.modal.go_to_path_suggestion = None;
                 }
                 _ => {}
             }
+
+            return;
         }
 
         match key.key {
-            crate::console_key::ConsoleKey::Escape => {
+            ConsoleKey::Escape => {
                 let has_value = self
                     .modal
                     .go_to_path_input
@@ -346,12 +483,14 @@ impl App {
                     if let Some(input) = &mut self.modal.go_to_path_input {
                         input.clear();
                     }
+                    self.modal.go_to_path_suggestion = None;
                 } else {
                     self.input_mode = InputMode::Normal;
                     self.modal.go_to_path_input = None;
+                    self.modal.go_to_path_suggestion = None;
                 }
             }
-            crate::console_key::ConsoleKey::Enter => {
+            ConsoleKey::Enter => {
                 let raw_path = self
                     .modal
                     .go_to_path_input
@@ -365,41 +504,87 @@ impl App {
                 };
                 self.input_mode = InputMode::Normal;
                 self.modal.go_to_path_input = None;
+                self.modal.go_to_path_suggestion = None;
                 self.navigate_to_path(&path);
             }
-            // Tab completes via PathCompletion (Phase 3c); consumed, no-op here.
-            crate::console_key::ConsoleKey::Tab => {}
-            crate::console_key::ConsoleKey::Backspace => {
+            ConsoleKey::Tab => {
+                let accepted = self
+                    .modal
+                    .go_to_path_suggestion
+                    .clone()
+                    .map(|accepted| {
+                        // Completing a directory appends a separator so the
+                        // next completion round descends into it
+                        if std::path::Path::new(&accepted).is_dir() {
+                            format!("{accepted}{}", std::path::MAIN_SEPARATOR)
+                        } else {
+                            accepted
+                        }
+                    });
+
+                if let Some(accepted) = accepted {
+                    self.modal.go_to_path_input = Some(TextInput::new(&accepted));
+                    self.modal.go_to_path_suggestion = self.get_path_suggestion(&accepted);
+                }
+            }
+            ConsoleKey::Backspace => {
                 if let Some(input) = &mut self.modal.go_to_path_input {
                     input.delete_backward();
+                    let value = input.value().to_string();
+                    self.modal.go_to_path_suggestion = self.get_path_suggestion(&value);
                 }
             }
-            crate::console_key::ConsoleKey::Delete => {
+            ConsoleKey::Delete => {
                 if let Some(input) = &mut self.modal.go_to_path_input {
                     input.delete_forward();
+                    let value = input.value().to_string();
+                    self.modal.go_to_path_suggestion = self.get_path_suggestion(&value);
                 }
             }
-            crate::console_key::ConsoleKey::LeftArrow => {
+            ConsoleKey::LeftArrow => {
                 if let Some(input) = &mut self.modal.go_to_path_input {
                     input.move_cursor_left();
                 }
             }
-            crate::console_key::ConsoleKey::RightArrow => {
-                if let Some(input) = &mut self.modal.go_to_path_input {
+            ConsoleKey::RightArrow => {
+                let accept = self.modal.go_to_path_suggestion.is_some()
+                    && self
+                        .modal
+                        .go_to_path_input
+                        .as_ref()
+                        .is_some_and(|i| i.cursor_position() == i.value().chars().count());
+
+                if accept {
+                    let accepted = self
+                        .modal
+                        .go_to_path_suggestion
+                        .clone()
+                        .map(|accepted| {
+                            if std::path::Path::new(&accepted).is_dir() {
+                                format!("{accepted}{}", std::path::MAIN_SEPARATOR)
+                            } else {
+                                accepted
+                            }
+                        })
+                        .expect("checked above");
+
+                    self.modal.go_to_path_input = Some(TextInput::new(&accepted));
+                    self.modal.go_to_path_suggestion = self.get_path_suggestion(&accepted);
+                } else if let Some(input) = &mut self.modal.go_to_path_input {
                     input.move_cursor_right();
                 }
             }
-            crate::console_key::ConsoleKey::Home => {
+            ConsoleKey::Home => {
                 if let Some(input) = &mut self.modal.go_to_path_input {
                     input.move_cursor_home();
                 }
             }
-            crate::console_key::ConsoleKey::End => {
+            ConsoleKey::End => {
                 if let Some(input) = &mut self.modal.go_to_path_input {
                     input.move_cursor_end();
                 }
             }
-            crate::console_key::ConsoleKey::UpArrow => {
+            ConsoleKey::UpArrow => {
                 let value = self
                     .modal
                     .go_to_path_input
@@ -411,6 +596,7 @@ impl App {
                     if let Some(last_sep) = trimmed.rfind(['/', '\\']) {
                         let parent = &trimmed[..last_sep + 1];
                         self.modal.go_to_path_input = Some(TextInput::new(parent));
+                        self.modal.go_to_path_suggestion = self.get_path_suggestion(parent);
                     }
                 }
             }
@@ -420,9 +606,20 @@ impl App {
                     && let Some(input) = &mut self.modal.go_to_path_input
                 {
                     input.insert_char(ch);
+                    let value = input.value().to_string();
+                    self.modal.go_to_path_suggestion = self.get_path_suggestion(&value);
                 }
             }
         }
+    }
+
+    /// Port of `GetPathSuggestion` (App.cs:2660).
+    fn get_path_suggestion(&self, input: &str) -> Option<String> {
+        crate::fs::path_completion::get_suggestion(
+            input,
+            self.directory_contents.show_hidden_files,
+            self.directory_contents.show_system_files,
+        )
     }
 
     /// Port of `HandleActionPaletteKey` (App.cs:3099).
@@ -552,6 +749,8 @@ impl App {
             ActionMenuItem::new("Toggle right pane", "]", AppAction::TogglePreviewPane),
             ActionMenuItem::new("Cycle sort mode", "s", AppAction::CycleSortMode),
             ActionMenuItem::new("Reverse sort direction", "S", AppAction::ToggleSortDirection),
+            ActionMenuItem::new("Bookmarks", "b", AppAction::ShowBookmarks),
+            ActionMenuItem::new("Toggle bookmark", "B", AppAction::ToggleBookmark),
             ActionMenuItem::new("Go to path", "Ctrl+G", AppAction::GoToPath),
             ActionMenuItem::new("Filter", "/", AppAction::Search),
             ActionMenuItem::new("Configuration", ",", AppAction::ShowConfig),
@@ -676,6 +875,12 @@ impl App {
                     render_config_dialog(buffer, width, height, state);
                 }
             }
+            InputMode::Bookmarks => self.render_bookmarks(buffer, width, height),
+            InputMode::ContextMenu => {
+                if let Some(state) = &mut self.modal.context_menu {
+                    crate::ui::context_menu::render(buffer, width, height, state);
+                }
+            }
             _ => {}
         }
     }
@@ -700,10 +905,11 @@ impl App {
         render_text_input_dialog(buffer, width, height, title.as_deref(), input);
     }
 
-    /// Port of `RenderGoToPathDialog` (App.cs:2663), minus the ghost suffix
+    /// Port of `RenderGoToPathDialog` (App.cs) / `GoToPathDialog.Render`.
     fn render_go_to_path_dialog(&mut self, buffer: &mut ScreenBuffer, width: i32, height: i32) {
         let input = self.modal.go_to_path_input.as_mut();
-        render_go_to_path_dialog(buffer, width, height, input);
+        let suggestion = self.modal.go_to_path_suggestion.as_deref();
+        render_go_to_path_dialog(buffer, width, height, input, suggestion);
     }
 
     fn render_action_palette(&mut self, buffer: &mut ScreenBuffer, width: i32, height: i32) {
@@ -717,6 +923,163 @@ impl App {
     pub fn show_config_dialog(&mut self) {
         self.input_mode = InputMode::Config;
         self.modal.config_state = Some(ConfigDialogState::from_app_config(&self.config));
+    }
+
+    /// Port of `ShowBookmarks` (App.cs:4023).
+    pub fn show_bookmarks(&mut self) {
+        self.input_mode = InputMode::Bookmarks;
+        self.modal.bookmark_selected_index = 0;
+        self.modal.bookmark_scroll_offset = 0;
+        self.modal.bookmark_input = Some(TextInput::default());
+    }
+
+    /// Port of `GetFilteredBookmarks` (App.cs:4031).
+    #[must_use]
+    pub fn get_filtered_bookmarks(&self) -> Vec<String> {
+        let filter = self.modal.bookmark_input.as_ref().map_or(String::new(), |input| input.value().to_string());
+
+        if filter.is_empty() {
+            return self.bookmark_store.bookmarks().to_vec();
+        }
+
+        self.bookmark_store
+            .bookmarks()
+            .iter()
+            .filter(|bookmark| bookmark.to_ascii_lowercase().contains(&filter.to_ascii_lowercase()))
+            .cloned()
+            .collect()
+    }
+
+    /// Port of `HandleBookmarkKey` (App.cs:4053).
+    pub fn handle_bookmark_key(&mut self, key: KeyEvent) {
+        use crate::console_key::ConsoleKey;
+
+        let filtered = self.get_filtered_bookmarks();
+
+        match key.key {
+            ConsoleKey::Escape => {
+                self.input_mode = InputMode::Normal;
+                self.modal.bookmark_input = None;
+            }
+            ConsoleKey::Enter => {
+                if !filtered.is_empty() && self.modal.bookmark_selected_index < filtered.len() {
+                    let path = filtered[self.modal.bookmark_selected_index].clone();
+                    self.input_mode = InputMode::Normal;
+                    self.modal.bookmark_input = None;
+                    self.navigate_to_path(&path);
+                }
+            }
+            ConsoleKey::UpArrow => {
+                if self.modal.bookmark_selected_index > 0 {
+                    self.modal.bookmark_selected_index -= 1;
+                }
+            }
+            ConsoleKey::DownArrow => {
+                if self.modal.bookmark_selected_index < filtered.len().saturating_sub(1) {
+                    self.modal.bookmark_selected_index += 1;
+                }
+            }
+            ConsoleKey::PageUp => {
+                let visible_count = filtered.len().min(18);
+                self.modal.bookmark_selected_index = self.modal.bookmark_selected_index.saturating_sub(visible_count);
+            }
+            ConsoleKey::PageDown => {
+                let visible_count = filtered.len().min(18);
+                self.modal.bookmark_selected_index = (self.modal.bookmark_selected_index + visible_count)
+                    .min(filtered.len().saturating_sub(1));
+            }
+            ConsoleKey::Home => self.modal.bookmark_selected_index = 0,
+            ConsoleKey::End => {
+                self.modal.bookmark_selected_index = filtered.len().saturating_sub(1);
+            }
+            ConsoleKey::Backspace => {
+                if let Some(input) = &mut self.modal.bookmark_input {
+                    input.delete_backward();
+                }
+                self.modal.bookmark_selected_index = 0;
+                self.modal.bookmark_scroll_offset = 0;
+            }
+            ConsoleKey::Delete => {
+                if !filtered.is_empty() && self.modal.bookmark_selected_index < filtered.len() {
+                    let path = filtered[self.modal.bookmark_selected_index].clone();
+                    self.bookmark_store.remove(&path);
+                }
+            }
+            ConsoleKey::LeftArrow => {
+                if let Some(input) = &mut self.modal.bookmark_input {
+                    input.move_cursor_left();
+                }
+            }
+            ConsoleKey::RightArrow => {
+                if let Some(input) = &mut self.modal.bookmark_input {
+                    input.move_cursor_right();
+                }
+            }
+            _ => {
+                if key.key == ConsoleKey::K && key.control {
+                    if self.modal.bookmark_selected_index > 0 {
+                        self.modal.bookmark_selected_index -= 1;
+                    }
+                } else if key.key == ConsoleKey::J && key.control {
+                    if self.modal.bookmark_selected_index < filtered.len().saturating_sub(1) {
+                        self.modal.bookmark_selected_index += 1;
+                    }
+                } else if let Some(ch) = char::from_u32(u32::from(key.key_char)) {
+                    if ch == 'd' {
+                        // 'd' also removes the selected bookmark
+                        if !filtered.is_empty() && self.modal.bookmark_selected_index < filtered.len() {
+                            let path = filtered[self.modal.bookmark_selected_index].clone();
+                            self.bookmark_store.remove(&path);
+                        }
+                    } else if ch == 'B' {
+                        // Toggle current directory as bookmark from within the dialog
+                        let path = self.current_path.clone();
+                        self.bookmark_store.toggle(&path);
+                    } else if ch.is_ascii_digit() && ('1'..='9').contains(&ch) {
+                        let index = (ch as u8 - b'1') as usize;
+                        if index < filtered.len() {
+                            let path = filtered[index].clone();
+                            self.input_mode = InputMode::Normal;
+                            self.modal.bookmark_input = None;
+                            self.navigate_to_path(&path);
+                            return;
+                        }
+                    } else if ch >= ' ' {
+                        if let Some(input) = &mut self.modal.bookmark_input {
+                            input.insert_char(ch);
+                        }
+                        self.modal.bookmark_selected_index = 0;
+                        self.modal.bookmark_scroll_offset = 0;
+                    }
+                }
+            }
+        }
+
+        // Adjust scroll offset to keep the selection visible
+        let filtered = self.get_filtered_bookmarks();
+
+        if !filtered.is_empty() {
+            self.modal.bookmark_selected_index = self.modal.bookmark_selected_index.min(filtered.len() - 1);
+        } else {
+            self.modal.bookmark_selected_index = 0;
+        }
+
+        const MAX_VISIBLE: usize = 18;
+
+        if self.modal.bookmark_selected_index < self.modal.bookmark_scroll_offset {
+            self.modal.bookmark_scroll_offset = self.modal.bookmark_selected_index;
+        } else if self.modal.bookmark_selected_index >= self.modal.bookmark_scroll_offset + MAX_VISIBLE {
+            self.modal.bookmark_scroll_offset = self.modal.bookmark_selected_index - MAX_VISIBLE + 1;
+        }
+    }
+
+    /// Port of `RenderBookmarks` (App.cs).
+    pub fn render_bookmarks(&mut self, buffer: &mut ScreenBuffer, width: i32, height: i32) {
+        let filtered = self.get_filtered_bookmarks();
+        let selected = self.modal.bookmark_selected_index;
+        let scroll = self.modal.bookmark_scroll_offset;
+        let input = self.modal.bookmark_input.as_mut();
+        render_bookmarks(buffer, width, height, &filtered, selected, scroll, input);
     }
 
     /// Port of `HandleConfigKey` (App.cs).
@@ -773,6 +1136,143 @@ impl App {
     }
 }
 
+
+/// Port of `RenderBookmarks` / `BookmarksDialog.Render` (App.cs).
+pub fn render_bookmarks(
+    buffer: &mut ScreenBuffer,
+    width: i32,
+    height: i32,
+    filtered: &[String],
+    selected_index: usize,
+    scroll_offset: usize,
+    mut input: Option<&mut TextInput>,
+) {
+        let content_width = 70.min(width - 8);
+        let item_rows = filtered.len().min(18) as i32;
+        let content_height = item_rows + 2; // 1 row for text input + 1 separator + item rows
+        const FOOTER: &str = "[\u{2191}\u{2193}] Navigate [Enter] Open [d] Remove [1-9] Jump  [B] Add/Remove  [Esc] Close";
+
+        let content = dialog_box::render(
+            buffer,
+            width,
+            height,
+            content_width.max(FOOTER.chars().count() as i32),
+            content_height.max(3),
+            Some("Bookmarks"),
+            Some(FOOTER),
+        );
+
+        // Row 0: text input with "> " prefix
+        let prefix_style = CellStyle {
+            fg: Some(Color { r: 220, g: 220, b: 100 }),
+            bg: Some(BG_COLOR),
+            ..CellStyle::default()
+        };
+        let input_style = CellStyle {
+            fg: Some(Color { r: 200, g: 200, b: 200 }),
+            bg: Some(BG_COLOR),
+            ..CellStyle::default()
+        };
+        buffer.write_string(content.top, content.left, "> ", prefix_style, i64::from(i32::MAX));
+        if let Some(input) = &mut input {
+            input.render(buffer, content.top, content.left + 2, content.width - 2, input_style);
+        }
+
+        // Row 1: separator
+        let separator_style = CellStyle {
+            fg: Some(dialog_box::BORDER_COLOR),
+            bg: Some(BG_COLOR),
+            dim: true,
+            ..CellStyle::default()
+        };
+        for c in 0..content.width {
+            buffer.put(content.top + 1, content.left + c, '\u{2500}', separator_style);
+        }
+
+        if filtered.is_empty() {
+            let empty_style = CellStyle {
+                fg: Some(Color { r: 120, g: 120, b: 140 }),
+                bg: Some(BG_COLOR),
+                ..CellStyle::default()
+            };
+            buffer.write_string(content.top + 2, content.left + 1, "No bookmarks", empty_style, i64::from(i32::MAX));
+            return;
+        }
+
+        // Rows 2+: bookmark items
+        let normal_style = CellStyle {
+            fg: Some(Color { r: 200, g: 200, b: 200 }),
+            bg: Some(BG_COLOR),
+            ..CellStyle::default()
+        };
+        let selected_style = CellStyle {
+            fg: Some(Color { r: 20, g: 20, b: 35 }),
+            bg: Some(Color { r: 200, g: 200, b: 200 }),
+            ..CellStyle::default()
+        };
+        let number_style = CellStyle {
+            fg: Some(Color { r: 220, g: 220, b: 100 }),
+            bg: Some(BG_COLOR),
+            ..CellStyle::default()
+        };
+        let number_selected_style = CellStyle {
+            fg: Some(Color { r: 20, g: 20, b: 35 }),
+            bg: Some(Color { r: 200, g: 200, b: 200 }),
+            ..CellStyle::default()
+        };
+        let dim_style = CellStyle {
+            fg: Some(Color { r: 120, g: 120, b: 140 }),
+            bg: Some(BG_COLOR),
+            ..CellStyle::default()
+        };
+        let dim_selected_style = CellStyle {
+            fg: Some(Color { r: 80, g: 80, b: 100 }),
+            bg: Some(Color { r: 200, g: 200, b: 200 }),
+            ..CellStyle::default()
+        };
+
+        let visible_count = content.height - 2;
+
+        for i in 0..visible_count {
+            let item_index = scroll_offset + i as usize;
+
+            if item_index >= filtered.len() {
+                break;
+            }
+
+            let path = &filtered[item_index];
+            let is_selected = item_index == selected_index;
+            let exists = std::path::Path::new(path).is_dir() || std::path::Path::new(path).is_file();
+            let row = content.top + 2 + i;
+
+            let label_style = if is_selected {
+                if exists { selected_style } else { dim_selected_style }
+            } else if exists {
+                normal_style
+            } else {
+                dim_style
+            };
+
+            let num_style = if is_selected { number_selected_style } else { number_style };
+
+            if is_selected {
+                buffer.fill_row(row, content.left, content.width, ' ', selected_style);
+            }
+
+            // Number prefix [1]-[9] for the first 9 items
+            let mut col = content.left + 1;
+
+            if item_index < 9 {
+                let num = format!("[{}] ", item_index + 1);
+                buffer.write_string(row, col, &num, num_style, i64::from(i32::MAX));
+                col += 4;
+            } else {
+                col += 4; // align with numbered items
+            }
+
+            buffer.write_string(row, col, path, label_style, i64::from(content.width - (col - content.left) - 1));
+        }
+}
 
 /// Port of `RenderConfigDialog` (App.cs).
 pub fn render_config_dialog(buffer: &mut ScreenBuffer, width: i32, height: i32, state: &ConfigDialogState) {
@@ -961,31 +1461,76 @@ pub fn render_config_dialog(buffer: &mut ScreenBuffer, width: i32, height: i32, 
         }
     }
 
-    /// (PathCompletion lands in Phase 3c).
-    pub fn render_go_to_path_dialog(buffer: &mut ScreenBuffer, width: i32, height: i32, input: Option<&mut TextInput>) {
-        let content_width = 60.min(width - 8);
-        let content_height = 1;
-        let footer = "[Tab] Complete  [↑] Up dir  [Esc] Clear/Close  [Enter] Go";
 
-        let content = dialog_box::render(
-            buffer,
-            width,
-            height,
-            content_width,
-            content_height,
-            Some("Go to path"),
-            Some(footer),
-        );
+/// Port of `RenderGoToPathDialog` / `GoToPathDialog.Render` (App.cs:2663):
+/// single-row path input with the inline ghost suggestion suffix.
+pub fn render_go_to_path_dialog(
+    buffer: &mut ScreenBuffer,
+    width: i32,
+    height: i32,
+    input: Option<&mut TextInput>,
+    suggestion: Option<&str>,
+) {
+    let content_width = 60.min(width - 8);
+    let content_height = 1;
+    let footer = "[Tab] Complete  [\u{2191}] Up dir  [Esc] Clear/Close  [Enter] Go";
 
-        let input_style = CellStyle {
-            fg: Some(Color { r: 200, g: 200, b: 200 }),
+    let content = dialog_box::render(
+        buffer,
+        width,
+        height,
+        content_width,
+        content_height,
+        Some("Go to path"),
+        Some(footer),
+    );
+
+    let Some(input) = input else {
+        return;
+    };
+
+    let input_style = CellStyle {
+        fg: Some(Color { r: 200, g: 200, b: 200 }),
+        bg: Some(BG_COLOR),
+        ..CellStyle::default()
+    };
+    let value = input.value().to_string();
+    let cursor_at_end = input.cursor_position() == value.chars().count();
+    input.render(buffer, content.top, content.left, content.width, input_style);
+
+    // Inline ghost suffix: show the untyped remainder of the suggestion after
+    // the cursor
+    let Some(suggestion) = suggestion else {
+        return;
+    };
+
+    let expanded_input =
+        crate::fs::path_completion::normalize_separators(&crate::fs::path_completion::expand_tilde(&value));
+
+    // Only show the ghost when the cursor is at the end and the suggestion
+    // extends beyond the expanded input
+    if !cursor_at_end
+        || suggestion.chars().count() <= expanded_input.chars().count()
+        || !suggestion.to_ascii_lowercase().starts_with(&expanded_input.to_ascii_lowercase())
+    {
+        return;
+    }
+
+    let scroll_offset = input.scroll_offset();
+    let visual_text_end = value.chars().count() - scroll_offset + 1; // +1 for cursor space
+    let ghost_col = content.left + visual_text_end as i32;
+    let ghost_max_width = content.width - visual_text_end as i32;
+
+    if ghost_max_width > 0 {
+        let ghost: String = suggestion.chars().skip(expanded_input.chars().count()).collect();
+        let ghost_style = CellStyle {
+            fg: Some(Color { r: 90, g: 90, b: 110 }),
             bg: Some(BG_COLOR),
             ..CellStyle::default()
         };
-        if let Some(input) = input {
-            input.render(buffer, content.top, content.left, content.width, input_style);
-        }
+        buffer.write_string(content.top, ghost_col, &ghost, ghost_style, i64::from(ghost_max_width));
     }
+}
 
 /// Port of `RenderActionPalette` / `ActionPaletteDialog.Render` (App.cs:3948).
     pub fn render_action_palette(
@@ -1136,42 +1681,6 @@ fn is_file(path: &str) -> bool {
     std::fs::metadata(path).map(|m| m.is_file()).unwrap_or(false)
 }
 
-/// Port of `PathCompletion.NormalizeSeparators`.
-#[must_use]
-pub fn normalize_separators(path: &str) -> String {
-    if cfg!(windows) {
-        path.replace('/', "\\")
-    } else {
-        path.replace('\\', "/")
-    }
-}
-
-/// Port of `PathCompletion.ExpandTilde`.
-#[must_use]
-pub fn expand_tilde(path: &str) -> String {
-    if path == "~" {
-        return home_dir();
-    }
-
-    if let Some(rest) = path.strip_prefix("~/").or_else(|| path.strip_prefix("~\\")) {
-        let home = home_dir();
-        let sep = if cfg!(windows) { '\\' } else { '/' };
-        if home.ends_with(sep) {
-            return format!("{home}{rest}");
-        }
-
-        return format!("{home}{sep}{rest}");
-    }
-
-    path.to_string()
-}
-
-fn home_dir() -> String {
-    std::env::var("USERPROFILE")
-        .or_else(|_| std::env::var("HOME"))
-        .unwrap_or_else(|_| "~".to_string())
-}
-
 fn join_absolute(base: &str, relative: &str) -> String {
     let sep = if cfg!(windows) { '\\' } else { '/' };
     if base.ends_with(sep) {
@@ -1186,7 +1695,7 @@ fn join_absolute(base: &str, relative: &str) -> String {
 /// collapse `.`/`..` segments lexically.
 #[must_use]
 pub fn get_full_path(path: &str) -> String {
-    let expanded = expand_tilde(&normalize_separators(path));
+    let expanded = crate::fs::path_completion::expand_tilde(&crate::fs::path_completion::normalize_separators(path));
     if is_absolute_path(&expanded) {
         return collapse_dots(&expanded);
     }
@@ -1414,6 +1923,6 @@ mod tests {
         assert_eq!(parent_of(r"C:\foo"), Some(r"C:\".to_string()));
         assert_eq!(file_name_of(r"C:\foo\bar\"), "bar");
         assert_eq!(collapse_dots(r"C:\foo\..\bar"), r"C:\bar");
-        assert_eq!(normalize_separators("a/b"), r"a\b");
+        assert_eq!(crate::fs::path_completion::normalize_separators("a/b"), r"a\b");
     }
 }

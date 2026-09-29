@@ -1,0 +1,19 @@
+# Config dialog: sort-mode cycling and wrap navigation.
+# Windows-only: the dialog includes the Windows-only "Show System Files" item.
+size 80 25
+platform windows
+configdlg
+csel 3
+ccycle next
+ccycle next
+configrender
+flush
+ccycle prev
+ccycle prev
+ccycle prev
+configrender
+flush
+csel 5
+cnav up
+configrender
+flush

@@ -11,14 +11,10 @@ this file to be empty or fully accepted.
   previews: later phases; file finder: phase 5) show a status-bar
   notification ("Not yet ported") instead of performing the action. The
   action palette omits entries whose actions are not yet ported (git,
-  preview providers, bookmarks, file operations, file finder, terminal);
-  the submenu stack machinery is ported and remaining entries are added in
-  their phases.
-- **Go-to-path completion is deferred (Phase 3b).** The GoToPath dialog is
-  ported (typing, editing, Enter navigation, Escape clear/close, Up-arrow
-  parent-directory editing), but Tab/RightArrow suggestion completion and
-  the inline ghost suffix depend on `PathCompletion` and land in Phase 3c.
-  Tab is consumed as a no-op in the meantime.
+  preview providers, file operations, file finder, terminal); the submenu
+  stack machinery is ported and remaining entries are added in their
+  phases. The context menu likewise omits Paste/Copy/Cut (clipboard) and
+  Git stage/unstage (git) entries.
 - **Config toggles for unported subsystems are inert (Phase 3c).** The
   config dialog ports all 27 settings and persists them, but toggles
   gating subsystems that land in later phases (image/PDF/markdown/archive

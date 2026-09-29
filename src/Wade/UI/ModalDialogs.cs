@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Wade.Terminal;
 
 namespace Wade.UI;
@@ -202,6 +203,146 @@ internal static class SearchBar
         {
             var textStyle = new CellStyle(new Color(200, 200, 200), null);
             buffer.WriteString(row, inputCol, filter, textStyle, inputWidth);
+        }
+    }
+}
+
+internal static class ConfigDialog
+{
+    internal static void Render(ScreenBuffer buffer, int width, int height, ConfigDialogState state)
+    {
+        const int ContentWidth = 47;
+        int contentHeight = state.Items.Count + 1;
+        const string Footer = "[Space] Toggle [\u25c4\u25ba] Cycle [Enter] Save [Esc] Cancel";
+
+        Rect content = DialogBox.Render(buffer, width, height, Math.Max(ContentWidth, Footer.Length), contentHeight, title: "Configuration",
+            footer: Footer);
+
+        var normalStyle = new CellStyle(new Color(200, 200, 200), DialogBox.BgColor);
+        var selectedStyle = new CellStyle(new Color(20, 20, 35), new Color(200, 200, 200));
+        var valueStyle = new CellStyle(new Color(100, 200, 255), DialogBox.BgColor);
+        var valueSelectedStyle = new CellStyle(new Color(20, 20, 35), new Color(200, 200, 200));
+        var disabledStyle = new CellStyle(new Color(80, 80, 80), DialogBox.BgColor);
+
+        for (int i = 0; i < state.Items.Count; i++)
+        {
+            ConfigItem item = state.Items[i];
+            bool selected = i == state.SelectedIndex;
+            CellStyle style, vStyle;
+
+            if (!item.IsEnabled)
+            {
+                style = disabledStyle;
+                vStyle = disabledStyle;
+            }
+            else
+            {
+                style = selected ? selectedStyle : normalStyle;
+                vStyle = selected ? valueSelectedStyle : valueStyle;
+            }
+
+            int row = content.Top + i;
+            string label = item.Indent > 0
+                ? new string(' ', item.Indent * 2) + item.Label
+                : item.Label;
+
+            const int labelWidth = 34;
+            buffer.WriteString(row, content.Left, label, style, labelWidth);
+            buffer.WriteString(row, content.Left + labelWidth, item.FormatValue(), vStyle, content.Width - labelWidth);
+        }
+    }
+}
+
+internal static class BookmarksDialog
+{
+    internal static void Render(
+        ScreenBuffer buffer, int width, int height,
+        IReadOnlyList<string> filtered, int selectedIndex, int scrollOffset, TextInput? input)
+    {
+        int contentWidth = Math.Min(70, width - 8);
+        int itemRows = Math.Min(filtered.Count, 18);
+        int contentHeight = itemRows + 2; // 1 row for text input + 1 separator + item rows
+        const string Footer = "[\u2191\u2193] Navigate [Enter] Open [d] Remove [1-9] Jump  [B] Add/Remove  [Esc] Close";
+
+        Rect content = DialogBox.Render(
+            buffer, width, height,
+            Math.Max(contentWidth, Footer.Length),
+            Math.Max(contentHeight, 3),
+            title: "Bookmarks",
+            footer: Footer);
+
+        // Row 0: text input with "> " prefix
+        var prefixStyle = new CellStyle(new Color(220, 220, 100), DialogBox.BgColor);
+        var inputStyle = new CellStyle(new Color(200, 200, 200), DialogBox.BgColor);
+        buffer.WriteString(content.Top, content.Left, "> ", prefixStyle);
+        input?.Render(buffer, content.Top, content.Left + 2, content.Width - 2, inputStyle);
+
+        // Row 1: separator
+        var separatorStyle = new CellStyle(DialogBox.BorderColor, DialogBox.BgColor, Dim: true);
+        for (int c = 0; c < content.Width; c++)
+        {
+            buffer.Put(content.Top + 1, content.Left + c, '\u2500', separatorStyle);
+        }
+
+        if (filtered.Count == 0)
+        {
+            var emptyStyle = new CellStyle(new Color(120, 120, 140), DialogBox.BgColor);
+            buffer.WriteString(content.Top + 2, content.Left + 1, "No bookmarks", emptyStyle);
+            return;
+        }
+
+        // Rows 2+: bookmark items
+        var normalStyle = new CellStyle(new Color(200, 200, 200), DialogBox.BgColor);
+        var selectedStyle = new CellStyle(new Color(20, 20, 35), new Color(200, 200, 200));
+        var numberStyle = new CellStyle(new Color(220, 220, 100), DialogBox.BgColor);
+        var numberSelectedStyle = new CellStyle(new Color(20, 20, 35), new Color(200, 200, 200));
+        var dimStyle = new CellStyle(new Color(120, 120, 140), DialogBox.BgColor);
+        var dimSelectedStyle = new CellStyle(new Color(80, 80, 100), new Color(200, 200, 200));
+
+        int visibleCount = content.Height - 2;
+
+        for (int i = 0; i < visibleCount; i++)
+        {
+            int itemIndex = scrollOffset + i;
+
+            if (itemIndex >= filtered.Count)
+            {
+                break;
+            }
+
+            string path = filtered[itemIndex];
+            bool isSelected = itemIndex == selectedIndex;
+            bool exists = Directory.Exists(path) || File.Exists(path);
+            int row = content.Top + 2 + i;
+
+            CellStyle labelStyle = isSelected
+                ? exists ? selectedStyle : dimSelectedStyle
+                : exists
+                    ? normalStyle
+                    : dimStyle;
+
+            CellStyle numStyle = isSelected ? numberSelectedStyle : numberStyle;
+
+            if (isSelected)
+            {
+                buffer.FillRow(row, content.Left, content.Width, ' ', selectedStyle);
+            }
+
+            // Number prefix [1]-[9] for first 9 items
+            int col = content.Left + 1;
+
+            if (itemIndex < 9)
+            {
+                string num = $"[{itemIndex + 1}] ";
+                buffer.WriteString(row, col, num, numStyle);
+                col += num.Length;
+            }
+            else
+            {
+                col += 4; // align with numbered items
+            }
+
+            buffer.WriteString(row, col, path, labelStyle, content.Width - (col - content.Left) - 1);
         }
     }
 }

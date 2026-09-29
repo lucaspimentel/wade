@@ -109,6 +109,7 @@ pub struct App {
     selected_index_per_dir: HashMap<String, usize>,
     marked_paths: std::collections::HashSet<String>,
     notification: Option<Notification>,
+    bookmark_store: crate::fs::bookmark_store::BookmarkStore,
     parent_pane_enabled: bool,
     preview_pane_enabled: bool,
     input_mode: crate::input::InputMode,
@@ -144,6 +145,7 @@ impl App {
             last_width: 0,
             last_height: 0,
             modal: dialogs::ModalState::default(),
+            bookmark_store: crate::fs::bookmark_store::BookmarkStore::new(None),
         }
     }
 
@@ -172,6 +174,7 @@ impl App {
         self.directory_contents.sort_ascending = self.config.sort_ascending;
         self.parent_pane_enabled = self.config.parent_pane_enabled;
         self.preview_pane_enabled = self.config.preview_pane_enabled;
+        self.bookmark_store.load();
 
         let (mut width, mut height) = terminal_size().unwrap_or((80, 25));
         self.last_width = width;
@@ -210,7 +213,8 @@ impl App {
             match current {
                 InputEvent::Resize(resize) => self.handle_resize(resize, &mut buffer, &mut width, &mut height),
                 InputEvent::Key(key) => self.handle_key(key),
-                InputEvent::Mouse(_) | InputEvent::Paste(_) => {}
+                InputEvent::Mouse(mouse) => self.handle_mouse(mouse),
+                InputEvent::Paste(text) => self.handle_paste_event(&text),
             }
 
             // Clamp selection and adjust scroll
@@ -380,6 +384,17 @@ impl App {
             }
             A::ShowActionPalette => self.show_action_palette(),
             A::ShowConfig => self.show_config_dialog(),
+            A::ShowBookmarks => self.show_bookmarks(),
+            A::ToggleBookmark => {
+                let path = self.current_path.clone();
+                self.bookmark_store.toggle(&path);
+                let message = if self.bookmark_store.contains(&path) {
+                    "Bookmarked"
+                } else {
+                    "Bookmark removed"
+                };
+                self.show_notification(message, NotificationKind::Success);
+            }
             other => {
                 // Unported in 3a: navigation to the subsystem lands in later phases.
                 self.show_notification("Not yet ported", NotificationKind::Info);
@@ -476,6 +491,7 @@ impl App {
         });
     }
 
+
     /// Port of `UpdateTerminalTitle` (App.cs): OSC 0 title set/clear.
     pub fn update_terminal_title(&self) {
         use std::io::Write;
@@ -489,6 +505,226 @@ impl App {
         let mut out = std::io::stdout();
         let _ = out.write_all(sequence.as_bytes());
         let _ = out.flush();
+    }
+
+    /// Port of the mouse-event dispatch (App.cs:541-573) and
+    /// `HandleMouseEvent` (App.cs:1731): scroll wheel, pane click navigation,
+    /// right-click context menu.
+    pub fn handle_mouse(&mut self, mouse: crate::input::MouseEvent) {
+        use crate::input::MouseButton;
+
+        if self.input_mode == InputMode::ExpandedPreview {
+            // Expanded-preview scrolling lands with previews in Phase 7.
+            return;
+        }
+
+        if self.input_mode == InputMode::ContextMenu {
+            self.handle_context_menu_mouse(mouse);
+            return;
+        }
+
+        // Discard mouse events while a modal dialog is open
+        if matches!(
+            self.input_mode,
+            InputMode::Help
+                | InputMode::GoToPath
+                | InputMode::TextInput
+                | InputMode::Confirm
+                | InputMode::Config
+                | InputMode::Properties
+                | InputMode::ActionPalette
+                | InputMode::Bookmarks
+                | InputMode::FileFinder
+        ) {
+            return;
+        }
+
+        // Scroll wheel moves the selection in the center pane
+        let entries = self.get_visible_entries();
+        if mouse.button == MouseButton::ScrollUp {
+            if self.selected_index > 0 {
+                self.selected_index -= 1;
+            }
+            return;
+        }
+
+        if mouse.button == MouseButton::ScrollDown {
+            if !entries.is_empty() && self.selected_index < entries.len() - 1 {
+                self.selected_index += 1;
+            }
+            return;
+        }
+
+        // Ignore releases and non-left/right clicks
+        if mouse.is_release || (mouse.button != MouseButton::Left && mouse.button != MouseButton::Right) {
+            return;
+        }
+
+        let row = mouse.row;
+        let col = mouse.col;
+        let header_offset = i32::from(self.config.column_headers_enabled) * 2;
+
+        if Self::hit_test_pane(self.layout.center_pane, row, col) {
+            // Center pane click: select the entry (same as arrow keys)
+            let entry_index = self.scroll_offset as i32 + (row - self.layout.center_pane.top - header_offset);
+            let entry_index = usize::try_from(entry_index).unwrap_or(usize::MAX);
+            if entry_index < entries.len() {
+                self.selected_index = entry_index;
+            }
+
+            // Right-click opens the context menu
+            if mouse.button == MouseButton::Right && entry_index < entries.len() {
+                self.modal.context_menu = Some(crate::ui::context_menu::ContextMenuState::new(
+                    self.build_context_menu_items(),
+                    row,
+                    col,
+                ));
+                self.input_mode = InputMode::ContextMenu;
+            }
+        } else if Self::hit_test_pane(self.layout.left_pane, row, col) {
+            self.handle_left_pane_click(row, col, header_offset);
+        } else if Self::hit_test_pane(self.layout.right_pane, row, col) {
+            self.handle_right_pane_click(row, col, header_offset);
+        }
+
+        // Clamp after mouse handling
+        let entries = self.get_visible_entries();
+        self.selected_index = if entries.is_empty() {
+            0
+        } else {
+            self.selected_index.min(entries.len() - 1)
+        };
+    }
+
+    /// Port of `HitTestPane`.
+    fn hit_test_pane(pane: crate::ui::layout::Rect, row: i32, col: i32) -> bool {
+        row >= pane.top && row < pane.top + pane.height && col >= pane.left && col < pane.left + pane.width
+    }
+
+    /// The navigate-into-directory housekeeping shared by mouse handlers
+    /// (per-dir selection save/restore, scroll reset, mark/search clearing).
+    /// Preview-cache and git-status refreshes land with those subsystems.
+    fn navigate_to_directory(&mut self, path: &str) {
+        self.selected_index_per_dir.insert(self.current_path.clone(), self.selected_index);
+        self.current_path = path.to_string();
+        self.selected_index = *self.selected_index_per_dir.get(&self.current_path).unwrap_or(&0);
+        self.scroll_offset = 0;
+        self.marked_paths.clear();
+        self.clear_search_filter();
+        self.update_terminal_title();
+    }
+
+    /// Left-pane click: navigate into the clicked directory, or navigate to
+    /// the parent and select the clicked file (App.cs:1795-1830).
+    fn handle_left_pane_click(&mut self, row: i32, _col: i32, header_offset: i32) {
+        if self.current_path == DRIVES_PATH {
+            return;
+        }
+
+        // The left pane shows the parent directory (see render_left_pane)
+        let (parent_key, _) = if DirectoryContents::is_drive_root(&self.current_path) {
+            (
+                DRIVES_PATH.to_string(),
+                drive_root(&self.current_path)
+                    .map(|r| r.trim_end_matches(['\\', '/']).to_string())
+                    .unwrap_or_default(),
+            )
+        } else {
+            match Path::new(&self.current_path).parent() {
+                Some(parent) => (parent.to_string_lossy().to_string(), file_name_of(&self.current_path)),
+                None => (DRIVES_PATH.to_string(), file_name_of(&self.current_path)),
+            }
+        };
+
+        let left_entries = self.directory_contents.get_entries(&parent_key);
+        let entry_index = self.mouse_left_pane_scroll(&left_entries) + (row - self.layout.left_pane.top - header_offset);
+        let entry_index = usize::try_from(entry_index).unwrap_or(usize::MAX);
+        if entry_index >= left_entries.len() {
+            return;
+        }
+
+        let clicked = left_entries[entry_index].clone();
+        if clicked.is_directory {
+            self.navigate_to_directory(&crate::fs::directory_contents::capitalize_drive_letter(&clicked.full_path));
+        } else {
+            // File in parent dir: navigate to parent, select the file
+            self.selected_index_per_dir.insert(self.current_path.clone(), self.selected_index);
+            self.current_path = crate::fs::directory_contents::capitalize_drive_letter(&parent_key);
+            self.update_terminal_title();
+            let parent_entries = self.directory_contents.get_entries(&self.current_path);
+            self.selected_index = parent_entries
+                .iter()
+                .position(|e| e.name.eq_ignore_ascii_case(&clicked.name))
+                .unwrap_or(0);
+            self.scroll_offset = 0;
+            self.marked_paths.clear();
+            self.clear_search_filter();
+        }
+    }
+
+    /// The scroll offset the left pane is rendered with (mirrors
+    /// `calculate_scroll(parent_selected, ...)` in `render_left_pane`).
+    fn mouse_left_pane_scroll(&self, parent_entries: &[FileSystemEntry]) -> i32 {
+        let (_, current_name) = if DirectoryContents::is_drive_root(&self.current_path) {
+            (
+                DRIVES_PATH.to_string(),
+                drive_root(&self.current_path)
+                    .map(|r| r.trim_end_matches(['\\', '/']).to_string())
+                    .unwrap_or_default(),
+            )
+        } else {
+            match Path::new(&self.current_path).parent() {
+                Some(parent) => (parent.to_string_lossy().to_string(), file_name_of(&self.current_path)),
+                None => (DRIVES_PATH.to_string(), file_name_of(&self.current_path)),
+            }
+        };
+
+        let parent_selected = parent_entries
+            .iter()
+            .position(|e| e.name.eq_ignore_ascii_case(&current_name))
+            .unwrap_or(0);
+
+        let mut left_pane = self.layout.left_pane;
+        if self.config.column_headers_enabled && left_pane.height > 2 {
+            left_pane.top += 2;
+            left_pane.height -= 2;
+        }
+
+        crate::app::calculate_scroll(parent_selected, left_pane.height, parent_entries.len())
+    }
+
+    /// Right-pane click: navigate into the previewed directory (only when the
+    /// selected entry is a directory) (App.cs:1843-1900).
+    fn handle_right_pane_click(&mut self, row: i32, _col: i32, header_offset: i32) {
+        let entries = self.get_visible_entries();
+        if entries.is_empty() || self.selected_index >= entries.len() {
+            return;
+        }
+
+        let selected = entries[self.selected_index].clone();
+        if !selected.is_directory {
+            return;
+        }
+
+        let preview_entries = self.directory_contents.get_entries(&selected.full_path);
+        let entry_index = row - self.layout.right_pane.top - header_offset; // scroll is always 0 for preview
+        let entry_index = usize::try_from(entry_index).unwrap_or(usize::MAX);
+        if entry_index >= preview_entries.len() {
+            return;
+        }
+
+        let clicked = preview_entries[entry_index].clone();
+        if clicked.is_directory {
+            self.navigate_to_directory(&crate::fs::directory_contents::capitalize_drive_letter(&clicked.full_path));
+        } else {
+            // File in previewed directory: navigate there, select the file
+            self.navigate_to_directory(&crate::fs::directory_contents::capitalize_drive_letter(&selected.full_path));
+            let dir_entries = self.directory_contents.get_entries(&self.current_path);
+            self.selected_index = dir_entries
+                .iter()
+                .position(|e| e.name.eq_ignore_ascii_case(&clicked.name))
+                .unwrap_or(0);
+        }
     }
 
     /// Port of `ClearSearchFilter`.

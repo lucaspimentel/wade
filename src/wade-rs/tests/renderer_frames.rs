@@ -145,12 +145,29 @@ fn run_scenario(path: &Path) -> String {
     let mut palette_selected = 0;
     let mut palette_items: Option<Vec<ActionMenuItem>> = None;
     let mut notification: Option<Notification> = None;
+    let mut config_state: Option<wade::ui::config_dialog::ConfigDialogState> = None;
+    let mut bookmark_store: Option<wade::fs::bookmark_store::BookmarkStore> = None;
+    let mut bookmark_input: Option<TextInput> = None;
+    let mut bookmark_selected: usize = 0;
+    let mut bookmark_scroll: usize = 0;
+    let mut ctx_items: Option<Vec<ActionMenuItem>> = None;
+    let mut ctx_anchor: (i32, i32) = (0, 0);
     let mut flushes: Vec<String> = Vec::new();
     let mut out = String::new();
 
     for raw_line in text.lines() {
         let line = raw_line.trim();
         if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+
+        if let Some(rest) = line.strip_prefix("platform ") {
+            // platform windows: skip the whole scenario on other OSes
+            // (scenarios that render platform-dependent content)
+            if rest.trim() == "windows" && !cfg!(windows) {
+                return "PLATFORM-SKIPPED".to_string();
+            }
+
             continue;
         }
 
@@ -311,11 +328,14 @@ fn run_scenario(path: &Path) -> String {
                 );
             }
             "gotopathdlg" => {
-                // gotopathdlg "VALUE"
-                let value = unquote(line.split_once(' ').map(|x| x.1).expect("value"));
+                // gotopathdlg "VALUE" ["SUGGESTION"]
+                let rest = line["gotopathdlg ".len()..].to_string();
+                let spans = quoted_spans(&rest);
+                let value = unquote(&spans[0]);
                 let mut input = TextInput::new(&value);
+                let suggestion = if spans.len() > 1 { Some(unquote(&spans[1])) } else { None };
                 let buffer = buffer.as_mut().expect("size op first");
-                dialogs::render_go_to_path_dialog(buffer, width, height, Some(&mut input));
+                dialogs::render_go_to_path_dialog(buffer, width, height, Some(&mut input), suggestion.as_deref());
             }
             "palette" => {
                 // palette "TITLE" DEPTH SELECTED
@@ -377,6 +397,88 @@ fn run_scenario(path: &Path) -> String {
                 buffer.serialize(&mut out);
                 flushes.push(out.clone());
             }
+            "configdlg" => {
+                config_state = Some(wade::ui::config_dialog::ConfigDialogState::from_app_config(&wade::app::AppConfig::default()));
+            }
+            "csel" => {
+                config_state.as_mut().expect("configdlg op first").selected_index = parse_i32(tokens[1]).max(0) as usize;
+            }
+            "ctoggle" => {
+                config_state.as_mut().expect("configdlg op first").toggle_selected();
+            }
+            "ccycle" => {
+                let state = config_state.as_mut().expect("configdlg op first");
+                if tokens[1] == "next" {
+                    state.cycle_next_selected();
+                } else {
+                    state.cycle_prev_selected();
+                }
+            }
+            "cnav" => {
+                let state = config_state.as_mut().expect("configdlg op first");
+                match tokens[1] {
+                    "up" => state.move_up(),
+                    "down" => state.move_down(),
+                    "left" => state.cycle_prev_selected(),
+                    _ => state.cycle_next_selected(),
+                }
+            }
+            "configrender" => {
+                let buffer = buffer.as_mut().expect("size op first");
+                dialogs::render_config_dialog(buffer, width, height, config_state.as_ref().expect("configdlg op first"));
+            }
+            "bmark" => {
+                let store = bookmark_store.get_or_insert_with(|| {
+                    wade::fs::bookmark_store::BookmarkStore::new(Some(
+                        std::env::temp_dir().join(format!("wade-fixture-bookmarks-{}", std::process::id())),
+                    ))
+                });
+                store.add(&unquote(line.split_once(' ').map(|x| x.1).expect("path")));
+            }
+            "bfilter" => {
+                let mut input = TextInput::default();
+                let value = unquote(line.split_once(' ').map(|x| x.1).expect("text"));
+                for ch in value.chars() {
+                    input.insert_char(ch);
+                }
+                bookmark_input = Some(input);
+            }
+            "bsel" => {
+                bookmark_selected = parse_i32(tokens[1]).max(0) as usize;
+            }
+            "bscroll" => {
+                bookmark_scroll = parse_i32(tokens[1]).max(0) as usize;
+            }
+            "bookmarkrender" => {
+                let store = bookmark_store.as_ref().expect("bmark op first");
+                let filter = bookmark_input.as_ref().map_or(String::new(), |input| input.value().to_string());
+                let filtered: Vec<String> = store
+                    .bookmarks()
+                    .iter()
+                    .filter(|bookmark| filter.is_empty() || bookmark.to_ascii_lowercase().contains(&filter.to_ascii_lowercase()))
+                    .cloned()
+                    .collect();
+                let buffer = buffer.as_mut().expect("size op first");
+                dialogs::render_bookmarks(buffer, width, height, &filtered, bookmark_selected, bookmark_scroll, bookmark_input.as_mut());
+            }
+            "ctxmenu" => {
+                // ctxmenu ANCHORROW ANCHORCOL
+                ctx_anchor = (parse_i32(tokens[1]), parse_i32(tokens[2]));
+                ctx_items = Some(Vec::new());
+            }
+            "citem" => {
+                let spans = quoted_spans(&line["citem ".len()..]);
+                ctx_items
+                    .as_mut()
+                    .expect("ctxmenu op first")
+                    .push(ActionMenuItem::new(&spans[0], &spans[1], AppAction::None));
+            }
+            "endctxmenu" => {
+                let items = ctx_items.take().expect("ctxmenu op first");
+                let state = wade::ui::context_menu::ContextMenuState::new(items, ctx_anchor.0, ctx_anchor.1);
+                let buffer = buffer.as_mut().expect("size op first");
+                wade::ui::context_menu::render(buffer, width, height, &state);
+            }
             other => panic!("Unknown op '{other}' in {}", path.display()),
         }
     }
@@ -419,6 +521,10 @@ fn renderer_fixtures_match_csharp_output() {
         }));
 
         let actual = run_scenario(&fixture_path);
+        if actual == "PLATFORM-SKIPPED" {
+            continue;
+        }
+
         assert_eq!(
             expected, actual,
             "golden mismatch for {}",

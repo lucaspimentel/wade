@@ -24,6 +24,12 @@ public class PaneRendererGoldenTests
 
         Assert.True(File.Exists(goldenPath), $"Missing golden file {goldenPath}; run with WADE_UPDATE_GOLDENS=1 to generate");
         string expected = File.ReadAllText(goldenPath);
+        if (actual == "PLATFORM-SKIPPED")
+        {
+            // Platform-gated scenario: not comparable on this OS
+            return;
+        }
+
         Assert.Equal(expected, actual);
     }
 

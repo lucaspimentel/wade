@@ -3,5 +3,7 @@
 //! and drive media-type detection are Phase 9 items; entries always carry the
 //! neutral defaults for those fields.
 
+pub mod bookmark_store;
 pub mod directory_contents;
+pub mod path_completion;
 pub use directory_contents::{DirectoryContents, FileSystemEntry, GitFileStatus, SortMode, DRIVES_PATH};

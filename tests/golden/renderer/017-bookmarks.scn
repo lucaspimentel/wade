@@ -1,0 +1,19 @@
+# Bookmarks dialog: items, selection, filter, empty state.
+# Paths are intentionally nonexistent everywhere so the dim styling is
+# deterministic on all platforms.
+size 80 25
+bmark "C:\definitely-not-real\alpha"
+bmark "C:\definitely-not-real\beta"
+bmark "/definitely/not/real/gamma"
+bookmarkrender
+flush
+bsel 1
+bookmarkrender
+flush
+bfilter "beta"
+bsel 0
+bookmarkrender
+flush
+bfilter "zzz-nomatch"
+bookmarkrender
+flush

@@ -24,6 +24,13 @@ internal static class RendererFixtureRunner
         int paletteDepth = 1;
         int paletteSelected = 0;
         List<ActionMenuItem>? currentPaletteItems = null;
+        ConfigDialogState? configState = null;
+        BookmarkStore? bookmarkStore = null;
+        TextInput? bookmarkInput = null;
+        int bookmarkSelected = 0;
+        int bookmarkScroll = 0;
+        List<ActionMenuItem>? ctxItems = null;
+        int ctxAnchorRow = 0, ctxAnchorCol = 0;
         Notification? notification = null;
         var flushes = new List<string>();
         var sb = new StringBuilder();
@@ -33,6 +40,19 @@ internal static class RendererFixtureRunner
             string line = rawLine.Trim();
             if (line.Length == 0 || line.StartsWith('#'))
             {
+                continue;
+            }
+
+            if (line.StartsWith("platform "))
+            {
+                // platform windows: skip the whole scenario on other OSes
+                // (scenarios that render platform-dependent content)
+                string[] ptokens = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (ptokens[1] == "windows" && !OperatingSystem.IsWindows())
+                {
+                    return "PLATFORM-SKIPPED";
+                }
+
                 continue;
             }
 
@@ -156,9 +176,18 @@ internal static class RendererFixtureRunner
                 }
                 case "gotopathdlg":
                 {
-                    // gotopathdlg "VALUE"
-                    string value = Unquote(line.Split(' ', 2)[1]);
-                    GoToPathDialog.Render(buffer, width, height, new TextInput(value), suggestion: null);
+                    // gotopathdlg "VALUE" ["SUGGESTION"]
+                    string rest = line["gotopathdlg ".Length..];
+                    string value = Unquote(FirstQuotedSpan(rest));
+                    string? suggestion = null;
+                    int afterFirst = rest.IndexOf('"', 1);
+                    if (afterFirst >= 0 && rest.IndexOf('"', afterFirst + 1) >= 0)
+                    {
+                        int secondStart = rest.IndexOf('"', afterFirst + 1);
+                        suggestion = rest[(secondStart + 1)..rest.IndexOf('"', secondStart + 1)];
+                    }
+
+                    GoToPathDialog.Render(buffer, width, height, new TextInput(value), suggestion);
                     break;
                 }
                 case "palette":
@@ -215,6 +244,104 @@ internal static class RendererFixtureRunner
                     buffer.Serialize(sb);
                     flushes.Add(sb.ToString());
                     break;
+                case "configdlg":
+                    configState = ConfigDialogState.FromConfig(new WadeConfig());
+                    break;
+                case "csel":
+                    configState!.SelectedIndex = ParseInt(tokens[1]);
+                    break;
+                case "ctoggle":
+                    configState!.ToggleSelected();
+                    break;
+                case "ccycle":
+                    if (tokens[1] == "next")
+                    {
+                        configState!.CycleNextSelected();
+                    }
+                    else
+                    {
+                        configState!.CyclePrevSelected();
+                    }
+
+                    break;
+                case "cnav":
+                    if (tokens[1] == "up")
+                    {
+                        configState!.MoveUp();
+                    }
+                    else if (tokens[1] == "down")
+                    {
+                        configState!.MoveDown();
+                    }
+                    else if (tokens[1] == "left")
+                    {
+                        configState!.CyclePrevSelected();
+                    }
+                    else
+                    {
+                        configState!.CycleNextSelected();
+                    }
+
+                    break;
+                case "configrender":
+                    ConfigDialog.Render(buffer, width, height, configState!);
+                    break;
+                case "bmark":
+                    bookmarkStore ??= new BookmarkStore(Path.Combine(Path.GetTempPath(), $"wade-fixture-{Guid.NewGuid():N}"));
+                    bookmarkStore.Add(Unquote(line.Split(' ', 2)[1]));
+                    break;
+                case "bfilter":
+                    bookmarkInput = new TextInput();
+                    bookmarkInput.InsertString(Unquote(line.Split(' ', 2)[1]));
+                    break;
+                case "bsel":
+                    bookmarkSelected = ParseInt(tokens[1]);
+                    break;
+                case "bscroll":
+                    bookmarkScroll = ParseInt(tokens[1]);
+                    break;
+                case "bookmarkrender":
+                {
+                    List<string> filtered = [];
+                    string filter = bookmarkInput?.Value ?? "";
+                    foreach (string bookmark in bookmarkStore!.Bookmarks)
+                    {
+                        if (string.IsNullOrEmpty(filter) || bookmark.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                        {
+                            filtered.Add(bookmark);
+                        }
+                    }
+
+                    BookmarksDialog.Render(buffer, width, height, filtered, bookmarkSelected, bookmarkScroll, bookmarkInput);
+                    break;
+                }
+                case "ctxmenu":
+                {
+                    // ctxmenu ANCHORROW ANCHORCOL
+                    ctxAnchorRow = ParseInt(tokens[1]);
+                    ctxAnchorCol = ParseInt(tokens[2]);
+                    ctxItems = [];
+                    break;
+                }
+                case "citem":
+                {
+                    // citem "Label" "Shortcut"
+                    string rest = line["citem ".Length..];
+                    int firstEnd = rest.IndexOf('"', 1);
+                    int secondStart = rest.IndexOf('"', firstEnd + 1);
+                    int secondEnd = rest.IndexOf('"', secondStart + 1);
+                    string label = rest[1..firstEnd];
+                    string shortcut = rest[(secondStart + 1)..secondEnd];
+                    ctxItems!.Add(new ActionMenuItem { Label = label, Shortcut = shortcut, Action = AppAction.None });
+                    break;
+                }
+                case "endctxmenu":
+                {
+                    var state = new ContextMenuState([.. ctxItems!], ctxAnchorRow, ctxAnchorCol);
+                    ContextMenuRenderer.Render(buffer, width, height, state);
+                    ctxItems = null;
+                    break;
+                }
                 default:
                     throw new InvalidDataException($"Unknown op '{tokens[0]}' in {scenarioPath}");
             }

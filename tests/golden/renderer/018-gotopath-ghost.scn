@@ -1,0 +1,8 @@
+# GoToPath dialog with and without the ghost suggestion suffix.
+size 80 25
+gotopathdlg "C:\definitely-not-real" "C:\definitely-not-real\alpha"
+flush
+gotopathdlg "C:\definitely-not-real"
+flush
+gotopathdlg "C:\definitely-not-real" "C:\definitely-not-real"
+flush

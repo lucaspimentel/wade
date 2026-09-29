@@ -2,6 +2,7 @@
 
 pub mod action_palette;
 pub mod config_dialog;
+pub mod context_menu;
 pub mod dialog_box;
 pub mod file_icons;
 pub mod help_overlay;
