@@ -1255,6 +1255,14 @@ mod tests {
 
     #[test]
     fn path_helpers_round_trip() {
+        assert_eq!(file_name_of("C:/foo/bar/"), "bar");
+        assert_eq!(parent_of("/foo/bar"), Some("/foo".to_string()));
+        assert_eq!(parent_of("C:/foo"), Some("C:/".to_string()));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn path_helpers_windows_semantics() {
         assert!(is_absolute_path(r"C:\foo"));
         assert!(is_absolute_path("C:/foo"));
         assert!(!is_absolute_path(r"foo\bar"));
