@@ -1,0 +1,10 @@
+# Confirm dialog over a populated center pane
+size 80 25
+list main
+dir src 2024-01-02T03:04:00
+file README.md 1234 2024-02-03T14:30:00
+endlist
+layout 3pane
+filelist center main 0 0 active icons size date
+confirmdlg "Delete" "Delete 2 item(s)?"
+flush

@@ -1,0 +1,8 @@
+# Palette at submenu depth with a submenu row
+size 80 25
+palette "Change preview" 2 2
+pitem "Text" ""
+pitem "Hex" ""
+pitem "Change preview" "p" sub
+endpalette
+flush

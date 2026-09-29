@@ -1,0 +1,9 @@
+# Action palette with selection on the second entry
+size 80 25
+palette "Action Palette" 1 1
+pitem "Toggle hidden files" "."
+pitem "Toggle left pane" "["
+pitem "Cycle sort mode" "s"
+pitem "Help" "?"
+endpalette
+flush

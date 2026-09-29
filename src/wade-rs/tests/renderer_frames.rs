@@ -6,13 +6,18 @@ use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
+use wade::app::dialogs;
+use wade::app::input_reader::AppAction;
 use wade::fs::directory_contents::{FileSystemEntry, SortMode, DRIVES_PATH};
-use wade::screen::ScreenBuffer;
+use wade::screen::{CellStyle, Color, ScreenBuffer};
+use wade::ui::action_palette::{ActionMenuItem, ActionMenuLevel};
 use wade::ui::format_helpers::DateParts;
+use wade::ui::help_overlay;
 use wade::ui::layout::{Layout, Rect};
 use wade::ui::notification::{Notification, NotificationKind};
 use wade::ui::pane_renderer::PaneRenderer;
 use wade::ui::status_bar;
+use wade::ui::text_input::TextInput;
 
 /// Goldens are stored with LF endings but a CRLF checkout must not break
 /// byte-for-byte comparison.
@@ -57,6 +62,24 @@ fn parse_date(token: &str) -> DateParts {
 
 fn unquote(s: &str) -> String {
     s.trim_matches('"').to_string()
+}
+
+/// All `"..."` spans in the string, in order.
+fn quoted_spans(s: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'"'
+            && let Some(end) = s[i + 1..].find('"')
+        {
+            out.push(s[i + 1..i + 1 + end].to_string());
+            i += end + 2;
+        } else {
+            i += 1;
+        }
+    }
+    out
 }
 
 fn make_entry(name: &str, is_directory: bool, size: i64, modified: DateParts) -> FileSystemEntry {
@@ -117,6 +140,10 @@ fn run_scenario(path: &Path) -> String {
     let mut layout = Layout::default();
     let mut lists: HashMap<String, Vec<FileSystemEntry>> = HashMap::new();
     let mut current_list: Option<String> = None;
+    let mut palette_title = String::new();
+    let mut palette_depth = 1;
+    let mut palette_selected = 0;
+    let mut palette_items: Option<Vec<ActionMenuItem>> = None;
     let mut notification: Option<Notification> = None;
     let mut flushes: Vec<String> = Vec::new();
     let mut out = String::new();
@@ -251,6 +278,99 @@ fn run_scenario(path: &Path) -> String {
                     None,
                     None,
                 );
+            }
+            "help" => {
+                let buffer = buffer.as_mut().expect("size op first");
+                help_overlay::render(buffer, width, height);
+            }
+            "confirmdlg" => {
+                // confirmdlg "TITLE" "MESSAGE"
+                let title = unquote(tokens[1]);
+                let message = unquote(line.splitn(3, ' ').nth(2).expect("message"));
+                let buffer = buffer.as_mut().expect("size op first");
+                dialogs::render_confirm_dialog(
+                    buffer,
+                    width,
+                    height,
+                    if title == "-" { None } else { Some(&title) },
+                    &message,
+                );
+            }
+            "textinputdlg" => {
+                // textinputdlg "TITLE" "VALUE"
+                let title = unquote(tokens[1]);
+                let value = unquote(line.splitn(3, ' ').nth(2).expect("value"));
+                let mut input = TextInput::new(&value);
+                let buffer = buffer.as_mut().expect("size op first");
+                dialogs::render_text_input_dialog(
+                    buffer,
+                    width,
+                    height,
+                    if title == "-" { None } else { Some(&title) },
+                    Some(&mut input),
+                );
+            }
+            "gotopathdlg" => {
+                // gotopathdlg "VALUE"
+                let value = unquote(line.split_once(' ').map(|x| x.1).expect("value"));
+                let mut input = TextInput::new(&value);
+                let buffer = buffer.as_mut().expect("size op first");
+                dialogs::render_go_to_path_dialog(buffer, width, height, Some(&mut input));
+            }
+            "palette" => {
+                // palette "TITLE" DEPTH SELECTED
+                let rest = &line["palette ".len()..];
+                let spans = quoted_spans(rest);
+                palette_title = spans[0].clone();
+                let after_title = &rest[rest[1..].find('"').expect("closing quote") + 2..];
+                let nums: Vec<&str> = after_title.split_whitespace().collect();
+                palette_depth = parse_i32(nums[0]);
+                palette_selected = parse_i32(nums[1]);
+                palette_items = Some(Vec::new());
+            }
+            "pitem" => {
+                // pitem "Label" "Shortcut" [sub]
+                let spans = quoted_spans(&line["pitem ".len()..]);
+                palette_items
+                    .as_mut()
+                    .expect("palette op first")
+                    .push(ActionMenuItem::new(&spans[0], &spans[1], AppAction::None));
+            }
+            "endpalette" => {
+                let items = palette_items.take().expect("palette op first");
+                let mut level = ActionMenuLevel::new(&palette_title, items);
+                level.selected_index = palette_selected.max(0) as usize;
+                let buffer = buffer.as_mut().expect("size op first");
+                dialogs::render_action_palette(buffer, width, height, &mut level, palette_depth);
+            }
+            "searchbar" => {
+                // searchbar ACTIVE "FILTER"
+                let active = tokens[1] == "active";
+                let filter = unquote(line.splitn(3, ' ').nth(2).expect("filter"));
+                let mut input = TextInput::new(&filter);
+                let buffer = buffer.as_mut().expect("size op first");
+                dialogs::render_search_bar(
+                    buffer,
+                    layout.center_pane,
+                    active,
+                    &filter,
+                    if active { Some(&mut input) } else { None },
+                );
+            }
+            "textinput" => {
+                // textinput ROW COL WIDTH "VALUE"
+                let row = parse_i32(tokens[1]);
+                let col = parse_i32(tokens[2]);
+                let w = parse_i32(tokens[3]);
+                let value = unquote(line.splitn(5, ' ').nth(4).expect("value"));
+                let mut input = TextInput::new(&value);
+                let style = CellStyle {
+                    fg: Some(Color { r: 200, g: 200, b: 200 }),
+                    bg: None,
+                    ..CellStyle::default()
+                };
+                let buffer = buffer.as_mut().expect("size op first");
+                input.render(buffer, row, col, w, style);
             }
             "flush" => {
                 let buffer = buffer.as_mut().expect("size op first");

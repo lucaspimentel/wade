@@ -20,6 +20,10 @@ internal static class RendererFixtureRunner
         var layout = new Layout();
         var lists = new Dictionary<string, List<FileSystemEntry>>(StringComparer.Ordinal);
         List<FileSystemEntry>? currentList = null;
+        string paletteTitle = "";
+        int paletteDepth = 1;
+        int paletteSelected = 0;
+        List<ActionMenuItem>? currentPaletteItems = null;
         Notification? notification = null;
         var flushes = new List<string>();
         var sb = new StringBuilder();
@@ -131,6 +135,82 @@ internal static class RendererFixtureRunner
                     notification = null;
                     break;
                 }
+                case "help":
+                    HelpOverlay.Render(buffer, width, height);
+                    break;
+                case "confirmdlg":
+                {
+                    // confirmdlg "TITLE" "MESSAGE"
+                    string title = Unquote(tokens[1]);
+                    string message = Unquote(line.Split(' ', 3)[2]);
+                    ConfirmDialog.Render(buffer, width, height, title == "-" ? null : title, message);
+                    break;
+                }
+                case "textinputdlg":
+                {
+                    // textinputdlg "TITLE" "VALUE"
+                    string title = Unquote(tokens[1]);
+                    string value = Unquote(line.Split(' ', 3)[2]);
+                    TextInputDialog.Render(buffer, width, height, title == "-" ? null : title, new TextInput(value));
+                    break;
+                }
+                case "gotopathdlg":
+                {
+                    // gotopathdlg "VALUE"
+                    string value = Unquote(line.Split(' ', 2)[1]);
+                    GoToPathDialog.Render(buffer, width, height, new TextInput(value), suggestion: null);
+                    break;
+                }
+                case "palette":
+                {
+                    // palette "TITLE" DEPTH SELECTED
+                    string rest = line["palette ".Length..];
+                    paletteTitle = Unquote(FirstQuotedSpan(rest));
+                    string after = rest[(rest.IndexOf('"', 1) + 1)..];
+                    string[] nums = after.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    paletteDepth = ParseInt(nums[0]);
+                    paletteSelected = ParseInt(nums[1]);
+                    currentPaletteItems = [];
+                    break;
+                }
+                case "pitem":
+                {
+                    // pitem "Label" "Shortcut" [sub]
+                    string rest = line["pitem ".Length..];
+                    int firstEnd = rest.IndexOf('"', 1);
+                    int secondStart = rest.IndexOf('"', firstEnd + 1);
+                    int secondEnd = rest.IndexOf('"', secondStart + 1);
+                    string label = rest[1..firstEnd];
+                    string shortcut = rest[(secondStart + 1)..secondEnd];
+                    currentPaletteItems!.Add(new ActionMenuItem { Label = label, Shortcut = shortcut, Action = AppAction.None });
+                    break;
+                }
+                case "endpalette":
+                {
+                    var level = new ActionMenuLevel(paletteTitle, [.. currentPaletteItems!]);
+                    level.SelectedIndex = paletteSelected;
+                    ActionPaletteDialog.Render(buffer, width, height, level, paletteDepth);
+                    currentPaletteItems = null;
+                    break;
+                }
+                case "searchbar":
+                {
+                    // searchbar ACTIVE "FILTER"
+                    bool active = tokens[1] == "active";
+                    string filter = Unquote(line.Split(' ', 3)[2]);
+                    SearchBar.Render(buffer, layout.CenterPane, active, filter, active ? new TextInput(filter) : null);
+                    break;
+                }
+                case "textinput":
+                {
+                    // textinput ROW COL WIDTH "VALUE"
+                    int row = ParseInt(tokens[1]);
+                    int col = ParseInt(tokens[2]);
+                    int w = ParseInt(tokens[3]);
+                    string value = Unquote(line.Split(' ', 5)[4]);
+                    new TextInput(value).Render(buffer, row, col, w, new CellStyle(new Terminal.Color(200, 200, 200), null));
+                    break;
+                }
                 case "flush":
                     buffer.Serialize(sb);
                     flushes.Add(sb.ToString());
@@ -172,6 +252,13 @@ internal static class RendererFixtureRunner
         DriveFormat: format, DriveLabel: label, DriveFreeSpace: free, DriveTotalSize: total);
 
     private static string Unquote(string s) => s.Trim('"');
+
+    private static string FirstQuotedSpan(string s)
+    {
+        int start = s.IndexOf('"');
+        int end = s.IndexOf('"', start + 1);
+        return s[(start + 1)..end];
+    }
 
     private static int ParseInt(string token) => int.Parse(token, CultureInfo.InvariantCulture);
 

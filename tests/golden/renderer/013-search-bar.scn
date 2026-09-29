@@ -1,0 +1,11 @@
+# Search bar: active (with input widget) and inactive (filter only)
+size 80 25
+list main
+dir src 2024-01-02T03:04:00
+file README.md 1234 2024-02-03T14:30:00
+endlist
+layout 3pane
+searchbar active "read"
+flush
+searchbar inactive "read"
+flush

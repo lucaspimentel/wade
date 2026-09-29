@@ -1,0 +1,4 @@
+# Go-to-path dialog with a typed path
+size 80 25
+gotopathdlg "C:\fixture\src"
+flush

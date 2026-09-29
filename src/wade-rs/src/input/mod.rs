@@ -38,7 +38,7 @@ pub enum MouseButton {
     None,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct KeyEvent {
     pub key: ConsoleKey,
     /// UTF-16 code unit, mirroring C# `char UnicodeChar` semantics.

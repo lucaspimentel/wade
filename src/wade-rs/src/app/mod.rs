@@ -3,12 +3,14 @@
 //! operations, dialogs) dispatch a status-bar notification instead;
 //! tracked as a temporary deviation in KNOWN_DEVIATIONS.md.
 
+pub mod dialogs;
 pub mod input_reader;
 
 use std::collections::HashMap;
 use std::path::Path;
 
 use crate::fs::directory_contents::{DirectoryContents, FileSystemEntry, DRIVES_PATH};
+pub use crate::input::InputMode;
 use crate::input::{InputEvent, InputSource, KeyEvent, ResizeEvent};
 use crate::screen::ScreenBuffer;
 use crate::ui::notification::{Notification, NotificationKind};
@@ -77,6 +79,7 @@ pub struct App {
     write_cwd: bool,
     last_width: i32,
     last_height: i32,
+    pub(crate) modal: dialogs::ModalState,
 }
 
 impl App {
@@ -101,6 +104,7 @@ impl App {
             write_cwd: true,
             last_width: 0,
             last_height: 0,
+            modal: dialogs::ModalState::default(),
         }
     }
 
@@ -206,6 +210,10 @@ impl App {
     }
 
     fn handle_key(&mut self, key: KeyEvent) {
+        if self.handle_modal_key(key) {
+            return;
+        }
+
         let action = map_key(&key);
         self.dispatch(action);
     }
@@ -320,6 +328,18 @@ impl App {
                 self.directory_contents.sort_ascending = self.config.sort_ascending;
                 self.directory_contents.invalidate_all();
             }
+            A::ShowHelp => {
+                self.input_mode = InputMode::Help;
+            }
+            A::Search => {
+                self.input_mode = InputMode::Search;
+                self.modal.search_input = Some(crate::ui::text_input::TextInput::new(&self.search_filter));
+            }
+            A::GoToPath => {
+                self.input_mode = InputMode::GoToPath;
+                self.modal.go_to_path_input = Some(crate::ui::text_input::TextInput::default());
+            }
+            A::ShowActionPalette => self.show_action_palette(),
             other => {
                 // Unported in 3a: navigation to the subsystem lands in later phases.
                 self.show_notification("Not yet ported", NotificationKind::Info);
@@ -501,6 +521,9 @@ impl App {
             None,
             None,
         );
+
+        // Search bar, help overlay, and modal dialogs render last, on top.
+        self.render_modals(buffer);
     }
 
     fn render_left_pane(&mut self, buffer: &mut ScreenBuffer) {

@@ -1,0 +1,4 @@
+# Bare TextInput widget rendering at a known location
+size 80 25
+textinput 5 10 30 "hello world"
+flush
