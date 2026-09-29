@@ -9,6 +9,13 @@ use std::path::{Path, PathBuf};
 use wade::input::decode::{decode_records, RawRecord};
 use wade::input::{InputEvent, MouseButton};
 
+/// Goldens are stored with LF endings but a CRLF checkout must not break
+/// byte-for-byte comparison.
+fn normalize_lf(s: &str) -> String {
+    s.replace("\u{d}\u{a}", "\u{a}")
+}
+
+
 fn golden_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/golden/input")
 }
@@ -46,7 +53,7 @@ fn parse_i32(token: &str) -> i32 {
 
 /// Parses a fixture into (records, window_width, window_height).
 fn parse_fixture(path: &Path) -> (Vec<RawRecord>, i32, i32) {
-    let text = std::fs::read_to_string(path).expect("read fixture");
+    let text = normalize_lf(&std::fs::read_to_string(path).expect("read fixture"));
     let mut records = Vec::new();
     let mut window = (80, 25);
 
@@ -178,12 +185,12 @@ fn input_decode_fixtures_match_csharp_output() {
     let mut compared = 0;
     for fixture_path in fixtures {
         let golden_path = fixture_path.with_extension("golden.txt");
-        let expected = std::fs::read_to_string(&golden_path).unwrap_or_else(|_| {
+        let expected = normalize_lf(&std::fs::read_to_string(&golden_path).unwrap_or_else(|_| {
             panic!(
                 "missing golden file {}; generate with the C# test and WADE_UPDATE_GOLDENS=1",
                 golden_path.display()
             )
-        });
+        }));
 
         let (records, window_width, window_height) = parse_fixture(&fixture_path);
         let events = decode_records(&records, window_width, window_height);

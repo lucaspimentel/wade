@@ -5,7 +5,7 @@ use std::path::Path;
 use wade::app::input_reader::AppAction;
 use wade::app::{App, AppConfig};
 use wade::fs::directory_contents::SortMode;
-use wade::input::CancelToken;
+use wade::input::{CancelToken, InputSource};
 
 fn main() {
     // C# WadeConfig.Load: config file first, then args
@@ -29,10 +29,15 @@ fn main() {
     }
 
     let mut app = App::new(config);
-    let mut source = wade::input::windows::WindowsInputSource::new();
+
+    #[cfg(windows)]
+    let mut source: Box<dyn InputSource> = Box::new(wade::input::windows::WindowsInputSource::new());
+    #[cfg(not(windows))]
+    // Unix input lands in Phase 9; stub source that yields no events.
+    let mut source: Box<dyn InputSource> = Box::new(NullInputSource);
     let cancel = CancelToken::new();
 
-    let result = app.run(&mut source, &cancel);
+    let result = app.run(&mut *source, &cancel);
 
     // C# writes the final directory to stdout for shell integration
     if let Some(cwd) = result {
@@ -112,5 +117,18 @@ fn parse_sort_mode(value: &str) -> Option<SortMode> {
         "size" => Some(SortMode::Size),
         "extension" => Some(SortMode::Extension),
         _ => None,
+    }
+}
+
+/// Placeholder input source for non-Windows platforms (Unix input is
+/// implemented in Phase 9). Yields no events, so the app idles instead of
+/// reading a terminal.
+#[cfg(not(windows))]
+struct NullInputSource;
+
+#[cfg(not(windows))]
+impl InputSource for NullInputSource {
+    fn read_next(&mut self, _cancel: &CancelToken) -> Option<wade::input::InputEvent> {
+        None
     }
 }

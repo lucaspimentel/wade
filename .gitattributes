@@ -4,3 +4,5 @@
 # See https://help.github.com/articles/dealing-with-line-endings/
 *.sh text eol=lf
 *.bash text eol=lf
+# Golden fixtures are compared byte-for-byte by Rust and C# tests; keep LF.
+tests/golden/** text eol=lf

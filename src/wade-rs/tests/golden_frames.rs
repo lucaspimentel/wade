@@ -7,6 +7,12 @@ use std::path::{Path, PathBuf};
 
 use wade::screen::{CellStyle, Color, ScreenBuffer};
 
+/// Goldens are stored with LF endings but a CRLF checkout must not break
+/// byte-for-byte comparison.
+fn normalize_lf(s: &str) -> String {
+    s.replace("\u{d}\u{a}", "\u{a}")
+}
+
 fn golden_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/golden/screenbuffer")
 }
@@ -108,7 +114,7 @@ fn parse_style(tokens: &[&str]) -> Style {
 }
 
 fn run_scenario(path: &Path) -> Vec<String> {
-    let text = std::fs::read_to_string(path).expect("read scenario");
+    let text = normalize_lf(&std::fs::read_to_string(path).expect("read scenario"));
     let mut buffer: Option<ScreenBuffer> = None;
     let mut out = String::new();
     let mut flushes = Vec::new();
@@ -192,8 +198,12 @@ fn golden_frames_match_csharp_output() {
     for scenario_path in scenarios {
         let golden_path = scenario_path.with_extension("golden.txt");
         let actual = format_golden(&run_scenario(&scenario_path));
-        let expected = std::fs::read_to_string(&golden_path)
-            .unwrap_or_else(|_| panic!("missing golden file {}; generate with the C# test and WADE_UPDATE_GOLDENS=1", golden_path.display()));
+        let expected = normalize_lf(&std::fs::read_to_string(&golden_path).unwrap_or_else(|_| {
+            panic!(
+                "missing golden file {}; generate with the C# test and WADE_UPDATE_GOLDENS=1",
+                golden_path.display()
+            )
+        }));
         assert_eq!(expected, actual, "golden mismatch for {}", scenario_path.display());
         compared += 1;
     }

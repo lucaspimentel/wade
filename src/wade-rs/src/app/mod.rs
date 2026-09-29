@@ -632,7 +632,16 @@ fn now_ms() -> i64 {
 }
 
 fn terminal_size() -> Option<(i32, i32)> {
-    crate::input::windows::window_size_pub()
+    // Real size comes from the console API on Windows; Unix input (Phase 9)
+    // does not implement window queries yet.
+    #[cfg(windows)]
+    {
+        crate::input::windows::window_size_pub()
+    }
+    #[cfg(not(windows))]
+    {
+        None
+    }
 }
 
 fn clear_screen() {
