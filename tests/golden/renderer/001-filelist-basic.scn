@@ -1,0 +1,11 @@
+# Center pane file list with icons, size, date columns
+size 80 25
+list main
+dir src 2024-01-02T03:04:00
+file README.md 1234 2024-02-03T14:30:00
+file photo.jpg 2048 2023-12-31T23:59:00
+file app.rs 987654 2024-05-06T07:08:00
+endlist
+layout 3pane
+filelist center main 1 0 active icons size date
+flush

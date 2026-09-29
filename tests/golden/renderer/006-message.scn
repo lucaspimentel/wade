@@ -1,0 +1,5 @@
+# Preview pane placeholder message
+size 80 25
+layout 3pane
+message right "[no preview available]"
+flush

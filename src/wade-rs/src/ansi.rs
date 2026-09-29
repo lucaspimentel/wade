@@ -39,3 +39,5 @@ fn push_i32(out: &mut String, value: i32) {
     use std::fmt::Write as _;
     let _ = write!(out, "{value}");
 }
+
+pub const CLEAR_SCREEN: &str = "\x1b[2J";

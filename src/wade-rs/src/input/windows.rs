@@ -95,6 +95,10 @@ impl InputSource for WindowsInputSource {
             }
         }
     }
+
+    fn try_take(&mut self) -> Option<InputEvent> {
+        self.try_take_impl()
+    }
 }
 
 fn to_raw_record(record: &INPUT_RECORD) -> RawRecord {
@@ -137,4 +141,31 @@ fn window_size() -> (i32, i32) {
     } else {
         (80, 25)
     }
+}
+
+impl WindowsInputSource {
+    /// Non-blocking drain: pops an already-decoded event, or reads a batch
+    /// if one is immediately available (0 ms wait).
+    fn try_take_impl(&mut self) -> Option<InputEvent> {
+        if let Some(evt) = self.pending.pop_front() {
+            return Some(evt);
+        }
+
+        unsafe {
+            if WaitForSingleObject(self.stdin_handle, 0) != WAIT_OBJECT_0 {
+                return None;
+            }
+        }
+
+        self.read_batch(window_size());
+        self.pending.pop_front()
+    }
+}
+
+
+
+/// Public window size for the app loop's startup dimensions.
+#[must_use]
+pub fn window_size_pub() -> Option<(i32, i32)> {
+    Some(window_size())
 }

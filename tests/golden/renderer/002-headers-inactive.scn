@@ -1,0 +1,10 @@
+# Column headers plus inactive (left pane) selection styling
+size 80 25
+list main
+dir src 2024-01-02T03:04:00
+file README.md 1234 2024-02-03T14:30:00
+endlist
+layout 3pane
+headers center icons size date
+filelist center main 0 0 inactive icons size date
+flush

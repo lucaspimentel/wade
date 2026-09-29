@@ -1,0 +1,11 @@
+# Drive view: volume label, format, free, size, percent bar columns
+size 80 25
+list drives
+drive C: NTFS Windows_SSD 53687091200 107374182400
+drive D: exFAT Data 858993459200 2000496476160
+endlist
+layout 3pane
+headers center drive
+filelist center drives 0 0 active drive
+statusbar "Drives" 0 2
+flush

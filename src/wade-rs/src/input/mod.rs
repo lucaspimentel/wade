@@ -100,4 +100,12 @@ impl CancelToken {
 /// Port of src/Wade/Terminal/IInputSource.cs.
 pub trait InputSource {
     fn read_next(&mut self, cancel: &CancelToken) -> Option<InputEvent>;
+
+    /// Non-blocking poll for an already-available event (drains queued
+    /// events between frames, mirroring `InputPipeline.TryTake`).
+    fn try_take(&mut self) -> Option<InputEvent> {
+        None
+    }
 }
+
+

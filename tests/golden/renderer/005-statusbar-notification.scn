@@ -1,0 +1,13 @@
+# Status bar with success and info notifications in the gap
+size 80 25
+list main
+dir src 2024-01-02T03:04:00
+file README.md 1234 2024-02-03T14:30:00
+endlist
+layout 3pane
+statusbar "C:\fixture" 0 2 list main
+notify success "Saved"
+statusbar "C:\fixture" 0 2 list main
+notify info "Not yet ported"
+statusbar "C:\fixture" 0 2 list main
+flush
