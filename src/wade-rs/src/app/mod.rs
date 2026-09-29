@@ -3,6 +3,7 @@
 //! operations, dialogs) dispatch a status-bar notification instead;
 //! tracked as a temporary deviation in KNOWN_DEVIATIONS.md.
 
+pub mod config_io;
 pub mod dialogs;
 pub mod input_reader;
 
@@ -23,6 +24,8 @@ use input_reader::{map_key, AppAction};
 const NOTIFICATION_DURATION_MS: i64 = 4000;
 
 /// Port of the 3a subset of `WadeConfig` (same config.toml keys).
+/// 3c adds the remaining `WadeConfig` settings so the config dialog can
+/// round-trip all 27 of them.
 #[derive(Clone, Debug)]
 pub struct AppConfig {
     pub start_path: String,
@@ -37,6 +40,25 @@ pub struct AppConfig {
     pub size_column_enabled: bool,
     pub date_column_enabled: bool,
     pub column_headers_enabled: bool,
+    pub confirm_delete_enabled: bool,
+    pub copy_symlinks_as_links_enabled: bool,
+    pub zip_preview_enabled: bool,
+    pub terminal_title_enabled: bool,
+    pub git_status_enabled: bool,
+    pub file_metadata_enabled: bool,
+    pub file_previews_enabled: bool,
+    pub archive_metadata_enabled: bool,
+    pub dir_size_ssd_enabled: bool,
+    pub dir_size_hdd_enabled: bool,
+    pub dir_size_network_enabled: bool,
+    pub pdf_preview_enabled: bool,
+    pub pdf_metadata_enabled: bool,
+    pub markdown_preview_enabled: bool,
+    pub ffprobe_enabled: bool,
+    pub mediainfo_enabled: bool,
+    /// C# `WadeConfig.ConfigFilePath`: where `Save()` writes. `None` means
+    /// the default `~/.config/wade/config.toml`.
+    pub config_file_path: Option<String>,
 }
 
 impl Default for AppConfig {
@@ -54,6 +76,23 @@ impl Default for AppConfig {
             size_column_enabled: true,
             date_column_enabled: true,
             column_headers_enabled: true,
+            confirm_delete_enabled: true,
+            copy_symlinks_as_links_enabled: true,
+            zip_preview_enabled: true,
+            terminal_title_enabled: true,
+            git_status_enabled: true,
+            file_metadata_enabled: true,
+            file_previews_enabled: true,
+            archive_metadata_enabled: true,
+            dir_size_ssd_enabled: true,
+            dir_size_hdd_enabled: false,
+            dir_size_network_enabled: false,
+            pdf_preview_enabled: true,
+            pdf_metadata_enabled: true,
+            markdown_preview_enabled: true,
+            ffprobe_enabled: true,
+            mediainfo_enabled: true,
+            config_file_path: None,
         }
     }
 }
@@ -340,6 +379,7 @@ impl App {
                 self.modal.go_to_path_input = Some(crate::ui::text_input::TextInput::default());
             }
             A::ShowActionPalette => self.show_action_palette(),
+            A::ShowConfig => self.show_config_dialog(),
             other => {
                 // Unported in 3a: navigation to the subsystem lands in later phases.
                 self.show_notification("Not yet ported", NotificationKind::Info);
@@ -434,6 +474,21 @@ impl App {
             kind,
             timestamp_ms: now_ms(),
         });
+    }
+
+    /// Port of `UpdateTerminalTitle` (App.cs): OSC 0 title set/clear.
+    pub fn update_terminal_title(&self) {
+        use std::io::Write;
+
+        let sequence = if self.config.terminal_title_enabled {
+            crate::ansi::set_title(&format!("wade - {}", self.current_path))
+        } else {
+            crate::ansi::set_title("")
+        };
+
+        let mut out = std::io::stdout();
+        let _ = out.write_all(sequence.as_bytes());
+        let _ = out.flush();
     }
 
     /// Port of `ClearSearchFilter`.

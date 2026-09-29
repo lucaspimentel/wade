@@ -9,9 +9,11 @@ use crate::fs::directory_contents::capitalize_drive_letter;
 use crate::screen::{CellStyle, Color, ScreenBuffer};
 use crate::ui::layout::Rect;
 use crate::ui::action_palette::{ActionMenuItem, ActionMenuLevel};
+use crate::ui::config_dialog::ConfigDialogState;
 use crate::ui::text_input::TextInput;
 use crate::ui::dialog_box::{self, BG_COLOR};
 use crate::ui::help_overlay;
+use crate::ui::notification::NotificationKind;
 
 /// Purpose of the active text-input dialog (what C# stores as an
 /// `Action<string>` completion callback). The file-operation consumers land
@@ -35,6 +37,7 @@ pub(crate) struct ModalState {
     pub go_to_path_input: Option<TextInput>,
     pub action_menu_stack: Vec<ActionMenuLevel>,
     pub search_input: Option<TextInput>,
+    pub config_state: Option<ConfigDialogState>,
 }
 
 
@@ -69,6 +72,10 @@ impl App {
             }
             InputMode::ActionPalette => {
                 self.handle_action_palette_key(key);
+                true
+            }
+            InputMode::Config => {
+                self.handle_config_key(key);
                 true
             }
             _ => false,
@@ -664,6 +671,11 @@ impl App {
             InputMode::TextInput => self.render_text_input_dialog(buffer, width, height),
             InputMode::GoToPath => self.render_go_to_path_dialog(buffer, width, height),
             InputMode::ActionPalette => self.render_action_palette(buffer, width, height),
+            InputMode::Config => {
+                if let Some(state) = &self.modal.config_state {
+                    render_config_dialog(buffer, width, height, state);
+                }
+            }
             _ => {}
         }
     }
@@ -700,8 +712,140 @@ impl App {
             render_action_palette(buffer, width, height, level, depth);
         }
     }
+
+    /// Port of `ShowConfigDialog` (App.cs).
+    pub fn show_config_dialog(&mut self) {
+        self.input_mode = InputMode::Config;
+        self.modal.config_state = Some(ConfigDialogState::from_app_config(&self.config));
+    }
+
+    /// Port of `HandleConfigKey` (App.cs).
+    pub fn handle_config_key(&mut self, key: KeyEvent) {
+        use crate::console_key::ConsoleKey;
+
+        let Some(state) = &mut self.modal.config_state else {
+            self.input_mode = InputMode::Normal;
+            return;
+        };
+
+        match key.key {
+            ConsoleKey::UpArrow | ConsoleKey::K => state.move_up(),
+            ConsoleKey::DownArrow | ConsoleKey::J => state.move_down(),
+            ConsoleKey::Spacebar => state.toggle_selected(),
+            ConsoleKey::Enter => self.apply_config_changes(),
+            ConsoleKey::Escape => self.input_mode = InputMode::Normal,
+            ConsoleKey::LeftArrow | ConsoleKey::H => state.cycle_prev_selected(),
+            ConsoleKey::RightArrow | ConsoleKey::L => state.cycle_next_selected(),
+            _ => {}
+        }
+    }
+
+    /// Port of `ApplyConfigChanges` (App.cs). Preview-cache clearing and the
+    /// git status refresh are skipped: those subsystems land in later phases.
+    fn apply_config_changes(&mut self) {
+        let Some(mut state) = self.modal.config_state.take() else {
+            return;
+        };
+
+        state.apply_to(&mut self.config);
+
+        self.directory_contents.show_hidden_files = self.config.show_hidden_files;
+        self.directory_contents.show_system_files = self.config.show_system_files;
+        self.directory_contents.sort_mode = self.config.sort_mode;
+        self.directory_contents.sort_ascending = self.config.sort_ascending;
+
+        self.parent_pane_enabled = self.config.parent_pane_enabled;
+        self.preview_pane_enabled = self.config.preview_pane_enabled;
+
+        self.directory_contents.invalidate_all();
+        self.layout
+            .calculate(self.last_width, self.last_height, self.preview_pane_enabled, self.parent_pane_enabled);
+        self.update_terminal_title();
+
+        match crate::app::config_io::save_config(&self.config) {
+            Ok(()) => self.show_notification("Configuration saved", NotificationKind::Success),
+            Err(err) => {
+                self.show_notification(&format!("Save failed: {err}"), NotificationKind::Error);
+            }
+        }
+
+        self.input_mode = InputMode::Normal;
+    }
 }
 
+
+/// Port of `RenderConfigDialog` (App.cs).
+pub fn render_config_dialog(buffer: &mut ScreenBuffer, width: i32, height: i32, state: &ConfigDialogState) {
+    const CONTENT_WIDTH: i32 = 47;
+    let content_height = state.items.len() as i32 + 1;
+    const FOOTER: &str = "[Space] Toggle [\u{25c4}\u{25ba}] Cycle [Enter] Save [Esc] Cancel";
+
+    let content = dialog_box::render(
+        buffer,
+        width,
+        height,
+        CONTENT_WIDTH.max(FOOTER.chars().count() as i32),
+        content_height,
+        Some("Configuration"),
+        Some(FOOTER),
+    );
+
+    let normal_style = CellStyle {
+        fg: Some(Color { r: 200, g: 200, b: 200 }),
+        bg: Some(BG_COLOR),
+        ..CellStyle::default()
+    };
+    let selected_style = CellStyle {
+        fg: Some(Color { r: 20, g: 20, b: 35 }),
+        bg: Some(Color { r: 200, g: 200, b: 200 }),
+        ..CellStyle::default()
+    };
+    let value_style = CellStyle {
+        fg: Some(Color { r: 100, g: 200, b: 255 }),
+        bg: Some(BG_COLOR),
+        ..CellStyle::default()
+    };
+    let value_selected_style = CellStyle {
+        fg: Some(Color { r: 20, g: 20, b: 35 }),
+        bg: Some(Color { r: 200, g: 200, b: 200 }),
+        ..CellStyle::default()
+    };
+    let disabled_style = CellStyle {
+        fg: Some(Color { r: 80, g: 80, b: 80 }),
+        bg: Some(BG_COLOR),
+        ..CellStyle::default()
+    };
+
+    for i in 0..state.items.len() {
+        let selected = i == state.selected_index;
+        let (style, v_style) = if !state.is_enabled(i) {
+            (disabled_style, disabled_style)
+        } else if selected {
+            (selected_style, value_selected_style)
+        } else {
+            (normal_style, value_style)
+        };
+
+        let row = content.top + i as i32;
+        let item = &state.items[i];
+        let label = if item.indent > 0 {
+            format!("{}{}", "  ".repeat(item.indent), item.label)
+        } else {
+            item.label.to_string()
+        };
+
+        const LABEL_WIDTH: i32 = 34;
+        buffer.write_string(row, content.left, &label, style, i64::from(LABEL_WIDTH));
+        let value = state.format_value(i);
+        buffer.write_string(
+            row,
+            content.left + LABEL_WIDTH,
+            &value,
+            v_style,
+            i64::from(content.width - LABEL_WIDTH),
+        );
+    }
+}
 
 /// Port of `RenderSearchBar` / `SearchBar.Render` (App.cs:4558).
     pub fn render_search_bar(

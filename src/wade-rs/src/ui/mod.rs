@@ -1,6 +1,7 @@
 //! UI layer: ports of src/Wade/UI/*.cs pieces used by the app spine.
 
 pub mod action_palette;
+pub mod config_dialog;
 pub mod dialog_box;
 pub mod file_icons;
 pub mod help_overlay;

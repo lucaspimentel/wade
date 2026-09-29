@@ -41,3 +41,9 @@ fn push_i32(out: &mut String, value: i32) {
 }
 
 pub const CLEAR_SCREEN: &str = "\x1b[2J";
+
+/// Terminal title (OSC 0): `ESC ] 0 ; <title> BEL`. Port of `AnsiCodes.SetTitle`.
+#[must_use]
+pub fn set_title(title: &str) -> String {
+    format!("\u{1b}]0;{title}\u{7}")
+}

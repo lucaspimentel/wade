@@ -19,6 +19,11 @@ this file to be empty or fully accepted.
   parent-directory editing), but Tab/RightArrow suggestion completion and
   the inline ghost suffix depend on `PathCompletion` and land in Phase 3c.
   Tab is consumed as a no-op in the meantime.
+- **Config toggles for unported subsystems are inert (Phase 3c).** The
+  config dialog ports all 27 settings and persists them, but toggles
+  gating subsystems that land in later phases (image/PDF/markdown/archive
+  previews, file/archive/pdf/media metadata, git status, directory sizes,
+  copy symlinks as links) have no runtime effect until those phases land.
 - **TextInput dialogs have no completion action yet (Phase 3b).** The
   dialog and key handling are ported, but the Rename/NewFile/NewDirectory
   consumers are file operations from a later phase; Enter with a purpose
