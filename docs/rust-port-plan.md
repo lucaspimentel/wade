@@ -63,6 +63,12 @@ Dependency replacements (verified against C# usage, crate choices inferred, not 
 
 Each phase ends with: `cargo test` green, `dotnet build Wade.slnx` still green, module merged to `main`.
 
+**Progress** (updated as phases land): Phase 0 done, Phase 1 done, Phase 2
+done (ScreenBuffer golden frames shipped with Phase 0's harness), Phase 3
+split into 3a (app spine, done), 3b (modal overlays: Confirm/TextInput/
+GoToPath/palette/help/search bar, done), and 3c (config dialog, bookmarks,
+path completion, mouse + context menu).
+
 ### Phase 0 — Scaffold + golden-frame harness
 
 - Create `src/wade-rs` crate; CI builds and tests both implementations.
@@ -85,14 +91,18 @@ Each phase ends with: `cargo test` green, `dotnet build Wade.slnx` still green, 
   `RuneWidth`, `AnsiCodes`, `FormatHelpers`.
 - **Verify**: golden frames — diff-style unit tests first, then frame comparisons against C# output.
 
-### Phase 3 — App spine
+### Phase 3 — App spine (3a: done; 3b: done; 3c: in progress)
 
-- App state machine (navigation, selection, three panes, layout), `DirectoryContents`,
-  `PathCompletion`, `BookmarkStore`, status bar, action palette, config dialog.
-- `App.cs` gets decomposed here into `app/` modules. Idiomatic event model replaces `InputPipeline`/
-  C# events, but behavior is cloned exactly.
-- **Verify**: golden frames for main screen states (normal, drive view, column headers, overlays);
-  manual drive-through of the key matrix.
+- **3a (done)**: App state machine (navigation, selection, three panes, layout),
+  `DirectoryContents`, status bar, action palette (portable entries only),
+  renderer fixtures.
+- **3b (done)**: `DialogBox`, `TextInput`, Help overlay, Confirm/TextInput/
+  GoToPath dialogs, action-palette stack machinery, search bar; C# render
+  cores extracted into `src/Wade/UI/ModalDialogs.cs` for fixture parity.
+- **3c**: config dialog (`ConfigDialogState`, full 27-item port), config
+  persistence (`WadeConfig.Save` port), `BookmarkStore` + bookmarks dialog,
+  `PathCompletion` + GoToPath ghost completion, paste events, mouse input,
+  right-click context menu.
 
 ### Phase 4 — Git + async loaders
 
