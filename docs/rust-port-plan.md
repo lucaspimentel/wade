@@ -65,9 +65,8 @@ Each phase ends with: `cargo test` green, `dotnet build Wade.slnx` still green, 
 
 **Progress** (updated as phases land): Phase 0 done, Phase 1 done, Phase 2
 done (ScreenBuffer golden frames shipped with Phase 0's harness), Phase 3
-split into 3a (app spine, done), 3b (modal overlays: Confirm/TextInput/
-GoToPath/palette/help/search bar, done), and 3c (config dialog, bookmarks,
-path completion, mouse + context menu).
+done (split into 3a app spine, 3b modal overlays, 3c config dialog /
+bookmarks / path completion / paste / mouse + context menu). Next: Phase 4.
 
 ### Phase 0 — Scaffold + golden-frame harness
 
@@ -91,7 +90,7 @@ path completion, mouse + context menu).
   `RuneWidth`, `AnsiCodes`, `FormatHelpers`.
 - **Verify**: golden frames — diff-style unit tests first, then frame comparisons against C# output.
 
-### Phase 3 — App spine (3a: done; 3b: done; 3c: in progress)
+### Phase 3 — App spine (done: 3a, 3b, 3c)
 
 - **3a (done)**: App state machine (navigation, selection, three panes, layout),
   `DirectoryContents`, status bar, action palette (portable entries only),
@@ -99,10 +98,13 @@ path completion, mouse + context menu).
 - **3b (done)**: `DialogBox`, `TextInput`, Help overlay, Confirm/TextInput/
   GoToPath dialogs, action-palette stack machinery, search bar; C# render
   cores extracted into `src/Wade/UI/ModalDialogs.cs` for fixture parity.
-- **3c**: config dialog (`ConfigDialogState`, full 27-item port), config
-  persistence (`WadeConfig.Save` port), `BookmarkStore` + bookmarks dialog,
-  `PathCompletion` + GoToPath ghost completion, paste events, mouse input,
-  right-click context menu.
+- **3c (done)**: config dialog (`ConfigDialogState`, full 27-item port),
+  config persistence (`WadeConfig.Save` port, `--config-file=` honored),
+  `BookmarkStore` + bookmarks dialog, `PathCompletion` + GoToPath ghost
+  completion, paste events, mouse input (scroll, pane click navigation),
+  right-click context menu; C# render cores extracted into `ModalDialogs.cs`
+  (`ConfigDialog`, `BookmarksDialog`); renderer fixtures gained a
+  `platform windows` gate for platform-dependent scenarios.
 
 ### Phase 4 — Git + async loaders
 
