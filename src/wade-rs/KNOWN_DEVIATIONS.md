@@ -7,14 +7,15 @@ this file to be empty or fully accepted.
 ## Temporary (phase-scoped, expected to be removed by later phases)
 
 - **Unported actions are stubbed with a notification (Phase 3a).** Actions
-  whose subsystems land in later phases (git: phase 4; file operations,
-  previews: later phases; file finder: phase 5) show a status-bar
-  notification ("Not yet ported") instead of performing the action. The
-  action palette omits entries whose actions are not yet ported (git,
-  preview providers, file operations, file finder, terminal); the submenu
-  stack machinery is ported and remaining entries are added in their
-  phases. The context menu likewise omits Paste/Copy/Cut (clipboard) and
-  Git stage/unstage (git) entries.
+  whose subsystems land in later phases (file operations, previews:
+  later phases; file finder: phase 5) show a status-bar notification ("Not
+  yet ported") instead of performing the action. The action palette omits
+  entries whose actions are not yet ported (preview providers, file
+  operations, file finder, terminal); the submenu stack machinery is
+  ported and remaining entries are added in their phases. Git actions are
+  ported (Phase 4b), except "Git: Copy relative path" (Y), which needs the
+  OS clipboard and is omitted until Phase 9 alongside the context menu
+  Paste/Copy/Cut entries.
 - **Config toggles for unported subsystems are inert (Phase 3c).** The
   config dialog ports all 27 settings and persists them, but toggles
   gating subsystems that land in later phases (image/PDF/markdown/archive
