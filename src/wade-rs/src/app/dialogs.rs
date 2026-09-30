@@ -795,6 +795,7 @@ impl App {
             self.marked_paths.clear();
             self.clear_search_filter();
             self.notification = None;
+            self.refresh_git_status();
         } else if is_file(&full) {
             let parent = match parent_of(&full) {
                 Some(p) => p,
@@ -813,13 +814,11 @@ impl App {
             self.marked_paths.clear();
             self.clear_search_filter();
             self.notification = None;
+            self.refresh_git_status();
         } else {
             self.show_notification("Path not found", crate::ui::NotificationKind::Error);
         }
     }
-
-    /// Fixture-facing helpers: the golden-frame harness drives these to set
-    /// up modal state before calling `render_modals`.
     pub fn set_screen_size(&mut self, width: i32, height: i32) {
         self.last_width = width;
         self.last_height = height;

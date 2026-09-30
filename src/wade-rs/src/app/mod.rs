@@ -4,13 +4,14 @@
 //! tracked as a temporary deviation in KNOWN_DEVIATIONS.md.
 
 pub mod config_io;
+pub mod git_status_loader;
 pub mod dialogs;
 pub mod input_reader;
 
 use std::collections::HashMap;
 use std::path::Path;
 
-use crate::fs::directory_contents::{DirectoryContents, FileSystemEntry, DRIVES_PATH};
+use crate::fs::directory_contents::{DirectoryContents, FileSystemEntry, GitFileStatus, DRIVES_PATH};
 pub use crate::input::InputMode;
 use crate::input::{InputEvent, KeyEvent, ResizeEvent};
 use crate::screen::ScreenBuffer;
@@ -109,6 +110,12 @@ pub struct App {
     selected_index_per_dir: HashMap<String, usize>,
     marked_paths: std::collections::HashSet<String>,
     notification: Option<Notification>,
+    pub(crate) git_status_loader: crate::app::git_status_loader::GitStatusLoader,
+    pub(crate) git_queries: std::sync::Arc<dyn crate::app::git_status_loader::GitQueries>,
+    current_repo_root: Option<String>,
+    current_branch_name: Option<String>,
+    git_statuses: Option<HashMap<String, GitFileStatus>>,
+    ahead_behind_text: Option<String>,
     /// Public so the bin crate can hand the pump thread a sender clone.
     pub pipeline: crate::input::input_pipeline::InputPipeline,
     bookmark_store: crate::fs::bookmark_store::BookmarkStore,
@@ -149,6 +156,12 @@ impl App {
             modal: dialogs::ModalState::default(),
             bookmark_store: crate::fs::bookmark_store::BookmarkStore::new(None),
             pipeline: crate::input::input_pipeline::InputPipeline::new(),
+            git_status_loader: crate::app::git_status_loader::GitStatusLoader::new(),
+            git_queries: std::sync::Arc::new(crate::app::git_status_loader::GitUtilsQueries),
+            current_repo_root: None,
+            current_branch_name: None,
+            git_statuses: None,
+            ahead_behind_text: None,
         }
     }
 
@@ -180,6 +193,7 @@ impl App {
         self.parent_pane_enabled = self.config.parent_pane_enabled;
         self.preview_pane_enabled = self.config.preview_pane_enabled;
         self.bookmark_store.load();
+        self.refresh_git_status();
 
         let (mut width, mut height) = terminal_size().unwrap_or((80, 25));
         self.last_width = width;
@@ -206,14 +220,16 @@ impl App {
                 break;
             };
 
-            // Drain queued key/mouse/resize events like the C# loop, keeping
-            // the last one
+            // Drain queued events like the C# loop, keeping the last key/
+            // mouse/paste/resize; git status ready events are handled inline
+            // exactly as C# processes them in its extra-event loop
             let mut current = event;
             while let Some(extra) = self.pipeline.try_take() {
                 match extra {
                     InputEvent::Resize(_) | InputEvent::Key(_) | InputEvent::Mouse(_) | InputEvent::Paste(_) => {
                         current = extra;
                     }
+                    InputEvent::GitStatusReady(ready) => self.handle_git_status_ready(ready),
                 }
             }
 
@@ -222,6 +238,7 @@ impl App {
                 InputEvent::Key(key) => self.handle_key(key),
                 InputEvent::Mouse(mouse) => self.handle_mouse(mouse),
                 InputEvent::Paste(text) => self.handle_paste_event(&text),
+                InputEvent::GitStatusReady(event) => self.handle_git_status_ready(event),
             }
 
             // Clamp selection and adjust scroll
@@ -335,6 +352,7 @@ impl App {
                 self.marked_paths.clear();
                 self.clear_search_filter();
                 self.directory_contents.invalidate_all();
+                self.refresh_git_status();
             }
             A::ToggleMark => {
                 if !entries.is_empty() && self.selected_index < entries.len() {
@@ -619,6 +637,62 @@ impl App {
         self.marked_paths.clear();
         self.clear_search_filter();
         self.update_terminal_title();
+        self.refresh_git_status();
+    }
+
+    /// Port of `RefreshGitStatus` (App.cs:2571).
+    pub fn refresh_git_status(&mut self) {
+        if !self.config.git_status_enabled {
+            self.current_repo_root = None;
+            self.current_branch_name = None;
+            self.git_statuses = None;
+            self.git_status_loader.cancel();
+        } else {
+            let repo_root = crate::fs::git_utils::find_repo_root(&self.current_path);
+            self.current_repo_root = repo_root.clone();
+
+            if let Some(root) = repo_root {
+                // Like C#: branch/statuses are NOT cleared here, so the
+                // previous listing stays visible until the new event lands
+                let sender = self.pipeline.sender();
+                let queries = std::sync::Arc::clone(&self.git_queries);
+                self.git_status_loader.begin_load(&root, queries, sender);
+            } else {
+                self.current_branch_name = None;
+                self.git_statuses = None;
+            }
+        }
+
+        // C# also calls RefreshInlineDirSizes here (Phase 4d).
+    }
+
+    /// Port of `HandleGitStatusReady` (App.cs:1455).
+    pub fn handle_git_status_ready(&mut self, event: crate::input::GitStatusReadyEvent) {
+        if Some(event.repo_root.clone()) != self.current_repo_root {
+            return;
+        }
+
+        self.current_branch_name = event.branch_name;
+        self.git_statuses = event.statuses;
+        self.ahead_behind_text = Self::format_ahead_behind(event.ahead, event.behind);
+    }
+
+    /// Port of `FormatAheadBehind` (App.cs:1461).
+    #[must_use]
+    pub fn format_ahead_behind(ahead: u32, behind: u32) -> Option<String> {
+        if ahead == 0 && behind == 0 {
+            return None;
+        }
+
+        if ahead > 0 && behind > 0 {
+            return Some(format!(" \u{2191}{ahead} \u{2193}{behind}"));
+        }
+
+        if ahead > 0 {
+            return Some(format!(" \u{2191}{ahead}"));
+        }
+
+        Some(format!(" \u{2193}{behind}"))
     }
 
     /// Left-pane click: navigate into the clicked directory, or navigate to
@@ -658,6 +732,7 @@ impl App {
             self.selected_index_per_dir.insert(self.current_path.clone(), self.selected_index);
             self.current_path = crate::fs::directory_contents::capitalize_drive_letter(&parent_key);
             self.update_terminal_title();
+            self.refresh_git_status();
             let parent_entries = self.directory_contents.get_entries(&self.current_path);
             self.selected_index = parent_entries
                 .iter()
@@ -782,7 +857,7 @@ impl App {
             self.config.size_column_enabled,
             self.config.date_column_enabled,
             &self.marked_paths,
-            None,
+            self.git_statuses.as_ref(),
             None,
             is_drive_view,
         );
@@ -816,8 +891,8 @@ impl App {
             self.config.sort_ascending,
             0,
             false,
-            None,
-            None,
+            self.current_branch_name.as_deref(),
+            self.ahead_behind_text.as_deref(),
         );
 
         // Search bar, help overlay, and modal dialogs render last, on top.

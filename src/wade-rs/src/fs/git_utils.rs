@@ -1,0 +1,584 @@
+//! Port of `src/Wade/FileSystem/GitUtils.cs` (git status subset; the action
+//! commands and GetDiff land in Phase 4b / Phase 7).
+
+use std::collections::HashMap;
+use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
+
+use super::directory_contents::GitFileStatus;
+use crate::input::CancelToken;
+
+const LOCAL_TIMEOUT_MS: u128 = 10_000;
+
+/// Case-insensitive status lookup mirroring the C# dictionary's
+/// `StringComparer.OrdinalIgnoreCase`: exact match first, then a
+/// case-insensitive scan on Windows only.
+#[must_use]
+pub fn statuses_get(map: &HashMap<String, GitFileStatus>, path: &str) -> Option<GitFileStatus> {
+    if let Some(status) = map.get(path) {
+        return Some(*status);
+    }
+
+    #[cfg(windows)]
+    {
+        map.iter()
+            .find(|(key, _)| key.eq_ignore_ascii_case(path))
+            .map(|(_, status)| *status)
+    }
+
+    #[cfg(not(windows))]
+    None
+}
+
+/// Port of `GitUtils.FindRepoRoot`: walks up from `path` looking for a
+/// directory containing a `.git` folder (or worktree `.git` file).
+#[must_use]
+pub fn find_repo_root(path: &str) -> Option<String> {
+    if path.is_empty() {
+        return None;
+    }
+
+    let dir_path = if std::path::Path::new(path).is_dir() {
+        std::path::PathBuf::from(path)
+    } else {
+        std::path::Path::new(path).parent()?.to_path_buf()
+    };
+
+    let mut dir = dir_path;
+    loop {
+        let git_path = dir.join(".git");
+        if git_path.is_dir() || git_path.is_file() {
+            return Some(dir.to_string_lossy().to_string());
+        }
+
+        dir = dir.parent()?.to_path_buf();
+    }
+}
+
+/// Port of `GitUtils.ReadBranchName`: reads the branch from `.git/HEAD`;
+/// supports worktrees (`.git` as a file with `gitdir: <path>`). Returns None
+/// for detached HEAD, missing files, or errors.
+#[must_use]
+pub fn read_branch_name(repo_root: &str) -> Option<String> {
+    let git_path = std::path::Path::new(repo_root).join(".git");
+    let head_path = if git_path.is_file() && !git_path.is_dir() {
+        // Worktree: .git is a file containing "gitdir: <path>"
+        let content = std::fs::read_to_string(&git_path).ok()?.trim().to_string();
+        let git_dir = content.strip_prefix("gitdir: ")?.trim().to_string();
+        let git_dir = if std::path::Path::new(&git_dir).is_absolute() {
+            std::path::PathBuf::from(git_dir)
+        } else {
+            std::path::Path::new(repo_root).join(git_dir)
+        };
+        git_dir.join("HEAD")
+    } else {
+        git_path.join("HEAD")
+    };
+
+    let head_content = std::fs::read_to_string(head_path).ok()?.trim().to_string();
+    head_content
+        .strip_prefix("ref: refs/heads/")
+        .map(str::to_string)
+}
+
+/// Port of `GitUtils.RunGitCommand` (success/error shape); used by the
+/// Phase 4b git actions. Reads stderr before stdout (C# behavior), then
+/// enforces the timeout via a try_wait poll loop (kill on expiry).
+#[allow(dead_code)] // wired up in Phase 4b
+pub fn run_git_command(
+    repo_root: &str,
+    arguments: &str,
+    cancel: &CancelToken,
+    timeout_ms: u128,
+) -> Result<(), String> {
+    run_git_capturing(repo_root, arguments, cancel, timeout_ms).map(|_| ())
+}
+
+/// Runs git and returns stdout on success.
+fn run_git_capturing(
+    repo_root: &str,
+    arguments: &str,
+    cancel: &CancelToken,
+    timeout_ms: u128,
+) -> Result<String, String> {
+    if cancel.is_cancelled() {
+        return Err("Cancelled".to_string());
+    }
+
+    let mut child = spawn_git(repo_root, arguments).map_err(|err| err.to_string())?;
+
+    // C# reads stderr first, then drains stdout; blocking reads clone the
+    // C# semantics (git commands here emit small output)
+    let stderr = read_stream(child.stderr.take());
+    let stdout = read_stream(child.stdout.take());
+
+    let Some(status) = wait_with_timeout(&mut child, timeout_ms) else {
+        return Err("Git command timed out".to_string());
+    };
+
+    if cancel.is_cancelled() {
+        return Err("Cancelled".to_string());
+    }
+
+    if !status.success() {
+        let error = stderr.trim();
+        if error.is_empty() {
+            return Err(format!("git exited with code {}", status.code().unwrap_or(-1)));
+        }
+
+        return Err(error.to_string());
+    }
+
+    Ok(stdout)
+}
+
+fn spawn_git(repo_root: &str, arguments: &str) -> std::io::Result<std::process::Child> {
+    Command::new("git")
+        .args(arguments.split(' '))
+        .current_dir(repo_root)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+}
+
+/// Read a ChildStdout/ChildStderr to end.
+fn read_stream<S: std::io::Read>(stream: Option<S>) -> String {
+    match stream {
+        Some(mut stream) => {
+            let mut text = String::new();
+            let _ = std::io::Read::read_to_string(&mut stream, &mut text);
+            text
+        }
+        None => String::new(),
+    }
+}
+
+/// Port of `WaitForExit(timeoutMs)`: poll `try_wait` and kill on expiry.
+/// Returns the exit status on success, None on timeout/error.
+fn wait_with_timeout(child: &mut std::process::Child, timeout_ms: u128) -> Option<std::process::ExitStatus> {
+    let deadline = Instant::now() + Duration::from_millis(timeout_ms as u64);
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => return Some(status),
+            Ok(None) => {
+                if Instant::now() >= deadline {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return None;
+                }
+
+                std::thread::sleep(Duration::from_millis(20));
+            }
+            Err(_) => return None,
+        }
+    }
+}
+
+/// Port of `GitUtils.QueryStatus`: runs `git status --porcelain=v1` in the
+/// repo root; returns the parsed status map or None on error/cancellation.
+#[must_use]
+pub fn query_status(repo_root: &str, cancel: &CancelToken) -> Option<HashMap<String, GitFileStatus>> {
+    if cancel.is_cancelled() {
+        return None;
+    }
+
+    match run_git_capturing(repo_root, "status --porcelain=v1", cancel, LOCAL_TIMEOUT_MS) {
+        Ok(stdout) => Some(parse_porcelain_output(&stdout, repo_root)),
+        Err(_) => None,
+    }
+}
+
+/// Port of `GitUtils.GetAheadBehind`: commit counts ahead/behind the
+/// upstream; None when there is no upstream or on error.
+#[must_use]
+pub fn get_ahead_behind(repo_root: &str, cancel: &CancelToken) -> Option<(u32, u32)> {
+    if cancel.is_cancelled() {
+        return None;
+    }
+
+    match run_git_capturing(
+        repo_root,
+        "rev-list --count --left-right @{upstream}...HEAD",
+        cancel,
+        LOCAL_TIMEOUT_MS,
+    ) {
+        Ok(stdout) => parse_ahead_behind(&stdout),
+        Err(_) => None,
+    }
+}
+
+/// Port of `GitUtils.ParsePorcelainOutput` (internal static, testable):
+/// parses `git status --porcelain=v1` into per-path statuses, then
+/// aggregates into parent directories.
+#[must_use]
+pub fn parse_porcelain_output(output: &str, repo_root: &str) -> HashMap<String, GitFileStatus> {
+    let mut statuses: HashMap<String, GitFileStatus> = HashMap::new();
+
+    for line in output.lines() {
+        if line.chars().count() < 4 {
+            continue;
+        }
+
+        let chars: Vec<char> = line.chars().collect();
+        let index_status = chars[0];
+        let work_tree_status = chars[1];
+        // Path starts at index 3 (after "XY ")
+        let mut relative_path: String = chars[3..].iter().collect();
+
+        // Handle renames: "R  old -> new" - use the new path
+        if let Some(arrow_idx) = relative_path.find(" -> ") {
+            relative_path = relative_path[arrow_idx + 4..].to_string();
+        }
+
+        // Strip surrounding quotes if present (git quotes paths with special
+        // chars)
+        if relative_path.chars().count() >= 2
+            && relative_path.starts_with('"')
+            && relative_path.ends_with('"')
+        {
+            relative_path = relative_path[1..relative_path.len() - 1].to_string();
+        }
+
+        let mut status = GitFileStatus::NONE;
+
+        // Conflict markers
+        if index_status == 'U'
+            || work_tree_status == 'U'
+            || (index_status == 'A' && work_tree_status == 'A')
+            || (index_status == 'D' && work_tree_status == 'D')
+        {
+            status |= GitFileStatus::CONFLICT;
+        } else {
+            // Untracked
+            if index_status == '?' && work_tree_status == '?' {
+                status |= GitFileStatus::UNTRACKED;
+            }
+            // Ignored
+            else if index_status == '!' && work_tree_status == '!' {
+                status |= GitFileStatus::IGNORED;
+            } else {
+                // Index (staged) status
+                if matches!(index_status, 'A' | 'M' | 'D' | 'R' | 'C') {
+                    status |= GitFileStatus::STAGED;
+                }
+
+                // Working tree (modified) status
+                if matches!(work_tree_status, 'M' | 'D') {
+                    status |= GitFileStatus::MODIFIED;
+                }
+            }
+        }
+
+        if status == GitFileStatus::NONE {
+            continue;
+        }
+
+        // Convert relative path (using /) to full path with platform
+        // separators
+        let full_path = std::path::Path::new(repo_root)
+            .join(relative_path.replace('/', std::path::MAIN_SEPARATOR_STR));
+        let full_path = normalize_full_path(&full_path.to_string_lossy());
+
+        match statuses.get(&full_path) {
+            Some(existing) => {
+                statuses.insert(full_path, *existing | status);
+            }
+            None => {
+                statuses.insert(full_path, status);
+            }
+        }
+    }
+
+    // Aggregate into parent directories (exclude Ignored from propagation)
+    aggregate_directory_statuses(&mut statuses, repo_root);
+
+    statuses
+}
+
+/// Path.GetFullPath normalizes separators and collapses `.`/`..` segments;
+/// reuse the dialogs path helpers for the same effect.
+fn normalize_full_path(path: &str) -> String {
+    crate::app::dialogs::get_full_path(path)
+}
+
+/// Port of `AggregateDirectoryStatuses` (internal static, testable): ORs
+/// each entry's status (minus Ignored) into every parent directory up to the
+/// repo root.
+pub fn aggregate_directory_statuses(
+    statuses: &mut HashMap<String, GitFileStatus>,
+    repo_root: &str,
+) {
+    // Snapshot keys to avoid modifying during enumeration
+    let file_paths: Vec<String> = statuses.keys().cloned().collect();
+
+    for file_path in file_paths {
+        let status = statuses.get(&file_path).copied().unwrap_or(GitFileStatus::NONE) & !GitFileStatus::IGNORED;
+        if status == GitFileStatus::NONE {
+            continue;
+        }
+
+        let mut parent_dir = parent_of(&file_path);
+        while let Some(dir) = parent_dir {
+            if dir.chars().count() < repo_root.chars().count() {
+                break;
+            }
+
+            if dir.eq_ignore_ascii_case(&file_path) {
+                break;
+            }
+
+            match statuses.get(&dir) {
+                Some(existing) => {
+                    statuses.insert(dir.clone(), *existing | status);
+                }
+                None => {
+                    statuses.insert(dir.clone(), status);
+                }
+            }
+
+            if dir.eq_ignore_ascii_case(repo_root) {
+                break;
+            }
+
+            parent_dir = parent_of(&dir);
+        }
+    }
+}
+
+fn parent_of(path: &str) -> Option<String> {
+    std::path::Path::new(path)
+        .parent()
+        .map(|p| p.to_string_lossy().to_string())
+}
+
+/// Pure parse of `GetAheadBehind` stdout: format is
+/// `"<behind>\t<ahead>\n"` (behind first). Returns (ahead, behind) or None
+/// on malformed output.
+#[must_use]
+pub fn parse_ahead_behind(stdout: &str) -> Option<(u32, u32)> {
+    let trimmed = stdout.trim();
+    let mut parts = trimmed.split('\t');
+    let behind = parts.next()?;
+    let ahead = parts.next()?;
+    if parts.next().is_some() {
+        return None;
+    }
+
+    Some((ahead.parse().ok()?, behind.parse().ok()?))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    pub(super) fn temp_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("wade-git-test-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("mkdir");
+        dir
+    }
+
+    #[test]
+    fn repo_root_walk() {
+        let root = temp_dir("root");
+        std::fs::create_dir_all(root.join(".git")).expect("git dir");
+        let nested = root.join("a").join("b");
+        std::fs::create_dir_all(&nested).expect("nested");
+
+        let found = find_repo_root(&nested.to_string_lossy());
+        assert_eq!(
+            found.map(|p| std::path::PathBuf::from(p).canonicalize().unwrap()),
+            std::path::PathBuf::from(&root.to_string_lossy().to_string()).canonicalize().ok()
+        );
+
+        // Outside any repo: walk up to the temp root and fail
+        let orphan = temp_dir("orphan");
+        assert!(find_repo_root(&orphan.to_string_lossy()).is_none());
+    }
+
+    #[test]
+    fn repo_root_worktree_git_file() {
+        let main_root = temp_dir("main");
+        std::fs::create_dir_all(main_root.join(".git")).expect("git dir");
+        let wt_dir = temp_dir("wt");
+        let gitdir = wt_dir.join(".git").join("worktrees").join("wt1");
+        std::fs::create_dir_all(&gitdir).expect("gitdir");
+        std::fs::write(gitdir.join("HEAD"), "ref: refs/heads/feature").expect("head");
+
+        let wt_root = wt_dir.join("checkout");
+        std::fs::create_dir_all(&wt_root).expect("checkout");
+        std::fs::write(
+            wt_root.join(".git"),
+            format!("gitdir: {}", gitdir.to_string_lossy()),
+        )
+        .expect("git file");
+
+        assert_eq!(
+            read_branch_name(&wt_root.to_string_lossy()).as_deref(),
+            Some("feature")
+        );
+    }
+
+    #[test]
+    fn branch_name_cases() {
+        let root = temp_dir("branch");
+        std::fs::create_dir_all(root.join(".git")).expect("git dir");
+
+        std::fs::write(root.join(".git").join("HEAD"), "ref: refs/heads/main\n").expect("head");
+        assert_eq!(read_branch_name(&root.to_string_lossy()).as_deref(), Some("main"));
+
+        // Detached HEAD (raw SHA)
+        std::fs::write(root.join(".git").join("HEAD"), "0123456789abcdef\n").expect("head");
+        assert!(read_branch_name(&root.to_string_lossy()).is_none());
+
+        // Missing HEAD
+        std::fs::remove_file(root.join(".git").join("HEAD")).expect("rm");
+        assert!(read_branch_name(&root.to_string_lossy()).is_none());
+    }
+
+    #[test]
+    fn porcelain_parse_basic_statuses() {
+        let root = r"C:\repo";
+        let output = "?? new.txt\n M mod.txt\nM  staged.txt\nAM both.txt\n!! ignored.txt\nUU conflict.txt\nAA both-added.txt\nDD both-deleted.txt\nR  old.txt -> renamed.txt\n?? \"quoted path.txt\"\nx\n";
+
+        let statuses = parse_porcelain_output(output, root);
+
+        let get = |name: &str| statuses.get(&format!(r"C:\repo\{name}")).copied();
+
+        assert_eq!(get("new.txt"), Some(GitFileStatus::UNTRACKED));
+        assert_eq!(get("mod.txt"), Some(GitFileStatus::MODIFIED));
+        assert_eq!(get("staged.txt"), Some(GitFileStatus::STAGED));
+        assert_eq!(
+            get("both.txt"),
+            Some(GitFileStatus::STAGED | GitFileStatus::MODIFIED)
+        );
+        assert_eq!(get("ignored.txt"), Some(GitFileStatus::IGNORED));
+        assert_eq!(get("conflict.txt"), Some(GitFileStatus::CONFLICT));
+        assert_eq!(get("both-added.txt"), Some(GitFileStatus::CONFLICT));
+        assert_eq!(get("both-deleted.txt"), Some(GitFileStatus::CONFLICT));
+        // Rename: new path gets Staged
+        assert_eq!(get("renamed.txt"), Some(GitFileStatus::STAGED));
+        assert!(get("old.txt").is_none());
+        // Quoted path is stripped of quotes
+        assert_eq!(get("quoted path.txt"), Some(GitFileStatus::UNTRACKED));
+        // Short line skipped; 10 files + 1 repo-root aggregate
+        assert_eq!(statuses.len(), 11);
+    }
+
+    #[test]
+    fn porcelain_parse_slash_paths_normalized() {
+        let root = r"C:\repo";
+        let statuses = parse_porcelain_output("?? src/deep/new.txt\n", root);
+        assert!(statuses.contains_key(r"C:\repo\src\deep\new.txt"));
+        // Aggregation created directory entries
+        assert!(statuses.contains_key(r"C:\repo\src\deep"));
+        assert!(statuses.contains_key(r"C:\repo\src"));
+        assert!(statuses.contains_key(r"C:\repo"));
+    }
+
+    #[test]
+    fn aggregation_excludes_ignored() {
+        let root = r"C:\repo";
+        let statuses = parse_porcelain_output("!! ignored.txt\n M mod.txt\n", root);
+
+        let dir_status = statuses.get(r"C:\repo").copied().expect("root aggregate");
+        // Ignored does not propagate; Modified does
+        assert!(dir_status.contains(GitFileStatus::MODIFIED));
+        assert!(!dir_status.contains(GitFileStatus::IGNORED));
+        // But the ignored file itself keeps its flag
+        assert!(statuses.get(r"C:\repo\ignored.txt").copied().expect("file").contains(GitFileStatus::IGNORED));
+    }
+
+    #[test]
+    fn aggregation_or_merges() {
+        let root = r"C:\repo";
+        let statuses = parse_porcelain_output("?? a/one.txt\n M a/two.txt\n", root);
+        let dir_status = statuses.get(r"C:\repo\a").copied().expect("dir");
+        assert!(dir_status.contains(GitFileStatus::UNTRACKED));
+        assert!(dir_status.contains(GitFileStatus::MODIFIED));
+    }
+
+    #[test]
+    fn ahead_behind_parse() {
+        assert_eq!(parse_ahead_behind("3\t1\n"), Some((1, 3)));
+        assert_eq!(parse_ahead_behind("0\t0"), Some((0, 0)));
+        assert_eq!(parse_ahead_behind("34\t12"), Some((12, 34)));
+        assert_eq!(parse_ahead_behind(""), None);
+        assert_eq!(parse_ahead_behind("x\ty"), None);
+        assert_eq!(parse_ahead_behind("1\t2\t3"), None);
+    }
+
+    #[test]
+    fn statuses_get_case_insensitive_on_windows() {
+        let mut map = HashMap::new();
+        map.insert(r"C:\Repo\File.txt".to_string(), GitFileStatus::MODIFIED);
+        assert_eq!(statuses_get(&map, r"C:\Repo\File.txt"), Some(GitFileStatus::MODIFIED));
+        #[cfg(windows)]
+        assert_eq!(statuses_get(&map, r"c:\repo\file.txt"), Some(GitFileStatus::MODIFIED));
+        #[cfg(not(windows))]
+        assert_eq!(statuses_get(&map, r"c:\repo\file.txt"), None);
+    }
+}
+
+#[cfg(test)]
+mod integration {
+    use super::tests::temp_dir;
+    use super::*;
+    use std::path::Path;
+
+    fn run_git(dir: &std::path::Path, args: &[&str]) {
+        let output = Command::new("git")
+            .env("GIT_AUTHOR_NAME", "wade-test")
+            .env("GIT_COMMITTER_NAME", "wade-test")
+            .env("GIT_AUTHOR_EMAIL", "wade-test@example.invalid")
+            .env("GIT_COMMITTER_EMAIL", "wade-test@example.invalid")
+            .args(args)
+            .current_dir(dir)
+            .output()
+            .expect("git available");
+        assert!(
+            output.status.success(),
+            "git {args:?} failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    #[test]
+    fn real_git_status_round_trip() {
+        let repo = temp_dir("realgit");
+        run_git(&repo, &["init", "-b", "main"]);
+
+        std::fs::write(repo.join("tracked.txt"), "hello").expect("write");
+        run_git(&repo, &["add", "tracked.txt"]);
+        run_git(&repo, &["commit", "-m", "init"]);
+
+        // Untracked file + modified tracked file
+        std::fs::write(repo.join("untracked.txt"), "new").expect("write");
+        std::fs::write(repo.join("tracked.txt"), "changed").expect("write");
+
+        let root = repo.to_string_lossy().to_string();
+        let cancel = CancelToken::new();
+        let statuses = query_status(&root, &cancel).expect("statuses");
+
+        let join = |name: &str| {
+            let mut path = repo.clone();
+            path.push(name);
+            path.to_string_lossy().to_string()
+        };
+
+        // Modified tracked file (worktree M)
+        let tracked = statuses_get(&statuses, &join("tracked.txt")).expect("tracked entry");
+        assert!(tracked.contains(GitFileStatus::MODIFIED), "tracked: {tracked:?}");
+
+        // Untracked file
+        let untracked = statuses_get(&statuses, &join("untracked.txt")).expect("untracked entry");
+        assert!(untracked.contains(GitFileStatus::UNTRACKED), "untracked: {untracked:?}");
+
+        // Branch name from the real repo
+        assert_eq!(read_branch_name(&root).as_deref(), Some("main"));
+
+        // Clean up temp pollution
+        let _ = std::fs::remove_dir_all(Path::new(&root));
+    }
+}

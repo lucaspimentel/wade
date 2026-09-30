@@ -24,6 +24,36 @@ impl GitFileStatus {
     }
 }
 
+impl std::ops::BitOr for GitFileStatus {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self {
+        Self(self.0 | rhs.0)
+    }
+}
+
+impl std::ops::BitOrAssign for GitFileStatus {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.0 |= rhs.0;
+    }
+}
+
+impl std::ops::BitAnd for GitFileStatus {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self {
+        Self(self.0 & rhs.0)
+    }
+}
+
+impl std::ops::Not for GitFileStatus {
+    type Output = Self;
+
+    fn not(self) -> Self {
+        Self(!self.0)
+    }
+}
+
 /// Mirrors the `SortMode` enum.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum SortMode {

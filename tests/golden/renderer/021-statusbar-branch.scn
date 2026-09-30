@@ -1,0 +1,13 @@
+# Status bar with branch name and ahead/behind counts
+size 80 25
+list main
+file README.md 1234 2024-02-03T14:30:00
+file src 2345 2024-05-06T07:08:00
+endlist
+layout 3pane
+statusbar "C:\fixture" 0 2 branch "main" aheadbehind " ↑2 ↓1"
+flush
+statusbar "C:\fixture" 0 2 branch "feature/port"
+flush
+statusbar "C:\fixture" 0 2
+flush

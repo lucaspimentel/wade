@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 use wade::app::dialogs;
 use wade::app::input_reader::AppAction;
-use wade::fs::directory_contents::{FileSystemEntry, SortMode, DRIVES_PATH};
+use wade::fs::directory_contents::{FileSystemEntry, GitFileStatus, SortMode, DRIVES_PATH};
 use wade::screen::{CellStyle, Color, ScreenBuffer};
 use wade::ui::action_palette::{ActionMenuItem, ActionMenuLevel};
 use wade::ui::format_helpers::DateParts;
@@ -85,7 +85,7 @@ fn quoted_spans(s: &str) -> Vec<String> {
 fn make_entry(name: &str, is_directory: bool, size: i64, modified: DateParts) -> FileSystemEntry {
     FileSystemEntry {
         name: name.to_string(),
-        full_path: format!("C:/fixture/{name}"),
+        full_path: format!("C:\\fixture\\{name}"),
         is_directory,
         size,
         last_modified: modified,
@@ -152,6 +152,10 @@ fn run_scenario(path: &Path) -> String {
     let mut bookmark_scroll: usize = 0;
     let mut ctx_items: Option<Vec<ActionMenuItem>> = None;
     let mut ctx_anchor: (i32, i32) = (0, 0);
+    let mut branch_name = String::new();
+    let mut ahead_behind_text = String::new();
+    let mut git_statuses: Option<std::collections::HashMap<String, GitFileStatus>> = None;
+    let mut current_git_statuses: std::collections::HashMap<String, GitFileStatus> = std::collections::HashMap::new();
     let mut flushes: Vec<String> = Vec::new();
     let mut out = String::new();
 
@@ -242,7 +246,7 @@ fn run_scenario(path: &Path) -> String {
                     flags.contains(&"size"),
                     flags.contains(&"date"),
                     &std::collections::HashSet::new(),
-                    None,
+                    git_statuses.as_ref(),
                     None,
                     flags.contains(&"drive"),
                 );
@@ -266,15 +270,22 @@ fn run_scenario(path: &Path) -> String {
                 });
             }
             "statusbar" => {
-                // statusbar PATH SELECTED ITEM_COUNT [list LISTNAME]
+                // statusbar PATH SELECTED ITEM_COUNT [list LISTNAME] [branch "NAME"] [aheadbehind "TEXT"]
                 let path = unquote(tokens[1]);
                 let selected = parse_i32(tokens[2]) as usize;
                 let item_count = parse_i32(tokens[3]) as usize;
-                let selected_entry = if tokens.len() > 5 && tokens[4] == "list" {
-                    lists[tokens[5]].get(selected)
+                let selected_entry = if tokens.contains(&"list") {
+                    let list_idx = tokens.iter().position(|t| *t == "list").expect("list keyword");
+                    lists[tokens[list_idx + 1]].get(selected)
                 } else {
                     None
                 };
+
+                let branch_name_inline = extract_quoted_arg(line, "branch ");
+                let ahead_behind_inline = extract_quoted_arg(line, "aheadbehind ");
+                let branch_arg = if branch_name_inline.is_empty() { None } else { Some(branch_name_inline.as_str()) };
+                let ahead_behind_arg = if ahead_behind_inline.is_empty() { None } else { Some(ahead_behind_inline.as_str()) };
+
                 let buffer = buffer.as_mut().expect("size op first");
                 status_bar::render(
                     buffer,
@@ -292,9 +303,12 @@ fn run_scenario(path: &Path) -> String {
                     true,
                     0,
                     false,
-                    None,
-                    None,
+                    branch_arg,
+                    ahead_behind_arg,
                 );
+                branch_name.clear();
+                ahead_behind_text.clear();
+                let _ = branch_name_inline;
             }
             "help" => {
                 let buffer = buffer.as_mut().expect("size op first");
@@ -391,6 +405,44 @@ fn run_scenario(path: &Path) -> String {
                 };
                 let buffer = buffer.as_mut().expect("size op first");
                 input.render(buffer, row, col, w, style);
+            }
+            "gitstatuses" => {
+                // gitstatuses followed by gs "FULLPATH" CODE lines and
+                // endgitstatuses; CODE is untracked/modified/staged/
+                // ignored/conflict or +-joined (e.g. staged+modified)
+                current_git_statuses = std::collections::HashMap::new();
+            }
+            "gs" => {
+                // gs "FULLPATH" CODE[+CODE...]
+                let rest = line["gs ".len()..].to_string();
+                let path = unquote(quoted_spans(rest.trim())[0].as_str());
+                let after = &rest[rest[1..].find('"').expect("closing quote") + 2..];
+                let status_text = after.trim();
+                let mut status = GitFileStatus::NONE;
+                for part in status_text.split('+').filter(|p| !p.is_empty()) {
+                    status |= match part.trim() {
+                        "untracked" => GitFileStatus::UNTRACKED,
+                        "modified" => GitFileStatus::MODIFIED,
+                        "staged" => GitFileStatus::STAGED,
+                        "ignored" => GitFileStatus::IGNORED,
+                        "conflict" => GitFileStatus::CONFLICT,
+                        other => panic!("unknown git status code '{other}'"),
+                    };
+                }
+
+                current_git_statuses.insert(path, status);
+            }
+            "endgitstatuses" => {
+                git_statuses = Some(std::mem::take(&mut current_git_statuses));
+            }
+            "gsoff" => {
+                git_statuses = None;
+            }
+            "branch" => {
+                branch_name = extract_quoted_arg(line, "branch ");
+            }
+            "aheadbehind" => {
+                ahead_behind_text = extract_quoted_arg(line, "aheadbehind ");
             }
             "flush" => {
                 let buffer = buffer.as_mut().expect("size op first");
@@ -543,4 +595,21 @@ fn renderer_fixtures_match_csharp_output() {
 #[test]
 fn drives_path_constant_matches_csharp() {
     assert_eq!(DRIVES_PATH, "::drives");
+}
+
+#[allow(dead_code)] // fixture helper, mirrors RendererFixtureRunner.ExtractQuotedArg
+fn extract_quoted_arg(line: &str, keyword: &str) -> String {
+    let Some(idx) = line.find(keyword) else {
+        return String::new();
+    };
+
+    let rest = &line[idx + keyword.len()..];
+    let trimmed = rest.trim();
+    if let Some(stripped) = trimmed.strip_prefix('"')
+        && let Some(end) = stripped.find('"')
+    {
+        return stripped[..end].to_string();
+    }
+
+    trimmed.to_string()
 }

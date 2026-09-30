@@ -31,6 +31,10 @@ internal static class RendererFixtureRunner
         int bookmarkScroll = 0;
         List<ActionMenuItem>? ctxItems = null;
         int ctxAnchorRow = 0, ctxAnchorCol = 0;
+        Dictionary<string, GitFileStatus>? gitStatuses = null;
+        Dictionary<string, GitFileStatus>? currentGitStatuses = null;
+        string branchName = "";
+        string aheadBehindText = "";
         Notification? notification = null;
         var flushes = new List<string>();
         var sb = new StringBuilder();
@@ -111,11 +115,49 @@ internal static class RendererFixtureRunner
                         showSize: flags.Contains("size"),
                         showDate: flags.Contains("date"),
                         markedPaths: [],
-                        gitStatuses: null,
+                        gitStatuses: gitStatuses,
                         dirSizes: null,
                         isDriveView: flags.Contains("drive"));
                     break;
                 }
+                case "gitstatuses":
+                {
+                    // gitstatuses followed by gs "FULLPATH" CODE lines and
+                    // endgitstatuses; CODE is untracked/modified/staged/
+                    // ignored/conflict or +-joined (e.g. staged+modified)
+                    currentGitStatuses = [];
+                    break;
+                }
+                case "gs":
+                {
+                    string path = Unquote(FirstQuotedSpan(line["gs ".Length..]));
+                    string rest = line["gs ".Length..];
+                    int firstEnd = rest.IndexOf('"', 1);
+                    string statusText = rest[(firstEnd + 2)..].Trim();
+                    GitFileStatus status = GitFileStatus.None;
+                    foreach (string part in statusText.Split('+', StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        status |= part.Trim() switch
+                        {
+                            "untracked" => GitFileStatus.Untracked,
+                            "modified" => GitFileStatus.Modified,
+                            "staged" => GitFileStatus.Staged,
+                            "ignored" => GitFileStatus.Ignored,
+                            "conflict" => GitFileStatus.Conflict,
+                            _ => throw new InvalidDataException($"Unknown git status code '{part}'"),
+                        };
+                    }
+
+                    currentGitStatuses![path] = status;
+                    break;
+                }
+                case "endgitstatuses":
+                    gitStatuses = currentGitStatuses;
+                    currentGitStatuses = null;
+                    break;
+                case "gsoff":
+                    gitStatuses = null;
+                    break;
                 case "message":
                 {
                     string text = Unquote(line.Split(' ', 3)[2]);
@@ -142,16 +184,28 @@ internal static class RendererFixtureRunner
                     string path = Unquote(tokens[1]);
                     int selected = ParseInt(tokens[2]);
                     int itemCount = ParseInt(tokens[3]);
-                    FileSystemEntry? selectedEntry = tokens.Length > 5 && tokens[4] == "list"
-                        ? lists[tokens[5]].ElementAtOrDefault(selected)
-                        : null;
+                    // Optional trailing args: [list LISTNAME] [branch "NAME"] [aheadbehind "TEXT"]
+                    FileSystemEntry? selectedEntry = null;
+                    int listIdx = Array.IndexOf(tokens, "list", 4);
+                    if (listIdx > 0)
+                    {
+                        selectedEntry = lists[tokens[listIdx + 1]].ElementAtOrDefault(selected);
+                    }
+
+                    branchName = ExtractQuotedArg(line, "branch ");
+                    aheadBehindText = ExtractQuotedArg(line, "aheadbehind ");
+
+                    string? branchArg = branchName.Length > 0 ? branchName : null;
+                    string? aheadBehindArg = aheadBehindText.Length > 0 ? aheadBehindText : null;
                     StatusBar.Render(
                         buffer, layout.StatusBar, path, itemCount, selected,
                         selectedEntry,
                         fileTypeLabel: null, encoding: null, lineEnding: null,
                         notification: notification,
                         markedCount: 0,
-                        SortMode.Name, true, 0, false, null, null);
+                        SortMode.Name, true, 0, false, branchArg, aheadBehindArg);
+                    branchName = "";
+                    aheadBehindText = "";
                     notification = null;
                     break;
                 }
@@ -388,6 +442,27 @@ internal static class RendererFixtureRunner
     }
 
     private static int ParseInt(string token) => int.Parse(token, CultureInfo.InvariantCulture);
+
+    /// Extracts the quoted argument that follows an optional keyword, or
+    /// "" when the keyword is absent. Used by the statusbar op.
+    private static string ExtractQuotedArg(string line, string keyword)
+    {
+        int idx = line.IndexOf(keyword, StringComparison.Ordinal);
+        if (idx < 0)
+        {
+            return "";
+        }
+
+        string rest = line[(idx + keyword.Length)..];
+        int firstQuote = rest.IndexOf('"');
+        if (firstQuote < 0)
+        {
+            return rest.Trim();
+        }
+
+        int closing = rest.IndexOf('"', firstQuote + 1);
+        return closing < 0 ? rest[(firstQuote + 1)..] : rest[(firstQuote + 1)..closing];
+    }
 
     private static long ParseLong(string token) => long.Parse(token, CultureInfo.InvariantCulture);
 

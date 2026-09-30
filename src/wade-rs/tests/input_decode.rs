@@ -162,6 +162,8 @@ fn format_events(events: &[InputEvent]) -> String {
             InputEvent::Resize(r) => {
                 let _ = writeln!(result, "resize {} {}", r.width, r.height);
             }
+            // Only produced by loader threads, never by console decoding
+            InputEvent::GitStatusReady(_) => {}
         }
     }
     result

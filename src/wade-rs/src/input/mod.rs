@@ -78,6 +78,17 @@ pub enum InputEvent {
     Mouse(MouseEvent),
     Resize(ResizeEvent),
     Paste(String),
+    GitStatusReady(GitStatusReadyEvent),
+}
+
+/// Port of the `GitStatusReadyEvent` record (src/Wade/Terminal/InputEvent.cs:73).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct GitStatusReadyEvent {
+    pub repo_root: String,
+    pub branch_name: Option<String>,
+    pub statuses: Option<std::collections::HashMap<String, crate::fs::directory_contents::GitFileStatus>>,
+    pub ahead: u32,
+    pub behind: u32,
 }
 
 /// Shared cancellation flag; clones share the same underlying flag, so a
