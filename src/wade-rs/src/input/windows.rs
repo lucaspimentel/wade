@@ -68,6 +68,11 @@ impl WindowsInputSource {
     }
 }
 
+// Safety: stdin_handle is the process-wide stdin HANDLE (valid on any
+// thread), and all access is through &mut self, so the struct is effectively
+// owned during use. Mirrors the C# reader thread using the same handle.
+unsafe impl Send for WindowsInputSource {}
+
 impl Default for WindowsInputSource {
     fn default() -> Self {
         Self::new()

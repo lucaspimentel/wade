@@ -12,7 +12,7 @@ use std::path::Path;
 
 use crate::fs::directory_contents::{DirectoryContents, FileSystemEntry, DRIVES_PATH};
 pub use crate::input::InputMode;
-use crate::input::{InputEvent, InputSource, KeyEvent, ResizeEvent};
+use crate::input::{InputEvent, KeyEvent, ResizeEvent};
 use crate::screen::ScreenBuffer;
 use crate::ui::notification::{Notification, NotificationKind};
 use crate::ui::pane_renderer::PaneRenderer;
@@ -109,6 +109,8 @@ pub struct App {
     selected_index_per_dir: HashMap<String, usize>,
     marked_paths: std::collections::HashSet<String>,
     notification: Option<Notification>,
+    /// Public so the bin crate can hand the pump thread a sender clone.
+    pub pipeline: crate::input::input_pipeline::InputPipeline,
     bookmark_store: crate::fs::bookmark_store::BookmarkStore,
     parent_pane_enabled: bool,
     preview_pane_enabled: bool,
@@ -146,6 +148,7 @@ impl App {
             last_height: 0,
             modal: dialogs::ModalState::default(),
             bookmark_store: crate::fs::bookmark_store::BookmarkStore::new(None),
+            pipeline: crate::input::input_pipeline::InputPipeline::new(),
         }
     }
 
@@ -164,8 +167,10 @@ impl App {
         self.scroll_offset
     }
 
-    /// Port of `App.Run`'s setup and main loop.
-    pub fn run(&mut self, input_source: &mut dyn InputSource, cancel: &crate::input::CancelToken) -> Option<String> {
+    /// Port of `App.Run`'s setup and main loop. Events arrive over the
+    /// app-owned pipeline (console pump + async loaders), mirroring the C#
+    /// `InputPipeline`.
+    pub fn run(&mut self, cancel: &crate::input::CancelToken) -> Option<String> {
         let start = if self.config.start_path.is_empty() { App::default_start_path() } else { self.config.start_path.clone() };
         self.current_path = capitalize_drive_letter(&std::fs::canonicalize(&start).unwrap_or_else(|_| start.clone().into()).to_string_lossy());
         self.directory_contents.show_hidden_files = self.config.show_hidden_files;
@@ -195,14 +200,16 @@ impl App {
             self.render(&mut buffer);
             flush_buffer(&mut buffer);
 
-            // Wait for next input event
-            let Some(event) = input_source.read_next(cancel) else {
+            // Wait for next input event (pump thread feeds the queue; loader
+            // threads send into the same queue)
+            let Some(event) = self.pipeline.wait_next(cancel) else {
                 break;
             };
 
-            // Drain queued key/mouse/resize events like the C# loop
+            // Drain queued key/mouse/resize events like the C# loop, keeping
+            // the last one
             let mut current = event;
-            while let Some(extra) = input_source.try_take() {
+            while let Some(extra) = self.pipeline.try_take() {
                 match extra {
                     InputEvent::Resize(_) | InputEvent::Key(_) | InputEvent::Mouse(_) | InputEvent::Paste(_) => {
                         current = extra;

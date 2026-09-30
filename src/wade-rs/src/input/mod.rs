@@ -2,10 +2,12 @@
 //! and src/Wade/Terminal/InputMode.cs.
 
 pub mod decode;
+pub mod input_pipeline;
 #[cfg(windows)]
 pub mod windows;
 
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 use crate::console_key::ConsoleKey;
 
@@ -78,13 +80,15 @@ pub enum InputEvent {
     Paste(String),
 }
 
-#[derive(Default)]
-pub struct CancelToken(AtomicBool);
+/// Shared cancellation flag; clones share the same underlying flag, so a
+/// token can be handed to the pump thread and loader threads.
+#[derive(Default, Clone)]
+pub struct CancelToken(Arc<AtomicBool>);
 
 impl CancelToken {
     #[must_use]
     pub fn new() -> Self {
-        Self(AtomicBool::new(false))
+        Self(Arc::new(AtomicBool::new(false)))
     }
 
     pub fn cancel(&self) {
@@ -97,8 +101,9 @@ impl CancelToken {
     }
 }
 
-/// Port of src/Wade/Terminal/IInputSource.cs.
-pub trait InputSource {
+/// Port of src/Wade/Terminal/IInputSource.cs. The source is owned by the
+/// pump thread, so it must be Send.
+pub trait InputSource: Send {
     fn read_next(&mut self, cancel: &CancelToken) -> Option<InputEvent>;
 
     /// Non-blocking poll for an already-available event (drains queued

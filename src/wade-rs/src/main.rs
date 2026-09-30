@@ -28,15 +28,29 @@ fn main() {
     }
 
     let mut app = App::new(config);
-
-    #[cfg(windows)]
-    let mut source: Box<dyn InputSource> = Box::new(wade::input::windows::WindowsInputSource::new());
-    #[cfg(not(windows))]
-    // Unix input lands in Phase 9; stub source that yields no events.
-    let mut source: Box<dyn InputSource> = Box::new(NullInputSource);
     let cancel = CancelToken::new();
 
-    let result = app.run(&mut *source, &cancel);
+    // Pump thread: owns the input source and forwards its events into the
+    // app's pipeline, mirroring the C# InputPipeline reader thread.
+    #[cfg(windows)]
+    let source: Box<dyn InputSource> = Box::new(wade::input::windows::WindowsInputSource::new());
+    #[cfg(not(windows))]
+    // Unix input lands in Phase 9; stub source that yields no events.
+    let source: Box<dyn InputSource> = Box::new(NullInputSource);
+    let pump_cancel = cancel.clone();
+    let pump_sender = app.pipeline.sender();
+    let pump = std::thread::spawn(move || {
+        let mut source = source;
+        while let Some(event) = source.read_next(&pump_cancel) {
+            if pump_sender.send(event).is_err() {
+                break; // app loop gone
+            }
+        }
+    });
+
+    let result = app.run(&cancel);
+    cancel.cancel();
+    let _ = pump.join();
 
     // C# writes the final directory to stdout for shell integration
     if let Some(cwd) = result {
