@@ -236,7 +236,14 @@ pub fn relative_path(repo_root: &str, path: &str) -> String {
         path_norm
     };
 
-    let relative = relative.trim_start_matches(['/', '\\']);
+    // Strip only the separator that separated root from the relative part;
+    // a not-under-root path keeps its leading separator (e.g. "/other")
+    let relative = if under_root && relative.starts_with(['/', '\\']) {
+        &relative[1..]
+    } else {
+        relative
+    };
+
     let relative = if relative.is_empty() { "." } else { relative };
     relative.replace('\\', "/")
 }

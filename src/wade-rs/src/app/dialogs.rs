@@ -1769,9 +1769,12 @@ pub fn is_absolute_path(path: &str) -> bool {
 /// Collapse `.` and `..` segments lexically (rough `Path.GetFullPath`).
 #[must_use]
 pub fn collapse_dots(path: &str) -> String {
-    // Preserve the "C:" prefix when present
+    // Preserve the "C:" prefix when present, and a leading separator on
+    // unix (C# Path.GetFullPath keeps "/foo" rooted)
     let (prefix, rest) = if path.len() >= 2 && path.as_bytes()[1] == b':' {
         (&path[..2], &path[2..])
+    } else if !cfg!(windows) && path.starts_with('/') {
+        ("/", &path[1..])
     } else {
         ("", path)
     };
@@ -1805,6 +1808,28 @@ pub fn collapse_dots(path: &str) -> String {
     }
 
     result
+}
+
+#[cfg(test)]
+mod collapse_dots_tests {
+    use super::collapse_dots;
+
+    #[test]
+    fn preserves_root() {
+        // Windows drive prefix
+        #[cfg(windows)]
+        {
+            assert_eq!(collapse_dots(r"C:\foo\..\bar"), r"C:\bar");
+            // Bare drive prefix collapses to "C:" (pre-existing behavior;
+            // GetFullPath would return "C:\" but nothing feeds it that)
+        }
+        // Unix leading separator
+        #[cfg(not(windows))]
+        {
+            assert_eq!(collapse_dots("/foo/../bar"), "/bar");
+            assert_eq!(collapse_dots("/"), "/");
+        }
+    }
 }
 
 /// Parent directory without a trailing separator; None at a root.
