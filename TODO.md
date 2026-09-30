@@ -1,5 +1,16 @@
 # TODO
 
+## Rust port (src/wade-rs)
+
+The C# TUI is being ported to Rust in `src/wade-rs`, following
+`docs/rust-port-plan.md` (progress tracked there). Completed: scaffold and
+golden-frame harness, Windows terminal input, ScreenBuffer, app spine
+(3a), modal overlays (3b), config dialog/bookmarks/path completion/mouse
++ context menu (3c), git status display (4a), git actions (4b). Next:
+file operations (4c), then loaders/watcher/properties (4d). The C# tree
+is feature-frozen during the port; the items below are the C# backlog and
+map to remaining port phases where applicable (clipboard: Phase 9).
+
 ## Features
 
 ### ~~File action progress indicator~~ (Done)
