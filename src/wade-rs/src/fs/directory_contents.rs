@@ -110,6 +110,9 @@ pub struct DirectoryContents {
     pub show_system_files: bool,
     pub sort_mode: SortMode,
     pub sort_ascending: bool,
+    /// Port of `DirectoryContents.DirSizes`: inline directory sizes, used
+    /// when building directory entries (Phase 4d).
+    pub dir_sizes: Option<HashMap<String, i64>>,
 }
 
 impl Default for DirectoryContents {
@@ -120,6 +123,7 @@ impl Default for DirectoryContents {
             show_system_files: false,
             sort_mode: SortMode::Name,
             sort_ascending: true,
+            dir_sizes: None,
         }
     }
 }
@@ -140,7 +144,7 @@ impl DirectoryContents {
             return cached.clone();
         }
 
-        let entries = load_entries(path, self.show_hidden_files, self.show_system_files);
+        let entries = load_entries(path, self.show_hidden_files, self.show_system_files, self.dir_sizes.as_ref());
         self.cache.insert(path.to_string(), entries.clone());
         entries
     }
@@ -200,7 +204,12 @@ pub fn drive_root(_path: &str) -> Option<String> {
 }
 
 /// Port of `LoadEntries`: enumerate, filter, sort.
-pub fn load_entries(path: &str, show_hidden: bool, show_system: bool) -> Vec<FileSystemEntry> {
+pub fn load_entries(
+    path: &str,
+    show_hidden: bool,
+    show_system: bool,
+    dir_sizes: Option<&HashMap<String, i64>>,
+) -> Vec<FileSystemEntry> {
     let mut list = Vec::new();
     let dir_info = match std::fs::read_dir(path) {
         Ok(rd) => rd,
@@ -257,7 +266,15 @@ pub fn load_entries(path: &str, show_hidden: bool, show_system: bool) -> Vec<Fil
             name,
             full_path: item.path().to_string_lossy().to_string(),
             is_directory,
-            size: if is_directory { 0 } else { i64::try_from(metadata.len()).unwrap_or(0) },
+            size: if is_directory {
+                // Port of DirectoryContents.cs:193: inline dir sizes take
+                // precedence over the placeholder size
+                dir_sizes
+                    .and_then(|sizes| sizes.get(&item.path().to_string_lossy().to_string()).copied())
+                    .unwrap_or(0)
+            } else {
+                i64::try_from(metadata.len()).unwrap_or(0)
+            },
             last_modified: system_time_to_date_parts(metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH)),
             link_target,
             is_broken_symlink,

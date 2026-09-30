@@ -82,6 +82,39 @@ pub enum InputEvent {
     GitActionComplete(GitActionCompleteEvent),
     FileOperationComplete(FileOperationCompleteEvent),
     FileOperationProgress(FileOperationProgressEvent),
+    DirectorySizeReady(DirectorySizeReadyEvent),
+    InlineDirSizeReady(InlineDirSizeReadyEvent),
+    InlineDirSizeComplete(InlineDirSizeCompleteEvent),
+    FileSystemChanged(FileSystemChangedEvent),
+}
+
+/// Port of the `DirectorySizeReadyEvent` record
+/// (src/Wade/Terminal/InputEvent.cs).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DirectorySizeReadyEvent {
+    pub path: String,
+    pub total_bytes: i64,
+}
+
+/// Port of the `InlineDirSizeReadyEvent` record.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InlineDirSizeReadyEvent {
+    pub parent_path: String,
+    pub directory_path: String,
+    pub total_bytes: i64,
+}
+
+/// Port of the `InlineDirSizeCompleteEvent` record.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InlineDirSizeCompleteEvent {
+    pub parent_path: String,
+}
+
+/// Port of the `FileSystemChangedEvent` record.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FileSystemChangedEvent {
+    pub directory_path: String,
+    pub full_refresh: bool,
 }
 
 /// Port of the `FileOperationCompleteEvent` record (src/Wade/Terminal/InputEvent.cs:22).
