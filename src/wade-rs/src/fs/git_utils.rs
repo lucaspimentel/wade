@@ -626,7 +626,7 @@ mod tests {
         // Aggregation created directory entries
         assert!(statuses.contains_key(&deep_key));
         assert!(statuses.contains_key(&src_key));
-        assert!(statuses.contains_key(r"C:\repo"));
+        assert!(statuses.contains_key(&root));
     }
 
     #[test]
