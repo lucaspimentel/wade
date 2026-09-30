@@ -80,6 +80,25 @@ pub enum InputEvent {
     Paste(String),
     GitStatusReady(GitStatusReadyEvent),
     GitActionComplete(GitActionCompleteEvent),
+    FileOperationComplete(FileOperationCompleteEvent),
+    FileOperationProgress(FileOperationProgressEvent),
+}
+
+/// Port of the `FileOperationCompleteEvent` record (src/Wade/Terminal/InputEvent.cs:22).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FileOperationCompleteEvent {
+    pub success_count: usize,
+    pub error_count: usize,
+    pub was_cut: bool,
+}
+
+/// ENHANCEMENT over C#: per-item progress for the file-operation overlay
+/// (C# shows only the operation label).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FileOperationProgressEvent {
+    pub index: usize,
+    pub total: usize,
+    pub current_name: String,
 }
 
 /// Port of the `GitActionCompleteEvent` record (src/Wade/Terminal/InputEvent.cs:80).

@@ -165,6 +165,8 @@ fn format_events(events: &[InputEvent]) -> String {
             // Only produced by loader threads, never by console decoding
             InputEvent::GitStatusReady(_) => {}
             InputEvent::GitActionComplete(_) => {}
+            InputEvent::FileOperationComplete(_) => {}
+            InputEvent::FileOperationProgress(_) => {}
         }
     }
     result

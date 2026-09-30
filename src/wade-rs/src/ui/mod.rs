@@ -11,6 +11,7 @@ pub mod format_helpers;
 pub mod layout;
 pub mod notification;
 pub mod pane_renderer;
+pub mod progress_overlay;
 pub mod status_bar;
 
 pub use layout::{Layout, Rect};

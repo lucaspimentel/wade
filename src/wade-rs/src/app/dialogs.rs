@@ -18,6 +18,15 @@ use crate::ui::notification::NotificationKind;
 /// Purpose of the active text-input dialog (what C# stores as an
 /// `Action<string>` completion callback). The file-operation consumers land
 /// in a later phase; for now Enter with a purpose set reports not-yet-ported.
+/// What the confirm dialog's Yes executes: C# stores an `Action` closure;
+/// the Rust port enumerates the two uses (git-style action dispatch and the
+/// file deletion that carries its target list).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ConfirmAction {
+    Dispatch(AppAction),
+    DeleteFiles { targets: Vec<String>, permanent: bool },
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TextInputPurpose {
     Rename,
@@ -25,6 +34,8 @@ pub enum TextInputPurpose {
     NewDirectory,
     /// Port of the C# `ShowTextInputDialog("Commit message", ...)` callback.
     Commit,
+    /// Port of the `Create Symlink` dialog.
+    CreateSymlink,
 }
 
 #[derive(Default)]
@@ -32,7 +43,7 @@ pub(crate) struct ModalState {
     pub confirm_title: Option<String>,
     pub confirm_message: Option<String>,
     /// C# stores an `Action`; the only producers dispatch a single action.
-    pub confirm_yes_action: Option<AppAction>,
+    pub confirm_yes_action: Option<ConfirmAction>,
     pub text_input_title: Option<String>,
     pub active_text_input: Option<TextInput>,
     pub text_input_purpose: Option<TextInputPurpose>,
@@ -48,6 +59,67 @@ pub(crate) struct ModalState {
 }
 
 
+
+/// Port of `Path.GetInvalidFileNameChars`: the platform's invalid file-name
+/// characters. C# returns the full Windows set on Windows; on unix, the
+/// separator plus control characters.
+#[must_use]
+pub fn is_invalid_file_name(name: &str) -> bool {
+    if name.is_empty() {
+        return false;
+    }
+
+    #[cfg(windows)]
+    {
+        const WINDOWS_INVALID: [char; 9] = ['"', '<', '>', '|', ':', '*', '?', '\\', '/'];
+        name.chars()
+            .any(|c| WINDOWS_INVALID.contains(&c) || c.is_ascii_control())
+    }
+
+    #[cfg(not(windows))]
+    {
+        name.chars().any(|c| c == '/' || c == '\\' || c.is_control())
+    }
+}
+
+#[cfg(test)]
+mod invalid_name_tests {
+    use super::is_invalid_file_name;
+
+    #[test]
+    fn rejects_separators_and_reserved() {
+        assert!(!is_invalid_file_name("readme.txt"));
+        assert!(!is_invalid_file_name(".hidden"));
+        assert!(is_invalid_file_name("a/b.txt"));
+        assert!(is_invalid_file_name("a\\b.txt"));
+        assert!(is_invalid_file_name("a\u{0}b"));
+
+        #[cfg(windows)]
+        {
+            assert!(is_invalid_file_name("a<b"));
+            assert!(is_invalid_file_name("a|b"));
+            assert!(is_invalid_file_name("a?b"));
+            assert!(is_invalid_file_name("a:b"));
+            assert!(is_invalid_file_name("a*b"));
+            assert!(is_invalid_file_name("\"a\""));
+            assert!(!is_invalid_file_name("a\u{00e9}b.txt"));
+        }
+    }
+}
+
+impl App {
+    /// Port of `RenderModals`' modal tail entry points: FileOperation overlay
+    /// and progress reset helpers.
+    pub fn enter_file_operation_mode(&mut self, label: &str) {
+        self.input_mode = InputMode::FileOperation;
+        self.file_op_label = label.to_string();
+    }
+
+    pub fn exit_file_operation_mode(&mut self) {
+        self.input_mode = InputMode::Normal;
+        self.file_op_progress = None;
+    }
+}
 
 impl App {
     /// Port of the `_inputMode` switch at the top of the C# input loop.
@@ -83,6 +155,14 @@ impl App {
             }
             InputMode::Config => {
                 self.handle_config_key(key);
+                true
+            }
+            InputMode::FileOperation => {
+                // Any key cancels the running operation (App.cs:660-663)
+                if !key.is_modifier_only() {
+                    self.file_operation_runner.cancel();
+                }
+
                 true
             }
             InputMode::Bookmarks => {
@@ -343,6 +423,166 @@ impl App {
         }
     }
 
+    /// Port of the Rename callback (App.cs:3153-3207): blank or unchanged
+    /// name returns silently; existing destination errors like C#'s catch;
+    /// success re-selects the renamed entry.
+    fn complete_rename(&mut self, new_name: &str) {
+        let Some(target) = self.text_input_target.clone() else {
+            return;
+        };
+
+        if new_name.trim().is_empty() || new_name == crate::app::dialogs::file_name_of(&target) {
+            return;
+        }
+
+        let Some(parent) = crate::app::dialogs::parent_of(&target) else {
+            return;
+        };
+        let new_path = std::path::Path::new(&parent).join(new_name).to_string_lossy().to_string();
+
+        let result = if std::path::Path::new(&new_path).symlink_metadata().is_ok() {
+            Err(std::io::Error::other("cannot rename to an existing path"))
+        } else {
+            crate::fs::file_operations::move_path(&target, &new_path)
+        };
+
+        match result {
+            Ok(()) => {
+                self.directory_contents.invalidate(&parent);
+                self.invalidate_filtered_entries();
+                self.refresh_git_status();
+                self.show_notification(&format!("Renamed to '{new_name}'"), NotificationKind::Success);
+                self.select_entry_by_name(new_name);
+            }
+            Err(err) => {
+                self.show_notification(&format!("Rename failed: {err}"), NotificationKind::Error);
+            }
+        }
+    }
+
+    /// Port of the NewFile callback (App.cs:3372-3414).
+    fn complete_new_file(&mut self, name: &str) {
+        if name.trim().is_empty() || is_invalid_file_name(name) {
+            if is_invalid_file_name(name) {
+                self.show_notification("Invalid file name", NotificationKind::Error);
+            }
+
+            return;
+        }
+
+        let dest_path = std::path::Path::new(&self.current_path).join(name).to_string_lossy().to_string();
+        if std::path::Path::new(&dest_path).symlink_metadata().is_ok() {
+            self.show_notification(&format!("'{name}' already exists"), NotificationKind::Error);
+            return;
+        }
+
+        match std::fs::File::create(&dest_path) {
+            Ok(file) => {
+                drop(file);
+                self.directory_contents.invalidate(&self.current_path);
+                self.invalidate_filtered_entries();
+                self.refresh_git_status();
+                self.show_notification(&format!("Created '{name}'"), NotificationKind::Success);
+                self.select_entry_by_name(name);
+            }
+            Err(err) => {
+                self.show_notification(&format!("Create failed: {err}"), NotificationKind::Error);
+            }
+        }
+    }
+
+    /// Port of the NewDirectory callback (App.cs:3415-3457).
+    fn complete_new_directory(&mut self, name: &str) {
+        if name.trim().is_empty() || is_invalid_file_name(name) {
+            if is_invalid_file_name(name) {
+                self.show_notification("Invalid directory name", NotificationKind::Error);
+            }
+
+            return;
+        }
+
+        let dest_path = std::path::Path::new(&self.current_path).join(name).to_string_lossy().to_string();
+        if std::path::Path::new(&dest_path).symlink_metadata().is_ok() {
+            self.show_notification(&format!("'{name}' already exists"), NotificationKind::Error);
+            return;
+        }
+
+        match std::fs::create_dir(&dest_path) {
+            Ok(()) => {
+                self.directory_contents.invalidate(&self.current_path);
+                self.invalidate_filtered_entries();
+                self.refresh_git_status();
+                self.show_notification(&format!("Created '{name}'"), NotificationKind::Success);
+                self.select_entry_by_name(name);
+            }
+            Err(err) => {
+                self.show_notification(&format!("Create failed: {err}"), NotificationKind::Error);
+            }
+        }
+    }
+
+    /// Port of the CreateSymlink callback (App.cs:3458-3530): creates a link
+    /// to the stored target; permission errors get the C# message.
+    fn complete_create_symlink(&mut self, link_name: &str) {
+        let Some(target) = self.text_input_target.clone() else {
+            return;
+        };
+
+        if link_name.trim().is_empty() || is_invalid_file_name(link_name) {
+            if is_invalid_file_name(link_name) {
+                self.show_notification("Invalid link name", NotificationKind::Error);
+            }
+
+            return;
+        }
+
+        let link_path = std::path::Path::new(&self.current_path)
+            .join(link_name)
+            .to_string_lossy()
+            .to_string();
+        if std::path::Path::new(&link_path).symlink_metadata().is_ok() {
+            self.show_notification(&format!("'{link_name}' already exists"), NotificationKind::Error);
+            return;
+        }
+
+        let is_dir = std::path::Path::new(&target).is_dir();
+
+        #[cfg(windows)]
+        let result = if is_dir {
+            std::os::windows::fs::symlink_dir(&target, &link_path)
+        } else {
+            std::os::windows::fs::symlink_file(&target, &link_path)
+        };
+
+        #[cfg(not(windows))]
+        let result = std::os::unix::fs::symlink(&target, &link_path);
+
+        match result {
+            Ok(()) => {
+                self.directory_contents.invalidate(&self.current_path);
+                self.invalidate_filtered_entries();
+                self.refresh_git_status();
+                self.show_notification(&format!("Created symlink '{link_name}'"), NotificationKind::Success);
+                self.select_entry_by_name(link_name);
+            }
+            Err(err) if err.kind() == std::io::ErrorKind::PermissionDenied => {
+                self.show_notification("Insufficient privileges to create symlink", NotificationKind::Error);
+            }
+            Err(err) => {
+                self.show_notification(&format!("Create symlink failed: {err}"), NotificationKind::Error);
+            }
+        }
+    }
+
+    /// The re-select-by-name shared by the create/rename callbacks
+    /// (OrdinalIgnoreCase on Windows, matching C#).
+    fn select_entry_by_name(&mut self, name: &str) {
+        let entries = self.get_visible_entries();
+        if let Some(index) = entries.iter().position(|entry| entry.name.eq_ignore_ascii_case(name)) {
+            self.selected_index = index;
+        }
+    }
+
     /// Port of `HandleTextInputKey` (App.cs:2289).
     fn handle_text_input_key(&mut self, key: KeyEvent) {
         if key.control {
@@ -403,11 +643,13 @@ impl App {
                             );
                         }
                     }
-                    // File-operation consumers (Rename/NewFile/NewDirectory)
-                    // land in a later phase.
-                    Some(_) => {
-                        self.show_notification("Not yet ported", crate::ui::NotificationKind::Info);
-                    }
+                    // File-operation consumers: Rename/CreateSymlink carry a
+                    // target path in text_input_target; New* create in the
+                    // current directory
+                    Some(TextInputPurpose::Rename) => self.complete_rename(&value),
+                    Some(TextInputPurpose::NewFile) => self.complete_new_file(&value),
+                    Some(TextInputPurpose::NewDirectory) => self.complete_new_directory(&value),
+                    Some(TextInputPurpose::CreateSymlink) => self.complete_create_symlink(&value),
                     None => {}
                 }
             }
@@ -460,8 +702,12 @@ impl App {
                 self.input_mode = InputMode::Normal;
                 self.modal.confirm_title = None;
                 self.modal.confirm_message = None;
-                if let Some(action) = yes_action {
-                    self.dispatch(action);
+                match yes_action {
+                    Some(ConfirmAction::Dispatch(action)) => self.dispatch(action),
+                    Some(ConfirmAction::DeleteFiles { targets, permanent }) => {
+                        self.execute_delete(targets, permanent);
+                    }
+                    None => {}
                 }
             }
             crate::console_key::ConsoleKey::N | crate::console_key::ConsoleKey::Escape => {
@@ -806,7 +1052,7 @@ impl App {
     }
 
     /// Port of `ShowConfirmDialog`.
-    pub fn show_confirm_dialog(&mut self, title: &str, message: &str, on_yes: AppAction) {
+    pub fn show_confirm_dialog(&mut self, title: &str, message: &str, on_yes: ConfirmAction) {
         self.input_mode = InputMode::Confirm;
         self.modal.confirm_title = Some(title.to_string());
         self.modal.confirm_message = Some(message.to_string());
@@ -814,11 +1060,18 @@ impl App {
     }
 
     /// Port of `ShowTextInputDialog`.
-    pub fn show_text_input_dialog(&mut self, title: &str, initial_value: &str, purpose: Option<TextInputPurpose>) {
+    pub fn show_text_input_dialog(
+        &mut self,
+        title: &str,
+        initial_value: &str,
+        purpose: Option<TextInputPurpose>,
+        target: Option<String>,
+    ) {
         self.input_mode = InputMode::TextInput;
         self.modal.text_input_title = Some(title.to_string());
         self.modal.active_text_input = Some(TextInput::new(initial_value));
         self.modal.text_input_purpose = purpose;
+        self.text_input_target = target;
     }
 
     /// Port of `NavigateToPath` (App.cs:2514), minus the file-selection side
@@ -925,6 +1178,15 @@ impl App {
                 if let Some(state) = &mut self.modal.context_menu {
                     crate::ui::context_menu::render(buffer, width, height, state);
                 }
+            }
+            InputMode::FileOperation => {
+                crate::ui::progress_overlay::render(
+                    buffer,
+                    width,
+                    height,
+                    &self.file_op_label,
+                    self.file_op_progress.as_ref(),
+                );
             }
             _ => {}
         }
@@ -1960,7 +2222,7 @@ mod tests {
     #[test]
     fn confirm_dialog_dispatches_yes_action() {
         let mut app = App::new(AppConfig::default());
-        app.show_confirm_dialog("Delete", "Sure?", AppAction::Refresh);
+        app.show_confirm_dialog("Delete", "Sure?", ConfirmAction::Dispatch(AppAction::Refresh));
         assert_eq!(app.input_mode, InputMode::Confirm);
 
         app.handle_confirm_key(

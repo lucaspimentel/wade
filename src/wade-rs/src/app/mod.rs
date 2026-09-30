@@ -4,6 +4,7 @@
 //! tracked as a temporary deviation in KNOWN_DEVIATIONS.md.
 
 pub mod config_io;
+pub mod file_operation_runner;
 pub mod git_action_runner;
 pub mod git_menu_items;
 pub mod git_status_loader;
@@ -114,6 +115,12 @@ pub struct App {
     notification: Option<Notification>,
     pub(crate) git_status_loader: crate::app::git_status_loader::GitStatusLoader,
     pub(crate) git_action_runner: crate::app::git_action_runner::GitActionRunner,
+    pub(crate) file_operation_runner: crate::app::file_operation_runner::FileOperationRunner,
+    file_op_label: String,
+    file_op_progress: Option<crate::input::FileOperationProgressEvent>,
+    /// C# closes over the entry in the TextInput completion callback; Rust
+    /// stores the target path explicitly for Rename/CreateSymlink purposes.
+    text_input_target: Option<String>,
     pub(crate) git_queries: std::sync::Arc<dyn crate::app::git_status_loader::GitQueries>,
     current_repo_root: Option<String>,
     current_branch_name: Option<String>,
@@ -161,6 +168,10 @@ impl App {
             pipeline: crate::input::input_pipeline::InputPipeline::new(),
             git_status_loader: crate::app::git_status_loader::GitStatusLoader::new(),
             git_action_runner: crate::app::git_action_runner::GitActionRunner::new(),
+            file_operation_runner: crate::app::file_operation_runner::FileOperationRunner::new(),
+            file_op_label: String::new(),
+            file_op_progress: None,
+            text_input_target: None,
             git_queries: std::sync::Arc::new(crate::app::git_status_loader::GitUtilsQueries),
             current_repo_root: None,
             current_branch_name: None,
@@ -235,6 +246,8 @@ impl App {
                     }
                     InputEvent::GitStatusReady(ready) => self.handle_git_status_ready(ready),
                     InputEvent::GitActionComplete(event) => self.handle_git_action_complete(event),
+                    InputEvent::FileOperationComplete(event) => self.handle_file_operation_complete(event),
+                    InputEvent::FileOperationProgress(event) => self.handle_file_operation_progress(event),
                 }
             }
 
@@ -245,6 +258,8 @@ impl App {
                 InputEvent::Paste(text) => self.handle_paste_event(&text),
                 InputEvent::GitStatusReady(event) => self.handle_git_status_ready(event),
                 InputEvent::GitActionComplete(event) => self.handle_git_action_complete(event),
+                InputEvent::FileOperationComplete(event) => self.handle_file_operation_complete(event),
+                InputEvent::FileOperationProgress(event) => self.handle_file_operation_progress(event),
             }
 
             // Clamp selection and adjust scroll
@@ -470,7 +485,7 @@ impl App {
             }
             A::GitCommit => {
                 if self.current_repo_root.is_some() {
-                    self.show_text_input_dialog("Commit message", "", Some(dialogs::TextInputPurpose::Commit));
+                    self.show_text_input_dialog("Commit message", "", Some(dialogs::TextInputPurpose::Commit), None);
                 }
             }
             A::GitPush => self.run_simple_git_action(crate::fs::git_utils::push),
@@ -478,6 +493,14 @@ impl App {
             A::GitPull => self.run_simple_git_action(crate::fs::git_utils::pull),
             A::GitPullRebase => self.run_simple_git_action(crate::fs::git_utils::pull_rebase),
             A::GitFetch => self.run_simple_git_action(crate::fs::git_utils::fetch),
+            A::OpenExternal
+            | A::Rename
+            | A::Delete
+            | A::DeletePermanently
+            | A::NewFile
+            | A::NewDirectory
+            | A::CreateSymlink => self.dispatch_file_action(action),
+            A::OpenTerminal => self.open_terminal_here(),
             other => {
                 // Unported in 3a: navigation to the subsystem lands in later phases.
                 self.show_notification("Not yet ported", NotificationKind::Info);
@@ -731,6 +754,158 @@ impl App {
         if let Some(root) = self.current_repo_root.clone() {
             let sender = self.pipeline.sender();
             self.git_action_runner.start_action(Box::new(move |cancel| action(&root, cancel)), sender);
+        }
+    }
+
+    /// Port of `ExecuteDelete` (App.cs:2668) plus the delete-confirm target
+    /// building from `DispatchFileAction` (App.cs:3210-3246).
+    pub fn execute_delete(&mut self, targets: Vec<String>, permanent: bool) {
+        let sender = self.pipeline.sender();
+        self.file_operation_runner
+            .begin(crate::app::file_operation_runner::delete_operation(targets, permanent), sender);
+        self.input_mode = InputMode::FileOperation;
+        self.file_op_label = "Deleting".to_string();
+    }
+
+    /// Port of `ExecutePaste` mechanics (App.cs:1014-1023): the Clipboard
+    /// dispatch arm stays Phase 9; only the operation mechanics are ported.
+    pub fn execute_paste_internal(&mut self, sources: Vec<String>, is_cut: bool, overwrite: bool) {
+        let sender = self.pipeline.sender();
+        self.file_operation_runner.begin(
+            crate::app::file_operation_runner::paste_operation(
+                sources,
+                self.current_path.clone(),
+                is_cut,
+                overwrite,
+                self.config.copy_symlinks_as_links_enabled,
+            ),
+            sender,
+        );
+        self.input_mode = InputMode::FileOperation;
+        self.file_op_label = if is_cut { "Moving" } else { "Copying" }.to_string();
+    }
+
+    /// Port of `HandleFileOperationProgress` (enhancement): stores the live
+    /// progress for the overlay.
+    pub fn handle_file_operation_progress(&mut self, event: crate::input::FileOperationProgressEvent) {
+        self.file_op_progress = Some(event);
+    }
+
+    /// Port of `HandleFileOperationComplete` (App.cs:2677). The clipboard
+    /// clear (WasCut) lands in Phase 9.
+    pub fn handle_file_operation_complete(&mut self, event: crate::input::FileOperationCompleteEvent) {
+        self.input_mode = InputMode::Normal;
+        self.file_op_progress = None;
+        self.directory_contents.invalidate(&self.current_path);
+        self.invalidate_filtered_entries();
+
+        self.marked_paths.clear();
+        self.refresh_git_status();
+
+        if event.error_count > 0 {
+            self.show_notification(
+                &format!("{} {}, {} failed", self.file_op_label, event.success_count, event.error_count),
+                NotificationKind::Error,
+            );
+        } else {
+            self.show_notification(
+                &format!("{} {} item(s)", self.file_op_label, event.success_count),
+                NotificationKind::Success,
+            );
+        }
+    }
+
+    /// Port of `HandleGitStatusReady`'s sibling for filtered lists: C# calls
+    /// `InvalidateFilteredEntries()` after file operations and config apply.
+    pub fn invalidate_filtered_entries(&mut self) {
+        self.filtered_entries = None;
+    }
+
+    /// Port of `DispatchFileAction` (App.cs:3132-3530), minus the clipboard
+    /// actions (Copy/Cut/Paste/CopyAbsolutePath/CopyGitRelativePath: Phase 9).
+    pub fn dispatch_file_action(&mut self, action: AppAction) {
+        use AppAction as A;
+        let entries = self.get_visible_entries();
+
+        match action {
+            A::OpenExternal => {
+                if !entries.is_empty() && self.selected_index < entries.len() {
+                    let entry = entries[self.selected_index].clone();
+                    match open_external(&entry.full_path) {
+                        Ok(()) => self.show_notification(&format!("Opened '{}'", entry.name), NotificationKind::Success),
+                        Err(err) => self.show_notification(&format!("Error: {err}"), NotificationKind::Error),
+                    }
+                }
+            }
+            A::Rename => {
+                if !entries.is_empty() && self.selected_index < entries.len() {
+                    let entry = entries[self.selected_index].clone();
+                    self.show_text_input_dialog(
+                        "Rename",
+                        &entry.name,
+                        Some(dialogs::TextInputPurpose::Rename),
+                        Some(entry.full_path),
+                    );
+                }
+            }
+            A::Delete | A::DeletePermanently => {
+                if entries.is_empty() {
+                    return;
+                }
+
+                let (targets, prompt) = if !self.marked_paths.is_empty() {
+                    (self.marked_paths.iter().cloned().collect::<Vec<String>>(), format!("Delete {} item(s)?", self.marked_paths.len()))
+                } else if self.selected_index < entries.len() {
+                    (
+                        vec![entries[self.selected_index].full_path.clone()],
+                        format!("Delete '{}'?", entries[self.selected_index].name),
+                    )
+                } else {
+                    return;
+                };
+
+                let permanent = action == A::DeletePermanently;
+                let is_permanent = permanent || !cfg!(windows);
+                let title = if is_permanent { "Permanently Delete" } else { "Delete" };
+                let warning = if is_permanent { "\nThis cannot be undone!" } else { "" };
+
+                if self.config.confirm_delete_enabled {
+                    self.show_confirm_dialog(
+                        title,
+                        &format!("{prompt}{warning}"),
+                        dialogs::ConfirmAction::DeleteFiles { targets, permanent },
+                    );
+                } else {
+                    self.execute_delete(targets, permanent);
+                }
+            }
+            A::NewFile => {
+                self.show_text_input_dialog("New File", "", Some(dialogs::TextInputPurpose::NewFile), None);
+            }
+            A::NewDirectory => {
+                self.show_text_input_dialog("New Directory", "", Some(dialogs::TextInputPurpose::NewDirectory), None);
+            }
+            A::CreateSymlink
+                if !entries.is_empty() && self.selected_index < entries.len() =>
+            {
+                let entry = entries[self.selected_index].clone();
+                let initial = format!("{}_link", entry.name);
+                self.show_text_input_dialog(
+                    "Create Symlink",
+                    &initial,
+                    Some(dialogs::TextInputPurpose::CreateSymlink),
+                    Some(entry.full_path),
+                );
+            }
+            _ => {}
+        }
+    }
+
+    /// Port of the OpenTerminal dispatch arm (App.cs:946-957).
+    fn open_terminal_here(&mut self) {
+        match open_terminal(&self.current_path) {
+            Ok(()) => self.show_notification("Opened terminal", NotificationKind::Success),
+            Err(err) => self.show_notification(&format!("Error: {err}"), NotificationKind::Error),
         }
     }
 
@@ -1120,6 +1295,60 @@ impl App {
 use crate::fs::directory_contents::{capitalize_drive_letter, drive_root};
 use crate::ui::layout::Rect as Rect2;
 
+/// Port of `Process.Start(path) { UseShellExecute = true }` (App.cs:3143):
+/// Rust has no ShellExecute in std; on Windows the equivalent is
+/// `cmd /C start` (with the empty window-title argument), on unix
+/// `xdg-open`. Documented in KNOWN_DEVIATIONS.md.
+fn open_external(path: &str) -> Result<(), std::io::Error> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        std::process::Command::new("cmd")
+            .args(["/C", "start", "", path])
+            .creation_flags(0x0800_0000) // CREATE_NO_WINDOW
+            .spawn()
+            .map(|_| ())
+    }
+
+    #[cfg(not(windows))]
+    {
+        let _ = path;
+        Err(std::io::Error::other("Open external is Windows-only until Phase 9"))
+    }
+}
+
+/// Port of `OpenTerminalHere` (App.cs:979-1010): wt.exe with cmd fallback on
+/// Windows, $SHELL on unix. The child is not waited on.
+fn open_terminal(working_directory: &str) -> std::io::Result<()> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        let wt = std::process::Command::new("wt.exe")
+            .args(["-w", "0", "new-tab", "-d", working_directory])
+            .creation_flags(0x0800_0000) // CREATE_NO_WINDOW
+            .spawn();
+        match wt {
+            Ok(_) => Ok(()),
+            Err(_) => {
+                let comspec =
+                    std::env::var("COMSPEC").unwrap_or_else(|_| "cmd.exe".to_string());
+                std::process::Command::new(comspec)
+                    .current_dir(working_directory)
+                    .spawn()
+                    .map(|_| ())
+            }
+        }
+    }
+
+    #[cfg(not(windows))]
+    {
+        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
+        std::process::Command::new(shell)
+            .current_dir(working_directory)
+            .spawn()
+            .map(|_| ())
+    }
+}
 /// Port of `CalculateScroll`.
 #[must_use]
 pub fn calculate_scroll(selected_index: usize, visible_height: i32, total_count: usize) -> i32 {
