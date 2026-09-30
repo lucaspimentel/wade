@@ -4,10 +4,13 @@
 //! tracked as a temporary deviation in KNOWN_DEVIATIONS.md.
 
 pub mod config_io;
+pub mod directory_size_loader;
 pub mod file_operation_runner;
+pub mod fs_watcher;
 pub mod git_action_runner;
 pub mod git_menu_items;
 pub mod git_status_loader;
+pub mod inline_dir_size_loader;
 pub mod dialogs;
 pub mod input_reader;
 
@@ -116,6 +119,20 @@ pub struct App {
     pub(crate) git_status_loader: crate::app::git_status_loader::GitStatusLoader,
     pub(crate) git_action_runner: crate::app::git_action_runner::GitActionRunner,
     pub(crate) file_operation_runner: crate::app::file_operation_runner::FileOperationRunner,
+    pub(crate) directory_size_loader: crate::app::directory_size_loader::DirectorySizeLoader,
+    pub(crate) inline_dir_size_loader: crate::app::inline_dir_size_loader::InlineDirSizeLoader,
+    pub(crate) fs_watcher: crate::app::fs_watcher::FileSystemWatcherManager,
+    /// Size text for the Properties overlay while the loader works.
+    properties_dir_size_path: Option<String>,
+    properties_dir_size_text: Option<String>,
+    properties_scroll_offset: usize,
+    properties_content_height: usize,
+    /// Accumulated inline directory sizes for the current listing.
+    inline_dir_sizes: Option<HashMap<String, i64>>,
+    current_drive_media_type: crate::fs::DriveMediaType,
+    /// Set by HandleFileSystemChanged: the next frame forces a full redraw
+    /// (port of C# buffer.ForceFullRedraw()).
+    request_full_redraw: bool,
     file_op_label: String,
     file_op_progress: Option<crate::input::FileOperationProgressEvent>,
     /// C# closes over the entry in the TextInput completion callback; Rust
@@ -144,7 +161,7 @@ pub struct App {
 impl App {
     #[must_use]
     pub fn new(config: AppConfig) -> Self {
-        Self {
+        let mut app = Self {
             config,
             directory_contents: DirectoryContents::new(),
             layout: Layout::default(),
@@ -169,6 +186,20 @@ impl App {
             git_status_loader: crate::app::git_status_loader::GitStatusLoader::new(),
             git_action_runner: crate::app::git_action_runner::GitActionRunner::new(),
             file_operation_runner: crate::app::file_operation_runner::FileOperationRunner::new(),
+            directory_size_loader: crate::app::directory_size_loader::DirectorySizeLoader::new(),
+            inline_dir_size_loader: crate::app::inline_dir_size_loader::InlineDirSizeLoader::new(),
+            // fs_watcher is rewired to the real pipeline below (needs the
+            // pipeline built first).
+            fs_watcher: crate::app::fs_watcher::FileSystemWatcherManager::new(
+                std::sync::mpsc::channel().0,
+            ),
+            properties_dir_size_path: None,
+            properties_dir_size_text: None,
+            properties_scroll_offset: 0,
+            properties_content_height: 0,
+            inline_dir_sizes: None,
+            current_drive_media_type: crate::fs::DriveMediaType::Unknown,
+            request_full_redraw: false,
             file_op_label: String::new(),
             file_op_progress: None,
             text_input_target: None,
@@ -177,7 +208,13 @@ impl App {
             current_branch_name: None,
             git_statuses: None,
             ahead_behind_text: None,
-        }
+        };
+
+        // Rewire the watcher to the app's real pipeline (the struct literal
+        // had to use a throwaway sender because pipeline is owned by Self).
+        app.fs_watcher = crate::app::fs_watcher::FileSystemWatcherManager::new(app.pipeline.sender());
+
+        app
     }
 
     #[must_use]
@@ -224,6 +261,14 @@ impl App {
                     self.notification = None;
                 }
 
+            // Ensure filesystem watcher tracks the current directory (App.cs:264)
+            self.tick_file_system_watcher();
+
+            if self.request_full_redraw {
+                self.request_full_redraw = false;
+                buffer.force_full_redraw();
+            }
+
             // Render
             buffer.clear();
             self.render(&mut buffer);
@@ -248,6 +293,10 @@ impl App {
                     InputEvent::GitActionComplete(event) => self.handle_git_action_complete(event),
                     InputEvent::FileOperationComplete(event) => self.handle_file_operation_complete(event),
                     InputEvent::FileOperationProgress(event) => self.handle_file_operation_progress(event),
+                    InputEvent::DirectorySizeReady(event) => self.handle_directory_size_ready(event),
+                    InputEvent::InlineDirSizeReady(event) => self.handle_inline_dir_size_ready(event),
+                    InputEvent::InlineDirSizeComplete(event) => self.handle_inline_dir_size_complete(event),
+                    InputEvent::FileSystemChanged(event) => self.handle_file_system_changed(event),
                 }
             }
 
@@ -260,6 +309,7 @@ impl App {
                 InputEvent::GitActionComplete(event) => self.handle_git_action_complete(event),
                 InputEvent::FileOperationComplete(event) => self.handle_file_operation_complete(event),
                 InputEvent::FileOperationProgress(event) => self.handle_file_operation_progress(event),
+                InputEvent::DirectorySizeReady(_) | InputEvent::InlineDirSizeReady(_) | InputEvent::InlineDirSizeComplete(_) | InputEvent::FileSystemChanged(_) => {}
             }
 
             // Clamp selection and adjust scroll
@@ -501,6 +551,7 @@ impl App {
             | A::NewDirectory
             | A::CreateSymlink => self.dispatch_file_action(action),
             A::OpenTerminal => self.open_terminal_here(),
+            A::ShowProperties => self.show_properties(),
             other => {
                 // Unported in 3a: navigation to the subsystem lands in later phases.
                 self.show_notification("Not yet ported", NotificationKind::Info);
@@ -744,7 +795,208 @@ impl App {
             }
         }
 
-        // C# also calls RefreshInlineDirSizes here (Phase 4d).
+        self.refresh_inline_dir_sizes();
+    }
+
+    /// Port of `RefreshInlineDirSizes` (App.cs:2600-2652). Dormant until
+    /// Phase 9: no DriveTypeDetector yet, so the media type is always
+    /// Unknown and gating disables the loader.
+    fn refresh_inline_dir_sizes(&mut self) {
+        self.inline_dir_sizes = None;
+        self.directory_contents.dir_sizes = None;
+
+        if !self.config.size_column_enabled || self.current_path == DRIVES_PATH {
+            self.inline_dir_size_loader.cancel();
+            return;
+        }
+
+        // Drive detection is a Phase 9 item; Unknown for now.
+        self.current_drive_media_type = crate::fs::DriveMediaType::Unknown;
+
+        if !Self::should_compute_inline_dir_sizes_impl(self.current_drive_media_type, &self.config) {
+            self.inline_dir_size_loader.cancel();
+            return;
+        }
+
+        let entries = self.directory_contents.get_entries(&self.current_path);
+        let dir_paths: Vec<String> = entries
+            .iter()
+            .filter(|entry| entry.is_directory && !entry.is_drive)
+            .map(|entry| entry.full_path.clone())
+            .collect();
+
+        if !dir_paths.is_empty() {
+            self.inline_dir_sizes = Some(HashMap::new());
+            let sender = self.pipeline.sender();
+            self.inline_dir_size_loader.begin_load(&self.current_path, &dir_paths, sender);
+        } else {
+            self.inline_dir_size_loader.cancel();
+        }
+    }
+
+    /// Port of `ShouldComputeInlineDirSizes` (App.cs:2650).
+    pub(crate) fn should_compute_inline_dir_sizes_impl(
+        drive_type: crate::fs::DriveMediaType,
+        config: &AppConfig,
+    ) -> bool {
+        use crate::fs::DriveMediaType as M;
+        match drive_type {
+            M::Ssd => config.dir_size_ssd_enabled,
+            M::Hdd => config.dir_size_hdd_enabled,
+            M::Network => config.dir_size_network_enabled,
+            M::Removable => config.dir_size_ssd_enabled,
+            M::Unknown => false,
+        }
+    }
+
+    /// Port of `HandleDirectorySizeReady` (App.cs:1416).
+    pub fn handle_directory_size_ready(&mut self, event: crate::input::DirectorySizeReadyEvent) {
+        if Some(event.path.as_str()) != self.properties_dir_size_path.as_deref() {
+            return;
+        }
+
+        let formatted = format_size_buf(event.total_bytes);
+        self.properties_dir_size_text =
+            Some(format!("{} ({} bytes)", formatted, group_thousands(event.total_bytes)));
+    }
+
+    /// Port of `HandleInlineDirSizeReady` (App.cs:1429).
+    pub fn handle_inline_dir_size_ready(&mut self, event: crate::input::InlineDirSizeReadyEvent) {
+        if event.parent_path != self.current_path {
+            return;
+        }
+
+        self.inline_dir_sizes
+            .get_or_insert_with(HashMap::new)
+            .insert(event.directory_path, event.total_bytes);
+    }
+
+    /// Port of `HandleInlineDirSizeComplete` (App.cs:1440).
+    pub fn handle_inline_dir_size_complete(&mut self, event: crate::input::InlineDirSizeCompleteEvent) {
+        if event.parent_path != self.current_path {
+            return;
+        }
+
+        self.directory_contents.dir_sizes = self.inline_dir_sizes.take();
+
+        if self.directory_contents.sort_mode == crate::fs::directory_contents::SortMode::Size {
+            self.directory_contents.invalidate(&self.current_path);
+        }
+    }
+
+    /// Port of `HandleFileSystemChanged` (App.cs:1531). Preview-cache
+    /// clearing lands in Phase 7.
+    pub fn handle_file_system_changed(&mut self, event: crate::input::FileSystemChangedEvent) {
+        if !paths_equal_ignore_case(&event.directory_path, &self.current_path) {
+            return; // Stale event for a directory we've navigated away from
+        }
+
+        // Preserve selection by name
+        let entries = self.get_visible_entries();
+        let selected_name = entries.get(self.selected_index).map(|entry| entry.name.clone());
+
+        // Invalidate cache
+        if event.full_refresh {
+            self.directory_contents.invalidate_all();
+        } else {
+            self.directory_contents.invalidate(&self.current_path);
+        }
+
+        // Restore selection
+        let new_entries = self.get_visible_entries();
+        let mut selected_survived = false;
+
+        if let Some(name) = &selected_name {
+            if !new_entries.is_empty() {
+                match new_entries.iter().position(|entry| names_equal_ignore_case(&entry.name, name)) {
+                    Some(index) => {
+                        self.selected_index = index;
+                        selected_survived = true;
+                    }
+                    None => {
+                        self.selected_index = self.selected_index.min(new_entries.len() - 1);
+                    }
+                }
+            }
+        } else if !new_entries.is_empty() {
+            self.selected_index = self.selected_index.min(new_entries.len() - 1);
+        } else {
+            self.selected_index = 0;
+        }
+
+        let _ = selected_survived; // preview-cache clear lands in Phase 7
+        self.refresh_git_status();
+        self.request_full_redraw = true;
+    }
+
+    /// Port of the watcher tick at the top of the render loop (App.cs:264).
+    pub fn tick_file_system_watcher(&mut self) {
+        let path = self.current_path.clone();
+        self.fs_watcher.watch(&path);
+    }
+
+    /// Port of `ShowProperties` dispatch (App.cs:810-828 and the palette
+    /// site at App.cs:3546).
+    fn show_properties(&mut self) {
+        let entries = self.get_visible_entries();
+
+        if entries.is_empty() || self.selected_index >= entries.len() {
+            return;
+        }
+
+        self.input_mode = InputMode::Properties;
+        self.properties_scroll_offset = 0;
+        let entry = entries[self.selected_index].clone();
+
+        if entry.is_directory && !entry.is_drive {
+            self.properties_dir_size_path = Some(entry.full_path.clone());
+            self.properties_dir_size_text = Some("Calculating\u{2026}".to_string());
+            let sender = self.pipeline.sender();
+            self.directory_size_loader.begin_calculation(&entry.full_path, sender);
+        } else {
+            self.properties_dir_size_path = None;
+            self.properties_dir_size_text = None;
+        }
+    }
+
+    /// Port of `HandlePropertiesKey` (App.cs:1948). Modifier-only keys are
+    /// filtered by the caller.
+    pub(crate) fn handle_properties_key(&mut self, key: &KeyEvent) {
+        use crate::console_key::ConsoleKey;
+
+        let close = |app: &mut Self| {
+            app.input_mode = InputMode::Normal;
+            app.directory_size_loader.cancel();
+            app.properties_dir_size_path = None;
+            app.properties_dir_size_text = None;
+        };
+
+        match key.key {
+            ConsoleKey::Escape | ConsoleKey::Enter => close(self),
+            ConsoleKey::UpArrow => {
+                if self.properties_scroll_offset > 0 {
+                    self.properties_scroll_offset -= 1;
+                }
+            }
+            ConsoleKey::DownArrow => {
+                self.properties_scroll_offset += 1;
+            }
+            ConsoleKey::PageUp => {
+                let page_size = (self.properties_content_height / 2).max(1);
+                self.properties_scroll_offset = self.properties_scroll_offset.saturating_sub(page_size);
+            }
+            ConsoleKey::PageDown => {
+                let page_size = (self.properties_content_height / 2).max(1);
+                self.properties_scroll_offset = self.properties_scroll_offset.saturating_add(page_size);
+            }
+            ConsoleKey::Home => {
+                self.properties_scroll_offset = 0;
+            }
+            ConsoleKey::End => {
+                self.properties_scroll_offset = usize::MAX; // clamped during render
+            }
+            _ => close(self),
+        }
     }
 
     /// The dispatch arms for the network git commands (push/pull/fetch and
@@ -1349,6 +1601,56 @@ fn open_terminal(working_directory: &str) -> std::io::Result<()> {
             .map(|_| ())
     }
 }
+/// Case-insensitive path comparison (C# `OrdinalIgnoreCase` paths).
+#[must_use]
+pub(crate) fn paths_equal_ignore_case(a: &str, b: &str) -> bool {
+    #[cfg(windows)]
+    {
+        a.eq_ignore_ascii_case(b)
+    }
+
+    #[cfg(not(windows))]
+    {
+        a == b
+    }
+}
+
+/// Case-insensitive file-name comparison (C# `OrdinalIgnoreCase` names).
+#[must_use]
+fn names_equal_ignore_case(a: &str, b: &str) -> bool {
+    paths_equal_ignore_case(a, b)
+}
+
+/// C# `"{value:N0}"` invariant format: thousands-grouped with commas.
+#[must_use]
+pub(crate) fn group_thousands(value: i64) -> String {
+    let digits = value.abs().to_string();
+    let mut grouped = String::new();
+    let count = digits.len();
+
+    for (index, ch) in digits.chars().enumerate() {
+        grouped.push(ch);
+        let remaining = count - index - 1;
+        if remaining > 0 && remaining.is_multiple_of(3) {
+            grouped.push(',');
+        }
+    }
+
+    if value < 0 {
+        format!("-{grouped}")
+    } else {
+        grouped
+    }
+}
+
+/// `FormatHelpers.FormatSize` convenience wrapper returning a String.
+#[must_use]
+pub(crate) fn format_size_buf(bytes: i64) -> String {
+    let mut buf = ['\0'; 32];
+    let n = crate::ui::format_helpers::format_size(&mut buf, bytes);
+    buf[..n].iter().collect()
+}
+
 /// Port of `CalculateScroll`.
 #[must_use]
 pub fn calculate_scroll(selected_index: usize, visible_height: i32, total_count: usize) -> i32 {

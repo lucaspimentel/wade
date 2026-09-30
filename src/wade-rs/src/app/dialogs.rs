@@ -165,6 +165,14 @@ impl App {
 
                 true
             }
+            InputMode::Properties => {
+                // Modifier-only keys fall through (App.cs:602-608)
+                if !key.is_modifier_only() {
+                    self.handle_properties_key(&key);
+                }
+
+                true
+            }
             InputMode::Bookmarks => {
                 self.handle_bookmark_key(key);
                 true
@@ -1187,6 +1195,35 @@ impl App {
                     &self.file_op_label,
                     self.file_op_progress.as_ref(),
                 );
+            }
+            InputMode::Properties => {
+                let entries = self.get_visible_entries();
+
+                if self.selected_index < entries.len() {
+                    let entry = &entries[self.selected_index];
+                    let git_status = self
+                        .git_statuses
+                        .as_ref()
+                        .and_then(|statuses| crate::fs::git_utils::statuses_get(statuses, &entry.full_path));
+                    let dir_size_text = self.properties_dir_size_text.clone();
+
+                    self.properties_content_height = crate::ui::properties_overlay::render(
+                        buffer,
+                        width,
+                        height,
+                        entry,
+                        dir_size_text.as_deref(),
+                        git_status,
+                        None, // metadata sections are Phase 7
+                        self.properties_scroll_offset,
+                    );
+
+                    // Clamp scroll offset in case content changed
+                    // (App.cs:1286-1291)
+                    let visible_rows = (height - 8).max(1) as usize;
+                    let max_scroll = self.properties_content_height.saturating_sub(visible_rows);
+                    self.properties_scroll_offset = self.properties_scroll_offset.min(max_scroll);
+                }
             }
             _ => {}
         }
