@@ -5,11 +5,19 @@ deliberate deviations are recorded here. The C# retirement trigger requires
 this file to be empty or fully accepted.
 
 ## Temporary (phase-scoped, expected to be removed by later phases)
+- **Open external goes through cmd /C start (Phase 4c).** C# uses
+  `UseShellExecute = true`; Rust std has no ShellExecute, so the Windows
+  path shells through `cmd /C start` and the unix path is deferred to
+  Phase 9 with the rest of the unix work.
+- **The file-operation progress overlay is enhanced (Phase 4c).** C# shows
+  only the operation label; the Rust overlay also shows the item count and
+  current file name. Deliberate divergence, so no golden fixture covers
+  this overlay.
 
 - **Unported actions are stubbed with a notification (Phase 3a).** Actions
-  whose subsystems land in later phases (file operations, previews:
-  later phases; file finder: phase 5) show a status-bar notification ("Not
-  yet ported") instead of performing the action. The action palette omits
+  whose subsystems land in later phases (previews: phase 7; file finder:
+  phase 5) show a status-bar notification ("Not yet ported") instead of
+  performing the action. The action palette omits
   entries whose actions are not yet ported (preview providers, file
   operations, file finder, terminal); the submenu stack machinery is
   ported and remaining entries are added in their phases. Git actions are
@@ -21,11 +29,6 @@ this file to be empty or fully accepted.
   gating subsystems that land in later phases (image/PDF/markdown/archive
   previews, file/archive/pdf/media metadata, git status, directory sizes,
   copy symlinks as links) have no runtime effect until those phases land.
-- **TextInput dialogs have no completion action yet (Phase 3b).** The
-  dialog and key handling are ported, but the Rename/NewFile/NewDirectory
-  consumers are file operations from a later phase; Enter with a purpose
-  set reports "Not yet ported".
-- **Directory timestamps use UTC instead of local time (Phase 3a).**
   `FileSystemEntry.last_modified` converts `SystemTime` without a local
   timezone offset (C# `LastWriteTime` is local). No timezone crate has been
   chosen yet; date display and Modified sort may differ by the UTC offset.

@@ -1,0 +1,6 @@
+# Confirm dialog: the permanent-delete two-line message with warning
+size 80 25
+confirmdlg "Permanently Delete" "Delete 'important.dat'?\nThis cannot be undone!"
+flush
+confirmdlg "Delete" "Delete 3 item(s)?"
+flush
