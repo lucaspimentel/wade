@@ -437,14 +437,33 @@ mod tests {
         assert!(read_branch_name(&root.to_string_lossy()).is_none());
     }
 
+    /// Platform-native root for parser tests: a windows-style root produces
+    /// CWD-resolved keys on unix (faithful C# `Path.GetFullPath` behavior),
+    /// so tests use the platform's native form and build expected keys with
+    /// the same join the parser uses.
+    fn test_root() -> String {
+        if cfg!(windows) {
+            String::from("C:\\repo")
+        } else {
+            String::from("/repo")
+        }
+    }
+
+    fn test_key(root: &str, name: &str) -> String {
+        std::path::Path::new(root)
+            .join(name.replace('/', std::path::MAIN_SEPARATOR_STR))
+            .to_string_lossy()
+            .to_string()
+    }
+
     #[test]
     fn porcelain_parse_basic_statuses() {
-        let root = r"C:\repo";
+        let root = test_root();
         let output = "?? new.txt\n M mod.txt\nM  staged.txt\nAM both.txt\n!! ignored.txt\nUU conflict.txt\nAA both-added.txt\nDD both-deleted.txt\nR  old.txt -> renamed.txt\n?? \"quoted path.txt\"\nx\n";
 
-        let statuses = parse_porcelain_output(output, root);
+        let statuses = parse_porcelain_output(output, &root);
 
-        let get = |name: &str| statuses.get(&format!(r"C:\repo\{name}")).copied();
+        let get = |name: &str| statuses.get(&test_key(&root, name)).copied();
 
         assert_eq!(get("new.txt"), Some(GitFileStatus::UNTRACKED));
         assert_eq!(get("mod.txt"), Some(GitFileStatus::MODIFIED));
@@ -468,33 +487,50 @@ mod tests {
 
     #[test]
     fn porcelain_parse_slash_paths_normalized() {
-        let root = r"C:\repo";
-        let statuses = parse_porcelain_output("?? src/deep/new.txt\n", root);
-        assert!(statuses.contains_key(r"C:\repo\src\deep\new.txt"));
+        let root = test_root();
+        let statuses = parse_porcelain_output("?? src/deep/new.txt\n", &root);
+
+        let file_key = test_key(&root, "src/deep/new.txt");
+        let deep_key = test_key(&root, "src/deep");
+        let src_key = test_key(&root, "src");
+
+        // The relative path separator is normalized to the platform
+        // separator (backslash on windows, unchanged on unix)
+        if cfg!(windows) {
+            assert!(statuses.contains_key(r"C:\repo\src\deep\new.txt"));
+        } else {
+            assert!(statuses.contains_key(&file_key));
+        }
+
         // Aggregation created directory entries
-        assert!(statuses.contains_key(r"C:\repo\src\deep"));
-        assert!(statuses.contains_key(r"C:\repo\src"));
+        assert!(statuses.contains_key(&deep_key));
+        assert!(statuses.contains_key(&src_key));
         assert!(statuses.contains_key(r"C:\repo"));
     }
 
     #[test]
     fn aggregation_excludes_ignored() {
-        let root = r"C:\repo";
-        let statuses = parse_porcelain_output("!! ignored.txt\n M mod.txt\n", root);
+        let root = test_root();
+        let statuses = parse_porcelain_output("!! ignored.txt\n M mod.txt\n", &root);
 
-        let dir_status = statuses.get(r"C:\repo").copied().expect("root aggregate");
+        let dir_status = statuses.get(&root).copied().expect("root aggregate");
         // Ignored does not propagate; Modified does
         assert!(dir_status.contains(GitFileStatus::MODIFIED));
         assert!(!dir_status.contains(GitFileStatus::IGNORED));
         // But the ignored file itself keeps its flag
-        assert!(statuses.get(r"C:\repo\ignored.txt").copied().expect("file").contains(GitFileStatus::IGNORED));
+        let ignored_key = test_key(&root, "ignored.txt");
+        assert!(statuses
+            .get(&ignored_key)
+            .copied()
+            .expect("file")
+            .contains(GitFileStatus::IGNORED));
     }
 
     #[test]
     fn aggregation_or_merges() {
-        let root = r"C:\repo";
-        let statuses = parse_porcelain_output("?? a/one.txt\n M a/two.txt\n", root);
-        let dir_status = statuses.get(r"C:\repo\a").copied().expect("dir");
+        let root = test_root();
+        let statuses = parse_porcelain_output("?? a/one.txt\n M a/two.txt\n", &root);
+        let dir_status = statuses.get(&test_key(&root, "a")).copied().expect("dir");
         assert!(dir_status.contains(GitFileStatus::UNTRACKED));
         assert!(dir_status.contains(GitFileStatus::MODIFIED));
     }
@@ -567,12 +603,30 @@ mod integration {
             path.to_string_lossy().to_string()
         };
 
+        // Lookup failure dumps the map so CI failures are diagnosable: the
+        // keys are platform-shaped by the parser (Path join + GetFullPath),
+        // so a mismatch here means the parser's key shaping drifted.
+        let lookup = |name: &str, what: &str| {
+            let key = join(name);
+            match statuses_get(&statuses, &key) {
+                Some(status) => status,
+                None => panic!(
+                    "{what} not found for key {key:?}; map keys: {:?}",
+                    {
+                        let mut keys: Vec<&String> = statuses.keys().collect();
+                        keys.sort();
+                        keys
+                    }
+                ),
+            }
+        };
+
         // Modified tracked file (worktree M)
-        let tracked = statuses_get(&statuses, &join("tracked.txt")).expect("tracked entry");
+        let tracked = lookup("tracked.txt", "tracked entry");
         assert!(tracked.contains(GitFileStatus::MODIFIED), "tracked: {tracked:?}");
 
         // Untracked file
-        let untracked = statuses_get(&statuses, &join("untracked.txt")).expect("untracked entry");
+        let untracked = lookup("untracked.txt", "untracked entry");
         assert!(untracked.contains(GitFileStatus::UNTRACKED), "untracked: {untracked:?}");
 
         // Branch name from the real repo
