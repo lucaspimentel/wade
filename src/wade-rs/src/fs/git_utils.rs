@@ -9,6 +9,7 @@ use super::directory_contents::GitFileStatus;
 use crate::input::CancelToken;
 
 const LOCAL_TIMEOUT_MS: u128 = 10_000;
+const NETWORK_TIMEOUT_MS: u128 = 30_000;
 
 /// Case-insensitive status lookup mirroring the C# dictionary's
 /// `StringComparer.OrdinalIgnoreCase`: exact match first, then a
@@ -84,20 +85,26 @@ pub fn read_branch_name(repo_root: &str) -> Option<String> {
 /// Port of `GitUtils.RunGitCommand` (success/error shape); used by the
 /// Phase 4b git actions. Reads stderr before stdout (C# behavior), then
 /// enforces the timeout via a try_wait poll loop (kill on expiry).
-#[allow(dead_code)] // wired up in Phase 4b
-pub fn run_git_command(
+/// Port of `GitUtils.RunGitCommand` shape: success plus an optional error
+/// message. `args` are the argv words after "git" (the C# version joins them
+/// into a command line and lets the process launcher re-split it, which
+/// unquotes; passing argv directly is equivalent).
+pub fn run_git_result(
     repo_root: &str,
-    arguments: &str,
+    args: &[&str],
     cancel: &CancelToken,
     timeout_ms: u128,
-) -> Result<(), String> {
-    run_git_capturing(repo_root, arguments, cancel, timeout_ms).map(|_| ())
+) -> (bool, Option<String>) {
+    match run_git_capturing(repo_root, args, cancel, timeout_ms) {
+        Ok(_) => (true, None),
+        Err(message) => (false, Some(message)),
+    }
 }
 
 /// Runs git and returns stdout on success.
 fn run_git_capturing(
     repo_root: &str,
-    arguments: &str,
+    args: &[&str],
     cancel: &CancelToken,
     timeout_ms: u128,
 ) -> Result<String, String> {
@@ -105,7 +112,7 @@ fn run_git_capturing(
         return Err("Cancelled".to_string());
     }
 
-    let mut child = spawn_git(repo_root, arguments).map_err(|err| err.to_string())?;
+    let mut child = spawn_git(repo_root, args).map_err(|err| err.to_string())?;
 
     // C# reads stderr first, then drains stdout; blocking reads clone the
     // C# semantics (git commands here emit small output)
@@ -132,9 +139,9 @@ fn run_git_capturing(
     Ok(stdout)
 }
 
-fn spawn_git(repo_root: &str, arguments: &str) -> std::io::Result<std::process::Child> {
+fn spawn_git(repo_root: &str, args: &[&str]) -> std::io::Result<std::process::Child> {
     Command::new("git")
-        .args(arguments.split(' '))
+        .args(args)
         .current_dir(repo_root)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -182,7 +189,7 @@ pub fn query_status(repo_root: &str, cancel: &CancelToken) -> Option<HashMap<Str
         return None;
     }
 
-    match run_git_capturing(repo_root, "status --porcelain=v1", cancel, LOCAL_TIMEOUT_MS) {
+    match run_git_capturing(repo_root, &["status", "--porcelain=v1"], cancel, LOCAL_TIMEOUT_MS) {
         Ok(stdout) => Some(parse_porcelain_output(&stdout, repo_root)),
         Err(_) => None,
     }
@@ -198,13 +205,120 @@ pub fn get_ahead_behind(repo_root: &str, cancel: &CancelToken) -> Option<(u32, u
 
     match run_git_capturing(
         repo_root,
-        "rev-list --count --left-right @{upstream}...HEAD",
+        &["rev-list", "--count", "--left-right", "@{upstream}...HEAD"],
         cancel,
         LOCAL_TIMEOUT_MS,
     ) {
         Ok(stdout) => parse_ahead_behind(&stdout),
         Err(_) => None,
     }
+}
+
+/// Port of `GitUtils.GetRelativePath` usage in `BuildPathArgs`: the path
+/// relative to the repo root, with backslashes converted to forward slashes.
+#[must_use]
+pub fn relative_path(repo_root: &str, path: &str) -> String {
+    let root_norm = repo_root.trim_end_matches(['/', '\\']);
+    let path_norm = path.trim_end_matches(['/', '\\']);
+
+    let under_root = if cfg!(windows) {
+        path_norm.len() >= root_norm.len()
+            && path_norm[..root_norm.len()].eq_ignore_ascii_case(root_norm)
+    } else {
+        path_norm.len() >= root_norm.len() && path_norm.starts_with(root_norm)
+    };
+
+    let relative = if under_root {
+        &path_norm[root_norm.len()..]
+    } else {
+        // Not under the root: return the path unchanged (stage paths always
+        // live under the root; C# GetRelativePath would produce ../ segments)
+        path_norm
+    };
+
+    let relative = relative.trim_start_matches(['/', '\\']);
+    let relative = if relative.is_empty() { "." } else { relative };
+    relative.replace('\\', "/")
+}
+
+/// Port of `GitUtils.BuildPathArgs`: the command followed by `--` and the
+/// relative, forward-slashed paths as separate argv words (the C# version
+/// builds a quoted command line that the launcher re-splits, which unquotes;
+/// passing argv words directly is equivalent).
+#[must_use]
+pub fn build_path_args(command: &str, repo_root: &str, paths: &[String]) -> Vec<String> {
+    // The C# command may be multi-word ("restore --staged"); the argv model
+    // splits it
+    let mut args: Vec<String> = command.split(' ').map(str::to_string).collect();
+    args.push("--".to_string());
+    for path in paths {
+        args.push(relative_path(repo_root, path));
+    }
+
+    args
+}
+
+/// Port of `GitUtils.Stage`: `git add -- <paths>`.
+pub fn stage(repo_root: &str, paths: &[String], cancel: &CancelToken) -> (bool, Option<String>) {
+    run_git_args_owned(repo_root, &build_path_args("add", repo_root, paths), cancel, LOCAL_TIMEOUT_MS)
+}
+
+/// Port of `GitUtils.Unstage`: `git restore --staged -- <paths>`.
+pub fn unstage(repo_root: &str, paths: &[String], cancel: &CancelToken) -> (bool, Option<String>) {
+    run_git_args_owned(repo_root, &build_path_args("restore --staged", repo_root, paths), cancel, LOCAL_TIMEOUT_MS)
+}
+
+/// Port of `GitUtils.StageAll`: `git add -A`.
+pub fn stage_all(repo_root: &str, cancel: &CancelToken) -> (bool, Option<String>) {
+    run_git_args_owned(repo_root, &["add".to_string(), "-A".to_string()], cancel, LOCAL_TIMEOUT_MS)
+}
+
+/// Port of `GitUtils.UnstageAll`: `git reset HEAD`.
+pub fn unstage_all(repo_root: &str, cancel: &CancelToken) -> (bool, Option<String>) {
+    run_git_args_owned(repo_root, &["reset".to_string(), "HEAD".to_string()], cancel, LOCAL_TIMEOUT_MS)
+}
+
+/// Port of `GitUtils.Commit`: `git commit -m <message>`. The C# version
+/// escapes the message for its command-line string, which the process
+/// launcher then unescapes; passing the raw message as one argv word is
+/// equivalent.
+pub fn commit(repo_root: &str, message: &str, cancel: &CancelToken) -> (bool, Option<String>) {
+    run_git_args_owned(repo_root, &["commit".to_string(), "-m".to_string(), message.to_string()], cancel, LOCAL_TIMEOUT_MS)
+}
+
+/// Port of `GitUtils.Push`: `git push` (30s timeout).
+pub fn push(repo_root: &str, cancel: &CancelToken) -> (bool, Option<String>) {
+    run_git_args_owned(repo_root, &["push".to_string()], cancel, NETWORK_TIMEOUT_MS)
+}
+
+/// Port of `GitUtils.PushForceWithLease`: `git push --force-with-lease` (30s).
+pub fn push_force_with_lease(repo_root: &str, cancel: &CancelToken) -> (bool, Option<String>) {
+    run_git_args_owned(repo_root, &["push".to_string(), "--force-with-lease".to_string()], cancel, NETWORK_TIMEOUT_MS)
+}
+
+/// Port of `GitUtils.Pull`: `git pull` (30s).
+pub fn pull(repo_root: &str, cancel: &CancelToken) -> (bool, Option<String>) {
+    run_git_args_owned(repo_root, &["pull".to_string()], cancel, NETWORK_TIMEOUT_MS)
+}
+
+/// Port of `GitUtils.PullRebase`: `git pull --rebase` (30s).
+pub fn pull_rebase(repo_root: &str, cancel: &CancelToken) -> (bool, Option<String>) {
+    run_git_args_owned(repo_root, &["pull".to_string(), "--rebase".to_string()], cancel, NETWORK_TIMEOUT_MS)
+}
+
+/// Port of `GitUtils.Fetch`: `git fetch` (30s).
+pub fn fetch(repo_root: &str, cancel: &CancelToken) -> (bool, Option<String>) {
+    run_git_args_owned(repo_root, &["fetch".to_string()], cancel, NETWORK_TIMEOUT_MS)
+}
+
+fn run_git_args_owned(
+    repo_root: &str,
+    args: &[String],
+    cancel: &CancelToken,
+    timeout_ms: u128,
+) -> (bool, Option<String>) {
+    let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    run_git_result(repo_root, &refs, cancel, timeout_ms)
 }
 
 /// Port of `GitUtils.ParsePorcelainOutput` (internal static, testable):
@@ -536,6 +650,34 @@ mod tests {
     }
 
     #[test]
+    fn relative_path_strips_root() {
+        #[cfg(windows)]
+        {
+            assert_eq!(relative_path(r"C:\repo", r"C:\repo\src\a.txt"), "src/a.txt");
+            assert_eq!(relative_path(r"c:\REPO", r"C:\repo\b.txt"), "b.txt");
+            // Outside the root: slashes normalized, unchanged otherwise. C#
+            // GetRelativePath would produce ../ segments, but stage paths
+            // always live under the repo root, so this branch never fires.
+            assert_eq!(relative_path(r"C:\repo", r"C:\other\c.txt"), "C:/other/c.txt");
+        }
+        #[cfg(not(windows))]
+        {
+            assert_eq!(relative_path("/repo", "/repo/src/a.txt"), "src/a.txt");
+            assert_eq!(relative_path("/repo", "/other/c.txt"), "/other/c.txt");
+        }
+    }
+
+    #[test]
+    fn build_path_args_quotes_via_argv() {
+        let root = if cfg!(windows) { r"C:\repo" } else { "/repo" };
+        let paths = vec![format!("{root}{}a.txt", std::path::MAIN_SEPARATOR)];
+        let args = build_path_args("add", root, &paths);
+        assert_eq!(args[0], "add");
+        assert_eq!(args[1], "--");
+        assert_eq!(args[2], "a.txt");
+    }
+
+    #[test]
     fn ahead_behind_parse() {
         assert_eq!(parse_ahead_behind("3\t1\n"), Some((1, 3)));
         assert_eq!(parse_ahead_behind("0\t0"), Some((0, 0)));
@@ -565,10 +707,14 @@ mod integration {
 
     fn run_git(dir: &std::path::Path, args: &[&str]) {
         let output = Command::new("git")
+            // Hermetic: ignore the user global/system config (commit
+            // signing, hooks) and set the identity explicitly
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
             .env("GIT_AUTHOR_NAME", "wade-test")
             .env("GIT_COMMITTER_NAME", "wade-test")
-            .env("GIT_AUTHOR_EMAIL", "wade-test@example.invalid")
-            .env("GIT_COMMITTER_EMAIL", "wade-test@example.invalid")
+            .env("GIT_AUTHOR_EMAIL", "[EMAIL]")
+            .env("GIT_COMMITTER_EMAIL", "[EMAIL]")
             .args(args)
             .current_dir(dir)
             .output()
@@ -581,7 +727,21 @@ mod integration {
     }
 
     #[test]
-    fn real_git_status_round_trip() {
+fn real_git_status_round_trip() {
+        // Hermetic git for every spawned child (production spawn_git
+        // inherits this process env): ignore the user global/system
+        // config, whose commit signing (1Password SSH agent) breaks
+        // non-interactive runs
+        unsafe {
+            std::env::set_var("GIT_CONFIG_GLOBAL", "/dev/null");
+            std::env::set_var("GIT_CONFIG_SYSTEM", "/dev/null");
+            std::env::set_var("GIT_AUTHOR_NAME", "wade-test");
+            std::env::set_var("GIT_COMMITTER_NAME", "wade-test");
+            std::env::set_var("GIT_AUTHOR_EMAIL", "[EMAIL]");
+            std::env::set_var("GIT_COMMITTER_EMAIL", "[EMAIL]");
+        }
+
+
         let repo = temp_dir("realgit");
         run_git(&repo, &["init", "-b", "main"]);
 
@@ -606,14 +766,14 @@ mod integration {
         // Lookup failure dumps the map so CI failures are diagnosable: the
         // keys are platform-shaped by the parser (Path join + GetFullPath),
         // so a mismatch here means the parser's key shaping drifted.
-        let lookup = |name: &str, what: &str| {
+        let lookup = |map: &HashMap<String, GitFileStatus>, name: &str, what: &str| {
             let key = join(name);
-            match statuses_get(&statuses, &key) {
+            match statuses_get(map, &key) {
                 Some(status) => status,
                 None => panic!(
                     "{what} not found for key {key:?}; map keys: {:?}",
                     {
-                        let mut keys: Vec<&String> = statuses.keys().collect();
+                        let mut keys: Vec<&String> = map.keys().collect();
                         keys.sort();
                         keys
                     }
@@ -622,15 +782,41 @@ mod integration {
         };
 
         // Modified tracked file (worktree M)
-        let tracked = lookup("tracked.txt", "tracked entry");
+        let tracked = lookup(&statuses, "tracked.txt", "tracked entry");
         assert!(tracked.contains(GitFileStatus::MODIFIED), "tracked: {tracked:?}");
 
         // Untracked file
-        let untracked = lookup("untracked.txt", "untracked entry");
+        let untracked = lookup(&statuses, "untracked.txt", "untracked entry");
         assert!(untracked.contains(GitFileStatus::UNTRACKED), "untracked: {untracked:?}");
 
         // Branch name from the real repo
         assert_eq!(read_branch_name(&root).as_deref(), Some("main"));
+
+        // Stage the modified file: it flips to Staged (no longer Modified in
+        // the worktree part of the flag set)
+        let paths = vec![join("tracked.txt")];
+        let (ok, err) = stage(&root, &paths, &cancel);
+        assert!(ok, "stage failed: {err:?}");
+        let statuses = query_status(&root, &cancel).expect("statuses after stage");
+        let staged = lookup(&statuses, "tracked.txt", "staged entry");
+        assert!(staged.contains(GitFileStatus::STAGED), "staged: {staged:?}");
+        assert!(!staged.contains(GitFileStatus::MODIFIED), "staged: {staged:?}");
+
+        // Unstage: back to worktree-Modified
+        let (ok, err) = unstage(&root, &paths, &cancel);
+        assert!(ok, "unstage failed: {err:?}");
+        let statuses = query_status(&root, &cancel).expect("statuses after unstage");
+        let back = lookup(&statuses, "tracked.txt", "unstaged entry");
+        assert!(back.contains(GitFileStatus::MODIFIED), "unstaged: {back:?}");
+        assert!(!back.contains(GitFileStatus::STAGED), "unstaged: {back:?}");
+
+        // Commit everything: the tree becomes clean
+        let (ok, err) = stage_all(&root, &cancel);
+        assert!(ok, "stage_all failed: {err:?}");
+        let (ok, err) = commit(&root, "wade integration test", &cancel);
+        assert!(ok, "commit failed: {err:?}");
+        let statuses = query_status(&root, &cancel).expect("statuses after commit");
+        assert!(statuses.len() <= 1, "tree not clean after commit: {statuses:?}");
 
         // Clean up temp pollution
         let _ = std::fs::remove_dir_all(Path::new(&root));
