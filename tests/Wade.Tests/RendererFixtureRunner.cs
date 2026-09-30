@@ -33,6 +33,7 @@ internal static class RendererFixtureRunner
         int ctxAnchorRow = 0, ctxAnchorCol = 0;
         Dictionary<string, GitFileStatus>? gitStatuses = null;
         Dictionary<string, GitFileStatus>? currentGitStatuses = null;
+        string? repoRoot = null;
         string branchName = "";
         string aheadBehindText = "";
         Notification? notification = null;
@@ -125,7 +126,8 @@ internal static class RendererFixtureRunner
                     // gitstatuses followed by gs "FULLPATH" CODE lines and
                     // endgitstatuses; CODE is untracked/modified/staged/
                     // ignored/conflict or +-joined (e.g. staged+modified)
-                    currentGitStatuses = [];
+                    // OrdinalIgnoreCase mirrors the parser's dictionary
+                    currentGitStatuses = new Dictionary<string, GitFileStatus>(StringComparer.OrdinalIgnoreCase);
                     break;
                 }
                 case "gs":
@@ -155,6 +157,48 @@ internal static class RendererFixtureRunner
                     gitStatuses = currentGitStatuses;
                     currentGitStatuses = null;
                     break;
+                case "repo":
+                {
+                    // repo "PATH" | repo off: the simulated repo root for
+                    // the git menu builders
+                    string value = Unquote(line.Split(' ', 2)[1]);
+                    repoRoot = value == "off" ? null : value;
+                    break;
+                }
+                case "gitappend":
+                {
+                    // gitappend "SELECTEDPATH"|- : append the palette git
+                    // block built by the shared gating helper
+                    string rest = line["gitappend ".Length..];
+                    string selected = rest.Trim();
+                    string? selectedPath = selected == "-" ? null : Unquote(selected);
+                    var ctx = new GitMenuItems.Context
+                    {
+                        RepoRoot = repoRoot,
+                        Statuses = gitStatuses,
+                        SelectedPath = selectedPath,
+                        MarkedPaths = new HashSet<string>(),
+                    };
+                    currentPaletteItems!.AddRange(GitMenuItems.BuildPaletteItems(ctx));
+                    break;
+                }
+                case "ctxgitappend":
+                {
+                    // ctxgitappend "SELECTEDPATH"|- : append the context
+                    // menu git block
+                    string rest = line["ctxgitappend ".Length..];
+                    string selected = rest.Trim();
+                    string? selectedPath = selected == "-" ? null : Unquote(selected);
+                    var ctx = new GitMenuItems.Context
+                    {
+                        RepoRoot = repoRoot,
+                        Statuses = gitStatuses,
+                        SelectedPath = selectedPath,
+                        MarkedPaths = new HashSet<string>(),
+                    };
+                    ctxItems!.AddRange(GitMenuItems.BuildContextMenuItems(ctx));
+                    break;
+                }
                 case "gsoff":
                     gitStatuses = null;
                     break;

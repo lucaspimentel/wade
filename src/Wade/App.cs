@@ -2955,69 +2955,12 @@ internal sealed class App
         items.Add(new ActionMenuItem { Label = "Help", Shortcut = "?", Action = AppAction.ShowHelp });
         items.Add(new ActionMenuItem { Label = "Refresh", Shortcut = "Ctrl+R", Action = AppAction.Refresh });
 
-        // Git actions — only shown when actionable
-        if (_currentRepoRoot is not null)
-        {
-            items.Add(new ActionMenuItem { Label = "Git: Copy relative path", Shortcut = "Y", Action = AppAction.CopyGitRelativePath });
+        // Git actions — only shown when actionable. "Git: Copy relative
+        // path" is omitted until the clipboard lands (Phase 9).
+        List<FileSystemEntry> paletteEntries = GetVisibleEntries();
+        items.AddRange(GitMenuItems.BuildPaletteItems(BuildGitMenuContext(paletteEntries)));
 
-            if (_gitStatuses is not null)
-            {
-                List<FileSystemEntry> entries = GetVisibleEntries();
-                if (_selectedIndex < entries.Count)
-                {
-                    bool hasStageableStatus = HasStatusInSelection(GitFileStatus.Modified | GitFileStatus.Untracked);
-                    if (hasStageableStatus)
-                    {
-                        items.Add(new ActionMenuItem { Label = "Git: Stage", Action = AppAction.StageFile });
-                    }
-
-                    bool hasUnstageableStatus = HasStatusInSelection(GitFileStatus.Staged);
-                    if (hasUnstageableStatus)
-                    {
-                        items.Add(new ActionMenuItem { Label = "Git: Unstage", Action = AppAction.UnstageFile });
-                    }
-                }
-
-                bool hasAnyChanges = false;
-                foreach (KeyValuePair<string, GitFileStatus> kvp in _gitStatuses)
-                {
-                    if ((kvp.Value & (GitFileStatus.Modified | GitFileStatus.Untracked)) != 0)
-                    {
-                        hasAnyChanges = true;
-                        break;
-                    }
-                }
-
-                if (hasAnyChanges)
-                {
-                    items.Add(new ActionMenuItem { Label = "Git: Stage all changes", Action = AppAction.StageAll });
-                }
-
-                bool hasAnyStagedChanges = false;
-                foreach (KeyValuePair<string, GitFileStatus> kvp in _gitStatuses)
-                {
-                    if ((kvp.Value & GitFileStatus.Staged) != 0)
-                    {
-                        hasAnyStagedChanges = true;
-                        break;
-                    }
-                }
-
-                if (hasAnyStagedChanges)
-                {
-                    items.Add(new ActionMenuItem { Label = "Git: Unstage all", Action = AppAction.UnstageAll });
-                    items.Add(new ActionMenuItem { Label = "Git: Commit", Action = AppAction.GitCommit });
-                }
-            }
-
-            items.Add(new ActionMenuItem { Label = "Git: Push", Action = AppAction.GitPush });
-            items.Add(new ActionMenuItem { Label = "Git: Push (force with lease)", Action = AppAction.GitPushForceWithLease });
-            items.Add(new ActionMenuItem { Label = "Git: Pull", Action = AppAction.GitPull });
-            items.Add(new ActionMenuItem { Label = "Git: Pull (rebase)", Action = AppAction.GitPullRebase });
-            items.Add(new ActionMenuItem { Label = "Git: Fetch", Action = AppAction.GitFetch });
-        }
-
-        return items.ToArray();
+return items.ToArray();
     }
 
     private List<ActionMenuItem> GetFilteredActionPaletteItems()
@@ -3911,24 +3854,22 @@ internal sealed class App
         items.Add(new ActionMenuItem { Label = "Properties", Shortcut = "i", Action = AppAction.ShowProperties });
 
         // Git stage/unstage — only when applicable
-        if (_currentRepoRoot is not null && _gitStatuses is not null)
-        {
-            List<FileSystemEntry> entries = GetVisibleEntries();
-            if (_selectedIndex < entries.Count)
-            {
-                if (HasStatusInSelection(GitFileStatus.Modified | GitFileStatus.Untracked))
-                {
-                    items.Add(new ActionMenuItem { Label = "Git: Stage", Action = AppAction.StageFile });
-                }
-
-                if (HasStatusInSelection(GitFileStatus.Staged))
-                {
-                    items.Add(new ActionMenuItem { Label = "Git: Unstage", Action = AppAction.UnstageFile });
-                }
-            }
-        }
+        List<FileSystemEntry> ctxEntries = GetVisibleEntries();
+        items.AddRange(GitMenuItems.BuildContextMenuItems(BuildGitMenuContext(ctxEntries)));
 
         return items.ToArray();
+    }
+
+    private GitMenuItems.Context BuildGitMenuContext(List<FileSystemEntry> entries)
+    {
+        string? selectedPath = _selectedIndex < entries.Count ? entries[_selectedIndex].FullPath : null;
+        return new GitMenuItems.Context
+        {
+            RepoRoot = _currentRepoRoot,
+            Statuses = _gitStatuses,
+            SelectedPath = selectedPath,
+            MarkedPaths = _markedPaths,
+        };
     }
 
     private void HandleContextMenuKey(KeyEvent key, PreviewLoader previewLoader, ScreenBuffer buffer, InputPipeline pipeline)

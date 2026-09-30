@@ -156,6 +156,7 @@ fn run_scenario(path: &Path) -> String {
     let mut ahead_behind_text = String::new();
     let mut git_statuses: Option<std::collections::HashMap<String, GitFileStatus>> = None;
     let mut current_git_statuses: std::collections::HashMap<String, GitFileStatus> = std::collections::HashMap::new();
+    let mut repo_root: Option<String> = None;
     let mut flushes: Vec<String> = Vec::new();
     let mut out = String::new();
 
@@ -405,6 +406,42 @@ fn run_scenario(path: &Path) -> String {
                 };
                 let buffer = buffer.as_mut().expect("size op first");
                 input.render(buffer, row, col, w, style);
+            }
+            "repo" => {
+                // repo "PATH" | repo off: the simulated repo root for the
+                // git menu builders
+                let value = unquote(line.split_once(' ').map(|x| x.1).expect("repo path"));
+                repo_root = if value == "off" { None } else { Some(value) };
+            }
+            "gitappend" => {
+                // gitappend "SELECTEDPATH"|- : append the palette git block
+                let rest = line["gitappend ".len()..].trim();
+                let selected_path = if rest == "-" { None } else { Some(unquote(rest)) };
+                let ctx = wade::app::git_menu_items::GitMenuContext {
+                    repo_root: repo_root.as_deref(),
+                    statuses: git_statuses.as_ref(),
+                    selected_path: selected_path.as_deref(),
+                    marked_paths: &std::collections::HashSet::new(),
+                };
+                palette_items
+                    .as_mut()
+                    .expect("palette op first")
+                    .extend(wade::app::git_menu_items::build_git_menu_items(&ctx));
+            }
+            "ctxgitappend" => {
+                // ctxgitappend "SELECTEDPATH"|- : append the context menu git block
+                let rest = line["ctxgitappend ".len()..].trim();
+                let selected_path = if rest == "-" { None } else { Some(unquote(rest)) };
+                let ctx = wade::app::git_menu_items::GitMenuContext {
+                    repo_root: repo_root.as_deref(),
+                    statuses: git_statuses.as_ref(),
+                    selected_path: selected_path.as_deref(),
+                    marked_paths: &std::collections::HashSet::new(),
+                };
+                ctx_items
+                    .as_mut()
+                    .expect("ctxmenu op first")
+                    .extend(wade::app::git_menu_items::build_git_context_menu_items(&ctx));
             }
             "gitstatuses" => {
                 // gitstatuses followed by gs "FULLPATH" CODE lines and

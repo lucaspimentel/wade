@@ -1,0 +1,15 @@
+# Right-click context menu with the git stage/unstage entries appended
+size 80 25
+repo "C:\fixture"
+gitstatuses
+gs "C:\fixture\README.md" staged+modified
+endgitstatuses
+ctxmenu 8 20
+citem "Open with default app" "o"
+citem "Rename" "F2"
+citem "Delete" "Del"
+citem "Copy path" "y"
+citem "Properties" "i"
+ctxgitappend "C:\fixture\README.md"
+endctxmenu
+flush

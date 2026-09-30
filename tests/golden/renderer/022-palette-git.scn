@@ -1,0 +1,24 @@
+# Action palette with the full git block: staged+modified selection
+size 80 25
+repo "C:\fixture"
+gitstatuses
+gs "C:\fixture\README.md" staged+modified
+gs "C:\fixture\photo.jpg" modified
+gs "C:\fixture\src" untracked
+endgitstatuses
+palette "Action Palette" 1 12
+pitem "Toggle hidden files" "."
+pitem "Toggle left pane" "["
+pitem "Toggle right pane" "]"
+pitem "Cycle sort mode" "s"
+pitem "Reverse sort direction" "S"
+pitem "Bookmarks" "b"
+pitem "Toggle bookmark" "B"
+pitem "Go to path" "Ctrl+G"
+pitem "Filter" "/"
+pitem "Configuration" ","
+pitem "Help" "?"
+pitem "Refresh" "Ctrl+R"
+gitappend "C:\fixture\README.md"
+endpalette
+flush

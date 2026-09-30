@@ -1,0 +1,19 @@
+# Action palette in a repo with no status data: only the network git actions
+size 80 25
+repo "C:\fixture"
+palette "Action Palette" 1 12
+pitem "Toggle hidden files" "."
+pitem "Toggle left pane" "["
+pitem "Toggle right pane" "]"
+pitem "Cycle sort mode" "s"
+pitem "Reverse sort direction" "S"
+pitem "Bookmarks" "b"
+pitem "Toggle bookmark" "B"
+pitem "Go to path" "Ctrl+G"
+pitem "Filter" "/"
+pitem "Configuration" ","
+pitem "Help" "?"
+pitem "Refresh" "Ctrl+R"
+gitappend "-"
+endpalette
+flush
