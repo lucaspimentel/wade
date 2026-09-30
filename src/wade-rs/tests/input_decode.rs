@@ -167,6 +167,10 @@ fn format_events(events: &[InputEvent]) -> String {
             InputEvent::GitActionComplete(_) => {}
             InputEvent::FileOperationComplete(_) => {}
             InputEvent::FileOperationProgress(_) => {}
+            InputEvent::DirectorySizeReady(_) => {}
+            InputEvent::InlineDirSizeReady(_) => {}
+            InputEvent::InlineDirSizeComplete(_) => {}
+            InputEvent::FileSystemChanged(_) => {}
         }
     }
     result
