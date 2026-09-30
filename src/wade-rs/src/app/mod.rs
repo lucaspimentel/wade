@@ -4,6 +4,8 @@
 //! tracked as a temporary deviation in KNOWN_DEVIATIONS.md.
 
 pub mod config_io;
+pub mod git_action_runner;
+pub mod git_menu_items;
 pub mod git_status_loader;
 pub mod dialogs;
 pub mod input_reader;
@@ -111,6 +113,7 @@ pub struct App {
     marked_paths: std::collections::HashSet<String>,
     notification: Option<Notification>,
     pub(crate) git_status_loader: crate::app::git_status_loader::GitStatusLoader,
+    pub(crate) git_action_runner: crate::app::git_action_runner::GitActionRunner,
     pub(crate) git_queries: std::sync::Arc<dyn crate::app::git_status_loader::GitQueries>,
     current_repo_root: Option<String>,
     current_branch_name: Option<String>,
@@ -157,6 +160,7 @@ impl App {
             bookmark_store: crate::fs::bookmark_store::BookmarkStore::new(None),
             pipeline: crate::input::input_pipeline::InputPipeline::new(),
             git_status_loader: crate::app::git_status_loader::GitStatusLoader::new(),
+            git_action_runner: crate::app::git_action_runner::GitActionRunner::new(),
             git_queries: std::sync::Arc::new(crate::app::git_status_loader::GitUtilsQueries),
             current_repo_root: None,
             current_branch_name: None,
@@ -230,6 +234,7 @@ impl App {
                         current = extra;
                     }
                     InputEvent::GitStatusReady(ready) => self.handle_git_status_ready(ready),
+                    InputEvent::GitActionComplete(event) => self.handle_git_action_complete(event),
                 }
             }
 
@@ -239,6 +244,7 @@ impl App {
                 InputEvent::Mouse(mouse) => self.handle_mouse(mouse),
                 InputEvent::Paste(text) => self.handle_paste_event(&text),
                 InputEvent::GitStatusReady(event) => self.handle_git_status_ready(event),
+                InputEvent::GitActionComplete(event) => self.handle_git_action_complete(event),
             }
 
             // Clamp selection and adjust scroll
@@ -420,6 +426,58 @@ impl App {
                 };
                 self.show_notification(message, NotificationKind::Success);
             }
+            A::StageFile => {
+                if let Some(root) = self.current_repo_root.clone() {
+                    let stage_paths = self.get_selected_or_marked_paths(&entries);
+                    if !stage_paths.is_empty() {
+                        let sender = self.pipeline.sender();
+                        self.git_action_runner.start_action(
+                            Box::new(move |cancel| crate::fs::git_utils::stage(&root, &stage_paths, cancel)),
+                            sender,
+                        );
+                    }
+                }
+            }
+            A::UnstageFile => {
+                if let Some(root) = self.current_repo_root.clone() {
+                    let unstage_paths = self.get_selected_or_marked_paths(&entries);
+                    if !unstage_paths.is_empty() {
+                        let sender = self.pipeline.sender();
+                        self.git_action_runner.start_action(
+                            Box::new(move |cancel| crate::fs::git_utils::unstage(&root, &unstage_paths, cancel)),
+                            sender,
+                        );
+                    }
+                }
+            }
+            A::StageAll => {
+                if let Some(root) = self.current_repo_root.clone() {
+                    let sender = self.pipeline.sender();
+                    self.git_action_runner.start_action(
+                        Box::new(move |cancel| crate::fs::git_utils::stage_all(&root, cancel)),
+                        sender,
+                    );
+                }
+            }
+            A::UnstageAll => {
+                if let Some(root) = self.current_repo_root.clone() {
+                    let sender = self.pipeline.sender();
+                    self.git_action_runner.start_action(
+                        Box::new(move |cancel| crate::fs::git_utils::unstage_all(&root, cancel)),
+                        sender,
+                    );
+                }
+            }
+            A::GitCommit => {
+                if self.current_repo_root.is_some() {
+                    self.show_text_input_dialog("Commit message", "", Some(dialogs::TextInputPurpose::Commit));
+                }
+            }
+            A::GitPush => self.run_simple_git_action(crate::fs::git_utils::push),
+            A::GitPushForceWithLease => self.run_simple_git_action(crate::fs::git_utils::push_force_with_lease),
+            A::GitPull => self.run_simple_git_action(crate::fs::git_utils::pull),
+            A::GitPullRebase => self.run_simple_git_action(crate::fs::git_utils::pull_rebase),
+            A::GitFetch => self.run_simple_git_action(crate::fs::git_utils::fetch),
             other => {
                 // Unported in 3a: navigation to the subsystem lands in later phases.
                 self.show_notification("Not yet ported", NotificationKind::Info);
@@ -664,6 +722,67 @@ impl App {
         }
 
         // C# also calls RefreshInlineDirSizes here (Phase 4d).
+    }
+
+    /// The dispatch arms for the network git commands (push/pull/fetch and
+    /// variants): all share the repo-root guard and the 30s timeout
+    /// (App.cs:3789-3826).
+    fn run_simple_git_action(&mut self, action: fn(&str, &crate::input::CancelToken) -> (bool, Option<String>)) {
+        if let Some(root) = self.current_repo_root.clone() {
+            let sender = self.pipeline.sender();
+            self.git_action_runner.start_action(Box::new(move |cancel| action(&root, cancel)), sender);
+        }
+    }
+
+    /// Port of `HandleGitActionComplete` (App.cs:1517).
+    pub fn handle_git_action_complete(&mut self, event: crate::input::GitActionCompleteEvent) {
+        if event.success {
+            self.show_notification("Git action completed", NotificationKind::Success);
+        } else {
+            // C# interpolation renders null as empty: "Git error: "
+            let message = format!("Git error: {}", event.error_message.unwrap_or_default());
+            self.show_notification(&message, NotificationKind::Error);
+        }
+
+        self.refresh_git_status();
+    }
+
+    /// Port of `GetSelectedOrMarkedPaths` (App.cs:3867): marked paths first,
+    /// else the selected entry's full path.
+    #[must_use]
+    pub fn get_selected_or_marked_paths(&self, entries: &[FileSystemEntry]) -> Vec<String> {
+        if !self.marked_paths.is_empty() {
+            return self.marked_paths.iter().cloned().collect();
+        }
+
+        if self.selected_index < entries.len() {
+            return vec![entries[self.selected_index].full_path.clone()];
+        }
+
+        Vec::new()
+    }
+
+    /// Port of `HasStatusInSelection` (App.cs:1489): marked paths take
+    /// precedence over the selected entry.
+    #[must_use]
+    pub fn has_status_in_selection(&self, status_mask: GitFileStatus, entries: &[FileSystemEntry]) -> bool {
+        let Some(statuses) = &self.git_statuses else {
+            return false;
+        };
+
+        if !self.marked_paths.is_empty() {
+            return self
+                .marked_paths
+                .iter()
+                .any(|path| crate::fs::git_utils::statuses_get(statuses, path).is_some_and(|s| s.intersects(status_mask)));
+        }
+
+        if self.selected_index < entries.len() {
+            let path = &entries[self.selected_index].full_path;
+            return crate::fs::git_utils::statuses_get(statuses, path).is_some_and(|s| s.intersects(status_mask));
+        }
+
+        false
     }
 
     /// Port of `HandleGitStatusReady` (App.cs:1455).

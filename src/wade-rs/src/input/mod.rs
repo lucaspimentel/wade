@@ -79,6 +79,14 @@ pub enum InputEvent {
     Resize(ResizeEvent),
     Paste(String),
     GitStatusReady(GitStatusReadyEvent),
+    GitActionComplete(GitActionCompleteEvent),
+}
+
+/// Port of the `GitActionCompleteEvent` record (src/Wade/Terminal/InputEvent.cs:80).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GitActionCompleteEvent {
+    pub success: bool,
+    pub error_message: Option<String>,
 }
 
 /// Port of the `GitStatusReadyEvent` record (src/Wade/Terminal/InputEvent.cs:73).

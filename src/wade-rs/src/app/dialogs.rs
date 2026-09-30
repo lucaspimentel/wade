@@ -23,6 +23,8 @@ pub enum TextInputPurpose {
     Rename,
     NewFile,
     NewDirectory,
+    /// Port of the C# `ShowTextInputDialog("Commit message", ...)` callback.
+    Commit,
 }
 
 #[derive(Default)]
@@ -209,14 +211,27 @@ impl App {
     /// Port of `BuildContextMenuItems` (App.cs:3894). Git stage/unstage
     /// entries are omitted until git lands in Phase 4; Paste/Copy/Cut only
     /// appear once clipboard support exists, so they are omitted too.
-    pub fn build_context_menu_items(&self) -> Vec<ActionMenuItem> {
-        vec![
+    pub fn build_context_menu_items(&mut self) -> Vec<ActionMenuItem> {
+        let mut items = vec![
             ActionMenuItem::new("Open with default app", "o", AppAction::OpenExternal),
             ActionMenuItem::new("Rename", "F2", AppAction::Rename),
             ActionMenuItem::new("Delete", "Del", AppAction::Delete),
             ActionMenuItem::new("Copy path", "y", AppAction::CopyAbsolutePath),
             ActionMenuItem::new("Properties", "i", AppAction::ShowProperties),
-        ]
+        ];
+
+        // Git stage/unstage when applicable (App.cs:3916-3927)
+        let entries = self.get_visible_entries();
+        let selected_path = entries.get(self.selected_index).map(|entry| entry.full_path.clone());
+        let git_ctx = crate::app::git_menu_items::GitMenuContext {
+            repo_root: self.current_repo_root.as_deref(),
+            statuses: self.git_statuses.as_ref(),
+            selected_path: selected_path.as_deref(),
+            marked_paths: &self.marked_paths,
+        };
+        items.extend(crate::app::git_menu_items::build_git_context_menu_items(&git_ctx));
+
+        items
     }
 
     /// Port of `HandleContextMenuKey` (App.cs:3934).
@@ -372,12 +387,29 @@ impl App {
                 self.input_mode = InputMode::Normal;
                 self.modal.active_text_input = None;
                 self.modal.text_input_title = None;
-                // File-operation consumers (Rename/NewFile/NewDirectory) land
-                // in a later phase.
-                if purpose.is_some() {
-                    self.show_notification("Not yet ported", crate::ui::NotificationKind::Info);
+                // C# clears the dialog state before invoking the completion
+                // action, so the empty-message notification shows with the
+                // dialog already closed (App.cs:2323-2335).
+                match purpose {
+                    Some(TextInputPurpose::Commit) => {
+                        let trimmed = value.trim().to_string();
+                        if trimmed.is_empty() {
+                            self.show_notification("Commit message cannot be empty", crate::ui::NotificationKind::Error);
+                        } else if let Some(root) = self.current_repo_root.clone() {
+                            let sender = self.pipeline.sender();
+                            self.git_action_runner.start_action(
+                                Box::new(move |cancel| crate::fs::git_utils::commit(&root, &trimmed, cancel)),
+                                sender,
+                            );
+                        }
+                    }
+                    // File-operation consumers (Rename/NewFile/NewDirectory)
+                    // land in a later phase.
+                    Some(_) => {
+                        self.show_notification("Not yet ported", crate::ui::NotificationKind::Info);
+                    }
+                    None => {}
                 }
-                let _ = value;
             }
             crate::console_key::ConsoleKey::Backspace => {
                 if let Some(input) = &mut self.modal.active_text_input {
@@ -737,13 +769,14 @@ impl App {
     pub fn show_action_palette(&mut self) {
         self.input_mode = InputMode::ActionPalette;
         self.modal.action_menu_stack.clear();
+        let items = self.build_action_palette_items();
         self.modal
             .action_menu_stack
-            .push(ActionMenuLevel::new("Action Palette", self.build_action_palette_items()));
+            .push(ActionMenuLevel::new("Action Palette", items));
     }
 
-    fn build_action_palette_items(&self) -> Vec<ActionMenuItem> {
-        vec![
+    fn build_action_palette_items(&mut self) -> Vec<ActionMenuItem> {
+        let mut items = vec![
             ActionMenuItem::new("Toggle hidden files", ".", AppAction::ToggleHiddenFiles),
             ActionMenuItem::new("Toggle left pane", "[", AppAction::ToggleParentPane),
             ActionMenuItem::new("Toggle right pane", "]", AppAction::TogglePreviewPane),
@@ -756,7 +789,20 @@ impl App {
             ActionMenuItem::new("Configuration", ",", AppAction::ShowConfig),
             ActionMenuItem::new("Help", "?", AppAction::ShowHelp),
             ActionMenuItem::new("Refresh", "Ctrl+R", AppAction::Refresh),
-        ]
+        ];
+
+        // Git block, gated on the repo root (App.cs:2958-3018)
+        let entries = self.get_visible_entries();
+        let selected_path = entries.get(self.selected_index).map(|entry| entry.full_path.clone());
+        let git_ctx = crate::app::git_menu_items::GitMenuContext {
+            repo_root: self.current_repo_root.as_deref(),
+            statuses: self.git_statuses.as_ref(),
+            selected_path: selected_path.as_deref(),
+            marked_paths: &self.marked_paths,
+        };
+        items.extend(crate::app::git_menu_items::build_git_menu_items(&git_ctx));
+
+        items
     }
 
     /// Port of `ShowConfirmDialog`.

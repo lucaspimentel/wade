@@ -18,6 +18,12 @@ impl GitFileStatus {
     pub const IGNORED: Self = Self(1 << 3);
     pub const CONFLICT: Self = Self(1 << 4);
 
+    /// Any-bit overlap, matching the C# `(s & statusMask) != 0` checks.
+    #[must_use]
+    pub const fn intersects(self, other: Self) -> bool {
+        self.0 & other.0 != 0
+    }
+
     #[must_use]
     pub const fn contains(self, other: Self) -> bool {
         self.0 & other.0 == other.0 && other.0 != 0
