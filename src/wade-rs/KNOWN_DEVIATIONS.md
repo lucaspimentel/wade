@@ -28,9 +28,12 @@ this file to be empty or fully accepted.
   their phases: image and PDF previews and metadata (Phase 8), and the MSI preview plus executable, Office, NuGet,
   media and MSI metadata (Phase 9). Files of those types fall through to
   the next applicable provider (usually None, Text or Hex). Image and
-  combined (text + Sixel) results, Sixel detection and cell-pixel-size
-  detection are Phase 8; `PreviewContext` carries 8x16 px cells and
-  image/Sixel flags off until then.
+  combined (text + Sixel) results arrive with Phase 8b.
+- **Unix terminals report default capabilities (Phase 8a).** Windows
+  detects Sixel via `WT_SESSION` like C#; the Unix DA1/cell-size query
+  needs the raw tty setup of the Phase 9 Unix input work, so Unix runs
+  with no Sixel and 8x16 px cells until then (the response parser is
+  already ported).
 - **Expanded preview y/Y copy nothing (Phase 7a).** The copy-path and
   copy-git-relative-path keys need the OS clipboard (Phase 9).
 - **No golden fixture covers the Properties overlay (Phase 4d).** Its rows

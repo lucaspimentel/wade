@@ -1517,6 +1517,7 @@ impl App {
         self.directory_contents.show_system_files = self.config.show_system_files;
         self.directory_contents.sort_mode = self.config.sort_mode;
         self.directory_contents.sort_ascending = self.config.sort_ascending;
+        self.image_previews_effective = self.config.image_previews_enabled && self.capabilities.sixel_supported;
 
         self.parent_pane_enabled = self.config.parent_pane_enabled;
         self.preview_pane_enabled = self.config.preview_pane_enabled;

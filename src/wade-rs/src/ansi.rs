@@ -41,6 +41,21 @@ fn push_i32(out: &mut String, value: i32) {
 }
 
 pub const CLEAR_SCREEN: &str = "\x1b[2J";
+pub const ENTER_ALTERNATE_SCREEN: &str = "\x1b[?1049h";
+pub const LEAVE_ALTERNATE_SCREEN: &str = "\x1b[?1049l";
+pub const HIDE_CURSOR: &str = "\x1b[?25l";
+pub const SHOW_CURSOR: &str = "\x1b[?25h";
+/// Push the window title on the terminal's title stack (`CSI 22;0 t`).
+pub const SAVE_TITLE: &str = "\x1b[22;0t";
+pub const CLEAR_TITLE: &str = "\x1b]0;\x07";
+
+/// `AnsiCodes.MoveCursor`: 0-based row/col to a CUP sequence.
+#[must_use]
+pub fn move_cursor(row: i32, col: i32) -> String {
+    let mut out = String::new();
+    append_move_cursor(&mut out, row, col);
+    out
+}
 
 /// Terminal title (OSC 0): `ESC ] 0 ; <title> BEL`. Port of `AnsiCodes.SetTitle`.
 #[must_use]

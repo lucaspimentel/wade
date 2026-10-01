@@ -10,6 +10,7 @@ pub mod rune_width;
 pub mod highlight;
 pub mod screen;
 pub mod search;
+pub mod terminal_caps;
 pub mod text;
 pub mod ui;
 #[cfg(windows)]

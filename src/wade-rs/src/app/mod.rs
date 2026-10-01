@@ -163,6 +163,11 @@ pub struct App {
     pub(crate) modal: dialogs::ModalState,
     /// Preview cache and loader (C# `_cachedPreview*` fields).
     pub(crate) preview: preview::PreviewState,
+    /// Terminal Sixel support and cell pixel size (C# `_sixelSupported`,
+    /// `_cellPixelWidth`/`Height`).
+    pub(crate) capabilities: crate::terminal_caps::TerminalCapabilities,
+    /// C# `_imagePreviewsEffective`: the config flag and Sixel support.
+    pub(crate) image_previews_effective: bool,
 }
 
 impl App {
@@ -189,6 +194,8 @@ impl App {
             last_height: 0,
             modal: dialogs::ModalState::default(),
             preview: preview::PreviewState::default(),
+            capabilities: crate::terminal_caps::TerminalCapabilities::DEFAULT,
+            image_previews_effective: false,
             bookmark_store: crate::fs::bookmark_store::BookmarkStore::new(None),
             pipeline: crate::input::input_pipeline::InputPipeline::new(),
             git_status_loader: crate::app::git_status_loader::GitStatusLoader::new(),
@@ -254,6 +261,18 @@ impl App {
         self.parent_pane_enabled = self.config.parent_pane_enabled;
         self.preview_pane_enabled = self.config.preview_pane_enabled;
         self.bookmark_store.load();
+
+        // C# `using var terminal = new TerminalSetup()`: console modes and
+        // the alternate screen for the lifetime of the loop
+        #[cfg(windows)]
+        let mut terminal = crate::terminal_setup::TerminalSetup::new();
+        #[cfg(windows)]
+        let capabilities = terminal.capabilities();
+        #[cfg(not(windows))]
+        let capabilities = crate::terminal_caps::TerminalCapabilities::DEFAULT;
+        self.set_capabilities(capabilities);
+
+        self.update_terminal_title();
         self.refresh_git_status();
 
         let (mut width, mut height) = terminal_size().unwrap_or((80, 25));
@@ -348,11 +367,20 @@ impl App {
             self.adjust_scroll(self.visible_file_list_height(&entries));
         }
 
+        #[cfg(windows)]
+        terminal.restore();
+
         if self.write_cwd {
             Some(self.current_path.clone())
         } else {
             None
         }
+    }
+
+    /// Applies detected terminal capabilities (App.cs:237-241).
+    pub fn set_capabilities(&mut self, capabilities: crate::terminal_caps::TerminalCapabilities) {
+        self.capabilities = capabilities;
+        self.image_previews_effective = self.config.image_previews_enabled && capabilities.sixel_supported;
     }
 
     fn default_start_path() -> String {

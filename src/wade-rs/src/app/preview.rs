@@ -27,9 +27,6 @@ const META_SEPARATOR_STYLE: CellStyle = CellStyle {
     strikethrough: false,
 };
 
-/// Cell pixel size until Phase 8 detects it (C# defaults: 8x16).
-const DEFAULT_CELL_PIXEL_WIDTH: i32 = 8;
-const DEFAULT_CELL_PIXEL_HEIGHT: i32 = 16;
 
 /// The App's preview cache (C# `_cachedPreview*`, `_applicable*`, ...).
 #[derive(Default)]
@@ -70,8 +67,8 @@ impl App {
         PreviewContext {
             pane_width_cells: pane_width,
             pane_height_cells: pane_height,
-            cell_pixel_width: DEFAULT_CELL_PIXEL_WIDTH,
-            cell_pixel_height: DEFAULT_CELL_PIXEL_HEIGHT,
+            cell_pixel_width: self.capabilities.cell_pixel_width,
+            cell_pixel_height: self.capabilities.cell_pixel_height,
             is_cloud_placeholder: selected.is_some_and(|entry| entry.is_cloud_placeholder),
             is_broken_symlink: selected.is_some_and(|entry| entry.is_broken_symlink),
             git_status,
@@ -82,9 +79,8 @@ impl App {
             ffprobe_enabled: self.config.ffprobe_enabled,
             mediainfo_enabled: self.config.mediainfo_enabled,
             zip_preview_enabled: self.config.zip_preview_enabled,
-            // Sixel detection is Phase 8: no terminal counts as capable yet
-            image_previews_enabled: false,
-            sixel_supported: false,
+            image_previews_enabled: self.image_previews_effective,
+            sixel_supported: self.capabilities.sixel_supported,
             archive_metadata_enabled: self.config.archive_metadata_enabled,
         }
     }
@@ -579,6 +575,28 @@ mod tests {
         assert_eq!(app.preview.cached_encoding.as_deref(), Some("UTF-8"));
         assert_eq!(app.preview.cached_line_ending.as_deref(), Some("LF"));
         assert_eq!(app.preview.cached_metadata_sections.as_ref().unwrap()[0].header.as_deref(), Some("a.rs"));
+    }
+
+    #[test]
+    fn capabilities_feed_the_preview_context() {
+        let (mut app, _root) = app_with("app-caps", &[("a.txt", "x")]);
+        let context = app.build_preview_context(40, 20);
+        assert_eq!((context.cell_pixel_width, context.cell_pixel_height), (8, 16));
+        assert!(!context.sixel_supported && !context.image_previews_enabled);
+
+        app.set_capabilities(crate::terminal_caps::TerminalCapabilities {
+            sixel_supported: true,
+            cell_pixel_width: 10,
+            cell_pixel_height: 20,
+        });
+        let context = app.build_preview_context(40, 20);
+        assert_eq!((context.cell_pixel_width, context.cell_pixel_height), (10, 20));
+        assert!(context.sixel_supported && context.image_previews_enabled);
+
+        // Image previews need both the config flag and Sixel support
+        app.config.image_previews_enabled = false;
+        app.set_capabilities(app.capabilities);
+        assert!(!app.build_preview_context(40, 20).image_previews_enabled);
     }
 
     #[test]
