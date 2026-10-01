@@ -74,6 +74,12 @@ pub(crate) fn sum_directory(directory_path: &str, cancel: &CancelToken) -> i64 {
                 continue;
             }
 
+            // A symlink/junction to a directory is neither listed by .NET's
+            // EnumerateFiles nor recursed into
+            if file_type.is_symlink() && std::fs::metadata(entry.path()).is_ok_and(|target| target.is_dir()) {
+                continue;
+            }
+
             file_count += 1;
 
             let Ok(metadata) = entry.metadata() else {
@@ -191,5 +197,23 @@ mod tests {
         load(root.to_str().unwrap(), &paths, &cancel, &pipeline.sender());
 
         assert!(pipeline.try_take().is_none());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlinked_directory_is_not_counted_or_followed() {
+        let root = test_root("symlink");
+        let real = root.join("real");
+        std::fs::create_dir_all(&real).unwrap();
+        std::fs::write(real.join("data.bin"), [0u8; 100]).unwrap();
+
+        let walked = root.join("walked");
+        std::fs::create_dir_all(&walked).unwrap();
+        std::fs::write(walked.join("own.bin"), [0u8; 7]).unwrap();
+        std::os::unix::fs::symlink(&real, walked.join("link-to-real")).unwrap();
+
+        let total = super::sum_directory(walked.to_str().unwrap(), &CancelToken::new());
+        let _ = std::fs::remove_dir_all(&root);
+        assert_eq!(total, 7);
     }
 }

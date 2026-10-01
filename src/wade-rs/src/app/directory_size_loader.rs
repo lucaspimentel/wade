@@ -50,44 +50,7 @@ impl DirectorySizeLoader {
 /// lengths (IgnoreInaccessible semantics: unreadable entries are skipped),
 /// checking cancellation every 500 files, injecting on success.
 pub fn calculate(directory_path: &str, cancel: &CancelToken, out: &Sender<InputEvent>) {
-    let mut total_bytes: i64 = 0;
-    let mut file_count: usize = 0;
-
-    let mut stack = vec![std::path::PathBuf::from(directory_path)];
-
-    while let Some(dir) = stack.pop() {
-        let Ok(read_dir) = std::fs::read_dir(&dir) else {
-            continue; // IgnoreInaccessible
-        };
-
-        for entry in read_dir.flatten() {
-            if file_count > 0 && file_count.is_multiple_of(500) && cancel.is_cancelled() {
-                return;
-            }
-
-            let Ok(file_type) = entry.file_type() else {
-                continue;
-            };
-
-            if file_type.is_dir() {
-                stack.push(entry.path());
-                continue;
-            }
-
-            file_count += 1;
-
-            let Ok(metadata) = entry.metadata() else {
-                continue;
-            };
-
-            let len = metadata.len();
-            total_bytes += i64::try_from(len).unwrap_or(i64::MAX);
-        }
-
-        if cancel.is_cancelled() {
-            return;
-        }
-    }
+    let total_bytes = crate::app::inline_dir_size_loader::sum_directory(directory_path, cancel);
 
     if cancel.is_cancelled() {
         return;
