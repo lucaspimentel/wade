@@ -33,14 +33,17 @@ this file to be empty or fully accepted.
   come from live filesystem metadata (created/accessed dates, attributes),
   so no fixture renders identically from both runners without a test seam
   in the frozen C# code. Parity evidence is the port of
-  `PropertiesOverlayTests` in `src/ui/properties_overlay.rs`.
+  `PropertiesOverlayTests` in `src/ui/properties_overlay.rs`. Phase 5
+  established that behavior-preserving C# render seams are allowed (see
+  `App.RenderFileFinderView`), so a seam that injects the facts could add
+  a fixture later.
 
 - **Unported actions are stubbed with a notification (Phase 3a).** Actions
-  whose subsystems land in later phases (previews: phase 7; file finder:
-  phase 5) show a status-bar notification ("Not yet ported") instead of
-  performing the action. The action palette omits
+  whose subsystems land in later phases (previews: phase 7) show a
+  status-bar notification ("Not yet ported") instead of performing the
+  action. The action palette omits
   entries whose actions are not yet ported (preview providers, file
-  operations, file finder, terminal); the submenu stack machinery is
+  operations, terminal); the submenu stack machinery is
   ported and remaining entries are added in their phases. Git actions are
   ported (Phase 4b), except "Git: Copy relative path" (Y), which needs the
   OS clipboard and is omitted until Phase 9 alongside the context menu
@@ -77,3 +80,25 @@ this file to be empty or fully accepted.
   `fullRefresh` flag, so a buffer overflow followed within 300ms by an
   ordinary change loses the full refresh. Rust ORs the flag across the
   window.
+- **Finder match positions count code points (Phase 5).** The scorer runs
+  over `char`s, so positions index code points; C# indexes UTF-16 units.
+  They agree for BMP paths. For astral-plane names (emoji) C# draws split
+  surrogate halves, while Rust draws whole characters.
+- **Scorer character classes follow std outside ASCII (Phase 5).** The
+  boundary bonuses use .NET `char.IsUpper`/`IsLower`/`IsDigit`/
+  `IsLetterOrDigit` (Unicode general categories); Rust uses std
+  `is_uppercase`/`is_lowercase`/`is_numeric`/`is_alphanumeric`, which use
+  different Unicode properties (for example Roman numerals count as
+  uppercase and numeric). Case folding takes the first char of std's
+  lowercase mapping and only single-char uppercase mappings (matching the
+  .NET simple mappings for common cases such as `İ` and `ß`). ASCII scores
+  are identical, pinned by `tests/golden/search/scorer.golden.txt`;
+  non-ASCII names can tie-break differently.
+- **Finder results appear once their entries arrive (Phase 5).** A result
+  can reach the finder before the walk's batch carrying its entry. C# does
+  not rebuild its cached display list when entries arrive, so such results
+  stay hidden until another result batch (or never, when it was the last).
+  Rust rebuilds on either event.
+- **The finder renders below 78 columns (Phase 5).** C#
+  `Math.Clamp(width * 3 / 4, 70, width - 8)` throws when `width - 8 < 70`,
+  so Ctrl+F crashes on narrow terminals; Rust lets the upper bound win.

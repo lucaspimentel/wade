@@ -68,7 +68,8 @@ done (ScreenBuffer golden frames shipped with Phase 0's harness), Phase 3
 done (split into 3a app spine, 3b modal overlays, 3c config dialog /
 bookmarks / path completion / paste / mouse + context menu), Phase 4
 done (4a git status, 4b git actions, 4c file operations, 4d loaders,
-watcher, and properties). Next: Phase 5 search + file finder.
+watcher, and properties), Phase 5 done (search + file finder). Next:
+Phase 6 syntax highlighting.
 
 ### Phase 0 — Scaffold + golden-frame harness
 
