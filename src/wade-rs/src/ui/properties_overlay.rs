@@ -290,8 +290,6 @@ fn build_values(entry: &FileSystemEntry, directory_size_text: Option<&str>, git_
         .unwrap_or_else(|| em_dash.to_string());
 
     let size = if entry.is_drive && entry.drive_total_size > 0 {
-        let free = crate::ui::format_helpers::format_size(&mut ['\0'; 32], entry.drive_free_space);
-        let _ = free;
         format_free_of_total(entry)
     } else if entry.is_directory || entry.is_drive {
         directory_size_text.unwrap_or(em_dash).to_string()
@@ -388,7 +386,8 @@ fn collect_platform_facts(
             parts.push(format!("\"{label}\""));
         }
 
-        (None, None, parts.join(", "), false)
+        let em_dash = "\u{2014}".to_string();
+        (Some(em_dash.clone()), Some(em_dash), parts.join(", "), false)
     } else {
         let created = metadata
             .created()
@@ -503,11 +502,19 @@ fn format_windows_attributes(entry: &FileSystemEntry, metadata: &std::fs::Metada
 
 #[cfg(not(windows))]
 fn format_unix_attributes(entry: &FileSystemEntry, metadata: &std::fs::Metadata) -> String {
-    let _ = entry;
     let mut flags_parts: Vec<&str> = Vec::new();
 
     if metadata.permissions().readonly() {
         flags_parts.push("ReadOnly");
+    }
+
+    // .NET reports FileAttributes.Hidden on Unix for dot-prefixed names
+    if std::path::Path::new(&entry.full_path)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name.starts_with('.'))
+    {
+        flags_parts.push("Hidden");
     }
 
     if flags_parts.is_empty() {
@@ -569,4 +576,370 @@ pub fn get_git_status_color(status: GitFileStatus) -> Color {
     }
 
     git_untracked_color()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{format_git_status, get_git_status_color, git_staged_color, render};
+    use crate::fs::directory_contents::{FileSystemEntry, GitFileStatus};
+    use crate::screen::ScreenBuffer;
+    use crate::ui::format_helpers::DateParts;
+    use crate::ui::metadata::{MetadataEntry, MetadataSection};
+
+    fn entry(name: &str, full_path: &str, is_directory: bool, size: i64) -> FileSystemEntry {
+        FileSystemEntry {
+            name: name.to_string(),
+            full_path: full_path.to_string(),
+            is_directory,
+            size,
+            last_modified: DateParts { year: 2024, month: 1, day: 2, hour: 15, minute: 4 },
+            link_target: None,
+            is_broken_symlink: false,
+            is_drive: false,
+            is_cloud_placeholder: false,
+            is_junction_point: false,
+            is_app_exec_link: false,
+            app_exec_link_target: None,
+            drive_format: None,
+            drive_label: None,
+            drive_free_space: 0,
+            drive_total_size: 0,
+        }
+    }
+
+    fn missing(name: &str) -> String {
+        std::env::temp_dir()
+            .join("wade-po-missing")
+            .join(name)
+            .to_string_lossy()
+            .into_owned()
+    }
+
+    fn test_root(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("wade-po-{}-{}", std::process::id(), name));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    /// Serializes the buffer and strips escape sequences, like the C#
+    /// tests' `Flush` + `StripAnsi`.
+    fn flush(buffer: &mut ScreenBuffer) -> String {
+        let mut raw = String::new();
+        buffer.serialize(&mut raw);
+
+        let mut out = String::new();
+        let mut chars = raw.chars();
+
+        while let Some(ch) = chars.next() {
+            if ch == '\x1b' {
+                if chars.next() == Some('[') {
+                    for c in chars.by_ref() {
+                        if c.is_ascii_alphabetic() {
+                            break;
+                        }
+                    }
+                }
+            } else {
+                out.push(ch);
+            }
+        }
+
+        out
+    }
+
+    fn render_text(width: i32, height: i32, entry: &FileSystemEntry, git_status: Option<GitFileStatus>) -> String {
+        let mut buffer = ScreenBuffer::new(width, height);
+        render(&mut buffer, width, height, entry, None, git_status, None, 0);
+        flush(&mut buffer)
+    }
+
+    fn details(count: usize, label: impl Fn(usize) -> String, value: impl Fn(usize) -> String) -> Vec<MetadataSection> {
+        vec![MetadataSection {
+            header: Some("Details".to_string()),
+            entries: (0..count)
+                .map(|i| MetadataEntry { label: label(i), value: value(i) })
+                .collect(),
+        }]
+    }
+
+    #[test]
+    fn shows_labels_and_title() {
+        let output = render_text(100, 30, &entry("test.txt", &missing("test.txt"), false, 1536), None);
+
+        for expected in [
+            "Properties",
+            "Press any key to close",
+            "Name",
+            "Path",
+            "Type",
+            "Target",
+            "Size",
+            "Created",
+            "Modified",
+            "Accessed",
+            "Attributes",
+            "Read-only",
+        ] {
+            assert!(output.contains(expected), "missing {expected:?}");
+        }
+    }
+
+    #[test]
+    fn file_entry_shows_file_type_label() {
+        for (file_name, expected_type) in [
+            ("readme.md", "Markdown"),
+            ("report.pdf", "PDF"),
+            ("app.cs", "C#"),
+            ("data.unknown", "File"),
+        ] {
+            let output = render_text(100, 30, &entry(file_name, &missing(file_name), false, 2048), None);
+            assert!(output.contains(expected_type), "{file_name}: missing {expected_type:?}");
+            assert!(output.contains(file_name));
+        }
+    }
+
+    #[test]
+    fn directory_entry_shows_dash_for_size() {
+        let output = render_text(100, 30, &entry("docs", &missing("docs"), true, 0), None);
+        assert!(output.contains("Directory"));
+        assert!(output.contains('\u{2014}'));
+    }
+
+    #[test]
+    fn directory_entry_shows_directory_size_text() {
+        let mut buffer = ScreenBuffer::new(100, 30);
+        render(&mut buffer, 100, 30, &entry("docs", &missing("docs"), true, 0), Some("Calculating\u{2026}"), None, None, 0);
+        assert!(flush(&mut buffer).contains("Calculating\u{2026}"));
+    }
+
+    #[test]
+    fn drive_entry_shows_drive_type() {
+        let mut drive = entry("C:\\", "C:\\", true, 0);
+        drive.is_drive = true;
+        let output = render_text(100, 30, &drive, None);
+        assert!(output.contains("Drive"));
+    }
+
+    #[test]
+    fn ready_drive_shows_dash_for_dates_and_free_of_total() {
+        // C# sets Created/Accessed to an em dash for drives (not "N/A")
+        let root = test_root("drive");
+        let path = root.to_string_lossy().into_owned();
+        let mut drive = entry(&path, &path, true, 0);
+        drive.is_drive = true;
+        drive.drive_format = Some("NTFS".to_string());
+        drive.drive_label = Some("Data".to_string());
+        drive.drive_free_space = 512 * 1024 * 1024;
+        drive.drive_total_size = 1024 * 1024 * 1024;
+
+        let output = render_text(120, 30, &drive, None);
+        let _ = std::fs::remove_dir_all(&root);
+
+        assert!(output.contains("512.0 MB free of 1.0 GB (50% used)"), "{output}");
+        assert!(output.contains("NTFS, \"Data\""));
+        assert!(!output.contains("N/A"));
+    }
+
+    #[test]
+    fn file_entry_shows_formatted_size() {
+        for (bytes, expected) in [(512, "512 B"), (1536, "1.5 KB"), (1_572_864, "1.5 MB")] {
+            let output = render_text(120, 30, &entry("file.dat", &missing("file.dat"), false, bytes), None);
+            assert!(output.contains(expected), "{bytes}: missing {expected:?}");
+            assert!(output.contains("bytes"));
+        }
+    }
+
+    #[test]
+    fn symlink_to_file_shows_symlink_type() {
+        let root = test_root("symfile");
+        let target = root.join("real.txt");
+        std::fs::write(&target, "test").unwrap();
+        let target = target.to_string_lossy().into_owned();
+        let mut link = entry("link.txt", &root.join("link.txt").to_string_lossy(), false, 100);
+        link.link_target = Some(target.clone());
+
+        let output = render_text(120, 30, &link, None);
+        let _ = std::fs::remove_dir_all(&root);
+
+        assert!(output.contains("Symlink \u{2192} File"));
+        assert!(output.contains(&target));
+    }
+
+    #[test]
+    fn symlink_to_directory_shows_symlink_type() {
+        let root = test_root("symdir");
+        let target = root.join("real-dir");
+        std::fs::create_dir_all(&target).unwrap();
+        let target = target.to_string_lossy().into_owned();
+        let mut link = entry("link-dir", &root.join("link-dir").to_string_lossy(), true, 0);
+        link.link_target = Some(target.clone());
+
+        let output = render_text(120, 30, &link, None);
+        let _ = std::fs::remove_dir_all(&root);
+
+        assert!(output.contains("Symlink \u{2192} Directory"));
+        assert!(output.contains(&target));
+    }
+
+    #[test]
+    fn broken_symlink_shows_broken_type() {
+        let target = missing("nonexistent_target_xyz");
+        let mut link = entry("broken", &missing("broken"), false, 0);
+        link.link_target = Some(target.clone());
+        link.is_broken_symlink = true;
+
+        let output = render_text(120, 30, &link, None);
+        assert!(output.contains("Broken Symlink"));
+        assert!(output.contains(&target));
+    }
+
+    #[test]
+    fn junction_point_shows_junction_type() {
+        let target = missing("real-dir");
+        let mut junction = entry("junction-dir", &missing("junction-dir"), true, 0);
+        junction.link_target = Some(target.clone());
+        junction.is_junction_point = true;
+
+        let output = render_text(120, 30, &junction, None);
+        assert!(output.contains("Junction \u{2192} Directory"));
+        assert!(output.contains(&target));
+    }
+
+    #[test]
+    fn app_exec_link_shows_app_exec_type() {
+        let target = "C:\\Program Files\\WindowsApps\\Microsoft.WindowsTerminal\\wt.exe";
+        let mut alias = entry("wt.exe", "C:\\Users\\test\\AppData\\Local\\Microsoft\\WindowsApps\\wt.exe", false, 0);
+        alias.is_app_exec_link = true;
+        alias.app_exec_link_target = Some(target.to_string());
+
+        let output = render_text(120, 30, &alias, None);
+        assert!(output.contains("App Execution Alias"));
+        assert!(output.contains(target));
+    }
+
+    #[test]
+    fn regular_file_shows_em_dash_for_target() {
+        let output = render_text(120, 30, &entry("normal.dat", &missing("normal.dat"), false, 512), None);
+        assert!(output.contains("File"));
+        assert!(output.contains('\u{2014}'));
+    }
+
+    #[test]
+    fn missing_path_falls_back_to_na() {
+        let output = render_text(120, 30, &entry("gone.txt", &missing("gone.txt"), false, 1), None);
+        assert!(output.contains("N/A"));
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn unix_dot_file_reports_hidden() {
+        let root = test_root("hidden");
+        let path = root.join(".env");
+        std::fs::write(&path, "x").unwrap();
+        let output = render_text(120, 30, &entry(".env", &path.to_string_lossy(), false, 1), None);
+        let _ = std::fs::remove_dir_all(&root);
+        assert!(output.contains("Hidden"), "{output}");
+    }
+
+    #[test]
+    fn shows_git_status_modified() {
+        let output = render_text(120, 30, &entry("file.cs", &missing("file.cs"), false, 100), Some(GitFileStatus::MODIFIED));
+        assert!(output.contains("Git status"));
+        assert!(output.contains("Modified"));
+    }
+
+    #[test]
+    fn shows_git_status_staged() {
+        let output = render_text(120, 30, &entry("file.cs", &missing("file.cs"), false, 100), Some(GitFileStatus::STAGED));
+        assert!(output.contains("Git status"));
+        assert!(output.contains("Staged"));
+    }
+
+    #[test]
+    fn git_status_combined_flags_shows_comma_separated() {
+        let status = GitFileStatus::MODIFIED | GitFileStatus::STAGED;
+        let output = render_text(120, 30, &entry("file.cs", &missing("file.cs"), false, 100), Some(status));
+        assert!(output.contains("Staged, Modified"));
+        // Staged outranks Modified for the row color
+        assert!(get_git_status_color(status) == git_staged_color());
+    }
+
+    #[test]
+    fn format_git_status_none_returns_em_dash() {
+        assert_eq!(format_git_status(Some(GitFileStatus::NONE)), "\u{2014}");
+    }
+
+    #[test]
+    fn format_git_status_null_returns_em_dash() {
+        assert_eq!(format_git_status(None), "\u{2014}");
+    }
+
+    #[test]
+    fn returns_content_height() {
+        let mut buffer = ScreenBuffer::new(100, 40);
+        let height = render(&mut buffer, 100, 40, &entry("test.txt", &missing("test.txt"), false, 1024), None, None, None, 0);
+        // 11 system property rows (LABELS), no metadata
+        assert_eq!(height, 11);
+    }
+
+    #[test]
+    fn returns_content_height_with_metadata() {
+        let mut buffer = ScreenBuffer::new(100, 50);
+        let sections = vec![MetadataSection {
+            header: Some("Info".to_string()),
+            entries: vec![
+                MetadataEntry { label: "Key1".to_string(), value: "Value1".to_string() },
+                MetadataEntry { label: "Key2".to_string(), value: "Value2".to_string() },
+            ],
+        }];
+        let height = render(
+            &mut buffer,
+            100,
+            50,
+            &entry("test.txt", &missing("test.txt"), false, 1024),
+            None,
+            None,
+            Some(&sections),
+            0,
+        );
+        // 11 system rows + 1 blank separator + 1 header + 2 entries
+        assert_eq!(height, 15);
+    }
+
+    #[test]
+    fn no_scroll_when_content_fits() {
+        let output = render_text(100, 40, &entry("test.txt", &missing("test.txt"), false, 1024), None);
+        assert!(output.contains("Press any key to close"));
+        assert!(!output.contains("scroll"));
+    }
+
+    #[test]
+    fn scrollable_footer_when_content_overflows() {
+        let mut buffer = ScreenBuffer::new(100, 20);
+        let sections = details(20, |i| format!("Field{i}"), |i| format!("Val{i}"));
+        render(&mut buffer, 100, 20, &entry("test.txt", &missing("test.txt"), false, 1024), None, None, Some(&sections), 0);
+        assert!(flush(&mut buffer).contains("scroll"));
+    }
+
+    #[test]
+    fn scroll_offset_skips_top_rows() {
+        let mut buffer = ScreenBuffer::new(100, 20);
+        let sections = details(20, |i| format!("Field{i:02}"), |i| format!("MetaValue{i:02}"));
+        render(&mut buffer, 100, 20, &entry("test.txt", &missing("test.txt"), false, 1024), None, None, Some(&sections), 5);
+        let output = flush(&mut buffer);
+        assert!(output.contains("Properties"));
+        assert!(output.contains("MetaValue"));
+        // Rows 0-4 (Name..Size) are scrolled off; the Name value is gone
+        assert!(!output.contains("test.txt"));
+    }
+
+    #[test]
+    fn scroll_offset_is_clamped() {
+        let mut buffer = ScreenBuffer::new(100, 20);
+        let sections = details(20, |i| format!("Field{i:02}"), |i| format!("MetaValue{i:02}"));
+        render(&mut buffer, 100, 20, &entry("test.txt", &missing("test.txt"), false, 1024), None, None, Some(&sections), 999);
+        // 34 rows, 12 visible: the clamped offset still shows the last entry
+        assert!(flush(&mut buffer).contains("MetaValue19"));
+    }
 }
