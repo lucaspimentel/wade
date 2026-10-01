@@ -3,6 +3,7 @@
 //! parameter stays in the signature so Phase 7 is a drop-in.
 
 use crate::fs::directory_contents::{FileSystemEntry, GitFileStatus};
+use crate::fs::DriveMediaType;
 use crate::fs::file_type_labels::get_file_type_label;
 use crate::screen::{CellStyle, Color, ScreenBuffer};
 use crate::ui::dialog_box::{self, BG_COLOR};
@@ -373,9 +374,12 @@ fn collect_platform_facts(
         // Drive entries use volume/format facts from the entry itself.
         let mut parts: Vec<String> = Vec::new();
 
-        // Media-type text needs DriveTypeDetector (Phase 9); C# falls back to
-        // DriveType.ToString() which Rust cannot query via std. Omitted until
-        // Phase 9 (KNOWN_DEVIATIONS.md).
+        parts.push(match entry.drive_media_type {
+            DriveMediaType::Ssd => "SSD".to_string(),
+            DriveMediaType::Hdd => "HDD".to_string(),
+            _ => crate::fs::drive_media_type::drive_type(&entry.full_path).name().to_string(),
+        });
+
         if let Some(format) = &entry.drive_format {
             parts.push(format.clone());
         }
@@ -600,6 +604,7 @@ mod tests {
             is_junction_point: false,
             is_app_exec_link: false,
             app_exec_link_target: None,
+            drive_media_type: crate::fs::DriveMediaType::Unknown,
             drive_format: None,
             drive_label: None,
             drive_free_space: 0,

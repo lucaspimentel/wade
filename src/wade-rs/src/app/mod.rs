@@ -912,9 +912,7 @@ impl App {
         self.refresh_inline_dir_sizes();
     }
 
-    /// Port of `RefreshInlineDirSizes` (App.cs:2600-2652). Dormant until
-    /// Phase 9: no DriveTypeDetector yet, so the media type is always
-    /// Unknown and gating disables the loader.
+    /// Port of `RefreshInlineDirSizes` (App.cs:2625-2675).
     fn refresh_inline_dir_sizes(&mut self) {
         self.inline_dir_sizes = None;
         self.directory_contents.dir_sizes = None;
@@ -924,8 +922,8 @@ impl App {
             return;
         }
 
-        // Drive detection is a Phase 9 item; Unknown for now.
-        self.current_drive_media_type = crate::fs::DriveMediaType::Unknown;
+        self.current_drive_media_type = crate::fs::directory_contents::drive_root(&self.current_path)
+            .map_or(crate::fs::DriveMediaType::Unknown, |root| crate::fs::drive_media_type::detect(&root));
 
         if !Self::should_compute_inline_dir_sizes_impl(self.current_drive_media_type, &self.config) {
             self.inline_dir_size_loader.cancel();

@@ -57,19 +57,14 @@ this file to be empty or fully accepted.
   config dialog ports all 27 settings and persists them, but toggles
   gating providers that land in later phases (media metadata) have no
   runtime effect until Phase 9.
-- **Dates carry no local timezone offset (Phase 3a).**
-  `FileSystemEntry.last_modified` converts `SystemTime` without a local
-  timezone offset (C# `LastWriteTime` is local). No timezone crate has been
-  chosen yet; date display and Modified sort may differ by the UTC offset.
-- **Drive media-type detection returns Unknown (Phase 3a).** The C#
-  `DriveTypeDetector` (seek-penalty query) port is Phase 9; drive entries
-  carry `DriveMediaType.Unknown`. Consequences until then: inline directory
-  sizes (Phase 4d) never run, because `should_compute_inline_dir_sizes`
-  disables Unknown media; and the Properties overlay's drive Attributes row
-  omits the leading media type ("SSD"/"HDD"/`DriveType` text), showing only
-  format and volume label.
 
 ## Accepted (deliberate, permanent)
+- **Linux drive types use a reduced file-system table (Phase 9a).** .NET
+  maps the root mount's file-system type to a `DriveType` through a long
+  table; Rust recognises network (nfs, cifs, sshfs, 9p, ...), RAM/virtual
+  (tmpfs, proc, sysfs, ...) and optical (iso9660, udf) families and treats
+  every other type as Fixed. Only the inline directory-size gating reads
+  it on Linux, and rare file systems may land in a different family.
 - **Image preview pixels differ from C# (Phase 8b).** Previews decode
   with the `image` crate and scale with a triangle filter instead of
   ImageSharp's bicubic resampler, and the median-cut palette sorts

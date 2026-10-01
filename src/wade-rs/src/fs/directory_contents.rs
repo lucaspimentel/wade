@@ -73,8 +73,7 @@ pub enum SortMode {
 /// Sentinel path representing the list of drives.
 pub const DRIVES_PATH: &str = "::drives";
 
-/// Mirrors `FileSystemEntry` (the fields the spine needs; reparse and cloud
-/// fields stay at defaults until Phase 9).
+/// Mirrors `FileSystemEntry`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FileSystemEntry {
     pub name: String,
@@ -90,6 +89,7 @@ pub struct FileSystemEntry {
     pub is_junction_point: bool,
     pub is_app_exec_link: bool,
     pub app_exec_link_target: Option<String>,
+    pub drive_media_type: super::DriveMediaType,
     pub drive_format: Option<String>,
     pub drive_label: Option<String>,
     pub drive_free_space: i64,
@@ -248,7 +248,14 @@ pub fn load_entries(
             }
         }
 
-        let is_directory = file_type.is_dir();
+        // .NET EnumerateDirectories lists directory symlinks and junctions:
+        // on Windows by FILE_ATTRIBUTE_DIRECTORY, on unix by the link's
+        // target. `FileType::is_dir` follows neither.
+        #[cfg(windows)]
+        let is_directory = attributes & 0x0010 != 0;
+        #[cfg(not(windows))]
+        let is_directory = file_type.is_dir()
+            || (file_type.is_symlink() && std::fs::metadata(item.path()).is_ok_and(|m| m.is_dir()));
         let link_target = if file_type.is_symlink() {
             std::fs::read_link(item.path())
                 .ok()
@@ -262,9 +269,24 @@ pub fn load_entries(
             Some(target) => std::fs::metadata(target).is_err(),
         };
 
+        let full_path = item.path().to_string_lossy().to_string();
+
+        // Ports of CheckIsCloudPlaceholder / CheckIsJunctionPoint /
+        // CheckIsAppExecLink: reparse queries only for entries carrying
+        // FILE_ATTRIBUTE_REPARSE_POINT, junctions only for directories.
+        #[cfg(windows)]
+        let (is_cloud_placeholder, is_reparse_point) =
+            (is_cloud_placeholder_attributes(attributes), attributes & 0x0400 != 0);
+        #[cfg(not(windows))]
+        let (is_cloud_placeholder, is_reparse_point) = (false, false);
+        let is_junction_point = is_directory && is_reparse_point && super::reparse::is_junction_point(&full_path);
+        let is_app_exec_link = !is_directory && is_reparse_point && super::reparse::is_app_exec_link(&full_path);
+        let app_exec_link_target =
+            if is_app_exec_link { super::reparse::get_app_exec_link_target(&full_path) } else { None };
+
         list.push(FileSystemEntry {
             name,
-            full_path: item.path().to_string_lossy().to_string(),
+            full_path,
             is_directory,
             size: if is_directory {
                 // Port of DirectoryContents.cs:193: inline dir sizes take
@@ -279,10 +301,11 @@ pub fn load_entries(
             link_target,
             is_broken_symlink,
             is_drive: false,
-            is_cloud_placeholder: false,
-            is_junction_point: false,
-            is_app_exec_link: false,
-            app_exec_link_target: None,
+            is_cloud_placeholder,
+            is_junction_point,
+            is_app_exec_link,
+            app_exec_link_target,
+            drive_media_type: crate::fs::DriveMediaType::Unknown,
             drive_format: None,
             drive_label: None,
             drive_free_space: 0,
@@ -333,55 +356,23 @@ fn compare_date_parts(a: &super::super::ui::format_helpers::DateParts, b: &super
     (a.year, a.month, a.day, a.hour, a.minute).cmp(&(b.year, b.month, b.day, b.hour, b.minute))
 }
 
-/// Converts a `SystemTime` into local wall-clock fields via the TZ
-/// environment (mirrors C# `DateTime.LastWriteTime` being local time).
+/// Converts a `SystemTime` into local wall-clock fields (C#
+/// `LastWriteTime` is local time).
 #[must_use]
 pub fn system_time_to_date_parts(t: SystemTime) -> super::super::ui::format_helpers::DateParts {
-    // No chrono dependency: convert through a minimal days-since-epoch
-    // algorithm in local time read from the TZ offset via libc-free probing.
-    let secs = t
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .map(|d| i64::try_from(d.as_secs()).unwrap_or(0))
-        .unwrap_or(0);
+    use chrono::{Datelike, Timelike};
 
-    // Local offset: use the `TZ`-independent trick of comparing the current
-    // local formatted time is not available; use UTC. The C# build uses local
-    // time, but dates only surface as formatted text; UTC is acceptable until
-    // a proper local-time dependency is chosen (tracked as a deviation).
-    let local_secs = secs + local_utc_offset_secs();
-    let days = local_secs.div_euclid(86_400);
-    let rem = local_secs.rem_euclid(86_400);
-    let (year, month, day) = civil_from_days(days);
+    let local: chrono::DateTime<chrono::Local> = t.into();
     super::super::ui::format_helpers::DateParts {
-        year,
-        month,
-        day,
-        hour: (rem / 3600) as u32,
-        minute: ((rem % 3600) / 60) as u32,
+        year: local.year(),
+        month: local.month(),
+        day: local.day(),
+        hour: local.hour(),
+        minute: local.minute(),
     }
 }
 
-fn local_utc_offset_secs() -> i64 {
-    0
-}
-
-/// Howard Hinnant's civil_from_days algorithm.
-#[must_use]
-fn civil_from_days(z: i64) -> (i32, u32, u32) {
-    let z = z + 719_468;
-    let era = z.div_euclid(146_097);
-    let doe = z.rem_euclid(146_097);
-    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
-    let y = yoe + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
-    ((if m <= 2 { y + 1 } else { y }) as i32, m, d)
-}
-
-/// Port of `GetDriveEntries`. Drive media-type detection is Phase 9; the
-/// format/label/space fields the file-list renderer uses are populated.
+/// Port of `GetDriveEntries`.
 #[cfg(windows)]
 pub fn get_drive_entries() -> Vec<FileSystemEntry> {
     use windows_sys::Win32::Storage::FileSystem::{
@@ -418,32 +409,20 @@ pub fn get_drive_entries() -> Vec<FileSystemEntry> {
 
                 let mut volume_buf = [0u16; 261];
                 let mut fs_buf = [0u16; 64];
-                let mut volume_len: u32 = 0;
-                let fs_len: u32 = 0;
-                let mut fs_flags: u32 = 0;
 
-                let label_ok = GetVolumeInformationW(
+                let info_ok = GetVolumeInformationW(
                     drive_utf16.as_ptr(),
                     volume_buf.as_mut_ptr(),
                     volume_buf.len() as u32,
                     std::ptr::null_mut(),
-                    &mut volume_len,
-                    &mut fs_flags,
+                    std::ptr::null_mut(),
+                    std::ptr::null_mut(),
                     fs_buf.as_mut_ptr(),
                     fs_buf.len() as u32,
-                );
+                ) != 0;
 
-                let label: Option<String> = if label_ok != 0 && volume_len > 0 {
-                    Some(String::from_utf16_lossy(&volume_buf[..volume_len as usize]))
-                } else {
-                    None
-                };
-
-                let format: Option<String> = if label_ok != 0 && fs_len > 0 {
-                    Some(String::from_utf16_lossy(&fs_buf[..fs_len as usize]))
-                } else {
-                    None
-                };
+                let label = info_ok.then(|| utf16_until_nul(&volume_buf)).filter(|l| !l.is_empty());
+                let format = info_ok.then(|| utf16_until_nul(&fs_buf)).filter(|f| !f.is_empty());
 
                 // Mirrors C#: trim trailing separators for names longer than "X:\"
                 let name = if drive.len() > 2 {
@@ -470,6 +449,7 @@ pub fn get_drive_entries() -> Vec<FileSystemEntry> {
                     is_junction_point: false,
                     is_app_exec_link: false,
                     app_exec_link_target: None,
+                    drive_media_type: super::drive_media_type::detect(&drive),
                     drive_format: format,
                     drive_label: label,
                     drive_free_space: i64::try_from(free).unwrap_or(0),
@@ -480,6 +460,21 @@ pub fn get_drive_entries() -> Vec<FileSystemEntry> {
     }
 
     list
+}
+
+#[cfg(windows)]
+fn utf16_until_nul(buf: &[u16]) -> String {
+    let len = buf.iter().position(|&c| c == 0).unwrap_or(buf.len());
+    String::from_utf16_lossy(&buf[..len])
+}
+
+/// Port of `IsCloudPlaceholderAttributes`: FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS
+/// or FILE_ATTRIBUTE_RECALL_ON_OPEN.
+#[must_use]
+pub const fn is_cloud_placeholder_attributes(attribute_bits: u32) -> bool {
+    const RECALL_ON_DATA_ACCESS: u32 = 0x0040_0000;
+    const RECALL_ON_OPEN: u32 = 0x0000_4000;
+    attribute_bits & (RECALL_ON_DATA_ACCESS | RECALL_ON_OPEN) != 0
 }
 
 #[cfg(not(windows))]
@@ -499,5 +494,57 @@ pub fn capitalize_drive_letter(path: &str) -> String {
             owned
         }
         _ => path.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_cloud_placeholder_attributes_detects_recall_flags() {
+        for (bits, expected) in [
+            (0x0040_0000, true),
+            (0x0000_4000, true),
+            (0x0040_4000, true),
+            (0x0000_0020, false),
+            (0x0000_0000, false),
+        ] {
+            assert_eq!(is_cloud_placeholder_attributes(bits), expected, "{bits:#x}");
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn directory_symlinks_are_listed_as_directories() {
+        let root = std::env::temp_dir().join(format!("wade-dirlink-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("real")).unwrap();
+        std::fs::write(root.join("file.txt"), "x").unwrap();
+        std::os::unix::fs::symlink(root.join("real"), root.join("link")).unwrap();
+        std::os::unix::fs::symlink(root.join("missing"), root.join("broken")).unwrap();
+
+        let entries = load_entries(&root.to_string_lossy(), true, true, None);
+        let kind = |name: &str| entries.iter().find(|e| e.name == name).map(|e| (e.is_directory, e.is_symlink()));
+
+        assert_eq!(kind("real"), Some((true, false)));
+        assert_eq!(kind("link"), Some((true, true)));
+        assert_eq!(kind("broken"), Some((false, true)));
+        assert_eq!(kind("file.txt"), Some((false, false)));
+        assert!(entries.iter().all(|e| !e.is_cloud_placeholder && !e.is_junction_point && !e.is_app_exec_link));
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn system_time_to_date_parts_matches_chrono_local() {
+        use chrono::{Datelike, Timelike};
+
+        let t = SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1_700_000_000);
+        let local: chrono::DateTime<chrono::Local> = t.into();
+        let parts = system_time_to_date_parts(t);
+        assert_eq!(
+            (parts.year, parts.month, parts.day, parts.hour, parts.minute),
+            (local.year(), local.month(), local.day(), local.hour(), local.minute())
+        );
     }
 }
