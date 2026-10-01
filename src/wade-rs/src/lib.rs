@@ -16,3 +16,6 @@ pub mod text;
 pub mod ui;
 #[cfg(windows)]
 pub mod terminal_setup;
+#[cfg(unix)]
+#[path = "terminal_setup_unix.rs"]
+pub mod terminal_setup;

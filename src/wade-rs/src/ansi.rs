@@ -48,6 +48,12 @@ pub const SHOW_CURSOR: &str = "\x1b[?25h";
 /// Push the window title on the terminal's title stack (`CSI 22;0 t`).
 pub const SAVE_TITLE: &str = "\x1b[22;0t";
 pub const CLEAR_TITLE: &str = "\x1b]0;\x07";
+pub const ENABLE_MOUSE_REPORTING: &str = "\x1b[?1000h";
+pub const DISABLE_MOUSE_REPORTING: &str = "\x1b[?1000l";
+pub const ENABLE_SGR_MOUSE_MODE: &str = "\x1b[?1006h";
+pub const DISABLE_SGR_MOUSE_MODE: &str = "\x1b[?1006l";
+pub const ENABLE_BRACKETED_PASTE: &str = "\x1b[?2004h";
+pub const DISABLE_BRACKETED_PASTE: &str = "\x1b[?2004l";
 
 /// `AnsiCodes.MoveCursor`: 0-based row/col to a CUP sequence.
 #[must_use]

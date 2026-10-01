@@ -404,7 +404,7 @@ fn collect_platform_facts(
             .map(crate::fs::directory_contents::system_time_to_date_parts)
             .map(|parts| format_date_time(&parts));
         let attributes = format_attributes(entry, metadata);
-        let read_only = metadata.permissions().readonly();
+        let read_only = is_read_only(metadata);
 
         (created, accessed, attributes, read_only)
     }
@@ -504,11 +504,61 @@ fn format_windows_attributes(entry: &FileSystemEntry, metadata: &std::fs::Metada
     }
 }
 
+/// `FileAttributes.ReadOnly` / `FileInfo.IsReadOnly`.
+fn is_read_only(metadata: &std::fs::Metadata) -> bool {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+
+        let groups = current_groups();
+        unix_read_only(metadata.mode(), metadata.uid(), metadata.gid(), unsafe { libc::geteuid() }, &groups)
+    }
+
+    #[cfg(not(unix))]
+    {
+        metadata.permissions().readonly()
+    }
+}
+
+/// .NET `FileStatus.IsReadOnly` on unix: the write bit of the class the
+/// effective user falls in (owner, then group, then other). Unlike
+/// `access(W_OK)`, root gets no exemption.
+#[must_use]
+pub fn unix_read_only(mode: u32, file_uid: u32, file_gid: u32, euid: u32, groups: &[u32]) -> bool {
+    let write_bit = if file_uid == euid {
+        0o200
+    } else if groups.contains(&file_gid) {
+        0o020
+    } else {
+        0o002
+    };
+
+    mode & write_bit == 0
+}
+
+/// The effective group plus the supplementary groups.
+#[cfg(unix)]
+fn current_groups() -> Vec<u32> {
+    let mut groups = vec![unsafe { libc::getegid() }];
+    let count = unsafe { libc::getgroups(0, std::ptr::null_mut()) };
+
+    if let Ok(len) = usize::try_from(count)
+        && len > 0
+    {
+        let mut extra = vec![0 as libc::gid_t; len];
+        let written = unsafe { libc::getgroups(count, extra.as_mut_ptr()) };
+        extra.truncate(usize::try_from(written).unwrap_or(0));
+        groups.extend(extra);
+    }
+
+    groups
+}
+
 #[cfg(not(windows))]
 fn format_unix_attributes(entry: &FileSystemEntry, metadata: &std::fs::Metadata) -> String {
     let mut flags_parts: Vec<&str> = Vec::new();
 
-    if metadata.permissions().readonly() {
+    if is_read_only(metadata) {
         flags_parts.push("ReadOnly");
     }
 
@@ -946,5 +996,18 @@ mod tests {
         render(&mut buffer, 100, 20, &entry("test.txt", &missing("test.txt"), false, 1024), None, None, Some(&sections), 999);
         // 34 rows, 12 visible: the clamped offset still shows the last entry
         assert!(flush(&mut buffer).contains("MetaValue19"));
+    }
+
+    #[test]
+    fn unix_read_only_uses_the_matching_permission_class() {
+        // Owner: the user bit decides, even for root
+        assert!(!super::unix_read_only(0o644, 1000, 1000, 1000, &[1000]));
+        assert!(super::unix_read_only(0o444, 0, 0, 0, &[0]));
+        // Group member: the group bit decides
+        assert!(!super::unix_read_only(0o464, 1, 50, 1000, &[1000, 50]));
+        assert!(super::unix_read_only(0o646, 1, 50, 1000, &[1000, 50]));
+        // Others
+        assert!(!super::unix_read_only(0o442, 1, 50, 1000, &[1000]));
+        assert!(super::unix_read_only(0o664, 1, 50, 1000, &[1000]));
     }
 }

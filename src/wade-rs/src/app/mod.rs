@@ -272,13 +272,13 @@ impl App {
 
         // C# `using var terminal = new TerminalSetup()`: console modes and
         // the alternate screen for the lifetime of the loop
-        #[cfg(windows)]
         let mut terminal = crate::terminal_setup::TerminalSetup::new();
-        #[cfg(windows)]
-        let capabilities = terminal.capabilities();
-        #[cfg(not(windows))]
-        let capabilities = crate::terminal_caps::TerminalCapabilities::DEFAULT;
-        self.set_capabilities(capabilities);
+        self.set_capabilities(terminal.capabilities());
+
+        // C# creates the input source after TerminalSetup, so the capability
+        // query's replies are read before the input reader starts
+        let pump_cancel = crate::input::CancelToken::new();
+        let pump = spawn_input_pump(self.pipeline.sender(), pump_cancel.clone());
 
         self.update_terminal_title();
         self.refresh_git_status();
@@ -386,7 +386,8 @@ impl App {
             self.adjust_scroll(self.visible_file_list_height(&entries));
         }
 
-        #[cfg(windows)]
+        pump_cancel.cancel();
+        let _ = pump.join();
         terminal.restore();
 
         if self.write_cwd {
@@ -1842,26 +1843,95 @@ impl App {
 use crate::fs::directory_contents::{capitalize_drive_letter, drive_root};
 use crate::ui::layout::Rect as Rect2;
 
-/// Port of `Process.Start(path) { UseShellExecute = true }` (App.cs:3143):
-/// Rust has no ShellExecute in std; on Windows the equivalent is
-/// `cmd /C start` (with the empty window-title argument), on unix
-/// `xdg-open`. Documented in KNOWN_DEVIATIONS.md.
+/// Port of `Process.Start(path) { UseShellExecute = true }` (App.cs:3143).
+/// Windows: `ShellExecuteExW` on its own STA thread, as .NET does. Unix
+/// (.NET `Process.Unix`): an executable file runs directly (falling back
+/// to the opener when exec reports ENOEXEC); anything else goes to the
+/// first opener found: xdg-open, gnome-open or kfmclient on Linux,
+/// /usr/bin/open on macOS.
 fn open_external(path: &str) -> Result<(), std::io::Error> {
     #[cfg(windows)]
     {
-        use std::os::windows::process::CommandExt;
-        std::process::Command::new("cmd")
-            .args(["/C", "start", "", path])
-            .creation_flags(0x0800_0000) // CREATE_NO_WINDOW
-            .spawn()
-            .map(|_| ())
+        let path = path.to_string();
+        std::thread::spawn(move || shell_execute(&path))
+            .join()
+            .unwrap_or_else(|_| Err(std::io::Error::other("ShellExecuteEx failed")))
     }
 
-    #[cfg(not(windows))]
+    #[cfg(unix)]
     {
-        let _ = path;
-        Err(std::io::Error::other("Open external is Windows-only until Phase 9"))
+        use std::process::{Command, Stdio};
+
+        let quiet = |command: &mut Command| -> std::io::Result<()> {
+            command.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).spawn().map(|_| ())
+        };
+
+        if is_executable_file(path) {
+            match quiet(&mut Command::new(path)) {
+                Err(err) if err.raw_os_error() == Some(libc::ENOEXEC) => {}
+                result => return result,
+            }
+        }
+
+        let openers: &[&str] = if cfg!(target_os = "macos") {
+            &["/usr/bin/open"]
+        } else {
+            &["xdg-open", "gnome-open", "kfmclient"]
+        };
+
+        let opener = openers.iter().find(|program| find_program(program).is_some()).ok_or_else(|| {
+            std::io::Error::new(std::io::ErrorKind::NotFound, "No program found to open the file")
+        })?;
+        quiet(Command::new(opener).arg(path))
     }
+}
+
+#[cfg(windows)]
+fn shell_execute(path: &str) -> std::io::Result<()> {
+    use windows_sys::Win32::System::Com::{CoInitializeEx, CoUninitialize, COINIT_APARTMENTTHREADED, COINIT_DISABLE_OLE1DDE};
+    use windows_sys::Win32::UI::Shell::{ShellExecuteExW, SEE_MASK_FLAG_DDEWAIT, SEE_MASK_FLAG_NO_UI, SHELLEXECUTEINFOW};
+
+    let file: Vec<u16> = path.encode_utf16().chain(std::iter::once(0)).collect();
+
+    unsafe {
+        let com = CoInitializeEx(std::ptr::null(), (COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE) as u32);
+        let mut info: SHELLEXECUTEINFOW = std::mem::zeroed();
+        info.cbSize = std::mem::size_of::<SHELLEXECUTEINFOW>() as u32;
+        info.fMask = SEE_MASK_FLAG_DDEWAIT | SEE_MASK_FLAG_NO_UI;
+        info.lpFile = file.as_ptr();
+        info.nShow = 1; // SW_SHOWNORMAL
+        let ok = ShellExecuteExW(&mut info) != 0;
+        let error = std::io::Error::last_os_error();
+
+        if com >= 0 {
+            CoUninitialize();
+        }
+
+        if ok { Ok(()) } else { Err(error) }
+    }
+}
+
+/// .NET `IsExecutable`: an existing non-directory the user may execute.
+#[cfg(unix)]
+fn is_executable_file(path: &str) -> bool {
+    let Ok(c_path) = std::ffi::CString::new(path) else {
+        return false;
+    };
+
+    std::fs::metadata(path).is_ok_and(|m| !m.is_dir()) && unsafe { libc::access(c_path.as_ptr(), libc::X_OK) } == 0
+}
+
+#[cfg(unix)]
+fn find_program(program: &str) -> Option<std::path::PathBuf> {
+    if program.contains('/') {
+        return is_executable_file(program).then(|| program.into());
+    }
+
+    std::env::var_os("PATH").and_then(|paths| {
+        std::env::split_paths(&paths)
+            .map(|dir| dir.join(program))
+            .find(|candidate| is_executable_file(&candidate.to_string_lossy()))
+    })
 }
 
 /// Port of `OpenTerminalHere` (App.cs:979-1010): wt.exe with cmd fallback on
@@ -1966,16 +2036,40 @@ fn now_ms() -> i64 {
 }
 
 fn terminal_size() -> Option<(i32, i32)> {
-    // Real size comes from the console API on Windows; Unix input (Phase 9)
-    // does not implement window queries yet.
     #[cfg(windows)]
     {
         crate::input::windows::window_size_pub()
     }
-    #[cfg(not(windows))]
+    #[cfg(unix)]
     {
-        None
+        crate::input::unix::window_size()
     }
+}
+
+/// The C# `InputPipeline` reader thread: owns the platform input source
+/// and forwards its events into the app's queue until cancelled.
+fn spawn_input_pump(
+    sender: std::sync::mpsc::Sender<InputEvent>,
+    cancel: crate::input::CancelToken,
+) -> std::thread::JoinHandle<()> {
+    use crate::input::InputSource;
+
+    std::thread::spawn(move || {
+        #[cfg(windows)]
+        let mut source: Box<dyn InputSource> = Box::new(crate::input::windows::WindowsInputSource::new());
+        #[cfg(unix)]
+        let mut source: Box<dyn InputSource> = match crate::input::unix::UnixInputSource::new() {
+            Ok(source) => Box::new(source),
+            // No controlling terminal: nothing to read
+            Err(_) => return,
+        };
+
+        while let Some(event) = source.read_next(&cancel) {
+            if sender.send(event).is_err() {
+                break; // app loop gone
+            }
+        }
+    })
 }
 
 pub(crate) fn clear_screen() {

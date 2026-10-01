@@ -697,6 +697,7 @@ dependencies = [
  "flate2",
  "image",
  "kamadak-exif",
+ "libc",
  "msi",
  "notify",
  "pulldown-cmark",

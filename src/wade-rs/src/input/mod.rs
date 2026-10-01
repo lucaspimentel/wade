@@ -3,6 +3,9 @@
 
 pub mod decode;
 pub mod input_pipeline;
+#[cfg(unix)]
+pub mod unix;
+pub mod vt_parser;
 #[cfg(windows)]
 pub mod windows;
 

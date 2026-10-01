@@ -5,24 +5,11 @@ deliberate deviations are recorded here. The C# retirement trigger requires
 this file to be empty or fully accepted.
 
 ## Temporary (phase-scoped, expected to be removed by later phases)
-- **Open external goes through cmd /C start (Phase 4c).** C# uses
-  `UseShellExecute = true`; Rust std has no ShellExecute, so the Windows
-  path shells through `cmd /C start` and the unix path is deferred to
-  Phase 9 with the rest of the unix work.
 - **The file-operation progress overlay is enhanced (Phase 4c).** C# shows
   only the operation label; the Rust overlay also shows the item count and
   current file name. Deliberate divergence, so no golden fixture covers
   this overlay.
 
-- **Unix Read-only/ReadOnly follows std, not .NET (Phase 4d).** The
-  Properties overlay uses `Permissions::readonly()` (no write bit for
-  anyone); .NET reports ReadOnly when the current user lacks write
-  permission. Revisit with the Phase 9 unix work.
-- **Unix terminals report default capabilities (Phase 8a).** Windows
-  detects Sixel via `WT_SESSION` like C#; the Unix DA1/cell-size query
-  needs the raw tty setup of the Phase 9 Unix input work, so Unix runs
-  with no Sixel and 8x16 px cells until then (the response parser is
-  already ported).
 - **No golden fixture covers the Properties overlay (Phase 4d).** Its rows
   come from live filesystem metadata (created/accessed dates, attributes),
   so no fixture renders identically from both runners without a test seam
@@ -33,6 +20,14 @@ this file to be empty or fully accepted.
   a fixture later.
 
 ## Accepted (deliberate, permanent)
+- **Unix input details (Phase 9f).** Bracketed pastes are decoded as
+  UTF-8; C#'s `VtParser` appends each byte as a Latin-1 char, so
+  non-ASCII pastes arrive mangled there. The reader polls /dev/tty with a
+  100ms timeout (C# blocks in `read`) so the input thread can be stopped
+  on exit; keys, the 50ms lone-ESC wait and resize events are unchanged.
+  Opening a file with the default app on unix follows .NET's rules (run
+  executables directly, otherwise xdg-open/gnome-open/kfmclient or
+  /usr/bin/open) but does not inherit the TUI's stdout/stderr.
 - **MSI files are read with the `msi` crate on every OS (Phase 9e).** C#
   queries msi.dll, so "Installer files" and "MSI metadata" exist only on
   Windows there (on Linux/macOS C# lists the metadata provider but it
