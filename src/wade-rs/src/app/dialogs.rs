@@ -181,6 +181,10 @@ impl App {
                 self.handle_context_menu_key(key);
                 true
             }
+            InputMode::FileFinder => {
+                self.handle_file_finder_key(key);
+                true
+            }
             _ => false,
         }
     }
@@ -401,7 +405,7 @@ impl App {
     }
 
     /// Port of `HandlePasteEvent` (App.cs:2251): paste into the active text
-    /// input by mode. FileFinder lands in Phase 5.
+    /// input by mode.
     pub fn handle_paste_event(&mut self, text: &str) {
         // Filter to printable characters only
         let text: String = text.chars().filter(|c| *c >= ' ').collect();
@@ -427,6 +431,7 @@ impl App {
                     self.modal.go_to_path_suggestion = None;
                 }
             }
+            InputMode::FileFinder => self.paste_into_file_finder(&text),
             _ => {}
         }
     }
@@ -1039,6 +1044,7 @@ impl App {
             ActionMenuItem::new("Bookmarks", "b", AppAction::ShowBookmarks),
             ActionMenuItem::new("Toggle bookmark", "B", AppAction::ToggleBookmark),
             ActionMenuItem::new("Go to path", "Ctrl+G", AppAction::GoToPath),
+            ActionMenuItem::new("Search / Find file", "Ctrl+F", AppAction::ShowFileFinder),
             ActionMenuItem::new("Filter", "/", AppAction::Search),
             ActionMenuItem::new("Configuration", ",", AppAction::ShowConfig),
             ActionMenuItem::new("Help", "?", AppAction::ShowHelp),
@@ -1182,6 +1188,7 @@ impl App {
                 }
             }
             InputMode::Bookmarks => self.render_bookmarks(buffer, width, height),
+            InputMode::FileFinder => self.render_file_finder(buffer, width, height),
             InputMode::ContextMenu => {
                 if let Some(state) = &mut self.modal.context_menu {
                     crate::ui::context_menu::render(buffer, width, height, state);

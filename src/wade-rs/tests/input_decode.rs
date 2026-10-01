@@ -171,6 +171,9 @@ fn format_events(events: &[InputEvent]) -> String {
             InputEvent::InlineDirSizeReady(_) => {}
             InputEvent::InlineDirSizeComplete(_) => {}
             InputEvent::FileSystemChanged(_) => {}
+            InputEvent::FileFinderPartialResult(_) => {}
+            InputEvent::FileFinderScanComplete(_) => {}
+            InputEvent::FileFinderSearchResult(_) => {}
         }
     }
     result

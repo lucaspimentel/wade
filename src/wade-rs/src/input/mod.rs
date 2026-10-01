@@ -86,6 +86,9 @@ pub enum InputEvent {
     InlineDirSizeReady(InlineDirSizeReadyEvent),
     InlineDirSizeComplete(InlineDirSizeCompleteEvent),
     FileSystemChanged(FileSystemChangedEvent),
+    FileFinderPartialResult(FileFinderPartialResultEvent),
+    FileFinderScanComplete(FileFinderScanCompleteEvent),
+    FileFinderSearchResult(FileFinderSearchResultEvent),
 }
 
 /// Port of the `DirectorySizeReadyEvent` record
@@ -108,6 +111,30 @@ pub struct InlineDirSizeReadyEvent {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlineDirSizeCompleteEvent {
     pub parent_path: String,
+}
+
+/// Port of the `FileFinderPartialResultEvent` record: a batch of entries
+/// from the finder's directory walk.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FileFinderPartialResultEvent {
+    pub base_path: String,
+    pub entries: Vec<crate::fs::FileSystemEntry>,
+}
+
+/// Port of the `FileFinderScanCompleteEvent` record.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FileFinderScanCompleteEvent {
+    pub base_path: String,
+}
+
+/// Port of the `FileFinderSearchResultEvent` record: a batch of scored
+/// results for search `search_id`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FileFinderSearchResultEvent {
+    pub base_path: String,
+    pub results: Vec<crate::search::SearchResult>,
+    pub is_complete: bool,
+    pub search_id: u64,
 }
 
 /// Port of the `FileSystemChangedEvent` record.

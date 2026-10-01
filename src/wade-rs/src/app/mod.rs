@@ -6,6 +6,7 @@
 pub mod config_io;
 pub mod directory_size_loader;
 pub mod file_operation_runner;
+pub mod file_finder;
 pub mod fs_watcher;
 pub mod git_action_runner;
 pub mod git_menu_items;
@@ -133,6 +134,8 @@ pub struct App {
     /// Set by HandleFileSystemChanged: the next frame forces a full redraw
     /// (port of C# buffer.ForceFullRedraw()).
     request_full_redraw: bool,
+    /// Ctrl+F file finder state while it is open.
+    pub(crate) file_finder: Option<crate::app::file_finder::FileFinderState>,
     file_op_label: String,
     file_op_progress: Option<crate::input::FileOperationProgressEvent>,
     /// C# closes over the entry in the TextInput completion callback; Rust
@@ -200,6 +203,7 @@ impl App {
             inline_dir_sizes: None,
             current_drive_media_type: crate::fs::DriveMediaType::Unknown,
             request_full_redraw: false,
+            file_finder: None,
             file_op_label: String::new(),
             file_op_progress: None,
             text_input_target: None,
@@ -297,6 +301,9 @@ impl App {
                     InputEvent::InlineDirSizeReady(event) => self.handle_inline_dir_size_ready(event),
                     InputEvent::InlineDirSizeComplete(event) => self.handle_inline_dir_size_complete(event),
                     InputEvent::FileSystemChanged(event) => self.handle_file_system_changed(event),
+                    InputEvent::FileFinderPartialResult(event) => self.handle_file_finder_partial_result(event),
+                    InputEvent::FileFinderScanComplete(event) => self.handle_file_finder_scan_complete(event),
+                    InputEvent::FileFinderSearchResult(event) => self.handle_file_finder_search_result(event),
                 }
             }
 
@@ -309,7 +316,15 @@ impl App {
                 InputEvent::GitActionComplete(event) => self.handle_git_action_complete(event),
                 InputEvent::FileOperationComplete(event) => self.handle_file_operation_complete(event),
                 InputEvent::FileOperationProgress(event) => self.handle_file_operation_progress(event),
-                InputEvent::DirectorySizeReady(_) | InputEvent::InlineDirSizeReady(_) | InputEvent::InlineDirSizeComplete(_) | InputEvent::FileSystemChanged(_) => {}
+                // Like the C# main loop: loader events are handled whether they
+                // arrive first or queued behind another event
+                InputEvent::DirectorySizeReady(event) => self.handle_directory_size_ready(event),
+                InputEvent::InlineDirSizeReady(event) => self.handle_inline_dir_size_ready(event),
+                InputEvent::InlineDirSizeComplete(event) => self.handle_inline_dir_size_complete(event),
+                InputEvent::FileSystemChanged(event) => self.handle_file_system_changed(event),
+                InputEvent::FileFinderPartialResult(event) => self.handle_file_finder_partial_result(event),
+                InputEvent::FileFinderScanComplete(event) => self.handle_file_finder_scan_complete(event),
+                InputEvent::FileFinderSearchResult(event) => self.handle_file_finder_search_result(event),
             }
 
             // Clamp selection and adjust scroll
@@ -552,6 +567,7 @@ impl App {
             | A::CreateSymlink => self.dispatch_file_action(action),
             A::OpenTerminal => self.open_terminal_here(),
             A::ShowProperties => self.show_properties(),
+            A::ShowFileFinder => self.show_file_finder(),
             other => {
                 // Unported in 3a: navigation to the subsystem lands in later phases.
                 self.show_notification("Not yet ported", NotificationKind::Info);

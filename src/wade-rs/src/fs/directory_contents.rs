@@ -75,7 +75,7 @@ pub const DRIVES_PATH: &str = "::drives";
 
 /// Mirrors `FileSystemEntry` (the fields the spine needs; reparse and cloud
 /// fields stay at defaults until Phase 9).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FileSystemEntry {
     pub name: String,
     pub full_path: String,

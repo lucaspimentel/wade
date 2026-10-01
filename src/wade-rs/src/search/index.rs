@@ -173,7 +173,7 @@ impl Drop for SearchIndex {
 
 /// `Path.GetRelativePath(basePath, path)` for paths under `base_path` (the
 /// finder only indexes descendants); other paths are returned unchanged.
-fn relative_path<'a>(base_path: &str, path: &'a str) -> &'a str {
+pub(crate) fn relative_path<'a>(base_path: &str, path: &'a str) -> &'a str {
     let base = base_path.trim_end_matches(is_separator);
 
     let under_base = path.len() > base.len()
