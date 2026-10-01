@@ -9,3 +9,4 @@ tests/golden/** text eol=lf
 # Preview fixtures exercise exact bytes (CRLF, CR, BOMs, binary, archives); never convert.
 tests/golden/preview/files/** -text
 tests/golden/preview/archives/** -text
+tests/golden/preview/shortcuts/** -text

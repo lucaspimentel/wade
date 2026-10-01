@@ -1,0 +1,92 @@
+=== bad-clsid.lnk
+metadata-providers File info | Shortcut properties
+shortcut null
+=== bad-header-size.lnk
+metadata-providers File info | Shortcut properties
+shortcut null
+=== bad-item-size.lnk
+metadata-providers File info | Shortcut properties
+shortcut null
+=== empty.lnk
+metadata-providers File info | Shortcut properties
+shortcut null
+=== extra-data.lnk
+metadata-providers File info | Shortcut properties
+shortcut label=Windows Shortcut
+  [Shortcut]
+  Target: a.txt
+=== header-only.lnk
+metadata-providers File info | Shortcut properties
+shortcut label=Windows Shortcut
+=== hotkey-f12.lnk
+metadata-providers File info | Shortcut properties
+shortcut label=Windows Shortcut
+  [Shortcut]
+  Hotkey: SHIFT + CTRL + ALT - F12 {0x077B}
+=== linkinfo-past-end.lnk
+metadata-providers File info | Shortcut properties
+shortcut null
+=== network.lnk
+metadata-providers File info | Shortcut properties
+shortcut label=Windows Shortcut
+  [Shortcut]
+  Target: share\\docs\\report.docx
+  Working Dir: \\\\server\\share\\docs
+  Window: MinNoActive
+=== not-a-shortcut.txt
+metadata-providers File info
+=== notepad.lnk
+metadata-providers File info | Shortcut properties
+shortcut label=Windows Shortcut
+  [Shortcut]
+  Target: C:\\Windows\\notepad.exe
+  Working Dir: C:\\Users\\me
+  Arguments: /A "notes.txt"
+  Description: Edit text files
+  Icon: %SystemRoot%\\system32\\notepad.exe
+  Hotkey: CTRL + ALT - N {0x064E}
+  Window: Maximized
+  [Link Info]
+  Local Path: C:\\Windows\\notepad.exe
+  Volume: OS
+=== relative-ansi.lnk
+metadata-providers File info | Shortcut properties
+shortcut label=Windows Shortcut
+  [Shortcut]
+  Target: .\\tool.exe
+  Arguments: --verbose
+  Hotkey: UNSET - Unknown (0xFF) {0x00FF}
+  Window: 2
+=== store-app.lnk
+metadata-providers File info | Shortcut properties
+shortcut label=Windows Shortcut
+  [Shortcut]
+  Launch URI: msgamelaunch://shortcutLaunch/?ProductId=9NBLGGH4R315\u0000
+  Description: Game
+=== truncated-header.lnk
+metadata-providers File info | Shortcut properties
+shortcut null
+=== truncated-strings.lnk
+metadata-providers File info | Shortcut properties
+shortcut null
+=== unicode-linkinfo.lnk
+metadata-providers File info | Shortcut properties
+shortcut label=Windows Shortcut
+  [Shortcut]
+  Target: C:\\Users\\José\\Café.txt
+  [Link Info]
+  Local Path: C:\\Users\\
+  Volume: nnées
+=== hotkeys
+0000 UNSET - UNSET {0x0000}
+0030 UNSET - 0 {0x0030}
+0139 SHIFT - 9 {0x0139}
+0241 CTRL - A {0x0241}
+045A ALT - Z {0x045A}
+0370 SHIFT + CTRL - F1 {0x0370}
+0587 SHIFT + ALT - F24 {0x0587}
+0690 CTRL + ALT - NUM LOCK {0x0690}
+0791 SHIFT + CTRL + ALT - SCROLL LOCK {0x0791}
+0820 UNSET - Unknown (0x20) {0x0820}
+00FF UNSET - Unknown (0xFF) {0x00FF}
+FF41 SHIFT + CTRL + ALT - A {0xFF41}

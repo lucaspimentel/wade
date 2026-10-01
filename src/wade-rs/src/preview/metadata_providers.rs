@@ -1,8 +1,8 @@
-//! Metadata providers ported so far: `FileMetadataProvider` and
-//! `ArchiveMetadataProvider`.
+//! Metadata providers ported so far: `FileMetadataProvider`,
+//! `ShortcutMetadataProvider` and `ArchiveMetadataProvider`.
 
 use super::{MetadataEntry, MetadataProvider, MetadataResult, MetadataSection, PreviewContext};
-use crate::fs::{tar_preview, zip_preview, GitFileStatus};
+use crate::fs::{lnk, tar_preview, zip_preview, GitFileStatus};
 use crate::input::CancelToken;
 use crate::ui::format_helpers::{format_percent_p0, format_size_string};
 use crate::ui::properties_overlay::format_git_status;
@@ -44,6 +44,86 @@ impl MetadataProvider for FileMetadataProvider {
                 entries,
             }],
             file_type_label: None,
+        })
+    }
+}
+
+/// Port of `ShortcutMetadataProvider`: .lnk target, string data, hotkey,
+/// window state and link info. Unparsable files give nothing.
+pub struct ShortcutMetadataProvider;
+
+impl MetadataProvider for ShortcutMetadataProvider {
+    fn label(&self) -> &'static str {
+        "Shortcut properties"
+    }
+
+    fn can_provide_metadata(&self, path: &str, _context: &PreviewContext) -> bool {
+        crate::fs::file_preview::extension(path).eq_ignore_ascii_case(".lnk")
+    }
+
+    fn get_metadata(&self, path: &str, _context: &PreviewContext, cancel: &CancelToken) -> Option<MetadataResult> {
+        if cancel.is_cancelled() {
+            return None;
+        }
+
+        let lnk = lnk::LnkFile::parse(path).ok()?;
+        let mut sections = Vec::new();
+        let mut entries = Vec::new();
+        let non_empty = |value: &Option<String>| value.as_deref().filter(|v| !v.is_empty()).map(str::to_string);
+
+        if let Some(target) = lnk.target_path() {
+            entries.push(MetadataEntry::new("Target", &target));
+        }
+        if let Some(uri) = lnk.launch_uri() {
+            entries.push(MetadataEntry::new("Launch URI", &uri));
+        }
+        if let Some(dir) = non_empty(&lnk.string_data.working_dir) {
+            entries.push(MetadataEntry::new("Working Dir", &dir));
+        }
+        if let Some(args) = non_empty(&lnk.string_data.command_line_arguments) {
+            entries.push(MetadataEntry::new("Arguments", &args));
+        }
+        if let Some(description) = non_empty(&lnk.string_data.name) {
+            entries.push(MetadataEntry::new("Description", &description));
+        }
+        if let Some(icon) = non_empty(&lnk.string_data.icon_location) {
+            entries.push(MetadataEntry::new("Icon", &icon));
+        }
+        if lnk.header.hot_key != 0 {
+            entries.push(MetadataEntry::new("Hotkey", &lnk::decode_hot_key(lnk.header.hot_key)));
+        }
+        if lnk.header.show_command != lnk::SHOW_NORMAL {
+            entries.push(MetadataEntry::new("Window", &lnk::show_command_name(lnk.header.show_command)));
+        }
+
+        if !entries.is_empty() {
+            sections.push(MetadataSection {
+                header: Some("Shortcut".to_string()),
+                entries,
+            });
+        }
+
+        if let Some(info) = &lnk.link_info {
+            let mut link_entries = Vec::new();
+
+            if let Some(local) = non_empty(&info.local_base_path) {
+                link_entries.push(MetadataEntry::new("Local Path", &local));
+            }
+            if let Some(label) = non_empty(&info.volume_label) {
+                link_entries.push(MetadataEntry::new("Volume", &label));
+            }
+
+            if !link_entries.is_empty() {
+                sections.push(MetadataSection {
+                    header: Some("Link Info".to_string()),
+                    entries: link_entries,
+                });
+            }
+        }
+
+        Some(MetadataResult {
+            sections,
+            file_type_label: Some("Windows Shortcut".to_string()),
         })
     }
 }

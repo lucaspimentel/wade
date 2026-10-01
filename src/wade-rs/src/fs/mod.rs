@@ -12,6 +12,7 @@ pub mod file_type_labels;
 pub mod git_utils;
 pub mod gzip;
 pub mod hex_preview;
+pub mod lnk;
 pub mod path_completion;
 pub mod tar_preview;
 pub mod zip_preview;

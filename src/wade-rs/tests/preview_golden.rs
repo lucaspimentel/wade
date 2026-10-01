@@ -9,7 +9,7 @@ use wade::fs::{file_preview, GitFileStatus};
 use wade::highlight::StyledLine;
 use wade::input::CancelToken;
 use wade::fs::{tar_preview, zip_preview};
-use wade::preview::metadata_providers::{ArchiveMetadataProvider, FileMetadataProvider};
+use wade::preview::metadata_providers::{ArchiveMetadataProvider, FileMetadataProvider, ShortcutMetadataProvider};
 use wade::preview::providers::{HexPreviewProvider, TarContentsPreviewProvider, TextPreviewProvider, ZipContentsPreviewProvider};
 use wade::preview::{registry, MetadataEntry, MetadataProvider, MetadataSection, PreviewContext, PreviewProvider, PreviewResult};
 use wade::screen::{CellStyle, Color};
@@ -31,7 +31,6 @@ const PENDING_LABELS: &[&str] = &[
     "Media info",
     "NuGet metadata",
     "MSI metadata",
-    "Shortcut properties",
     "PDF metadata",
 ];
 
@@ -448,6 +447,60 @@ fn archive_fixtures_match_csharp_golden() {
             } else {
                 line.to_string()
             }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    assert_matches(&expected, &out, &golden_path.display().to_string());
+}
+
+#[test]
+fn shortcut_fixtures_match_csharp_golden() {
+    let dir = golden_dir();
+    let mut files: Vec<PathBuf> = std::fs::read_dir(dir.join("shortcuts"))
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .collect();
+    files.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
+
+    let mut out = String::new();
+    let context = &contexts(&dir.to_string_lossy())[0].1;
+
+    for file in &files {
+        let path = file.to_string_lossy().into_owned();
+        let _ = writeln!(out, "=== {}", file.file_name().unwrap().to_string_lossy());
+        let metadata: Vec<&str> = registry::applicable_metadata_providers(&path, context).iter().map(|p| p.label()).collect();
+        let _ = writeln!(out, "metadata-providers {}", metadata.join(" | "));
+
+        if !ShortcutMetadataProvider.can_provide_metadata(&path, context) {
+            continue;
+        }
+
+        let Some(result) = ShortcutMetadataProvider.get_metadata(&path, context, &CancelToken::new()) else {
+            out.push_str("shortcut null\n");
+            continue;
+        };
+
+        let _ = writeln!(out, "shortcut label={}", result.file_type_label.as_deref().unwrap_or("-"));
+        for section in &result.sections {
+            let _ = writeln!(out, "  [{}]", section.header.as_deref().unwrap_or("-"));
+            for entry in &section.entries {
+                let _ = writeln!(out, "  {}: {}", entry.label, escape(&entry.value));
+            }
+        }
+    }
+
+    out.push_str("=== hotkeys\n");
+    for hot_key in [0x0000u16, 0x0030, 0x0139, 0x0241, 0x045A, 0x0370, 0x0587, 0x0690, 0x0791, 0x0820, 0x00FF, 0xFF41] {
+        let _ = writeln!(out, "{hot_key:04X} {}", wade::fs::lnk::decode_hot_key(hot_key));
+    }
+
+    let golden_path = dir.join("shortcuts.golden.txt");
+    let expected: String = read(&golden_path)
+        .lines()
+        .map(|line| match line.strip_prefix("metadata-providers ") {
+            Some(list) => without_pending(&format!("metadata-providers[x] {list}")).replacen("metadata-providers[x] ", "metadata-providers ", 1),
+            None => line.to_string(),
         })
         .collect::<Vec<_>>()
         .join("\n");

@@ -220,6 +220,67 @@ public class PreviewGoldenTests
         }
     }
 
+    [Fact]
+    public void ShortcutFixtures_MatchGolden()
+    {
+        string dir = FindGoldenDir();
+        var sb = new StringBuilder();
+        var provider = new ShortcutMetadataProvider();
+        PreviewContext context = Contexts(dir)[0].Context;
+
+        string[] files = Directory.GetFiles(Path.Combine(dir, "shortcuts"));
+        Array.Sort(files, StringComparer.Ordinal);
+
+        foreach (string path in files)
+        {
+            sb.Append("=== ").Append(Path.GetFileName(path)).Append('\n');
+            sb.Append("metadata-providers ")
+                .Append(string.Join(" | ", MetadataProviderRegistry.GetApplicableProviders(path, context).Select(p => p.Label)))
+                .Append('\n');
+
+            if (!provider.CanProvideMetadata(path, context))
+            {
+                continue;
+            }
+
+            MetadataResult? result = provider.GetMetadata(path, context, CancellationToken.None);
+            if (result is null)
+            {
+                sb.Append("shortcut null\n");
+                continue;
+            }
+
+            sb.Append("shortcut label=").Append(result.FileTypeLabel ?? "-").Append('\n');
+            foreach (MetadataSection section in result.Sections)
+            {
+                sb.Append("  [").Append(section.Header ?? "-").Append("]\n");
+                foreach (MetadataEntry entry in section.Entries)
+                {
+                    sb.Append("  ").Append(entry.Label).Append(": ").Append(Escape(entry.Value)).Append('\n');
+                }
+            }
+        }
+
+        // Every hotkey key and modifier byte
+        sb.Append("=== hotkeys\n");
+        foreach (ushort hotKey in new ushort[] { 0x0000, 0x0030, 0x0139, 0x0241, 0x045A, 0x0370, 0x0587, 0x0690, 0x0791, 0x0820, 0x00FF, 0xFF41 })
+        {
+            sb.Append(hotKey.ToString("X4", CultureInfo.InvariantCulture)).Append(' ')
+                .Append(Wade.LnkParser.HotKeyHelper.Decode(hotKey)).Append('\n');
+        }
+
+        string goldenPath = Path.Combine(dir, "shortcuts.golden.txt");
+        string actual = sb.ToString();
+
+        if (Environment.GetEnvironmentVariable("WADE_UPDATE_GOLDENS") == "1" && !File.Exists(goldenPath))
+        {
+            File.WriteAllText(goldenPath, actual, new UTF8Encoding(false));
+        }
+
+        Assert.True(File.Exists(goldenPath), $"Missing golden file {goldenPath}; run with WADE_UPDATE_GOLDENS=1 to generate");
+        Assert.Equal(File.ReadAllText(goldenPath).ReplaceLineEndings("\n"), actual);
+    }
+
     private static readonly (long Compressed, long Total)[] RatioCases =
     [
         (0, 5), (1, 8), (3, 8), (5, 8), (7, 8), (1, 200), (3, 200), (1, 3), (2, 3), (5, 5), (7, 5),

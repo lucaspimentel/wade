@@ -2,7 +2,7 @@
 //! providers that apply to a file, in priority order (the first preview
 //! provider is the default; every metadata provider contributes).
 
-use super::metadata_providers::{ArchiveMetadataProvider, FileMetadataProvider};
+use super::metadata_providers::{ArchiveMetadataProvider, FileMetadataProvider, ShortcutMetadataProvider};
 use super::providers::{
     DiffPreviewProvider, HexPreviewProvider, NonePreviewProvider, TarContentsPreviewProvider, TextPreviewProvider,
     ZipContentsPreviewProvider,
@@ -22,7 +22,8 @@ static PREVIEW_PROVIDERS: [&dyn PreviewProvider; 6] = [
 
 /// C# order: File, Image, Executable, Office, Media, NuGet, MSI, Shortcut,
 /// Archive, PDF. Slots for providers of later phases are absent.
-static METADATA_PROVIDERS: [&dyn MetadataProvider; 2] = [&FileMetadataProvider, &ArchiveMetadataProvider];
+static METADATA_PROVIDERS: [&dyn MetadataProvider; 3] =
+    [&FileMetadataProvider, &ShortcutMetadataProvider, &ArchiveMetadataProvider];
 
 /// Port of `PreviewProviderRegistry.GetApplicableProviders`: nothing for
 /// broken symlinks and cloud placeholders; for secondary archive types
@@ -166,6 +167,13 @@ mod tests {
             ..test_context()
         };
         assert_eq!(metadata(&off), ["File info"]);
+    }
+
+    #[test]
+    fn shortcut_metadata_applies_to_lnk_files() {
+        let metadata: Vec<&str> =
+            applicable_metadata_providers("C:\\x\\App.LNK", &test_context()).iter().map(|p| p.label()).collect();
+        assert_eq!(metadata, ["File info", "Shortcut properties"]);
     }
 
     #[test]
