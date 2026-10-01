@@ -25,8 +25,7 @@ this file to be empty or fully accepted.
   permission. Revisit with the Phase 9 unix work.
 - **Later-phase preview and metadata providers are absent (Phase 7a).**
   The registries hold only the ported providers, in C# order. Missing until
-  their phases: archive contents and archive metadata (7b), shortcut
-  properties (7c), rendered Markdown (7d), image and PDF previews and
+  their phases: shortcut properties (7c), rendered Markdown (7d), image and PDF previews and
   metadata (Phase 8), and the MSI preview plus executable, Office, NuGet,
   media and MSI metadata (Phase 9). Files of those types fall through to
   the next applicable provider (usually None, Text or Hex). Image and
@@ -55,8 +54,8 @@ this file to be empty or fully accepted.
   context menu Paste/Copy/Cut entries.
 - **Config toggles for unported subsystems are inert (Phase 3c).** The
   config dialog ports all 27 settings and persists them, but toggles
-  gating providers that land in later phases (image/PDF/Markdown/archive
-  previews, archive/PDF/media metadata) have no runtime effect until those
+  gating providers that land in later phases (image/PDF/Markdown
+  previews, PDF/media metadata) have no runtime effect until those
   phases land.
 - **Dates carry no local timezone offset (Phase 3a).**
   `FileSystemEntry.last_modified` converts `SystemTime` without a local
@@ -71,6 +70,11 @@ this file to be empty or fully accepted.
   format and volume label.
 
 ## Accepted (deliberate, permanent)
+- **GNU sparse tar entries don't stall the preview (Phase 7b).** .NET's
+  `TarReader` throws `NotSupportedException` for type `S`, which escapes
+  `TarPreview` and faults the C# preview load: the pane stays on
+  "[loading…]" with no metadata. Rust gives no archive preview and no
+  archive metadata for such files; the file-info metadata still shows.
 - **Properties for a vanished entry show N/A (Phase 4d).** When the entry
   no longer exists, C# `FileInfo` does not throw; it shows sentinel values
   (Created/Accessed `1601-01-01 12:00 AM` in local time, every attribute

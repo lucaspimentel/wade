@@ -1,8 +1,10 @@
-//! Metadata providers ported so far: `FileMetadataProvider`.
+//! Metadata providers ported so far: `FileMetadataProvider` and
+//! `ArchiveMetadataProvider`.
 
 use super::{MetadataEntry, MetadataProvider, MetadataResult, MetadataSection, PreviewContext};
-use crate::fs::GitFileStatus;
+use crate::fs::{tar_preview, zip_preview, GitFileStatus};
 use crate::input::CancelToken;
+use crate::ui::format_helpers::{format_percent_p0, format_size_string};
 use crate::ui::properties_overlay::format_git_status;
 
 /// Port of `FileMetadataProvider`: the file name as the section header,
@@ -44,6 +46,99 @@ impl MetadataProvider for FileMetadataProvider {
             file_type_label: None,
         })
     }
+}
+
+/// Port of `ArchiveMetadataProvider`: file count, sizes and ratio for zip,
+/// tar, tar.gz and plain gzip files.
+pub struct ArchiveMetadataProvider;
+
+impl MetadataProvider for ArchiveMetadataProvider {
+    fn label(&self) -> &'static str {
+        "Archive metadata"
+    }
+
+    fn can_provide_metadata(&self, path: &str, _context: &PreviewContext) -> bool {
+        zip_preview::is_zip_file(path) || tar_preview::is_tar_archive(path) || tar_preview::is_plain_gzip(path)
+    }
+
+    fn get_metadata(&self, path: &str, _context: &PreviewContext, cancel: &CancelToken) -> Option<MetadataResult> {
+        if cancel.is_cancelled() {
+            return None;
+        }
+
+        if zip_preview::is_zip_file(path) {
+            return zip_metadata(path, cancel);
+        }
+
+        if tar_preview::is_tar_archive(path) || tar_preview::is_plain_gzip(path) {
+            return tar_metadata(path, cancel);
+        }
+
+        None
+    }
+}
+
+fn archive_section(entries: Vec<MetadataEntry>) -> MetadataResult {
+    MetadataResult {
+        sections: vec![MetadataSection {
+            header: Some("Archive".to_string()),
+            entries,
+        }],
+        file_type_label: None,
+    }
+}
+
+/// Port of `GetZipMetadata`; `None` for unreadable archives.
+fn zip_metadata(path: &str, cancel: &CancelToken) -> Option<MetadataResult> {
+    let entries = zip_preview::read_entries(path).ok()?;
+
+    if cancel.is_cancelled() {
+        return None;
+    }
+
+    let files: Vec<&zip_preview::ZipEntry> = entries.iter().filter(|entry| !entry.full_name.ends_with('/')).collect();
+    let total_size: i64 = files.iter().map(|entry| entry.length as i64).sum();
+    let total_compressed: i64 = files.iter().map(|entry| entry.compressed_length as i64).sum();
+
+    let ratio = if total_size > 0 {
+        format_percent_p0(total_compressed as f64 / total_size as f64)
+    } else {
+        "---".to_string()
+    };
+
+    Some(archive_section(vec![
+        MetadataEntry::new("Files", &crate::app::group_thousands(files.len() as i64)),
+        MetadataEntry::new("Total size", &format_size_string(total_size)),
+        MetadataEntry::new("Compressed", &format_size_string(total_compressed)),
+        MetadataEntry::new("Ratio", &ratio),
+    ]))
+}
+
+/// Port of `GetTarMetadata`.
+fn tar_metadata(path: &str, cancel: &CancelToken) -> Option<MetadataResult> {
+    let stats = tar_preview::get_stats(path, cancel)?;
+
+    let format = match stats.format {
+        tar_preview::TarFormat::Tar => "tar",
+        tar_preview::TarFormat::TarGzip => "tar.gz",
+        tar_preview::TarFormat::Gzip => "gzip",
+    };
+
+    let mut entries = vec![
+        MetadataEntry::new("Files", &crate::app::group_thousands(stats.files as i64)),
+        MetadataEntry::new("Total size", &format_size_string(stats.total_size)),
+        MetadataEntry::new("Format", format),
+    ];
+
+    if let Some(compressed) = stats.compressed_size {
+        entries.push(MetadataEntry::new("Compressed", &format_size_string(compressed)));
+
+        if stats.total_size > 0 {
+            entries.push(MetadataEntry::new("Ratio", &format_percent_p0(compressed as f64 / stats.total_size as f64)));
+        }
+    }
+
+    Some(archive_section(entries))
 }
 
 #[cfg(test)]

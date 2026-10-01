@@ -1,0 +1,1160 @@
+=== bad-checksum.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=4
+text   Archive Contents
+text   ────────────────
+text         Size  Name
+text          1 B  b.txt
+archive-metadata label=-
+  [Archive]
+  Files: 1
+  Total size: 1 B
+  Format: tar
+=== bad-crc.txt.gz
+kind zip=false primary=false tar=false gzip=true
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=5
+text   Archive Contents
+text   ────────────────
+text [gzip] original: bad-crc.txt  compressed: 33 B  uncompressed: ~13 B
+text ────────────────
+text [invalid gzip content]
+archive-metadata label=-
+  [Archive]
+  Files: 1
+  Total size: 13 B
+  Format: gzip
+  Compressed: 33 B
+  Ratio: 254 %
+=== binary.bin.gz
+kind zip=false primary=false tar=false gzip=true
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=5
+text   Archive Contents
+text   ────────────────
+text [gzip] original: binary.bin  compressed: 27 B  uncompressed: ~300 B
+text ────────────────
+text [binary content]
+archive-metadata label=-
+  [Archive]
+  Files: 1
+  Total size: 300 B
+  Format: gzip
+  Compressed: 27 B
+  Ratio: 9 %
+=== comment.zip
+kind zip=true primary=true tar=false gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=3
+text   Archive Contents
+text   ────────────────
+text [invalid archive]
+archive-metadata null
+=== corrupt.zip
+kind zip=true primary=true tar=false gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=3
+text   Archive Contents
+text   ────────────────
+text [invalid archive]
+archive-metadata null
+=== cp437-name.zip
+kind zip=true primary=true tar=false gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=4
+text   Archive Contents
+text   ────────────────
+text         Size  Compressed  Ratio  Name
+text          1 B         3 B  300 %  na�ve.txt 
+archive-metadata label=-
+  [Archive]
+  Files: 1
+  Total size: 1 B
+  Compressed: 3 B
+  Ratio: 300 %
+=== crlf.txt.gz
+kind zip=false primary=false tar=false gzip=true
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=7
+text   Archive Contents
+text   ────────────────
+text [gzip] original: crlf.txt  compressed: 35 B  uncompressed: ~15 B
+text ────────────────
+text one
+text two
+text three
+archive-metadata label=-
+  [Archive]
+  Files: 1
+  Total size: 15 B
+  Format: gzip
+  Compressed: 35 B
+  Ratio: 233 %
+=== deflated.zip
+kind zip=true primary=true tar=false gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=10
+text   Archive Contents
+text   ────────────────
+text         Size  Compressed  Ratio  Name
+text          3 B         5 B  167 %  alpha.txt
+text         12 B        14 B  117 %  café/naïve 日本.txt
+text       2.9 KB       294 B   10 %  random.bin
+text        300 B        70 B   23 %  README.md
+text       4.9 KB        23 B    0 %  src/b.txt
+text       2.1 KB       161 B    8 %  src/Main.cs
+text          1 B         3 B  300 %  Zeta.txt
+archive-metadata label=-
+  [Archive]
+  Files: 7
+  Total size: 10.2 KB
+  Compressed: 570 B
+  Ratio: 5 %
+=== dirs-only.zip
+kind zip=true primary=true tar=false gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=3
+text   Archive Contents
+text   ────────────────
+text [empty archive]
+archive-metadata label=-
+  [Archive]
+  Files: 0
+  Total size: 0 B
+  Compressed: 0 B
+  Ratio: ---
+=== edge-bad-size.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=3
+text   Archive Contents
+text   ────────────────
+text [invalid archive]
+archive-metadata null
+=== edge-base256.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=4
+text   Archive Contents
+text   ────────────────
+text         Size  Name
+text          5 B  b256.txt
+archive-metadata label=-
+  [Archive]
+  Files: 1
+  Total size: 5 B
+  Format: tar
+=== edge-data-after-end.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=4
+text   Archive Contents
+text   ────────────────
+text         Size  Name
+text          3 B  one.txt
+archive-metadata label=-
+  [Archive]
+  Files: 1
+  Total size: 3 B
+  Format: tar
+=== edge-data-short.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=3
+text   Archive Contents
+text   ────────────────
+text [invalid archive]
+archive-metadata null
+=== edge-gnu-L.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=4
+text   Archive Contents
+text   ────────────────
+text         Size  Name
+text          2 B  gnu/nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn
+archive-metadata label=-
+  [Archive]
+  Files: 1
+  Total size: 2 B
+  Format: tar
+=== edge-gnu-prefix.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=3
+text   Archive Contents
+text   ────────────────
+text [invalid archive]
+archive-metadata null
+=== edge-name-padding.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=5
+text   Archive Contents
+text   ────────────────
+text         Size  Name
+text          1 B  nul
+text          1 B  spaces  
+archive-metadata label=-
+  [Archive]
+  Files: 2
+  Total size: 2 B
+  Format: tar
+=== edge-no-end.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=4
+text   Archive Contents
+text   ────────────────
+text         Size  Name
+text          3 B  one.txt
+archive-metadata label=-
+  [Archive]
+  Files: 1
+  Total size: 3 B
+  Format: tar
+=== edge-no-end.tgz
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=3
+text   Archive Contents
+text   ────────────────
+text [invalid archive]
+archive-metadata null
+=== edge-one-zero-block.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=4
+text   Archive Contents
+text   ────────────────
+text         Size  Name
+text          3 B  one.txt
+archive-metadata label=-
+  [Archive]
+  Files: 1
+  Total size: 3 B
+  Format: tar
+=== edge-pax-override.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=5
+text   Archive Contents
+text   ────────────────
+text         Size  Name
+text          1 B  next.txt
+text          4 B  renamed/by-pax.txt
+archive-metadata label=-
+  [Archive]
+  Files: 2
+  Total size: 5 B
+  Format: tar
+=== edge-prefix.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=4
+text   Archive Contents
+text   ────────────────
+text         Size  Name
+text          1 B  some/prefix/leaf.txt
+archive-metadata label=-
+  [Archive]
+  Files: 1
+  Total size: 1 B
+  Format: tar
+=== edge-short.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=3
+text   Archive Contents
+text   ────────────────
+text [invalid archive]
+archive-metadata null
+=== edge-space-checksum.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=3
+text   Archive Contents
+text   ────────────────
+text [empty archive]
+archive-metadata label=-
+  [Archive]
+  Files: 0
+  Total size: 0 B
+  Format: tar
+=== edge-types.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=8
+text   Archive Contents
+text   ────────────────
+text         Size  Name
+text          0 B  blk
+text          0 B  chr
+text          1 B  contig
+text          0 B  fifo
+text          0 B  hard
+archive-metadata label=-
+  [Archive]
+  Files: 5
+  Total size: 1 B
+  Format: tar
+=== edge-unpadded.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=3
+text   Archive Contents
+text   ────────────────
+text [invalid archive]
+archive-metadata null
+=== edge-zero-bytes.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=3
+text   Archive Contents
+text   ────────────────
+text [empty archive]
+archive-metadata label=-
+  [Archive]
+  Files: 0
+  Total size: 0 B
+  Format: tar
+=== empty.gz
+kind zip=false primary=false tar=false gzip=true
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=5
+text   Archive Contents
+text   ────────────────
+text [gzip] original: empty  compressed: 20 B  uncompressed: ~0 B
+text ────────────────
+text [empty]
+archive-metadata label=-
+  [Archive]
+  Files: 1
+  Total size: 0 B
+  Format: gzip
+  Compressed: 20 B
+=== empty.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=3
+text   Archive Contents
+text   ────────────────
+text [empty archive]
+archive-metadata label=-
+  [Archive]
+  Files: 0
+  Total size: 0 B
+  Format: tar
+=== empty.zip
+kind zip=true primary=true tar=false gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=3
+text   Archive Contents
+text   ────────────────
+text [empty archive]
+archive-metadata label=-
+  [Archive]
+  Files: 0
+  Total size: 0 B
+  Compressed: 0 B
+  Ratio: ---
+=== gnu-longname.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=5
+text   Archive Contents
+text   ────────────────
+text         Size  Name
+text          3 B  deep/segment00/segment01/segment02/segment03/segment04/segment05/segment06/segment07/segment08/segment09/segment10/segment11/segment12/segment13/file.txt
+text          1 B  short.txt
+archive-metadata label=-
+  [Archive]
+  Files: 2
+  Total size: 4 B
+  Format: tar
+=== invalid-utf8.txt.gz
+kind zip=false primary=false tar=false gzip=true
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=6
+text   Archive Contents
+text   ────────────────
+text [gzip] original: invalid-utf8.txt  compressed: 33 B  uncompressed: ~13 B
+text ────────────────
+text ok �� bad
+text 日
+archive-metadata label=-
+  [Archive]
+  Files: 1
+  Total size: 13 B
+  Format: gzip
+  Compressed: 33 B
+  Ratio: 254 %
+=== many.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=104
+text   Archive Contents
+text   ────────────────
+text         Size  Name
+text          0 B  entry000
+text          1 B  Entry001
+text          2 B  Entry002
+text          3 B  entry003
+text          4 B  Entry004
+text          5 B  Entry005
+text          6 B  entry006
+text          7 B  Entry007
+text          8 B  Entry008
+text          9 B  entry009
+text         10 B  Entry010
+text         11 B  Entry011
+text         12 B  entry012
+text         13 B  Entry013
+text         14 B  Entry014
+text         15 B  entry015
+text         16 B  Entry016
+text         17 B  Entry017
+text         18 B  entry018
+text         19 B  Entry019
+text         20 B  Entry020
+text         21 B  entry021
+text         22 B  Entry022
+text         23 B  Entry023
+text         24 B  entry024
+text         25 B  Entry025
+text         26 B  Entry026
+text         27 B  entry027
+text         28 B  Entry028
+text         29 B  Entry029
+text         30 B  entry030
+text         31 B  Entry031
+text         32 B  Entry032
+text         33 B  entry033
+text         34 B  Entry034
+text         35 B  Entry035
+text         36 B  entry036
+text         37 B  Entry037
+text         38 B  Entry038
+text         39 B  entry039
+text         40 B  Entry040
+text         41 B  Entry041
+text         42 B  entry042
+text         43 B  Entry043
+text         44 B  Entry044
+text         45 B  entry045
+text         46 B  Entry046
+text         47 B  Entry047
+text         48 B  entry048
+text         49 B  Entry049
+text         50 B  Entry050
+text         51 B  entry051
+text         52 B  Entry052
+text         53 B  Entry053
+text         54 B  entry054
+text         55 B  Entry055
+text         56 B  Entry056
+text         57 B  entry057
+text         58 B  Entry058
+text         59 B  Entry059
+text         60 B  entry060
+text         61 B  Entry061
+text         62 B  Entry062
+text         63 B  entry063
+text         64 B  Entry064
+text         65 B  Entry065
+text         66 B  entry066
+text         67 B  Entry067
+text         68 B  Entry068
+text         69 B  entry069
+text         70 B  Entry070
+text         71 B  Entry071
+text         72 B  entry072
+text         73 B  Entry073
+text         74 B  Entry074
+text         75 B  entry075
+text         76 B  Entry076
+text         77 B  Entry077
+text         78 B  entry078
+text         79 B  Entry079
+text         80 B  Entry080
+text         81 B  entry081
+text         82 B  Entry082
+text         83 B  Entry083
+text         84 B  entry084
+text         85 B  Entry085
+text         86 B  Entry086
+text         87 B  entry087
+text         88 B  Entry088
+text         89 B  Entry089
+text         90 B  entry090
+text         91 B  Entry091
+text         92 B  Entry092
+text         93 B  entry093
+text         94 B  Entry094
+text         95 B  Entry095
+text         96 B  entry096
+text         97 B  Entry097
+text         98 B  Entry098
+text         99 B  entry099
+text ... and 20 more entries
+archive-metadata label=-
+  [Archive]
+  Files: 120
+  Total size: 7.0 KB
+  Format: tar
+=== many.zip
+kind zip=true primary=true tar=false gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=104
+text   Archive Contents
+text   ────────────────
+text         Size  Compressed  Ratio  Name
+text          0 B         2 B    ---  file000.txt
+text          1 B         3 B  300 %  File001.txt
+text          2 B         4 B  200 %  file002.txt
+text          3 B         5 B  167 %  File003.txt
+text          4 B         6 B  150 %  file004.txt
+text          5 B         5 B  100 %  File005.txt
+text          6 B         5 B   83 %  file006.txt
+text          7 B         5 B   71 %  File007.txt
+text          8 B         5 B   62 %  file008.txt
+text          9 B         5 B   56 %  File009.txt
+text         10 B         5 B   50 %  file010.txt
+text         11 B         5 B   45 %  File011.txt
+text         12 B         5 B   42 %  file012.txt
+text         13 B         5 B   38 %  File013.txt
+text         14 B         5 B   36 %  file014.txt
+text         15 B         5 B   33 %  File015.txt
+text         16 B         5 B   31 %  file016.txt
+text         17 B         5 B   29 %  File017.txt
+text         18 B         5 B   28 %  file018.txt
+text         19 B         5 B   26 %  File019.txt
+text         20 B         5 B   25 %  file020.txt
+text         21 B         5 B   24 %  File021.txt
+text         22 B         5 B   23 %  file022.txt
+text         23 B         5 B   22 %  File023.txt
+text         24 B         5 B   21 %  file024.txt
+text         25 B         5 B   20 %  File025.txt
+text         26 B         5 B   19 %  file026.txt
+text         27 B         5 B   19 %  File027.txt
+text         28 B         5 B   18 %  file028.txt
+text         29 B         5 B   17 %  File029.txt
+text         30 B         5 B   17 %  file030.txt
+text         31 B         5 B   16 %  File031.txt
+text         32 B         5 B   16 %  file032.txt
+text         33 B         5 B   15 %  File033.txt
+text         34 B         5 B   15 %  file034.txt
+text         35 B         5 B   14 %  File035.txt
+text         36 B         5 B   14 %  file036.txt
+text         37 B         6 B   16 %  File037.txt
+text         38 B         6 B   16 %  file038.txt
+text         39 B         6 B   15 %  File039.txt
+text         40 B         6 B   15 %  file040.txt
+text         41 B         6 B   15 %  File041.txt
+text         42 B         6 B   14 %  file042.txt
+text         43 B         6 B   14 %  File043.txt
+text         44 B         6 B   14 %  file044.txt
+text         45 B         6 B   13 %  File045.txt
+text         46 B         6 B   13 %  file046.txt
+text         47 B         6 B   13 %  File047.txt
+text         48 B         6 B   12 %  file048.txt
+text         49 B         6 B   12 %  File049.txt
+text         50 B         6 B   12 %  file050.txt
+text         51 B         6 B   12 %  File051.txt
+text         52 B         6 B   12 %  file052.txt
+text         53 B         6 B   11 %  File053.txt
+text         54 B         6 B   11 %  file054.txt
+text         55 B         6 B   11 %  File055.txt
+text         56 B         6 B   11 %  file056.txt
+text         57 B         6 B   11 %  File057.txt
+text         58 B         6 B   10 %  file058.txt
+text         59 B         6 B   10 %  File059.txt
+text         60 B         6 B   10 %  file060.txt
+text         61 B         6 B   10 %  File061.txt
+text         62 B         6 B   10 %  file062.txt
+text         63 B         6 B   10 %  File063.txt
+text         64 B         6 B    9 %  file064.txt
+text         65 B         6 B    9 %  File065.txt
+text         66 B         6 B    9 %  file066.txt
+text         67 B         6 B    9 %  File067.txt
+text         68 B         6 B    9 %  file068.txt
+text         69 B         6 B    9 %  File069.txt
+text         70 B         6 B    9 %  file070.txt
+text         71 B         6 B    8 %  File071.txt
+text         72 B         6 B    8 %  file072.txt
+text         73 B         6 B    8 %  File073.txt
+text         74 B         6 B    8 %  file074.txt
+text         75 B         6 B    8 %  File075.txt
+text         76 B         6 B    8 %  file076.txt
+text         77 B         6 B    8 %  File077.txt
+text         78 B         6 B    8 %  file078.txt
+text         79 B         6 B    8 %  File079.txt
+text         80 B         6 B    7 %  file080.txt
+text         81 B         6 B    7 %  File081.txt
+text         82 B         6 B    7 %  file082.txt
+text         83 B         6 B    7 %  File083.txt
+text         84 B         6 B    7 %  file084.txt
+text         85 B         6 B    7 %  File085.txt
+text         86 B         6 B    7 %  file086.txt
+text         87 B         6 B    7 %  File087.txt
+text         88 B         6 B    7 %  file088.txt
+text         89 B         6 B    7 %  File089.txt
+text         90 B         6 B    7 %  file090.txt
+text         91 B         6 B    7 %  File091.txt
+text         92 B         6 B    7 %  file092.txt
+text         93 B         6 B    6 %  File093.txt
+text         94 B         6 B    6 %  file094.txt
+text         95 B         6 B    6 %  File095.txt
+text         96 B         6 B    6 %  file096.txt
+text         97 B         6 B    6 %  File097.txt
+text         98 B         6 B    6 %  file098.txt
+text         99 B         6 B    6 %  File099.txt
+text ... and 20 more entries
+archive-metadata label=-
+  [Archive]
+  Files: 120
+  Total size: 7.0 KB
+  Compressed: 678 B
+  Ratio: 9 %
+=== multi.gz
+kind zip=false primary=false tar=false gzip=true
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=6
+text   Archive Contents
+text   ────────────────
+text [gzip] original: multi  compressed: 67 B  uncompressed: ~14 B
+text ────────────────
+text first member
+text second member
+archive-metadata label=-
+  [Archive]
+  Files: 1
+  Total size: 14 B
+  Format: gzip
+  Compressed: 67 B
+  Ratio: 479 %
+=== notes.txt.gz
+kind zip=false primary=false tar=false gzip=true
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=34
+text   Archive Contents
+text   ────────────────
+text [gzip] original: notes.txt  compressed: 179 B  uncompressed: ~2.1 KB
+text ────────────────
+text line 0: the quick brown fox jumps over the lazy dog
+text line 1: the quick brown fox jumps over the lazy dog
+text line 2: the quick brown fox jumps over the lazy dog
+text line 3: the quick brown fox jumps over the lazy dog
+text line 4: the quick brown fox jumps over the lazy dog
+text line 5: the quick brown fox jumps over the lazy dog
+text line 6: the quick brown fox jumps over the lazy dog
+text line 7: the quick brown fox jumps over the lazy dog
+text line 8: the quick brown fox jumps over the lazy dog
+text line 9: the quick brown fox jumps over the lazy dog
+text line 10: the quick brown fox jumps over the lazy dog
+text line 11: the quick brown fox jumps over the lazy dog
+text line 12: the quick brown fox jumps over the lazy dog
+text line 13: the quick brown fox jumps over the lazy dog
+text line 14: the quick brown fox jumps over the lazy dog
+text line 15: the quick brown fox jumps over the lazy dog
+text line 16: the quick brown fox jumps over the lazy dog
+text line 17: the quick brown fox jumps over the lazy dog
+text line 18: the quick brown fox jumps over the lazy dog
+text line 19: the quick brown fox jumps over the lazy dog
+text line 20: the quick brown fox jumps over the lazy dog
+text line 21: the quick brown fox jumps over the lazy dog
+text line 22: the quick brown fox jumps over the lazy dog
+text line 23: the quick brown fox jumps over the lazy dog
+text line 24: the quick brown fox jumps over the lazy dog
+text line 25: the quick brown fox jumps over the lazy dog
+text line 26: the quick brown fox jumps over the lazy dog
+text line 27: the quick brown fox jumps over the lazy dog
+text line 28: the quick brown fox jumps over the lazy dog
+text line 29: the quick brown fox jumps over the lazy dog
+archive-metadata label=-
+  [Archive]
+  Files: 1
+  Total size: 2.1 KB
+  Format: gzip
+  Compressed: 179 B
+  Ratio: 8 %
+=== notgzip.gz
+kind zip=false primary=false tar=false gzip=true
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=5
+text   Archive Contents
+text   ────────────────
+text [gzip] original: notgzip  compressed: 21 B  uncompressed: ~167.0 MB
+text ────────────────
+text [invalid gzip content]
+archive-metadata label=-
+  [Archive]
+  Files: 1
+  Total size: 167.0 MB
+  Format: gzip
+  Compressed: 21 B
+  Ratio: 0 %
+=== package.nupkg
+kind zip=true primary=false tar=false gzip=false
+preview-providers[default] None | Archive contents | Hex dump
+metadata-providers[default] File info | NuGet metadata | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info | NuGet metadata
+archive label=NuGet Package rendered=true placeholder=false lines=5
+text   Archive Contents
+text   ────────────────
+text         Size  Compressed  Ratio  Name
+text        102 B         7 B    7 %  lib/net8.0/a.dll
+text         10 B        12 B  120 %  package.nuspec
+archive-metadata label=-
+  [Archive]
+  Files: 2
+  Total size: 112 B
+  Compressed: 19 B
+  Ratio: 17 %
+=== pax.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=7
+text   Archive Contents
+text   ────────────────
+text         Size  Name
+text         25 B  ././@PaxHeader
+text          7 B  café 日本.txt
+text          3 B  deep/segment00/segment01/segment02/segment03/segment04/segment05/segment06/segment07/segment08/segment09/segment10/segment11/segment12/segment13/file.txt
+text          1 B  plain.txt
+archive-metadata label=-
+  [Archive]
+  Files: 4
+  Total size: 36 B
+  Format: tar
+=== plain.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=8
+text   Archive Contents
+text   ────────────────
+text         Size  Name
+text      68.4 KB  project/Big.bin
+text          0 B  project/empty
+text          0 B  project/link
+text       2.1 KB  project/README
+text         12 B  project/src/main.py
+archive-metadata label=-
+  [Archive]
+  Files: 5
+  Total size: 70.4 KB
+  Format: tar
+=== plain.tar.gz
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=8
+text   Archive Contents
+text   ────────────────
+text         Size  Name
+text      68.4 KB  project/Big.bin
+text          0 B  project/empty
+text          0 B  project/link
+text       2.1 KB  project/README
+text         12 B  project/src/main.py
+archive-metadata label=-
+  [Archive]
+  Files: 5
+  Total size: 70.4 KB
+  Format: tar.gz
+  Compressed: 573 B
+  Ratio: 1 %
+=== plain.tgz
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=8
+text   Archive Contents
+text   ────────────────
+text         Size  Name
+text      68.4 KB  project/Big.bin
+text          0 B  project/empty
+text          0 B  project/link
+text       2.1 KB  project/README
+text         12 B  project/src/main.py
+archive-metadata label=-
+  [Archive]
+  Files: 5
+  Total size: 70.4 KB
+  Format: tar.gz
+  Compressed: 563 B
+  Ratio: 1 %
+=== script.py.gz
+kind zip=false primary=false tar=false gzip=true
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=8
+text   Archive Contents
+text   ────────────────
+text [gzip] original: script.py  compressed: 80 B  uncompressed: ~53 B
+text ────────────────
+text import os
+spans 0+6:Keyword
+text 
+text def main():
+spans 0+3:Keyword 8+1:Punctuation 9+1:Punctuation 10+1:Punctuation
+text     print(os.getcwd())  # cwd
+spans 4+5:BuiltinFunc 9+1:Punctuation 12+1:Punctuation 19+1:Punctuation 20+1:Punctuation 21+1:Punctuation 24+5:Comment
+archive-metadata label=-
+  [Archive]
+  Files: 1
+  Total size: 53 B
+  Format: gzip
+  Compressed: 80 B
+  Ratio: 151 %
+=== secondary.docx
+kind zip=true primary=false tar=false gzip=false
+preview-providers[default] None | Archive contents | Hex dump
+metadata-providers[default] File info | Document metadata | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info | Document metadata
+archive label=Word Document rendered=true placeholder=false lines=5
+text   Archive Contents
+text   ────────────────
+text         Size  Compressed  Ratio  Name
+text         13 B        15 B  115 %  word/document.xml
+text          8 B        10 B  125 %  [Content_Types].xml
+archive-metadata label=-
+  [Archive]
+  Files: 2
+  Total size: 21 B
+  Compressed: 25 B
+  Ratio: 119 %
+=== stored.zip
+kind zip=true primary=true tar=false gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=6
+text   Archive Contents
+text   ────────────────
+text         Size  Compressed  Ratio  Name
+text       1.0 KB      1.0 KB  100 %  data.bin
+text          6 B         6 B  100 %  docs/readme.txt
+text          0 B         0 B    ---  empty.txt
+archive-metadata label=-
+  [Archive]
+  Files: 3
+  Total size: 1.0 KB
+  Compressed: 1.0 KB
+  Ratio: 100 %
+=== tarball.gz
+kind zip=false primary=false tar=false gzip=true
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=8
+text   Archive Contents
+text   ────────────────
+text         Size  Name
+text      68.4 KB  project/Big.bin
+text          0 B  project/empty
+text          0 B  project/link
+text       2.1 KB  project/README
+text         12 B  project/src/main.py
+archive-metadata label=-
+  [Archive]
+  Files: 5
+  Total size: 70.4 KB
+  Format: tar.gz
+  Compressed: 563 B
+  Ratio: 1 %
+=== trailing-garbage.txt.gz
+kind zip=false primary=false tar=false gzip=true
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=5
+text   Archive Contents
+text   ────────────────
+text [gzip] original: trailing-garbage.txt  compressed: 51 B  uncompressed: ~1.8 GB
+text ────────────────
+text member
+archive-metadata label=-
+  [Archive]
+  Files: 1
+  Total size: 1.8 GB
+  Format: gzip
+  Compressed: 51 B
+  Ratio: 0 %
+=== truncated-text.txt.gz
+kind zip=false primary=false tar=false gzip=true
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=31
+text   Archive Contents
+text   ────────────────
+text [gzip] original: truncated-text.txt  compressed: 139 B  uncompressed: ~1.1 GB
+text ────────────────
+text line 0: the quick brown fox jumps over the lazy dog
+text line 1: the quick brown fox jumps over the lazy dog
+text line 2: the quick brown fox jumps over the lazy dog
+text line 3: the quick brown fox jumps over the lazy dog
+text line 4: the quick brown fox jumps over the lazy dog
+text line 5: the quick brown fox jumps over the lazy dog
+text line 6: the quick brown fox jumps over the lazy dog
+text line 7: the quick brown fox jumps over the lazy dog
+text line 8: the quick brown fox jumps over the lazy dog
+text line 9: the quick brown fox jumps over the lazy dog
+text line 10: the quick brown fox jumps over the lazy dog
+text line 11: the quick brown fox jumps over the lazy dog
+text line 12: the quick brown fox jumps over the lazy dog
+text line 13: the quick brown fox jumps over the lazy dog
+text line 14: the quick brown fox jumps over the lazy dog
+text line 15: the quick brown fox jumps over the lazy dog
+text line 16: the quick brown fox jumps over the lazy dog
+text line 17: the quick brown fox jumps over the lazy dog
+text line 18: the quick brown fox jumps over the lazy dog
+text line 19: the quick brown fox jumps over the lazy dog
+text line 20: the quick brown fox jumps over the lazy dog
+text line 21: the quick brown fox jumps over the lazy dog
+text line 22: the quick brown fox jumps over the lazy dog
+text line 23: the quick brown fox jumps over the lazy dog
+text line 24: the quick brown fox jumps over the lazy dog
+text line 25: the quick brown fox jumps over the lazy dog
+text line 2
+archive-metadata label=-
+  [Archive]
+  Files: 1
+  Total size: 1.1 GB
+  Format: gzip
+  Compressed: 139 B
+  Ratio: 0 %
+=== truncated.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=3
+text   Archive Contents
+text   ────────────────
+text [invalid archive]
+archive-metadata null
+=== truncated.tgz
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=3
+text   Archive Contents
+text   ────────────────
+text [invalid archive]
+archive-metadata null
+=== truncated.zip
+kind zip=true primary=true tar=false gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=3
+text   Archive Contents
+text   ────────────────
+text [invalid archive]
+archive-metadata null
+=== ustar-prefix.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=4
+text   Archive Contents
+text   ────────────────
+text         Size  Name
+text          5 B  deep/segment00/segment01/segment02/segment03/segment04/segment05/segment06/segment07/segment08/segment09/segment10/segment11/segment12/segment13/file.txt
+archive-metadata label=-
+  [Archive]
+  Files: 1
+  Total size: 5 B
+  Format: tar
+=== v7.tar
+kind zip=false primary=false tar=true gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=5
+text   Archive Contents
+text   ────────────────
+text         Size  Name
+text          0 B  old/
+text          5 B  old/file.txt
+archive-metadata label=-
+  [Archive]
+  Files: 2
+  Total size: 5 B
+  Format: tar
+=== zip64.zip
+kind zip=true primary=true tar=false gzip=false
+preview-providers[default] Archive contents | None | Hex dump
+metadata-providers[default] File info | Archive metadata
+preview-providers[archive-metadata-off] None | Hex dump
+metadata-providers[archive-metadata-off] File info
+archive label=Archive rendered=true placeholder=false lines=5
+text   Archive Contents
+text   ────────────────
+text         Size  Compressed  Ratio  Name
+text       2.1 KB       161 B    8 %  big-ish.txt
+text          1 B         3 B  300 %  small.txt
+archive-metadata label=-
+  [Archive]
+  Files: 2
+  Total size: 2.1 KB
+  Compressed: 164 B
+  Ratio: 8 %
+=== ratios
+0/5 0 %
+1/8 12 %
+3/8 38 %
+5/8 62 %
+7/8 88 %
+1/200 1 %
+3/200 1 %
+1/3 33 %
+2/3 67 %
+5/5 100 %
+7/5 140 %
+1/1000 0 %
+5/1000 1 %
+15/1000 1 %
+25/1000 3 %
+1005/100000 1 %
+99995/100000 100 %
+123456789/1000000 12,346 %
+4999/1000000 0 %
+5/1000000000 0 %
+3074457345618258602/1317624576693539401 233 %

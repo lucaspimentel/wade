@@ -2,32 +2,58 @@
 //! providers that apply to a file, in priority order (the first preview
 //! provider is the default; every metadata provider contributes).
 
-use super::metadata_providers::FileMetadataProvider;
-use super::providers::{DiffPreviewProvider, HexPreviewProvider, NonePreviewProvider, TextPreviewProvider};
+use super::metadata_providers::{ArchiveMetadataProvider, FileMetadataProvider};
+use super::providers::{
+    DiffPreviewProvider, HexPreviewProvider, NonePreviewProvider, TarContentsPreviewProvider, TextPreviewProvider,
+    ZipContentsPreviewProvider,
+};
 use super::{MetadataProvider, PreviewContext, PreviewProvider};
 
 /// C# order: Image, PDF, Markdown, Zip, MSI, Tar, Text, Diff, None, Hex.
 /// Slots for providers of later phases are absent.
-static PREVIEW_PROVIDERS: [&dyn PreviewProvider; 4] =
-    [&TextPreviewProvider, &DiffPreviewProvider, &NonePreviewProvider, &HexPreviewProvider];
+static PREVIEW_PROVIDERS: [&dyn PreviewProvider; 6] = [
+    &ZipContentsPreviewProvider,
+    &TarContentsPreviewProvider,
+    &TextPreviewProvider,
+    &DiffPreviewProvider,
+    &NonePreviewProvider,
+    &HexPreviewProvider,
+];
 
 /// C# order: File, Image, Executable, Office, Media, NuGet, MSI, Shortcut,
 /// Archive, PDF. Slots for providers of later phases are absent.
-static METADATA_PROVIDERS: [&dyn MetadataProvider; 1] = [&FileMetadataProvider];
+static METADATA_PROVIDERS: [&dyn MetadataProvider; 2] = [&FileMetadataProvider, &ArchiveMetadataProvider];
 
 /// Port of `PreviewProviderRegistry.GetApplicableProviders`: nothing for
-/// broken symlinks and cloud placeholders.
+/// broken symlinks and cloud placeholders; for secondary archive types
+/// (.docx, .nupkg, ...) archive contents moves after None, so it stays
+/// available without being the default.
 #[must_use]
 pub fn applicable_preview_providers(path: &str, context: &PreviewContext) -> Vec<&'static dyn PreviewProvider> {
     if context.is_broken_symlink || context.is_cloud_placeholder {
         return Vec::new();
     }
 
-    PREVIEW_PROVIDERS
+    let mut result: Vec<&'static dyn PreviewProvider> = PREVIEW_PROVIDERS
         .iter()
         .copied()
         .filter(|provider| provider.can_preview(path, context))
-        .collect()
+        .collect();
+
+    if crate::fs::zip_preview::is_zip_file(path) && !crate::fs::zip_preview::is_primary_archive(path) {
+        let index_of = |label: &str| result.iter().position(|provider| provider.label() == label);
+        let zip_index = index_of(ZipContentsPreviewProvider.label());
+        let none_index = index_of(NonePreviewProvider.label());
+
+        if let (Some(zip_index), Some(none_index)) = (zip_index, none_index)
+            && zip_index < none_index
+        {
+            let zip = result.remove(zip_index);
+            result.insert(none_index, zip);
+        }
+    }
+
+    result
 }
 
 /// Port of `MetadataProviderRegistry.GetApplicableProviders`: nothing for
@@ -42,15 +68,16 @@ pub fn applicable_metadata_providers(path: &str, context: &PreviewContext) -> Ve
         .iter()
         .copied()
         .filter(|provider| !context.is_cloud_placeholder || provider.label() == FileMetadataProvider.label())
+        .filter(|provider| context.archive_metadata_enabled || provider.label() != ArchiveMetadataProvider.label())
         .filter(|provider| provider.can_provide_metadata(path, context))
         .collect()
 }
 
 #[cfg(test)]
 mod tests {
-    //! Port of the text-family cases in PreviewProviderRegistryTests.cs
-    //! and MetadataProviderRegistryTests.cs (archive, image and executable
-    //! cases land with their providers).
+    //! Port of the text and archive cases in PreviewProviderRegistryTests.cs
+    //! and MetadataProviderRegistryTests.cs (image and executable cases
+    //! land with their providers).
 
     use super::{applicable_metadata_providers, applicable_preview_providers};
     use crate::fs::GitFileStatus;
@@ -109,6 +136,36 @@ mod tests {
     #[test]
     fn exe_defaults_to_none_with_hex() {
         assert_eq!(labels("app.exe", &test_context()), ["None", "Hex dump"]);
+    }
+
+    #[test]
+    fn archives_order_by_primary_or_secondary_type() {
+        let context = test_context();
+        assert_eq!(labels("file.zip", &context), ["Archive contents", "None", "Hex dump"]);
+        assert_eq!(labels("file.nupkg", &context), ["None", "Archive contents", "Hex dump"]);
+        assert_eq!(labels("file.docx", &context), ["None", "Archive contents", "Hex dump"]);
+        assert_eq!(labels("file.tar.gz", &context), ["Archive contents", "None", "Hex dump"]);
+
+        let disabled = PreviewContext {
+            zip_preview_enabled: false,
+            ..test_context()
+        };
+        assert_eq!(labels("file.zip", &disabled), ["None", "Hex dump"]);
+        assert_eq!(labels("file.tar", &disabled), ["None", "Hex dump"]);
+    }
+
+    #[test]
+    fn archive_metadata_follows_its_config_flag() {
+        let metadata = |context: &PreviewContext| -> Vec<&str> {
+            applicable_metadata_providers("file.tar", context).iter().map(|p| p.label()).collect()
+        };
+
+        assert_eq!(metadata(&test_context()), ["File info", "Archive metadata"]);
+        let off = PreviewContext {
+            archive_metadata_enabled: false,
+            ..test_context()
+        };
+        assert_eq!(metadata(&off), ["File info"]);
     }
 
     #[test]

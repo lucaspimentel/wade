@@ -137,6 +137,37 @@ pub fn month_abbrev(month: u32) -> &'static str {
     }
 }
 
+/// `FormatSize` into an owned string.
+#[must_use]
+pub fn format_size_string(bytes: i64) -> String {
+    let mut buf = ['\0'; 32];
+    let n = format_size(&mut buf, bytes);
+    buf[..n].iter().collect()
+}
+
+/// .NET `{ratio:P0}` under the invariant culture: the exact binary value
+/// times 100 rounded half-to-even (as .NET formats doubles), digits grouped
+/// with commas, then " %".
+#[must_use]
+pub fn format_percent_p0(ratio: f64) -> String {
+    // Two decimals of the ratio are the integer percent digits
+    let fixed = format!("{:.2}", ratio.abs());
+    let digits: String = fixed.chars().filter(char::is_ascii_digit).collect();
+    let digits = digits.trim_start_matches('0');
+    let digits = if digits.is_empty() { "0" } else { digits };
+
+    let mut grouped = String::new();
+    for (i, ch) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
+            grouped.push(',');
+        }
+        grouped.push(ch);
+    }
+
+    let sign = if ratio < 0.0 && digits != "0" { "-" } else { "" };
+    format!("{sign}{grouped} %")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -158,3 +189,4 @@ mod tests {
         assert_eq!(&buf[..6], &['1', '.', '5', ' ', 'M', 'B']);
     }
 }
+

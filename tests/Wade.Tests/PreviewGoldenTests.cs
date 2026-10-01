@@ -126,6 +126,107 @@ public class PreviewGoldenTests
         Assert.Equal(File.ReadAllText(goldenPath).ReplaceLineEndings("\n"), actual);
     }
 
+    [Fact]
+    public void ArchiveFixtures_MatchGolden()
+    {
+        // The app runs with InvariantGlobalization; ratios use P0 ("45 %")
+        CultureInfo previousCulture = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+
+        try
+        {
+            string dir = FindGoldenDir();
+            var sb = new StringBuilder();
+
+            string[] files = Directory.GetFiles(Path.Combine(dir, "archives"));
+            Array.Sort(files, StringComparer.Ordinal);
+
+            foreach (string path in files)
+            {
+                sb.Append("=== ").Append(Path.GetFileName(path)).Append('\n');
+                sb.Append("kind zip=").Append(ZipPreview.IsZipFile(path) ? "true" : "false")
+                    .Append(" primary=").Append(ZipPreview.IsPrimaryArchive(path) ? "true" : "false")
+                    .Append(" tar=").Append(TarPreview.IsTarArchive(path) ? "true" : "false")
+                    .Append(" gzip=").Append(TarPreview.IsPlainGzip(path) ? "true" : "false").Append('\n');
+
+                foreach ((string contextName, PreviewContext context) in Contexts(dir))
+                {
+                    if (contextName is "default" or "archive-metadata-off")
+                    {
+                        sb.Append("preview-providers[").Append(contextName).Append("] ")
+                            .Append(string.Join(" | ", PreviewProviderRegistry.GetApplicableProviders(path, context).Select(p => p.Label)))
+                            .Append('\n');
+                        sb.Append("metadata-providers[").Append(contextName).Append("] ")
+                            .Append(string.Join(" | ", MetadataProviderRegistry.GetApplicableProviders(path, context).Select(p => p.Label)))
+                            .Append('\n');
+                    }
+                }
+
+                PreviewContext defaultContext = Contexts(dir)[0].Context;
+
+                foreach (IPreviewProvider provider in new IPreviewProvider[] { new ZipContentsPreviewProvider(), new TarContentsPreviewProvider() })
+                {
+                    if (provider.CanPreview(path, defaultContext))
+                    {
+                        AppendResult(sb, "archive", provider.GetPreview(path, defaultContext, CancellationToken.None), int.MaxValue);
+                    }
+                }
+
+                var archiveMetadata = new ArchiveMetadataProvider();
+                if (archiveMetadata.CanProvideMetadata(path, defaultContext))
+                {
+                    MetadataResult? result = archiveMetadata.GetMetadata(path, defaultContext, CancellationToken.None);
+                    if (result is null)
+                    {
+                        sb.Append("archive-metadata null\n");
+                    }
+                    else
+                    {
+                        sb.Append("archive-metadata label=").Append(result.FileTypeLabel ?? "-").Append('\n');
+                        foreach (MetadataSection section in result.Sections)
+                        {
+                            sb.Append("  [").Append(section.Header ?? "-").Append("]\n");
+                            foreach (MetadataEntry entry in section.Entries)
+                            {
+                                sb.Append("  ").Append(entry.Label).Append(": ").Append(entry.Value).Append('\n');
+                            }
+                        }
+                    }
+                }
+            }
+
+            // The P0 ratio format shared by the zip listing and archive metadata
+            sb.Append("=== ratios\n");
+            foreach ((long compressed, long total) in RatioCases)
+            {
+                sb.Append(compressed).Append('/').Append(total).Append(' ')
+                    .Append($"{(double)compressed / total:P0}").Append('\n');
+            }
+
+            string goldenPath = Path.Combine(dir, "archives.golden.txt");
+            string actual = sb.ToString();
+
+            if (Environment.GetEnvironmentVariable("WADE_UPDATE_GOLDENS") == "1" && !File.Exists(goldenPath))
+            {
+                File.WriteAllText(goldenPath, actual, new UTF8Encoding(false));
+            }
+
+            Assert.True(File.Exists(goldenPath), $"Missing golden file {goldenPath}; run with WADE_UPDATE_GOLDENS=1 to generate");
+            Assert.Equal(File.ReadAllText(goldenPath).ReplaceLineEndings("\n"), actual);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previousCulture;
+        }
+    }
+
+    private static readonly (long Compressed, long Total)[] RatioCases =
+    [
+        (0, 5), (1, 8), (3, 8), (5, 8), (7, 8), (1, 200), (3, 200), (1, 3), (2, 3), (5, 5), (7, 5),
+        (1, 1000), (5, 1000), (15, 1000), (25, 1000), (1005, 100000), (99995, 100000), (123456789, 1000000),
+        (4999, 1000000), (5, 1000000000), (long.MaxValue / 3, long.MaxValue / 7),
+    ];
+
     /// <summary>
     /// Registry contexts: config defaults with image/sixel off (as on a
     /// terminal without Sixel), plus a git-modified file and a cloud

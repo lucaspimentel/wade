@@ -1,14 +1,73 @@
-//! Port of the text-family providers in `PreviewProviders.cs`: Text,
-//! Hex dump, None and Git diff.
+//! Port of the providers in `PreviewProviders.cs` ported so far: archive
+//! contents (zip, tar/gzip), Text, Hex dump, None and Git diff.
 
 use super::{PreviewContext, PreviewProvider, PreviewResult};
-use crate::fs::{file_preview, git_utils, hex_preview, GitFileStatus};
+use crate::fs::{file_preview, git_utils, hex_preview, tar_preview, zip_preview, GitFileStatus};
 use crate::highlight::languages::diff::DiffLanguage;
 use crate::highlight::{self, Language, StyledLine};
 use crate::input::CancelToken;
 
 fn label_or(path: &str, fallback: &str) -> Option<String> {
     Some(file_preview::get_file_type_label(path).unwrap_or(fallback).to_string())
+}
+
+/// The "Archive Contents" title and rule above an archive listing.
+fn archive_result(path: &str, body: Vec<StyledLine>) -> PreviewResult {
+    let mut lines = Vec::with_capacity(body.len() + 2);
+    lines.push(StyledLine::plain("  Archive Contents"));
+    lines.push(StyledLine::plain(&format!("  {}", "\u{2500}".repeat(16))));
+    lines.extend(body);
+
+    PreviewResult {
+        text_lines: Some(lines),
+        file_type_label: label_or(path, "Archive"),
+        is_rendered: true,
+        is_placeholder: false,
+    }
+}
+
+/// Port of `ZipContentsPreviewProvider`: the central-directory listing of
+/// zip-based archives.
+pub struct ZipContentsPreviewProvider;
+
+impl PreviewProvider for ZipContentsPreviewProvider {
+    fn label(&self) -> &'static str {
+        "Archive contents"
+    }
+
+    fn can_preview(&self, path: &str, context: &PreviewContext) -> bool {
+        context.zip_preview_enabled && zip_preview::is_zip_file(path)
+    }
+
+    fn get_preview(&self, path: &str, _context: &PreviewContext, cancel: &CancelToken) -> Option<PreviewResult> {
+        let lines = zip_preview::get_preview_lines(path, cancel)?;
+        Some(archive_result(path, lines.iter().map(|line| StyledLine::plain(line)).collect()))
+    }
+}
+
+/// Port of `TarContentsPreviewProvider`: tar and tar.gz listings, and the
+/// head of plain .gz files.
+pub struct TarContentsPreviewProvider;
+
+impl PreviewProvider for TarContentsPreviewProvider {
+    fn label(&self) -> &'static str {
+        "Archive contents"
+    }
+
+    fn can_preview(&self, path: &str, context: &PreviewContext) -> bool {
+        context.zip_preview_enabled && (tar_preview::is_tar_archive(path) || tar_preview::is_plain_gzip(path))
+    }
+
+    fn get_preview(&self, path: &str, _context: &PreviewContext, cancel: &CancelToken) -> Option<PreviewResult> {
+        let body = if tar_preview::is_plain_gzip(path) {
+            tar_preview::get_gzip_styled_preview(path, cancel)?
+        } else {
+            let lines = tar_preview::get_preview_lines(path, cancel)?;
+            lines.iter().map(|line| StyledLine::plain(line)).collect()
+        };
+
+        Some(archive_result(path, body))
+    }
 }
 
 /// Port of `TextPreviewProvider`: highlighted text for non-binary files.

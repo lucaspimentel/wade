@@ -8,8 +8,9 @@ use std::path::{Path, PathBuf};
 use wade::fs::{file_preview, GitFileStatus};
 use wade::highlight::StyledLine;
 use wade::input::CancelToken;
-use wade::preview::metadata_providers::FileMetadataProvider;
-use wade::preview::providers::{HexPreviewProvider, TextPreviewProvider};
+use wade::fs::{tar_preview, zip_preview};
+use wade::preview::metadata_providers::{ArchiveMetadataProvider, FileMetadataProvider};
+use wade::preview::providers::{HexPreviewProvider, TarContentsPreviewProvider, TextPreviewProvider, ZipContentsPreviewProvider};
 use wade::preview::{registry, MetadataEntry, MetadataProvider, MetadataSection, PreviewContext, PreviewProvider, PreviewResult};
 use wade::screen::{CellStyle, Color};
 use wade::ui::metadata_renderer;
@@ -23,7 +24,6 @@ const PENDING_LABELS: &[&str] = &[
     "Image",
     "PDF",
     "Rendered markdown (built-in)",
-    "Archive contents",
     "Installer files",
     // Metadata providers
     "Executable metadata",
@@ -32,7 +32,6 @@ const PENDING_LABELS: &[&str] = &[
     "NuGet metadata",
     "MSI metadata",
     "Shortcut properties",
-    "Archive metadata",
     "PDF metadata",
 ];
 
@@ -347,4 +346,111 @@ fn metadata_renderer_cases_match_csharp_golden() {
 
     let golden_path = golden_dir().join("metadata-renderer.golden.txt");
     assert_matches(&read(&golden_path), &out, &golden_path.display().to_string());
+}
+
+/// The P0 ratio cases of PreviewGoldenTests.RatioCases.
+const RATIO_CASES: &[(i64, i64)] = &[
+    (0, 5),
+    (1, 8),
+    (3, 8),
+    (5, 8),
+    (7, 8),
+    (1, 200),
+    (3, 200),
+    (1, 3),
+    (2, 3),
+    (5, 5),
+    (7, 5),
+    (1, 1000),
+    (5, 1000),
+    (15, 1000),
+    (25, 1000),
+    (1005, 100_000),
+    (99995, 100_000),
+    (123_456_789, 1_000_000),
+    (4999, 1_000_000),
+    (5, 1_000_000_000),
+    (i64::MAX / 3, i64::MAX / 7),
+];
+
+#[test]
+fn archive_fixtures_match_csharp_golden() {
+    let dir = golden_dir();
+    let mut files: Vec<PathBuf> = std::fs::read_dir(dir.join("archives"))
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .collect();
+    files.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
+
+    let mut out = String::new();
+    let cancel = CancelToken::new();
+    let all_contexts = contexts(&dir.to_string_lossy());
+
+    for file in &files {
+        let path = file.to_string_lossy().into_owned();
+        let _ = writeln!(out, "=== {}", file.file_name().unwrap().to_string_lossy());
+        let _ = writeln!(
+            out,
+            "kind zip={} primary={} tar={} gzip={}",
+            zip_preview::is_zip_file(&path),
+            zip_preview::is_primary_archive(&path),
+            tar_preview::is_tar_archive(&path),
+            tar_preview::is_plain_gzip(&path)
+        );
+
+        for (context_name, context) in all_contexts.iter().filter(|(name, _)| matches!(*name, "default" | "archive-metadata-off")) {
+            let previews: Vec<&str> = registry::applicable_preview_providers(&path, context).iter().map(|p| p.label()).collect();
+            let metadata: Vec<&str> = registry::applicable_metadata_providers(&path, context).iter().map(|p| p.label()).collect();
+            let _ = writeln!(out, "preview-providers[{context_name}] {}", previews.join(" | "));
+            let _ = writeln!(out, "metadata-providers[{context_name}] {}", metadata.join(" | "));
+        }
+
+        let default_context = &all_contexts[0].1;
+        let archive_providers: [&dyn PreviewProvider; 2] = [&ZipContentsPreviewProvider, &TarContentsPreviewProvider];
+
+        for provider in archive_providers {
+            if provider.can_preview(&path, default_context) {
+                append_result(&mut out, "archive", provider.get_preview(&path, default_context, &cancel), usize::MAX);
+            }
+        }
+
+        if ArchiveMetadataProvider.can_provide_metadata(&path, default_context) {
+            match ArchiveMetadataProvider.get_metadata(&path, default_context, &cancel) {
+                None => out.push_str("archive-metadata null\n"),
+                Some(result) => {
+                    let _ = writeln!(out, "archive-metadata label={}", result.file_type_label.as_deref().unwrap_or("-"));
+                    for section in &result.sections {
+                        let _ = writeln!(out, "  [{}]", section.header.as_deref().unwrap_or("-"));
+                        for entry in &section.entries {
+                            let _ = writeln!(out, "  {}: {}", entry.label, entry.value);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    out.push_str("=== ratios\n");
+    for &(compressed, total) in RATIO_CASES {
+        let _ = writeln!(
+            out,
+            "{compressed}/{total} {}",
+            wade::ui::format_helpers::format_percent_p0(compressed as f64 / total as f64)
+        );
+    }
+
+    let golden_path = dir.join("archives.golden.txt");
+    let expected: String = read(&golden_path)
+        .lines()
+        .map(|line| {
+            if line.starts_with("preview-providers[") || line.starts_with("metadata-providers[") {
+                without_pending(line)
+            } else {
+                line.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    assert_matches(&expected, &out, &golden_path.display().to_string());
 }

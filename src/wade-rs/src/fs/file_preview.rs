@@ -52,7 +52,7 @@ pub fn get_file_type_label(path: &str) -> Option<&'static str> {
 }
 
 /// `Path.GetExtension` of the file name (with the dot; empty when none).
-fn extension(path: &str) -> &str {
+pub(crate) fn extension(path: &str) -> &str {
     let name = path.rsplit(crate::search::is_separator).next().unwrap_or(path);
 
     match name.rfind('.') {

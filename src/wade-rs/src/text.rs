@@ -65,6 +65,18 @@ pub fn to_upper(c: char) -> char {
     }
 }
 
+/// `string.Compare(a, b, StringComparison.OrdinalIgnoreCase)`: per-char
+/// simple uppercase, compared as UTF-16 code units.
+#[must_use]
+pub fn compare_ordinal_ignore_case(a: &str, b: &str) -> std::cmp::Ordering {
+    let units = |s: &str| -> Vec<u16> {
+        let mut buf = [0u16; 2];
+        s.chars().flat_map(|c| to_upper(c).encode_utf16(&mut buf).to_vec()).collect()
+    };
+
+    units(a).cmp(&units(b))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

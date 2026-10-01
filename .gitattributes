@@ -6,5 +6,6 @@
 *.bash text eol=lf
 # Golden fixtures are compared byte-for-byte by Rust and C# tests; keep LF.
 tests/golden/** text eol=lf
-# Preview fixtures exercise exact bytes (CRLF, CR, BOMs, binary); never convert.
+# Preview fixtures exercise exact bytes (CRLF, CR, BOMs, binary, archives); never convert.
 tests/golden/preview/files/** -text
+tests/golden/preview/archives/** -text
