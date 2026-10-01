@@ -14,11 +14,6 @@ this file to be empty or fully accepted.
   current file name. Deliberate divergence, so no golden fixture covers
   this overlay.
 
-- **The filesystem watcher is a no-op on unix (Phase 4d).** C# uses
-  `FileSystemWatcher` on every OS; the Rust watcher is hand-rolled on
-  `ReadDirectoryChangesW` and the inotify backend is deferred to Phase 9
-  with the rest of the unix work. Unix listings refresh only on manual
-  refresh or navigation.
 - **Unix Read-only/ReadOnly follows std, not .NET (Phase 4d).** The
   Properties overlay uses `Permissions::readonly()` (no write bit for
   anyone); .NET reports ReadOnly when the current user lacks write
