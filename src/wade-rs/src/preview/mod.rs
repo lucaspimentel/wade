@@ -6,13 +6,16 @@
 //! from the registries (KNOWN_DEVIATIONS.md).
 
 pub mod cli_tool_hints;
+pub mod document_metadata;
 pub mod executable_metadata;
 pub mod image_metadata;
 pub mod markdown;
+pub mod media_metadata;
 pub mod metadata_providers;
 pub mod pe;
 pub mod providers;
 pub mod registry;
+pub mod text_helper;
 
 use crate::fs::GitFileStatus;
 use crate::highlight::StyledLine;

@@ -1,0 +1,88 @@
+=== ffprobe-audio-only.json
+media label=-
+  [Media File]
+  Format: FLAC
+  Duration: 3m 42s
+  File size: 8.5 MB
+  [Audio]
+  Codec: FLAC (Free Lossless Audio Codec)
+  Channels: 6 (5.1)
+  Sample rate: 96,000 Hz
+  [Audio]
+  Codec: Opus
+  Channels: 3
+  Sample rate: 44,100 Hz
+  Bit rate: 96 kbps
+=== ffprobe-edge-values.json
+media label=-
+  [Video]
+  Resolution: 1.0e3×720
+  Frame rate: 25.000 fps
+  Bit rate: 0 kbps
+  [Audio]
+  Channels: 8 (7.1(wide))
+  [Audio]
+  Channels: 5
+=== ffprobe-empty.json
+media null
+=== ffprobe-format-not-object.json
+media error
+=== ffprobe-invalid.json
+media error
+=== ffprobe-root-array.json
+media error
+=== ffprobe-stream-not-object.json
+media error
+=== ffprobe-video.json
+media label=-
+  [Media File]
+  Format: QuickTime / MOV
+  Duration: 1h 02m 05s
+  File size: 2.2 GB
+  Bit rate: 5,112 kbps
+  [Video]
+  Codec: H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10
+  Resolution: 1920×1080
+  Frame rate: 29.970 fps
+  Bit rate: 4,983 kbps
+  [Audio]
+  Codec: AAC (Advanced Audio Coding)
+  Channels: 2 (stereo)
+  Sample rate: 48,000 Hz
+  Bit rate: 128 kbps
+=== mediainfo-audio.json
+media label=-
+  [Media File]
+  Format: MPEG Audio
+  Duration: 1m 05s
+  File size: 1.0 KB
+  [Audio]
+  Codec: MPEG Audio
+  Channels: 1 (mono)
+  Sample rate: 44,100 Hz
+  Bit rate: 320 kbps
+=== mediainfo-empty-tracks.json
+media null
+=== mediainfo-media-not-object.json
+media error
+=== mediainfo-no-media.json
+media null
+=== mediainfo-track-not-array.json
+media null
+=== mediainfo-video.json
+media label=-
+  [Media File]
+  Format: Matroska
+  Duration: 1h 23m 45s
+  File size: 700.0 MB
+  Bit rate: 1,168 kbps
+  [Video]
+  Codec: HEVC
+  Resolution: 3840×2160
+  Frame rate: 23.976 fps
+  Bit rate: 1,000 kbps
+  [Audio]
+  Codec: E-AC-3
+  Channels: 6 (5.1)
+  Sample rate: 48,000 Hz
+  Bit rate: 640 kbps

@@ -335,6 +335,105 @@ public class PreviewGoldenTests
     }
 
     [Fact]
+    public void DocumentFixtures_MatchGolden()
+    {
+        string dir = FindGoldenDir();
+        var sb = new StringBuilder();
+        PreviewContext context = Contexts(dir)[0].Context;
+        (string Name, IMetadataProvider Provider)[] providers =
+        [
+            ("office", new OfficeMetadataProvider()),
+            ("nuget", new NuGetMetadataProvider()),
+        ];
+
+        string[] files = Directory.GetFiles(Path.Combine(dir, "documents"));
+        Array.Sort(files, StringComparer.Ordinal);
+
+        foreach (string path in files)
+        {
+            sb.Append("=== ").Append(Path.GetFileName(path)).Append('\n');
+            sb.Append("metadata-providers ")
+                .Append(string.Join(" | ", MetadataProviderRegistry.GetApplicableProviders(path, context).Select(p => p.Label)))
+                .Append('\n');
+
+            foreach ((string name, IMetadataProvider provider) in providers)
+            {
+                if (!provider.CanProvideMetadata(path, context))
+                {
+                    continue;
+                }
+
+                AppendMetadata(sb, name, provider.GetMetadata(path, context, CancellationToken.None));
+            }
+        }
+
+        AssertGolden(dir, "documents.golden.txt", sb.ToString());
+    }
+
+    [Fact]
+    public void MediaJsonFixtures_MatchGolden()
+    {
+        string dir = FindGoldenDir();
+        var sb = new StringBuilder();
+
+        string[] files = Directory.GetFiles(Path.Combine(dir, "media"));
+        Array.Sort(files, StringComparer.Ordinal);
+
+        foreach (string path in files)
+        {
+            string name = Path.GetFileName(path);
+            string json = File.ReadAllText(path);
+            sb.Append("=== ").Append(name).Append('\n');
+
+            try
+            {
+                MetadataSection[]? sections = name.StartsWith("ffprobe", StringComparison.Ordinal)
+                    ? MediaMetadataProvider.ParseFfprobeJson(json)
+                    : MediaMetadataProvider.ParseMediainfoJson(json);
+                AppendMetadata(sb, "media", sections is null ? null : new MetadataResult { Sections = sections });
+            }
+            catch (Exception ex) when (ex is System.Text.Json.JsonException or InvalidOperationException)
+            {
+                sb.Append("media error\n");
+            }
+        }
+
+        AssertGolden(dir, "media.golden.txt", sb.ToString());
+    }
+
+    private static void AppendMetadata(StringBuilder sb, string name, MetadataResult? result)
+    {
+        if (result is null)
+        {
+            sb.Append(name).Append(" null\n");
+            return;
+        }
+
+        sb.Append(name).Append(" label=").Append(result.FileTypeLabel ?? "-").Append('\n');
+        foreach (MetadataSection section in result.Sections)
+        {
+            sb.Append("  [").Append(section.Header ?? "-").Append("]\n");
+            foreach (MetadataEntry entry in section.Entries)
+            {
+                sb.Append("  ").Append(entry.Label).Append(": ").Append(Escape(entry.Value)).Append('\n');
+            }
+        }
+    }
+
+    private static void AssertGolden(string dir, string fileName, string actual)
+    {
+        string goldenPath = Path.Combine(dir, fileName);
+
+        if (Environment.GetEnvironmentVariable("WADE_UPDATE_GOLDENS") == "1" && !File.Exists(goldenPath))
+        {
+            File.WriteAllText(goldenPath, actual, new UTF8Encoding(false));
+        }
+
+        Assert.True(File.Exists(goldenPath), $"Missing golden file {goldenPath}; run with WADE_UPDATE_GOLDENS=1 to generate");
+        Assert.Equal(File.ReadAllText(goldenPath).ReplaceLineEndings("\n"), actual);
+    }
+
+    [Fact]
     public void MarkdownCorpus_MatchGolden()
     {
         string dir = Path.Combine(Path.GetDirectoryName(FindGoldenDir())!, "markdown");

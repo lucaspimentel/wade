@@ -1,0 +1,11 @@
+{
+  "streams": [
+    {"codec_type": "video", "codec_long_name": "   ", "width": 1.0e3, "height": "720", "r_frame_rate": "25",
+     "bit_rate": "999"},
+    {"codec_type": "video", "width": 640, "r_frame_rate": "0/0", "bit_rate": "-5"},
+    {"codec_type": "video", "r_frame_rate": "24000/1001x"},
+    {"codec_type": "audio", "channels": 8, "channel_layout": "7.1(wide)", "sample_rate": "0"},
+    {"codec_type": "audio", "channels": 5}
+  ],
+  "format": {"duration": "N/A", "size": "-1", "bit_rate": "1,500,000", "format_long_name": null}
+}

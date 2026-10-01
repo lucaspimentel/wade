@@ -39,6 +39,8 @@ pub struct ZipEntry {
     pub full_name: String,
     pub length: u64,
     pub compressed_length: u64,
+    pub compression_method: u16,
+    pub local_header_offset: u64,
 }
 
 /// Why an archive could not be read: .NET's `InvalidDataException`
@@ -187,6 +189,7 @@ fn read_central_header(file: &mut impl Read) -> Result<Option<ZipEntry>, ZipErro
         return Ok(None);
     }
 
+    let compression_method = u16_at(&fixed, 10);
     let compressed32 = u32_at(&fixed, 20);
     let uncompressed32 = u32_at(&fixed, 24);
     let name_length = usize::from(u16_at(&fixed, 28));
@@ -209,6 +212,7 @@ fn read_central_header(file: &mut impl Read) -> Result<Option<ZipEntry>, ZipErro
 
     let mut length = u64::from(uncompressed32);
     let mut compressed_length = u64::from(compressed32);
+    let mut local_header_offset = u64::from(offset32);
 
     // Zip64 extra field: present values replace the masked 32-bit ones, in
     // order uncompressed, compressed, offset, disk
@@ -238,6 +242,9 @@ fn read_central_header(file: &mut impl Read) -> Result<Option<ZipEntry>, ZipErro
                 if need_compressed && let Some(value) = next(data) {
                     compressed_length = value;
                 }
+                if need_offset && let Some(value) = next(data) {
+                    local_header_offset = value;
+                }
                 break;
             }
 
@@ -253,6 +260,8 @@ fn read_central_header(file: &mut impl Read) -> Result<Option<ZipEntry>, ZipErro
         full_name,
         length,
         compressed_length,
+        compression_method,
+        local_header_offset,
     }))
 }
 
@@ -275,6 +284,53 @@ pub fn read_entries(path: &str) -> Result<Vec<ZipEntry>, ZipError> {
     }
 
     Ok(entries)
+}
+
+const LOCAL_HEADER_SIGNATURE: u32 = 0x0403_4b50;
+const LOCAL_HEADER_SIZE: usize = 30;
+/// Entries larger than this are not decompressed (metadata parts are tiny).
+const MAX_ENTRY_DATA: u64 = 64 * 1024 * 1024;
+
+/// Port of `ZipArchiveEntry.Open()` read to the end: stored and deflate
+/// entries; other methods are `InvalidDataException`, as in .NET.
+pub fn read_entry_data(path: &str, entry: &ZipEntry) -> Result<Vec<u8>, ZipError> {
+    if entry.length > MAX_ENTRY_DATA || entry.compressed_length > MAX_ENTRY_DATA {
+        return Err(ZipError::InvalidData);
+    }
+
+    let mut file = std::fs::File::open(path)?;
+    file.seek(SeekFrom::Start(entry.local_header_offset))?;
+    let mut header = [0u8; LOCAL_HEADER_SIZE];
+
+    if read_up_to(&mut file, &mut header)? < LOCAL_HEADER_SIZE || u32_at(&header, 0) != LOCAL_HEADER_SIGNATURE {
+        return Err(ZipError::InvalidData);
+    }
+
+    let skip = i64::from(u16_at(&header, 26)) + i64::from(u16_at(&header, 28));
+    file.seek(SeekFrom::Current(skip))?;
+    let mut compressed = vec![0u8; usize::try_from(entry.compressed_length).map_err(|_| ZipError::InvalidData)?];
+
+    if read_up_to(&mut file, &mut compressed)? < compressed.len() {
+        return Err(ZipError::InvalidData);
+    }
+
+    match entry.compression_method {
+        0 => Ok(compressed),
+        8 => {
+            let mut out = Vec::with_capacity(usize::try_from(entry.length).unwrap_or(0));
+            flate2::read::DeflateDecoder::new(compressed.as_slice())
+                .take(MAX_ENTRY_DATA + 1)
+                .read_to_end(&mut out)
+                .map_err(|_| ZipError::InvalidData)?;
+
+            if out.len() as u64 > MAX_ENTRY_DATA {
+                return Err(ZipError::InvalidData);
+            }
+
+            Ok(out)
+        }
+        _ => Err(ZipError::InvalidData),
+    }
 }
 
 /// Port of `GetPreviewLines`. `None` on cancellation or an I/O error (C#

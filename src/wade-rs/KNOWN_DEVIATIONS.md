@@ -25,8 +25,7 @@ this file to be empty or fully accepted.
   permission. Revisit with the Phase 9 unix work.
 - **Later-phase preview and metadata providers are absent (Phase 7a).**
   The registries hold only the ported providers, in C# order. Missing until
-  their phases: the MSI preview plus Office, NuGet, media and MSI
-  metadata (Phase 9). Files of those types fall through to the next applicable
+  their phases: the MSI preview and MSI metadata (Phase 9). Files of those types fall through to the next applicable
   provider (usually None, Text or Hex).
 - **Unix terminals report default capabilities (Phase 8a).** Windows
   detects Sixel via `WT_SESSION` like C#; the Unix DA1/cell-size query
@@ -42,12 +41,17 @@ this file to be empty or fully accepted.
   `App.RenderFileFinderView`), so a seam that injects the facts could add
   a fixture later.
 
-- **Config toggles for unported subsystems are inert (Phase 3c).** The
-  config dialog ports all 27 settings and persists them, but toggles
-  gating providers that land in later phases (media metadata) have no
-  runtime effect until Phase 9.
-
 ## Accepted (deliberate, permanent)
+- **Office/NuGet XML is read with roxmltree (Phase 9d).** Element values
+  follow `XDocument.Load` (whitespace-only text segments dropped unless
+  `xml:space="preserve"`, CDATA kept), pinned by
+  `tests/golden/preview/documents.golden.txt`. Differences: a malformed
+  part makes C# throw an uncaught `XmlException` that faults the preview
+  load (pane stuck on loading); Rust shows no document metadata for that
+  provider. Core-property dates are reformatted only when they are ISO
+  8601 (`yyyy-MM-dd[THH:mm[:ss[.f]]][Z|+hh:mm]`); other text that
+  `DateTimeOffset.TryParse` would accept (e.g. "January 5, 2024") prints
+  as written. Package parts over 64 MiB are not decompressed.
 - **Unix has an OS file clipboard (Phase 9b).** C# `SystemClipboard`
   publishes and reads files only on Windows, so on Linux/macOS its Copy,
   Cut and Paste stay inside wade. Rust also writes Linux

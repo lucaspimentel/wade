@@ -2,7 +2,9 @@
 //! providers that apply to a file, in priority order (the first preview
 //! provider is the default; every metadata provider contributes).
 
+use super::document_metadata::{NuGetMetadataProvider, OfficeMetadataProvider};
 use super::executable_metadata::ExecutableMetadataProvider;
+use super::media_metadata::MediaMetadataProvider;
 use super::image_metadata::ImageMetadataProvider;
 use super::metadata_providers::{
     ArchiveMetadataProvider, FileMetadataProvider, PdfMetadataProvider, ShortcutMetadataProvider,
@@ -29,10 +31,13 @@ static PREVIEW_PROVIDERS: [&dyn PreviewProvider; 9] = [
 
 /// C# order: File, Image, Executable, Office, Media, NuGet, MSI, Shortcut,
 /// Archive, PDF. Slots for providers of later phases are absent.
-static METADATA_PROVIDERS: [&dyn MetadataProvider; 6] = [
+static METADATA_PROVIDERS: [&dyn MetadataProvider; 9] = [
     &FileMetadataProvider,
     &ImageMetadataProvider,
     &ExecutableMetadataProvider,
+    &OfficeMetadataProvider,
+    &MediaMetadataProvider,
+    &NuGetMetadataProvider,
     &ShortcutMetadataProvider,
     &ArchiveMetadataProvider,
     &PdfMetadataProvider,

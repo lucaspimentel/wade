@@ -1,0 +1,6 @@
+{
+  "media": {"track": [
+    {"@type": "General", "Format": "MPEG Audio", "Duration": "65", "FileSize": "1024"},
+    {"@type": "Audio", "Format": "MPEG Audio", "Channels": "1", "SamplingRate": "44100", "BitRate": 320000}
+  ]}
+}

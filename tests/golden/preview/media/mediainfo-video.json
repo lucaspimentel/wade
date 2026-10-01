@@ -1,0 +1,10 @@
+{
+  "media": {"@ref": "movie.mkv", "track": [
+    {"@type": "General", "Format": "Matroska", "Duration": "5025.042", "FileSize": "734003200",
+     "OverallBitRate": "1168541"},
+    {"@type": "Video", "Format": "HEVC", "Width": "3840", "Height": "2160", "FrameRate": "23.976",
+     "BitRate": "1000000"},
+    {"@type": "Audio", "Format": "E-AC-3", "Channels": "6", "SamplingRate": "48000", "BitRate": "640000"},
+    {"@type": "Text", "Format": "UTF-8"}
+  ]}
+}

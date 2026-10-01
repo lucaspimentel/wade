@@ -1,0 +1,8 @@
+{
+  "streams": [
+    {"codec_type": "audio", "codec_long_name": "FLAC (Free Lossless Audio Codec)", "channels": 6,
+     "channel_layout": "", "sample_rate": "96000"},
+    {"codec_type": "audio", "codec_long_name": "Opus", "channels": "3", "sample_rate": 44100, "bit_rate": 96000}
+  ],
+  "format": {"format_long_name": "FLAC", "duration": "222.5", "size": "8912345"}
+}

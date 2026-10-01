@@ -9,7 +9,9 @@ use wade::fs::{file_preview, GitFileStatus};
 use wade::highlight::StyledLine;
 use wade::input::CancelToken;
 use wade::fs::{tar_preview, zip_preview};
+use wade::preview::document_metadata::{NuGetMetadataProvider, OfficeMetadataProvider};
 use wade::preview::executable_metadata::ExecutableMetadataProvider;
+use wade::preview::media_metadata;
 use wade::preview::metadata_providers::{ArchiveMetadataProvider, FileMetadataProvider, ShortcutMetadataProvider};
 use wade::preview::providers::{HexPreviewProvider, TarContentsPreviewProvider, TextPreviewProvider, ZipContentsPreviewProvider};
 use wade::preview::{registry, MetadataEntry, MetadataProvider, MetadataSection, PreviewContext, PreviewProvider, PreviewResult};
@@ -24,9 +26,6 @@ const PENDING_LABELS: &[&str] = &[
     // Preview providers
     "Installer files",
     // Metadata providers
-    "Document metadata",
-    "Media info",
-    "NuGet metadata",
     "MSI metadata",
 ];
 
@@ -541,4 +540,75 @@ fn executable_fixtures_match_csharp_golden() {
     }
 
     assert_eq!(out, read(&dir.join("executables.golden.txt")));
+}
+
+fn append_metadata(out: &mut String, name: &str, result: Option<&wade::preview::MetadataResult>) {
+    let Some(result) = result else {
+        let _ = writeln!(out, "{name} null");
+        return;
+    };
+
+    let _ = writeln!(out, "{name} label={}", result.file_type_label.as_deref().unwrap_or("-"));
+    for section in &result.sections {
+        let _ = writeln!(out, "  [{}]", section.header.as_deref().unwrap_or("-"));
+        for entry in &section.entries {
+            let _ = writeln!(out, "  {}: {}", entry.label, escape(&entry.value));
+        }
+    }
+}
+
+fn sorted_files(dir: &Path) -> Vec<PathBuf> {
+    let mut files: Vec<PathBuf> = std::fs::read_dir(dir).unwrap().map(|entry| entry.unwrap().path()).collect();
+    files.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
+    files
+}
+
+#[test]
+fn document_fixtures_match_csharp_golden() {
+    let dir = golden_dir();
+    let context = &contexts(&dir.to_string_lossy())[0].1;
+    let providers: [(&str, &dyn MetadataProvider); 2] = [("office", &OfficeMetadataProvider), ("nuget", &NuGetMetadataProvider)];
+    let mut out = String::new();
+
+    for file in sorted_files(&dir.join("documents")) {
+        let path = file.to_string_lossy().into_owned();
+        let _ = writeln!(out, "=== {}", file.file_name().unwrap().to_string_lossy());
+        let metadata: Vec<&str> = registry::applicable_metadata_providers(&path, context).iter().map(|p| p.label()).collect();
+        let _ = writeln!(out, "metadata-providers {}", metadata.join(" | "));
+
+        for (name, provider) in providers {
+            if provider.can_provide_metadata(&path, context) {
+                append_metadata(&mut out, name, provider.get_metadata(&path, context, &CancelToken::new()).as_ref());
+            }
+        }
+    }
+
+    assert_eq!(out, read(&dir.join("documents.golden.txt")));
+}
+
+#[test]
+fn media_json_fixtures_match_csharp_golden() {
+    let dir = golden_dir();
+    let mut out = String::new();
+
+    for file in sorted_files(&dir.join("media")) {
+        let name = file.file_name().unwrap().to_string_lossy().into_owned();
+        let json = std::fs::read_to_string(&file).unwrap();
+        let _ = writeln!(out, "=== {name}");
+        let parsed = if name.starts_with("ffprobe") {
+            media_metadata::parse_ffprobe_json(&json)
+        } else {
+            media_metadata::parse_mediainfo_json(&json)
+        };
+
+        match parsed {
+            Ok(sections) => {
+                let result = sections.map(|sections| wade::preview::MetadataResult { sections, file_type_label: None });
+                append_metadata(&mut out, "media", result.as_ref());
+            }
+            Err(_) => out.push_str("media error\n"),
+        }
+    }
+
+    assert_eq!(out, read(&dir.join("media.golden.txt")));
 }

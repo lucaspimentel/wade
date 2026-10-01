@@ -1,0 +1,153 @@
+=== Contoso.Lib.1.2.3.nupkg
+metadata-providers File info | NuGet metadata | Archive metadata
+nuget label=NuGet Package
+  [NuGet Package]
+  Id: Contoso.Lib
+  Version: 1.2.3
+  Authors: Contoso, Ada
+  License: MIT
+  Project: https://contoso.example/lib
+  Repository: https://github.com/contoso/lib
+  Tags: contoso lib utilities
+  [Description]
+  : A quarterly report covering revenue, churn and the hiring plan for the
+  : platform team, with appendices on infrastructure cost and an unusually
+  : long word:
+  : supercalifragilisticexpialidocious-and-then-some-more-characters-to-force-
+  : -hard-break.
+  [Dependencies (net8.0)]
+  : System.Text.Json >= 8.0.0
+  : Contoso.Core
+  [Dependencies (any)]
+  : Any.Dep >= [1.0,2.0)
+=== bom-core.docx
+metadata-providers File info | Document metadata | Archive metadata
+office label=Word Document
+  [Document Properties]
+  Title: BOM
+  Created: 2023-12-31 23:59:00
+  Modified: 2023-12-31 00:00:00
+=== budget.xlsx
+metadata-providers File info | Document metadata | Archive metadata
+office label=Excel Workbook
+  [Document Properties]
+  Title: Budget
+  Created: not a date
+  [Statistics]
+  Application: Microsoft Excel
+  [Sheets]
+  : Summary
+  : Q1
+  : Q2
+=== bzip2-entry.docx
+metadata-providers File info | Document metadata | Archive metadata
+office null
+=== deck.pptx
+metadata-providers File info | Document metadata | Archive metadata
+office label=PowerPoint Presentation
+  [Statistics]
+  Slides: 42
+  Hidden slides: 3
+  [Parts]
+  : Title slide
+=== empty-license.snupkg
+metadata-providers File info | NuGet metadata | Archive metadata
+nuget label=NuGet Package
+  [NuGet Package]
+  Id: Sym
+  License: 
+=== first-nuspec-wins.nupkg
+metadata-providers File info | NuGet metadata | Archive metadata
+nuget label=NuGet Package
+  [NuGet Package]
+  Id: First
+=== flat-deps.nupkg
+metadata-providers File info | NuGet metadata | Archive metadata
+nuget label=NuGet Package
+  [NuGet Package]
+  Id: Flat.Pkg
+  Version: 0.1.0-beta
+  License: https://licenses.example/mit
+  [Dependencies]
+  : A >= 1.0
+  : B
+=== namespaces.docx
+metadata-providers File info | Document metadata | Archive metadata
+office label=Word Document
+  [Document Properties]
+  Title: Prefixed and CDATAnested
+  Author: first
+  Revision: +0012
+  [Statistics]
+  Pages: 1,234,567
+  Words: 42
+  Paragraphs: 99999999999
+=== nested-nuspec.nupkg
+metadata-providers File info | NuGet metadata | Archive metadata
+nuget label=NuGet Package
+  [-]
+  : [no .nuspec found in package]
+=== no-docprops.xltx
+metadata-providers File info | Document metadata | Archive metadata
+office label=Excel Workbook
+  [-]
+  : [no document metadata found]
+=== no-metadata.nupkg
+metadata-providers File info | NuGet metadata | Archive metadata
+nuget label=NuGet Package
+  [-]
+  : [invalid .nuspec: no metadata element]
+=== not-a-zip.docx
+metadata-providers File info | Document metadata | Archive metadata
+office null
+=== not-a-zip.nupkg
+metadata-providers File info | NuGet metadata | Archive metadata
+nuget null
+=== report.docx
+metadata-providers File info | Document metadata | Archive metadata
+office label=Word Document
+  [Document Properties]
+  Title: Q3 Report
+  Author: Ada Lovelace
+  Subject: Finance
+  Keywords: revenue; churn
+  Category: Reports
+  Created: 2024-01-15 10:30:00
+  Modified: 2024-02-20 08:05:09
+  Last author: Grace Hopper
+  Revision: 7
+  [Description]
+  : A quarterly report covering revenue, churn and the hiring plan for the
+  : platform team, with appendices on infrastructure cost and an unusually
+  : long word:
+  : supercalifragilisticexpialidocious-and-then-some-more-characters-to-force-
+  : -hard-break. second paragraph
+  [Statistics]
+  Pages: 12
+  Words: 12,345
+  Paragraphs: n/a
+  Application: Microsoft Office Word
+  [Parts]
+  : Intro
+  : Body
+=== stored.docx
+metadata-providers File info | Document metadata | Archive metadata
+office label=Word Document
+  [Document Properties]
+  Title: Stored
+=== template.dotx
+metadata-providers File info | Document metadata | Archive metadata
+office label=Word Document
+  [Description]
+  : Only a description.
+=== utf16-core.docx
+metadata-providers File info | Document metadata | Archive metadata
+office label=Word Document
+  [Document Properties]
+  Title: Données café
+  Author: José
+=== whitespace.potx
+metadata-providers File info | Document metadata | Archive metadata
+office label=PowerPoint Presentation
+  [-]
+  : [no document metadata found]
