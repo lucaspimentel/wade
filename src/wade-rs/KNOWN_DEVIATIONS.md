@@ -14,6 +14,27 @@ this file to be empty or fully accepted.
   current file name. Deliberate divergence, so no golden fixture covers
   this overlay.
 
+- **The filesystem watcher is a no-op on unix (Phase 4d).** C# uses
+  `FileSystemWatcher` on every OS; the Rust watcher is hand-rolled on
+  `ReadDirectoryChangesW` and the inotify backend is deferred to Phase 9
+  with the rest of the unix work. Unix listings refresh only on manual
+  refresh or navigation.
+- **Unix Read-only/ReadOnly follows std, not .NET (Phase 4d).** The
+  Properties overlay uses `Permissions::readonly()` (no write bit for
+  anyone); .NET reports ReadOnly when the current user lacks write
+  permission. Revisit with the Phase 9 unix work.
+- **Properties overlay metadata sections are empty (Phase 4d).** The
+  `metadata_sections` parameter is ported and rendered, but no metadata
+  providers exist until Phase 7.
+- **FS-change handling does not clear the preview cache (Phase 4d).**
+  `HandleFileSystemChanged` calls `ClearPreviewCache` when the selected
+  entry did not survive; previews land in Phase 7.
+- **No golden fixture covers the Properties overlay (Phase 4d).** Its rows
+  come from live filesystem metadata (created/accessed dates, attributes),
+  so no fixture renders identically from both runners without a test seam
+  in the frozen C# code. Parity evidence is the port of
+  `PropertiesOverlayTests` in `src/ui/properties_overlay.rs`.
+
 - **Unported actions are stubbed with a notification (Phase 3a).** Actions
   whose subsystems land in later phases (previews: phase 7; file finder:
   phase 5) show a status-bar notification ("Not yet ported") instead of
@@ -34,4 +55,25 @@ this file to be empty or fully accepted.
   chosen yet; date display and Modified sort may differ by the UTC offset.
 - **Drive media-type detection returns Unknown (Phase 3a).** The C#
   `DriveTypeDetector` (seek-penalty query) port is Phase 9; drive entries
-  carry `DriveMediaType.Unknown`, which only affects future SSD/HDD gating.
+  carry `DriveMediaType.Unknown`. Consequences until then: inline directory
+  sizes (Phase 4d) never run, because `should_compute_inline_dir_sizes`
+  disables Unknown media; and the Properties overlay's drive Attributes row
+  omits the leading media type ("SSD"/"HDD"/`DriveType` text), showing only
+  format and volume label.
+
+## Accepted (deliberate, permanent)
+- **Properties for a vanished entry show N/A (Phase 4d).** When the entry
+  no longer exists, C# `FileInfo` does not throw; it shows sentinel values
+  (Created/Accessed `1601-01-01 12:00 AM` in local time, every attribute
+  flag, Read-only "Yes"). Rust shows "N/A" for dates and attributes and
+  "No" for Read-only, as C# does for its own exception path.
+- **Directory size of a vanished directory reports 0 B (Phase 4d).** C#
+  `DirectorySizeLoader.Calculate` does not catch
+  `DirectoryNotFoundException`, so the task faults and the overlay keeps
+  "Calculating…" until it is closed. Rust treats the missing directory as
+  inaccessible and reports 0 B.
+- **Watcher full-refresh requests survive the debounce window (Phase 4d).**
+  C# replaces the debounce timer on each event with that event's
+  `fullRefresh` flag, so a buffer overflow followed within 300ms by an
+  ordinary change loses the full refresh. Rust ORs the flag across the
+  window.

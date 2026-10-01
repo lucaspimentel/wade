@@ -111,7 +111,7 @@ pub struct DirectoryContents {
     pub sort_mode: SortMode,
     pub sort_ascending: bool,
     /// Port of `DirectoryContents.DirSizes`: inline directory sizes, used
-    /// when building directory entries (Phase 4d).
+    /// when building directory entries.
     pub dir_sizes: Option<HashMap<String, i64>>,
 }
 
