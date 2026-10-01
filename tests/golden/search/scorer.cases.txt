@@ -1,0 +1,83 @@
+# Scorer parity cases: KIND<TAB>QUERY<TAB>TARGET
+# KIND: score | exact | exact-cs | fname | fname-exact | fname-exact-cs
+# fname* kinds score with filename priority (filename starts after the last
+# separator). {/} is the platform directory separator in query and target.
+score	abc	abc
+score	abc	aXbXc
+score	app	App.cs
+score	App	App.cs
+score	pdf	report.pdf
+score	cs	App.cs
+score	wade	Wade
+score	wade	W_a_d_e
+score	NP	NullPointerException
+score	NP	xnxpx
+score	np	NullPointer
+score	p	.pdf
+score	p	upping
+score	abc	abcxxx
+score	abc	axxbxxcxxx
+score	abc	acb
+score	abcd	abc
+score		anything
+score	test	
+score	ss	SearchService
+score	ss	class_search_service
+score	fb	foo-bar
+score	fb	foo.bar
+score	fb	foo{/}bar
+score	f2	file2
+score	f2	f22
+score	v10	version10
+score	aaa	aaaaaa
+score	ab	aaabbb
+score	ana	banana
+score	sw	src{/}Wade
+score	Wade	src{/}Wade
+score	Wade	notwade
+score	s{/}w	src{/}Wade
+score	src{/}app	src{/}Wade{/}App.cs
+score	xyz	XyZ
+score	ABC	a_b_c
+score	main	src{/}main.rs
+score	mr	src{/}main.rs
+score	tst	tests{/}Wade.Tests{/}Test.cs
+exact	foo	foobar
+exact	bar	foobar
+exact	oob	foobar
+exact	FOO	foobar
+exact	foB	foobar
+exact	xyz	foobar
+exact	foobars	foobar
+exact		anything
+exact	src{/}Wade	src{/}Wade
+exact	ade{/}A	src{/}Wade{/}App.cs
+exact	cs	App.cs.cs
+exact-cs	Foo	foobar
+exact-cs	App	App.cs
+exact-cs	App	app.cs
+exact-cs	pp.C	App.cs
+fname	App	src{/}Wade{/}App.cs
+fname	App	src{/}Applications{/}Config.cs
+fname	Wade	src{/}Wade{/}App.cs
+fname	pdf	Documents{/}report.pdf
+fname	app	App.cs
+fname	cs	src{/}Wade{/}App.cs
+fname	swa	src{/}Wade{/}App.cs
+fname	newfile	src{/}newfile.cs
+fname	test	dir{/}test12.cs
+fname	File	src{/}File42.cs
+fname	src	src{/}src{/}file.cs
+fname	xyz	src{/}App.cs
+fname	a	a{/}b{/}c{/}a.txt
+fname	readme	README.md
+fname	dir	dir{/}
+fname-exact	App	src{/}Wade{/}App.cs
+fname-exact	abc	src{/}abcfile.cs
+fname-exact	abc	src{/}aXbXc.cs
+fname-exact	pdf	Documents{/}report.pdf
+fname-exact	wade{/}app	src{/}Wade{/}App.cs
+fname-exact	src	src{/}src{/}file.cs
+fname-exact-cs	App	src{/}App.cs
+fname-exact-cs	App	src{/}app.cs
+fname-exact-cs	Wade	src{/}Wade{/}App.cs
