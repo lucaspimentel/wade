@@ -4,14 +4,15 @@
 
 use super::metadata_providers::{ArchiveMetadataProvider, FileMetadataProvider, ShortcutMetadataProvider};
 use super::providers::{
-    DiffPreviewProvider, HexPreviewProvider, NonePreviewProvider, TarContentsPreviewProvider, TextPreviewProvider,
-    ZipContentsPreviewProvider,
+    DiffPreviewProvider, HexPreviewProvider, MarkdigMarkdownPreviewProvider, NonePreviewProvider,
+    TarContentsPreviewProvider, TextPreviewProvider, ZipContentsPreviewProvider,
 };
 use super::{MetadataProvider, PreviewContext, PreviewProvider};
 
 /// C# order: Image, PDF, Markdown, Zip, MSI, Tar, Text, Diff, None, Hex.
 /// Slots for providers of later phases are absent.
-static PREVIEW_PROVIDERS: [&dyn PreviewProvider; 6] = [
+static PREVIEW_PROVIDERS: [&dyn PreviewProvider; 7] = [
+    &MarkdigMarkdownPreviewProvider,
     &ZipContentsPreviewProvider,
     &TarContentsPreviewProvider,
     &TextPreviewProvider,
@@ -137,6 +138,16 @@ mod tests {
     #[test]
     fn exe_defaults_to_none_with_hex() {
         assert_eq!(labels("app.exe", &test_context()), ["None", "Hex dump"]);
+    }
+
+    #[test]
+    fn markdown_file_defaults_to_rendered_markdown() {
+        let path = test_path("readme.md");
+        std::fs::write(&path, "# Title\n").unwrap();
+        assert_eq!(
+            labels(&path.to_string_lossy(), &test_context()),
+            ["Rendered markdown (built-in)", "Text", "None", "Hex dump"]
+        );
     }
 
     #[test]

@@ -10,3 +10,4 @@ tests/golden/** text eol=lf
 tests/golden/preview/files/** -text
 tests/golden/preview/archives/** -text
 tests/golden/preview/shortcuts/** -text
+tests/golden/markdown/corpus/** -text

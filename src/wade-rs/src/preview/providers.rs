@@ -1,5 +1,6 @@
-//! Port of the providers in `PreviewProviders.cs` ported so far: archive
-//! contents (zip, tar/gzip), Text, Hex dump, None and Git diff.
+//! Port of the providers in `PreviewProviders.cs` ported so far: rendered
+//! Markdown, archive contents (zip, tar/gzip), Text, Hex dump, None and
+//! Git diff.
 
 use super::{PreviewContext, PreviewProvider, PreviewResult};
 use crate::fs::{file_preview, git_utils, hex_preview, tar_preview, zip_preview, GitFileStatus};
@@ -9,6 +10,31 @@ use crate::input::CancelToken;
 
 fn label_or(path: &str, fallback: &str) -> Option<String> {
     Some(file_preview::get_file_type_label(path).unwrap_or(fallback).to_string())
+}
+
+/// Port of `MarkdigMarkdownPreviewProvider`: rendered .md/.markdown files.
+pub struct MarkdigMarkdownPreviewProvider;
+
+impl PreviewProvider for MarkdigMarkdownPreviewProvider {
+    fn label(&self) -> &'static str {
+        "Rendered markdown (built-in)"
+    }
+
+    fn can_preview(&self, path: &str, context: &PreviewContext) -> bool {
+        let ext = file_preview::extension(path);
+        context.markdown_preview_enabled && (ext.eq_ignore_ascii_case(".md") || ext.eq_ignore_ascii_case(".markdown"))
+    }
+
+    fn get_preview(&self, path: &str, context: &PreviewContext, cancel: &CancelToken) -> Option<PreviewResult> {
+        let lines = super::markdown::render(path, context.pane_width_cells - 2, cancel)?;
+
+        Some(PreviewResult {
+            text_lines: Some(lines),
+            file_type_label: label_or(path, "Markdown"),
+            is_rendered: true,
+            is_placeholder: false,
+        })
+    }
 }
 
 /// The "Archive Contents" title and rule above an archive listing.
@@ -231,6 +257,25 @@ mod tests {
                 "{status:?} {repo_root:?}"
             );
         }
+    }
+
+    #[test]
+    fn markdown_applies_to_md_and_markdown_when_enabled() {
+        use super::MarkdigMarkdownPreviewProvider;
+
+        for path in ["readme.md", "README.MD", "notes.markdown"] {
+            assert!(MarkdigMarkdownPreviewProvider.can_preview(path, &test_context()), "{path}");
+        }
+        for path in ["notes.txt", "md", "file.mdx"] {
+            assert!(!MarkdigMarkdownPreviewProvider.can_preview(path, &test_context()), "{path}");
+        }
+
+        let disabled = PreviewContext {
+            markdown_preview_enabled: false,
+            ..test_context()
+        };
+        assert!(!MarkdigMarkdownPreviewProvider.can_preview("readme.md", &disabled));
+        assert_eq!(MarkdigMarkdownPreviewProvider.label(), "Rendered markdown (built-in)");
     }
 
     #[test]

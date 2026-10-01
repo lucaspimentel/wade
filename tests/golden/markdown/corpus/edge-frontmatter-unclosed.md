@@ -1,0 +1,4 @@
+---
+not: closed
+
+Just text.

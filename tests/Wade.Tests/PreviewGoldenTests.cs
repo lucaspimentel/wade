@@ -281,6 +281,48 @@ public class PreviewGoldenTests
         Assert.Equal(File.ReadAllText(goldenPath).ReplaceLineEndings("\n"), actual);
     }
 
+    [Fact]
+    public void MarkdownCorpus_MatchGolden()
+    {
+        string dir = Path.Combine(Path.GetDirectoryName(FindGoldenDir())!, "markdown");
+        var sb = new StringBuilder();
+
+        string[] files = Directory.GetFiles(Path.Combine(dir, "corpus"));
+        Array.Sort(files, StringComparer.Ordinal);
+
+        foreach (string path in files)
+        {
+            string text = File.ReadAllText(path);
+
+            int[] widths = Path.GetFileName(path).StartsWith("edge-", StringComparison.Ordinal) ? EdgeWidths : DocumentWidths;
+            foreach (int width in widths)
+            {
+                sb.Append("=== ").Append(Path.GetFileName(path)).Append(" @").Append(width).Append('\n');
+                foreach (StyledLine line in MarkdigRenderer.RenderText(text, width, CancellationToken.None))
+                {
+                    AppendStyledLine(sb, line);
+                }
+            }
+        }
+
+        string goldenPath = Path.Combine(dir, "markdown.golden.txt");
+        string actual = sb.ToString();
+
+        if (Environment.GetEnvironmentVariable("WADE_UPDATE_GOLDENS") == "1" && !File.Exists(goldenPath))
+        {
+            File.WriteAllText(goldenPath, actual, new UTF8Encoding(false));
+        }
+
+        Assert.True(File.Exists(goldenPath), $"Missing golden file {goldenPath}; run with WADE_UPDATE_GOLDENS=1 to generate");
+        Assert.Equal(File.ReadAllText(goldenPath).ReplaceLineEndings("\n"), actual);
+    }
+
+    /// <summary>Edge cases: minimum (clamped to 4), narrow, wide.</summary>
+    private static readonly int[] EdgeWidths = [3, 30, 78];
+
+    /// <summary>Document snapshots: narrow-ish and wide.</summary>
+    private static readonly int[] DocumentWidths = [40, 100];
+
     private static readonly (long Compressed, long Total)[] RatioCases =
     [
         (0, 5), (1, 8), (3, 8), (5, 8), (7, 8), (1, 200), (3, 200), (1, 3), (2, 3), (5, 5), (7, 5),

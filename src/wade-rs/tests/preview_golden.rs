@@ -23,7 +23,6 @@ const PENDING_LABELS: &[&str] = &[
     // Preview providers
     "Image",
     "PDF",
-    "Rendered markdown (built-in)",
     "Installer files",
     // Metadata providers
     "Executable metadata",

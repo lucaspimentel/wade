@@ -25,7 +25,8 @@ this file to be empty or fully accepted.
   permission. Revisit with the Phase 9 unix work.
 - **Later-phase preview and metadata providers are absent (Phase 7a).**
   The registries hold only the ported providers, in C# order. Missing until
-  their phases: image and PDF previews and metadata (Phase 8), and the MSI preview plus executable, Office, NuGet,
+  their phases: rendered Markdown (7d), image and PDF previews and
+  metadata (Phase 8), and the MSI preview plus executable, Office, NuGet,
   media and MSI metadata (Phase 9). Files of those types fall through to
   the next applicable provider (usually None, Text or Hex). Image and
   combined (text + Sixel) results, Sixel detection and cell-pixel-size
@@ -53,8 +54,8 @@ this file to be empty or fully accepted.
   context menu Paste/Copy/Cut entries.
 - **Config toggles for unported subsystems are inert (Phase 3c).** The
   config dialog ports all 27 settings and persists them, but toggles
-  gating providers that land in later phases (image/PDF previews,
-  PDF/media metadata) have no runtime effect until those
+  gating providers that land in later phases (image/PDF/Markdown
+  previews, PDF/media metadata) have no runtime effect until those
   phases land.
 - **Dates carry no local timezone offset (Phase 3a).**
   `FileSystemEntry.last_modified` converts `SystemTime` without a local
@@ -69,16 +70,6 @@ this file to be empty or fully accepted.
   format and volume label.
 
 ## Accepted (deliberate, permanent)
-- **Markdown parses with pulldown-cmark, not Markdig (Phase 7d).** The
-  renderer reproduces `MarkdigRenderer` on an equivalent tree (silent
-  link-definition and HTML blocks, dropped entities, first-word fence
-  info, non-paragraph first list blocks skipped) and matches the Markdig
-  golden over the corpus in `tests/golden/markdown/` except where the
-  parsers differ. Recorded difference: Markdig drops the `[` of an
-  undefined full reference at the end of a bracket chain (`H[m][n]`
-  renders `Hm][n]`); pulldown-cmark keeps the text as CommonMark
-  specifies. `tests/markdown_golden.rs` pins each difference as an exact
-  substitution.
 - **GNU sparse tar entries don't stall the preview (Phase 7b).** .NET's
   `TarReader` throws `NotSupportedException` for type `S`, which escapes
   `TarPreview` and faults the C# preview load: the pane stays on

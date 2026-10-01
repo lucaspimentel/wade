@@ -69,8 +69,7 @@ done (split into 3a app spine, 3b modal overlays, 3c config dialog /
 bookmarks / path completion / paste / mouse + context menu), Phase 4
 done (4a git status, 4b git actions, 4c file operations, 4d loaders,
 watcher, and properties), Phase 5 done (search + file finder), Phase 6
-done (syntax highlighting), Phase 7 done (7a preview core and text family,
-7b archives, 7c shortcuts, 7d Markdown). Next: Phase 8 imaging + Sixel.
+done (syntax highlighting). Next: Phase 7 preview + metadata core.
 
 ### Phase 0 — Scaffold + golden-frame harness
 
@@ -140,11 +139,6 @@ done (syntax highlighting), Phase 7 done (7a preview core and text family,
   `MetadataRenderer`, text/diff/hex/zip/tar providers, LnkParser, markdown preview
   (pulldown-cmark rework of `MarkdigRenderer`, same rendered output contract).
 - **Verify**: registry ordering tests; per-provider fixtures; golden frames of preview pane.
-- **Done as**: 7a preview core (registries, `PreviewLoader`, text/diff/hex/none, `MetadataRenderer`,
-  expanded preview, "Change preview" menu); 7b archives (hand-written zip central-directory and
-  `TarReader`-compatible readers, gzip via `flate2`); 7c `.lnk` metadata; 7d Markdown on
-  `pulldown-cmark`. Goldens under `tests/golden/preview/` (file, archive and shortcut fixtures),
-  `tests/golden/markdown/` (repo-doc snapshots plus edge cases) and renderer frames 030-038.
 
 ### Phase 8 — Imaging + Sixel
 
