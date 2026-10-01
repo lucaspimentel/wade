@@ -9,6 +9,7 @@ use wade::fs::{file_preview, GitFileStatus};
 use wade::highlight::StyledLine;
 use wade::input::CancelToken;
 use wade::fs::{tar_preview, zip_preview};
+use wade::preview::executable_metadata::ExecutableMetadataProvider;
 use wade::preview::metadata_providers::{ArchiveMetadataProvider, FileMetadataProvider, ShortcutMetadataProvider};
 use wade::preview::providers::{HexPreviewProvider, TarContentsPreviewProvider, TextPreviewProvider, ZipContentsPreviewProvider};
 use wade::preview::{registry, MetadataEntry, MetadataProvider, MetadataSection, PreviewContext, PreviewProvider, PreviewResult};
@@ -23,7 +24,6 @@ const PENDING_LABELS: &[&str] = &[
     // Preview providers
     "Installer files",
     // Metadata providers
-    "Executable metadata",
     "Document metadata",
     "Media info",
     "NuGet metadata",
@@ -502,4 +502,43 @@ fn shortcut_fixtures_match_csharp_golden() {
         .join("\n");
 
     assert_matches(&expected, &out, &golden_path.display().to_string());
+}
+
+#[test]
+fn executable_fixtures_match_csharp_golden() {
+    let dir = golden_dir();
+    let mut files: Vec<PathBuf> = std::fs::read_dir(dir.join("executables"))
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .collect();
+    files.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
+
+    let mut out = String::new();
+    let context = &contexts(&dir.to_string_lossy())[0].1;
+
+    for file in &files {
+        let path = file.to_string_lossy().into_owned();
+        let _ = writeln!(out, "=== {}", file.file_name().unwrap().to_string_lossy());
+        let metadata: Vec<&str> = registry::applicable_metadata_providers(&path, context).iter().map(|p| p.label()).collect();
+        let _ = writeln!(out, "metadata-providers {}", metadata.join(" | "));
+
+        if !ExecutableMetadataProvider.can_provide_metadata(&path, context) {
+            continue;
+        }
+
+        let Some(result) = ExecutableMetadataProvider.get_metadata(&path, context, &CancelToken::new()) else {
+            out.push_str("executable null\n");
+            continue;
+        };
+
+        let _ = writeln!(out, "executable label={}", result.file_type_label.as_deref().unwrap_or("-"));
+        for section in &result.sections {
+            let _ = writeln!(out, "  [{}]", section.header.as_deref().unwrap_or("-"));
+            for entry in &section.entries {
+                let _ = writeln!(out, "  {}: {}", entry.label, escape(&entry.value));
+            }
+        }
+    }
+
+    assert_eq!(out, read(&dir.join("executables.golden.txt")));
 }

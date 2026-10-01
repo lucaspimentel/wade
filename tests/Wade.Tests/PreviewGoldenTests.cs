@@ -282,6 +282,59 @@ public class PreviewGoldenTests
     }
 
     [Fact]
+    public void ExecutableFixtures_MatchGolden()
+    {
+        string dir = FindGoldenDir();
+        var sb = new StringBuilder();
+        var provider = new ExecutableMetadataProvider();
+        PreviewContext context = Contexts(dir)[0].Context;
+
+        string[] files = Directory.GetFiles(Path.Combine(dir, "executables"));
+        Array.Sort(files, StringComparer.Ordinal);
+
+        foreach (string path in files)
+        {
+            sb.Append("=== ").Append(Path.GetFileName(path)).Append('\n');
+            sb.Append("metadata-providers ")
+                .Append(string.Join(" | ", MetadataProviderRegistry.GetApplicableProviders(path, context).Select(p => p.Label)))
+                .Append('\n');
+
+            if (!provider.CanProvideMetadata(path, context))
+            {
+                continue;
+            }
+
+            MetadataResult? result = provider.GetMetadata(path, context, CancellationToken.None);
+            if (result is null)
+            {
+                sb.Append("executable null\n");
+                continue;
+            }
+
+            sb.Append("executable label=").Append(result.FileTypeLabel ?? "-").Append('\n');
+            foreach (MetadataSection section in result.Sections)
+            {
+                sb.Append("  [").Append(section.Header ?? "-").Append("]\n");
+                foreach (MetadataEntry entry in section.Entries)
+                {
+                    sb.Append("  ").Append(entry.Label).Append(": ").Append(Escape(entry.Value)).Append('\n');
+                }
+            }
+        }
+
+        string goldenPath = Path.Combine(dir, "executables.golden.txt");
+        string actual = sb.ToString();
+
+        if (Environment.GetEnvironmentVariable("WADE_UPDATE_GOLDENS") == "1" && !File.Exists(goldenPath))
+        {
+            File.WriteAllText(goldenPath, actual, new UTF8Encoding(false));
+        }
+
+        Assert.True(File.Exists(goldenPath), $"Missing golden file {goldenPath}; run with WADE_UPDATE_GOLDENS=1 to generate");
+        Assert.Equal(File.ReadAllText(goldenPath).ReplaceLineEndings("\n"), actual);
+    }
+
+    [Fact]
     public void MarkdownCorpus_MatchGolden()
     {
         string dir = Path.Combine(Path.GetDirectoryName(FindGoldenDir())!, "markdown");

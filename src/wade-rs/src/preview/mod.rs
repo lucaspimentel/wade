@@ -6,9 +6,11 @@
 //! from the registries (KNOWN_DEVIATIONS.md).
 
 pub mod cli_tool_hints;
+pub mod executable_metadata;
 pub mod image_metadata;
 pub mod markdown;
 pub mod metadata_providers;
+pub mod pe;
 pub mod providers;
 pub mod registry;
 

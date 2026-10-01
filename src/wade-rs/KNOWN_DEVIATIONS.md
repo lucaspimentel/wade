@@ -25,8 +25,8 @@ this file to be empty or fully accepted.
   permission. Revisit with the Phase 9 unix work.
 - **Later-phase preview and metadata providers are absent (Phase 7a).**
   The registries hold only the ported providers, in C# order. Missing until
-  their phases: the MSI preview plus executable, Office, NuGet, media and
-  MSI metadata (Phase 9). Files of those types fall through to the next applicable
+  their phases: the MSI preview plus Office, NuGet, media and MSI
+  metadata (Phase 9). Files of those types fall through to the next applicable
   provider (usually None, Text or Hex).
 - **Unix terminals report default capabilities (Phase 8a).** Windows
   detects Sixel via `WT_SESSION` like C#; the Unix DA1/cell-size query

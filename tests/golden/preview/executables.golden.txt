@@ -1,0 +1,186 @@
+=== anonymous-object.exe
+metadata-providers File info | Executable metadata
+executable null
+=== bad-magic.exe
+metadata-providers File info | Executable metadata
+executable null
+=== bad-pe-signature.exe
+metadata-providers File info | Executable metadata
+executable null
+=== coff-only.dll
+metadata-providers File info | Executable metadata
+executable label=DLL
+  [Executable Info]
+  Architecture: x64 (PE32)
+  Type: DLL
+  Timestamp: 2021-03-04 05:06:07 UTC
+=== dotnet-app.exe
+metadata-providers File info | Executable metadata
+executable label=EXE
+  [Executable Info]
+  Architecture: x64 (PE32+)
+  Subsystem: Console
+  Type: Executable
+  Timestamp: 2021-03-04 05:06:07 UTC
+  [.NET Assembly]
+  Name: app
+  Version: 0.0.0.0
+=== dotnet-bad-signature.dll
+metadata-providers File info | Executable metadata
+executable label=DLL
+  [Executable Info]
+  Architecture: x64 (PE32+)
+  Subsystem: Console
+  Type: DLL
+  Timestamp: 2021-03-04 05:06:07 UTC
+=== dotnet-cor-too-small.dll
+metadata-providers File info | Executable metadata
+executable null
+=== dotnet-cor-unmapped.dll
+metadata-providers File info | Executable metadata
+executable label=DLL
+  [Executable Info]
+  Architecture: x64 (PE32+)
+  Subsystem: Console
+  Type: DLL
+  Timestamp: 2021-03-04 05:06:07 UTC
+=== dotnet-lib.dll
+metadata-providers File info | Executable metadata
+executable label=DLL
+  [Executable Info]
+  Architecture: x64 (PE32+)
+  Subsystem: Console
+  Type: DLL
+  Timestamp: 2021-03-04 05:06:07 UTC
+  [.NET Assembly]
+  Name: Contoso.Lib
+  Version: 1.2.3.4
+  Framework: .NETCoreApp,Version=v8.0
+  [Referenced Assemblies (2)]
+  : System.Runtime 8.0.0.0
+  : System.Console 8.0.0.0
+=== dotnet-module.dll
+metadata-providers File info | Executable metadata
+executable null
+=== dotnet-null-tfm.dll
+metadata-providers File info | Executable metadata
+executable label=DLL
+  [Executable Info]
+  Architecture: x64 (PE32+)
+  Subsystem: Console
+  Type: DLL
+  Timestamp: 2021-03-04 05:06:07 UTC
+  [.NET Assembly]
+  Name: NullTfm
+  Version: 1.0.0.0
+  [Referenced Assemblies (1)]
+  : System.Runtime 8.0.0.0
+=== dotnet-wide-heaps.dll
+metadata-providers File info | Executable metadata
+executable label=DLL
+  [Executable Info]
+  Architecture: x64 (PE32+)
+  Subsystem: Console
+  Type: DLL
+  Timestamp: 2021-03-04 05:06:07 UTC
+  [.NET Assembly]
+  Name: Wide
+  Version: 2.0.1.0
+  Framework: .NETCoreApp,Version=v8.0
+  [Referenced Assemblies (1)]
+  : System.Runtime 8.0.0.0
+=== empty.exe
+metadata-providers File info | Executable metadata
+executable null
+=== lfanew-past-end.exe
+metadata-providers File info | Executable metadata
+executable null
+=== mz-only.exe
+metadata-providers File info | Executable metadata
+executable null
+=== native-arm-bootapp.exe
+metadata-providers File info | Executable metadata
+executable label=EXE
+  [Executable Info]
+  Architecture: ARM (PE32)
+  Subsystem: WindowsBootApplication
+  Type: Executable
+=== native-arm64-efi.exe
+metadata-providers File info | Executable metadata
+executable label=EXE
+  [Executable Info]
+  Architecture: ARM64 (PE32+)
+  Subsystem: EFI Application
+  Type: Executable
+=== native-efi-drivers.dll
+metadata-providers File info | Executable metadata
+executable label=DLL
+  [Executable Info]
+  Architecture: x64 (PE32+)
+  Subsystem: EFI Boot Service Driver
+  Type: DLL
+=== native-efi-runtime.dll
+metadata-providers File info | Executable metadata
+executable label=DLL
+  [Executable Info]
+  Architecture: x86 (PE32)
+  Subsystem: EFI Runtime Driver
+  Type: Executable
+=== native-ia64-native.exe
+metadata-providers File info | Executable metadata
+executable label=EXE
+  [Executable Info]
+  Architecture: IA64 (PE32+)
+  Subsystem: Native
+  Type: Executable
+  Timestamp: 2000-01-01 00:00:00 UTC
+=== native-riscv64-cegui.exe
+metadata-providers File info | Executable metadata
+executable label=EXE
+  [Executable Info]
+  Architecture: RiscV64 (PE32+)
+  Subsystem: WindowsCEGui
+  Type: Executable
+=== native-unknown-machine.exe
+metadata-providers File info | Executable metadata
+executable label=EXE
+  [Executable Info]
+  Architecture: 4660 (PE32+)
+  Subsystem: 99
+  Type: Executable
+  Timestamp: 2023-11-14 22:13:20 UTC
+=== native-x64-console.dll
+metadata-providers File info | Executable metadata
+executable label=DLL
+  [Executable Info]
+  Architecture: x64 (PE32+)
+  Subsystem: Console
+  Type: DLL
+  Timestamp: Reproducible build
+=== native-x86-gui.exe
+metadata-providers File info | Executable metadata
+executable label=EXE
+  [Executable Info]
+  Architecture: x86 (PE32)
+  Subsystem: GUI
+  Type: Executable
+  Timestamp: 2021-03-04 05:06:07 UTC
+=== native-zero-sections.exe
+metadata-providers File info | Executable metadata
+executable label=EXE
+  [Executable Info]
+  Architecture: x64 (PE32+)
+  Subsystem: Console
+  Type: Executable
+  Timestamp: 2021-03-04 05:06:07 UTC
+=== not-pe.exe
+metadata-providers File info | Executable metadata
+executable null
+=== readme.txt
+metadata-providers File info
+=== sections-past-end.exe
+metadata-providers File info | Executable metadata
+executable null
+=== truncated-optional.dll
+metadata-providers File info | Executable metadata
+executable null
