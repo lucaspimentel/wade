@@ -1,0 +1,7 @@
+# Combined preview: text on top (at most half), blank image area below
+size 80 25
+layout 3pane
+combined right text long.rs
+flush
+combined expanded text lf.cs
+flush

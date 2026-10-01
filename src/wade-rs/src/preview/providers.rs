@@ -1,5 +1,5 @@
-//! Port of the providers in `PreviewProviders.cs` ported so far: rendered
-//! Markdown, archive contents (zip, tar/gzip), Text, Hex dump, None and
+//! Port of the providers in `PreviewProviders.cs` ported so far: image,
+//! rendered Markdown, archive contents (zip, tar/gzip), Text, Hex dump, None and
 //! Git diff.
 
 use super::{PreviewContext, PreviewProvider, PreviewResult};
@@ -10,6 +10,38 @@ use crate::input::CancelToken;
 
 fn label_or(path: &str, fallback: &str) -> Option<String> {
     Some(file_preview::get_file_type_label(path).unwrap_or(fallback).to_string())
+}
+
+/// Port of `ImagePreviewProvider`: Sixel previews of image files.
+pub struct ImagePreviewProvider;
+
+impl PreviewProvider for ImagePreviewProvider {
+    fn label(&self) -> &'static str {
+        "Image"
+    }
+
+    fn can_preview(&self, path: &str, context: &PreviewContext) -> bool {
+        context.image_previews_enabled && crate::imaging::image_preview::is_image_file(path)
+    }
+
+    fn get_preview(&self, path: &str, context: &PreviewContext, cancel: &CancelToken) -> Option<PreviewResult> {
+        let result = crate::imaging::image_preview::load(
+            path,
+            context.pane_width_cells,
+            context.pane_height_cells,
+            context.cell_pixel_width,
+            context.cell_pixel_height,
+            cancel,
+        )?;
+
+        Some(PreviewResult {
+            sixel_data: Some(result.sixel_data),
+            sixel_pixel_width: result.pixel_width,
+            sixel_pixel_height: result.pixel_height,
+            file_type_label: Some(result.label),
+            ..PreviewResult::default()
+        })
+    }
 }
 
 /// Port of `MarkdigMarkdownPreviewProvider`: rendered .md/.markdown files.
@@ -33,6 +65,7 @@ impl PreviewProvider for MarkdigMarkdownPreviewProvider {
             file_type_label: label_or(path, "Markdown"),
             is_rendered: true,
             is_placeholder: false,
+            ..PreviewResult::default()
         })
     }
 }
@@ -49,6 +82,7 @@ fn archive_result(path: &str, body: Vec<StyledLine>) -> PreviewResult {
         file_type_label: label_or(path, "Archive"),
         is_rendered: true,
         is_placeholder: false,
+        ..PreviewResult::default()
     }
 }
 
@@ -121,6 +155,7 @@ impl PreviewProvider for TextPreviewProvider {
                 file_type_label: label_or(path, "Binary"),
                 is_rendered: true,
                 is_placeholder: true,
+                ..PreviewResult::default()
             });
         }
 
@@ -131,6 +166,7 @@ impl PreviewProvider for TextPreviewProvider {
             file_type_label: label_or(path, "Text"),
             is_rendered: false,
             is_placeholder: metadata.placeholder_message.is_some(),
+            ..PreviewResult::default()
         })
     }
 }
@@ -155,6 +191,7 @@ impl PreviewProvider for HexPreviewProvider {
             file_type_label: label_or(path, "Binary"),
             is_rendered: true,
             is_placeholder: false,
+            ..PreviewResult::default()
         })
     }
 }
@@ -177,6 +214,7 @@ impl PreviewProvider for NonePreviewProvider {
             file_type_label: None,
             is_rendered: false,
             is_placeholder: true,
+            ..PreviewResult::default()
         })
     }
 }
@@ -216,6 +254,7 @@ impl PreviewProvider for DiffPreviewProvider {
             file_type_label: Some("Diff".to_string()),
             is_rendered: true,
             is_placeholder: false,
+            ..PreviewResult::default()
         })
     }
 }

@@ -4,14 +4,15 @@
 
 use super::metadata_providers::{ArchiveMetadataProvider, FileMetadataProvider, ShortcutMetadataProvider};
 use super::providers::{
-    DiffPreviewProvider, HexPreviewProvider, MarkdigMarkdownPreviewProvider, NonePreviewProvider,
+    DiffPreviewProvider, HexPreviewProvider, ImagePreviewProvider, MarkdigMarkdownPreviewProvider, NonePreviewProvider,
     TarContentsPreviewProvider, TextPreviewProvider, ZipContentsPreviewProvider,
 };
 use super::{MetadataProvider, PreviewContext, PreviewProvider};
 
 /// C# order: Image, PDF, Markdown, Zip, MSI, Tar, Text, Diff, None, Hex.
 /// Slots for providers of later phases are absent.
-static PREVIEW_PROVIDERS: [&dyn PreviewProvider; 7] = [
+static PREVIEW_PROVIDERS: [&dyn PreviewProvider; 8] = [
+    &ImagePreviewProvider,
     &MarkdigMarkdownPreviewProvider,
     &ZipContentsPreviewProvider,
     &TarContentsPreviewProvider,

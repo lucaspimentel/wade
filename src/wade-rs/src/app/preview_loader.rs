@@ -6,7 +6,8 @@ use std::sync::mpsc::Sender;
 
 use crate::fs::file_preview;
 use crate::input::{
-    CancelToken, InputEvent, MetadataReadyEvent, PreviewLoadingCompleteEvent, PreviewReadyEvent,
+    CancelToken, CombinedPreviewReadyEvent, ImagePreviewReadyEvent, InputEvent, MetadataReadyEvent,
+    PreviewLoadingCompleteEvent, PreviewReadyEvent,
 };
 use crate::preview::{MetadataProvider, PreviewContext, PreviewProvider};
 use crate::ui::metadata_renderer;
@@ -127,7 +128,7 @@ pub fn load_metadata_and_preview(
     }
 }
 
-/// Port of `LoadWithProvider` (text results; image results are Phase 8).
+/// Port of `LoadWithProvider`: combined, image or text results.
 fn load_with_provider(
     path: &str,
     provider: &dyn PreviewProvider,
@@ -147,15 +148,32 @@ fn load_with_provider(
         return;
     }
 
-    if let Some(lines) = result.text_lines {
-        let _ = out.send(InputEvent::PreviewReady(PreviewReadyEvent {
+    let _ = match (result.sixel_data, result.text_lines) {
+        (Some(sixel_data), Some(styled_lines)) => out.send(InputEvent::CombinedPreviewReady(CombinedPreviewReadyEvent {
             path: path.to_string(),
-            styled_lines: lines,
+            styled_lines,
+            sixel_data,
+            pixel_width: result.sixel_pixel_width,
+            pixel_height: result.sixel_pixel_height,
+            file_type_label: result.file_type_label,
+            is_rendered: result.is_rendered,
+        })),
+        (Some(sixel_data), None) => out.send(InputEvent::ImagePreviewReady(ImagePreviewReadyEvent {
+            path: path.to_string(),
+            sixel_data,
+            pixel_width: result.sixel_pixel_width,
+            pixel_height: result.sixel_pixel_height,
+            file_type_label: result.file_type_label.unwrap_or_else(|| "Image".to_string()),
+        })),
+        (None, Some(styled_lines)) => out.send(InputEvent::PreviewReady(PreviewReadyEvent {
+            path: path.to_string(),
+            styled_lines,
             file_type_label: result.file_type_label,
             is_rendered: result.is_rendered,
             is_placeholder: result.is_placeholder,
-        }));
-    }
+        })),
+        (None, None) => Ok(()),
+    };
 }
 
 #[cfg(test)]

@@ -2138,13 +2138,23 @@ internal sealed class App
 
     private void RenderCombinedPreview(ScreenBuffer buffer, Rect pane)
     {
+        _sixelImageTop = RenderCombinedPreview(buffer, pane, _cachedStyledLines!, _isRenderedPreview);
+        _sixelPending = true;
+    }
+
+    /// <summary>
+    /// Text at the top of <paramref name="pane"/> (at most half, at least one
+    /// row) and a blank image area below; returns the image's top row.
+    /// Static so renderer fixtures can drive it without App state.
+    /// </summary>
+    internal static int RenderCombinedPreview(ScreenBuffer buffer, Rect pane, StyledLine[] lines, bool isRendered)
+    {
         // Split pane: text at top, image below
-        int textRows = Math.Min(_cachedStyledLines!.Length, pane.Height / 2);
+        int textRows = Math.Min(lines.Length, pane.Height / 2);
         textRows = Math.Max(textRows, 1);
-        int imageRows = pane.Height - textRows;
 
         var textRect = new Rect(pane.Left, pane.Top, pane.Width, textRows);
-        PaneRenderer.RenderPreview(buffer, textRect, _cachedStyledLines, showLineNumbers: !_isRenderedPreview);
+        PaneRenderer.RenderPreview(buffer, textRect, lines, showLineNumbers: !isRendered);
 
         // Fill image area with spaces for Sixel rendering
         int imageTop = pane.Top + textRows;
@@ -2153,8 +2163,7 @@ internal sealed class App
             buffer.FillRow(row, pane.Left, pane.Width, ' ', CellStyle.Default);
         }
 
-        _sixelImageTop = imageTop;
-        _sixelPending = true;
+        return imageTop;
     }
 
     private void RenderMetadataWithText(ScreenBuffer buffer, Rect pane) =>
@@ -2190,10 +2199,20 @@ internal sealed class App
 
     private void RenderMetadataWithImage(ScreenBuffer buffer, Rect pane)
     {
-        StyledLine[] metadataLines = MetadataRenderer.Render(_cachedMetadataSections!, pane.Width);
+        _sixelImageTop = RenderMetadataWithImage(buffer, pane, _cachedMetadataSections!);
+        _sixelPending = true;
+    }
+
+    /// <summary>
+    /// Metadata at the top of <paramref name="pane"/> (at most half, its last
+    /// row a separator) and a blank image area below; returns the image's top
+    /// row. Static so renderer fixtures can drive it without App state.
+    /// </summary>
+    internal static int RenderMetadataWithImage(ScreenBuffer buffer, Rect pane, MetadataSection[] sections)
+    {
+        StyledLine[] metadataLines = MetadataRenderer.Render(sections, pane.Width);
 
         int metadataRows = Math.Min(metadataLines.Length + 1, pane.Height / 2); // +1 for separator row
-        int imageRows = pane.Height - metadataRows;
 
         var metadataRect = new Rect(pane.Left, pane.Top, pane.Width, metadataRows);
         PaneRenderer.RenderPreview(buffer, metadataRect, metadataLines, showLineNumbers: false);
@@ -2208,8 +2227,7 @@ internal sealed class App
             buffer.FillRow(row, pane.Left, pane.Width, ' ', CellStyle.Default);
         }
 
-        _sixelImageTop = imageTop;
-        _sixelPending = true;
+        return imageTop;
     }
 
     private void RenderExpandedPreview(ScreenBuffer buffer, int width, int height)

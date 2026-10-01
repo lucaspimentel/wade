@@ -25,10 +25,10 @@ this file to be empty or fully accepted.
   permission. Revisit with the Phase 9 unix work.
 - **Later-phase preview and metadata providers are absent (Phase 7a).**
   The registries hold only the ported providers, in C# order. Missing until
-  their phases: image and PDF previews and metadata (Phase 8), and the MSI preview plus executable, Office, NuGet,
-  media and MSI metadata (Phase 9). Files of those types fall through to
-  the next applicable provider (usually None, Text or Hex). Image and
-  combined (text + Sixel) results arrive with Phase 8b.
+  their phases: image metadata (8c), PDF preview and metadata (8d), and
+  the MSI preview plus executable, Office, NuGet, media and MSI metadata
+  (Phase 9). Files of those types fall through to the next applicable
+  provider (usually None, Text or Hex).
 - **Unix terminals report default capabilities (Phase 8a).** Windows
   detects Sixel via `WT_SESSION` like C#; the Unix DA1/cell-size query
   needs the raw tty setup of the Phase 9 Unix input work, so Unix runs
@@ -56,7 +56,7 @@ this file to be empty or fully accepted.
   context menu Paste/Copy/Cut entries.
 - **Config toggles for unported subsystems are inert (Phase 3c).** The
   config dialog ports all 27 settings and persists them, but toggles
-  gating providers that land in later phases (image/PDF previews,
+  gating providers that land in later phases (PDF previews,
   PDF/media metadata) have no runtime effect until those
   phases land.
 - **Dates carry no local timezone offset (Phase 3a).**
@@ -72,6 +72,12 @@ this file to be empty or fully accepted.
   format and volume label.
 
 ## Accepted (deliberate, permanent)
+- **Image preview pixels differ from C# (Phase 8b).** Previews decode
+  with the `image` crate and scale with a triangle filter instead of
+  ImageSharp's bicubic resampler, and the median-cut palette sorts
+  without .NET's introsort tie order, so Sixel bytes differ from C#.
+  Fit size (never upscaled), labels, layout and when the Sixel is written
+  match C#; exact pixels were judged unnecessary for previews.
 - **Markdown parses with pulldown-cmark, not Markdig (Phase 7d).** The
   renderer reproduces `MarkdigRenderer` on an equivalent tree (silent
   link-definition and HTML blocks, dropped entities, first-word fence

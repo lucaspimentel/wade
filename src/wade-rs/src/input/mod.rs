@@ -90,6 +90,8 @@ pub enum InputEvent {
     FileFinderScanComplete(FileFinderScanCompleteEvent),
     FileFinderSearchResult(FileFinderSearchResultEvent),
     PreviewReady(PreviewReadyEvent),
+    ImagePreviewReady(ImagePreviewReadyEvent),
+    CombinedPreviewReady(CombinedPreviewReadyEvent),
     MetadataReady(MetadataReadyEvent),
     PreviewLoadingComplete(PreviewLoadingCompleteEvent),
 }
@@ -148,6 +150,28 @@ pub struct PreviewReadyEvent {
     pub file_type_label: Option<String>,
     pub is_rendered: bool,
     pub is_placeholder: bool,
+}
+
+/// Port of the `ImagePreviewReadyEvent` record: Sixel data for `path`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ImagePreviewReadyEvent {
+    pub path: String,
+    pub sixel_data: String,
+    pub pixel_width: i32,
+    pub pixel_height: i32,
+    pub file_type_label: String,
+}
+
+/// Port of the `CombinedPreviewReadyEvent` record: text above an image.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CombinedPreviewReadyEvent {
+    pub path: String,
+    pub styled_lines: Vec<crate::highlight::StyledLine>,
+    pub sixel_data: String,
+    pub pixel_width: i32,
+    pub pixel_height: i32,
+    pub file_type_label: Option<String>,
+    pub is_rendered: bool,
 }
 
 /// Port of the `MetadataReadyEvent` record: merged metadata sections, plus

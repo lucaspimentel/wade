@@ -8,6 +8,7 @@ pub mod input;
 pub mod preview;
 pub mod rune_width;
 pub mod highlight;
+pub mod imaging;
 pub mod screen;
 pub mod search;
 pub mod terminal_caps;

@@ -612,6 +612,20 @@ fn run_scenario(path: &Path) -> String {
                     tokens[2] == "hex",
                 );
             }
+            "metaimage" => {
+                // metaimage PANE: metadata header above a blank image area
+                let buffer = buffer.as_mut().expect("size op first");
+                let top = wade::app::preview::render_metadata_with_image(buffer, pane_rect(&layout, tokens[1]), &metadata_sections);
+                buffer.write_string(0, 0, &format!("top={top}"), CellStyle::default(), 20);
+            }
+            "combined" => {
+                // combined PANE text|hex FILE: preview text above a blank image area
+                let lines = load_preview_lines(path, tokens[2], tokens[3]);
+                let buffer = buffer.as_mut().expect("size op first");
+                let top =
+                    wade::app::preview::render_combined_preview(buffer, pane_rect(&layout, tokens[1]), &lines, tokens[2] == "hex");
+                buffer.write_string(0, 0, &format!("top={top}"), CellStyle::default(), 20);
+            }
             "flush" => {
                 let buffer = buffer.as_mut().expect("size op first");
                 buffer.serialize(&mut out);

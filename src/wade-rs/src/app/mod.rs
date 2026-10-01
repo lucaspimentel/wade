@@ -302,6 +302,11 @@ impl App {
             self.render(&mut buffer);
             flush_buffer(&mut buffer);
 
+            // Sixel data goes out after the flush, bypassing the cell grid
+            if let Some(sixel) = self.take_pending_sixel() {
+                write_raw(&sixel);
+            }
+
             // Wait for next input event (pump thread feeds the queue; loader
             // threads send into the same queue)
             let Some(event) = self.pipeline.wait_next(cancel) else {
@@ -329,6 +334,8 @@ impl App {
                     InputEvent::FileFinderScanComplete(event) => self.handle_file_finder_scan_complete(event),
                     InputEvent::FileFinderSearchResult(event) => self.handle_file_finder_search_result(event),
                     InputEvent::PreviewReady(event) => self.handle_preview_ready(event),
+                    InputEvent::ImagePreviewReady(event) => self.handle_image_preview_ready(event),
+                    InputEvent::CombinedPreviewReady(event) => self.handle_combined_preview_ready(event),
                     InputEvent::MetadataReady(event) => self.handle_metadata_ready(event),
                     InputEvent::PreviewLoadingComplete(event) => self.handle_preview_loading_complete(event),
                 }
@@ -353,6 +360,8 @@ impl App {
                 InputEvent::FileFinderScanComplete(event) => self.handle_file_finder_scan_complete(event),
                 InputEvent::FileFinderSearchResult(event) => self.handle_file_finder_search_result(event),
                 InputEvent::PreviewReady(event) => self.handle_preview_ready(event),
+                InputEvent::ImagePreviewReady(event) => self.handle_image_preview_ready(event),
+                InputEvent::CombinedPreviewReady(event) => self.handle_combined_preview_ready(event),
                 InputEvent::MetadataReady(event) => self.handle_metadata_ready(event),
                 InputEvent::PreviewLoadingComplete(event) => self.handle_preview_loading_complete(event),
             }
@@ -375,6 +384,36 @@ impl App {
         } else {
             None
         }
+    }
+
+    /// The Sixel write after a flush (App.cs:270-289): only while an image
+    /// is pending, the preview is visible, and no modal is open. Returns the
+    /// cursor move plus the Sixel data.
+    pub(crate) fn take_pending_sixel(&mut self) -> Option<String> {
+        let expanded = self.input_mode == InputMode::ExpandedPreview;
+        if !self.preview.sixel_pending
+            || !(self.preview_pane_enabled || expanded)
+            || !matches!(self.input_mode, InputMode::Normal | InputMode::Search | InputMode::ExpandedPreview)
+        {
+            return None;
+        }
+
+        let sixel = self.preview.cached_sixel_data.as_ref()?;
+        self.preview.sixel_pending = false;
+
+        let pane = if expanded { self.layout.expanded_pane } else { self.layout.right_pane };
+        let mut row = if self.preview.sixel_image_top > 0 { self.preview.sixel_image_top } else { pane.top };
+        let mut col = pane.left;
+
+        let (pixel_width, pixel_height) = (self.preview.cached_image_pixel_width, self.preview.cached_image_pixel_height);
+        if !self.preview.is_combined_preview && expanded && pixel_width > 0 && pixel_height > 0 {
+            (row, col) = pane.center_content(
+                pixel_width / self.capabilities.cell_pixel_width.max(1),
+                pixel_height / self.capabilities.cell_pixel_height.max(1),
+            );
+        }
+
+        Some(format!("{}{sixel}", crate::ansi::move_cursor(row, col)))
     }
 
     /// Applies detected terminal capabilities (App.cs:237-241).
@@ -1799,6 +1838,15 @@ fn terminal_size() -> Option<(i32, i32)> {
 
 pub(crate) fn clear_screen() {
     print!("{}", crate::ansi::CLEAR_SCREEN);
+}
+
+/// `ScreenBuffer.WriteRaw`: straight to stdout, flushed.
+fn write_raw(data: &str) {
+    use std::io::Write;
+    let stdout = std::io::stdout();
+    let mut lock = stdout.lock();
+    let _ = lock.write_all(data.as_bytes());
+    let _ = lock.flush();
 }
 
 fn flush_buffer(buffer: &mut ScreenBuffer) {

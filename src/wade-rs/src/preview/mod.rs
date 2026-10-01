@@ -38,7 +38,7 @@ pub struct PreviewContext {
     pub archive_metadata_enabled: bool,
 }
 
-/// Port of `PreviewResult` (Sixel image fields arrive with Phase 8).
+/// Port of `PreviewResult`.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct PreviewResult {
     pub text_lines: Option<Vec<StyledLine>>,
@@ -48,6 +48,10 @@ pub struct PreviewResult {
     /// A placeholder message rather than content (suppresses the split
     /// layout when metadata is present).
     pub is_placeholder: bool,
+    /// Sixel image data and its pixel size (image and PDF previews).
+    pub sixel_data: Option<String>,
+    pub sixel_pixel_width: i32,
+    pub sixel_pixel_height: i32,
 }
 
 /// Port of `MetadataEntry`. An empty label renders as a list item.

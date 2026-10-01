@@ -1,0 +1,10 @@
+# Metadata header, separator, then the blank area a Sixel image covers
+size 80 25
+layout 3pane
+msection "photo.png"
+mentry "Git" "Modified"
+msection "Image"
+mentry "Resolution" "640 × 480"
+mentry "Format" "PNG"
+metaimage right
+flush

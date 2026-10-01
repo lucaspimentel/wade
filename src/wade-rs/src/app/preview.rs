@@ -1,13 +1,15 @@
 //! Port of the App preview flow (App.cs): the selection-change trigger,
 //! `BuildPreviewContext`, `ReloadActiveProvider`, `ClearPreviewCache`, the
 //! loader event handlers, the right-pane file preview, the "Change
-//! preview" menu, and expanded-preview mode. Image, combined and Sixel
-//! paths arrive with Phase 8.
+//! preview" menu, expanded-preview mode, and the image (Sixel) paths.
 
 use crate::app::input_reader::AppAction;
 use crate::app::App;
 use crate::highlight::StyledLine;
-use crate::input::{InputMode, KeyEvent, MetadataReadyEvent, MouseEvent, PreviewLoadingCompleteEvent, PreviewReadyEvent};
+use crate::input::{
+    CombinedPreviewReadyEvent, ImagePreviewReadyEvent, InputMode, KeyEvent, MetadataReadyEvent, MouseEvent,
+    PreviewLoadingCompleteEvent, PreviewReadyEvent,
+};
 use crate::preview::providers::NonePreviewProvider;
 use crate::preview::{registry, MetadataProvider, MetadataSection, PreviewContext, PreviewProvider};
 use crate::screen::{CellStyle, Color, ScreenBuffer};
@@ -48,6 +50,37 @@ pub struct PreviewState {
     pub(crate) is_rendered: bool,
     pub(crate) is_placeholder: bool,
     pub(crate) expanded_scroll_offset: usize,
+    // Image previews (C# `_cachedSixelData`, `_cachedImagePath`, ...)
+    pub(crate) cached_sixel_data: Option<String>,
+    pub(crate) cached_image_path: Option<String>,
+    pub(crate) cached_image_pixel_width: i32,
+    pub(crate) cached_image_pixel_height: i32,
+    pub(crate) is_image_preview: bool,
+    pub(crate) is_combined_preview: bool,
+    /// The next flush writes the cached Sixel data.
+    pub(crate) sixel_pending: bool,
+    /// Row the image starts on below a text/metadata header; 0 for the
+    /// pane top.
+    pub(crate) sixel_image_top: i32,
+}
+
+impl PreviewState {
+    /// C# `(_isImagePreview ? _cachedImagePath : _cachedPreviewPath)`, when
+    /// either is set.
+    pub(crate) fn reload_path(&self) -> Option<String> {
+        if self.cached_path.is_none() && self.cached_image_path.is_none() {
+            return None;
+        }
+
+        if self.is_image_preview { self.cached_image_path.clone() } else { self.cached_path.clone() }
+    }
+
+    /// Drops the image before a reload at a new size.
+    fn drop_image_for_reload(&mut self) {
+        self.cached_sixel_data = None;
+        self.sixel_pending = false;
+        self.cached_styled_lines = None;
+    }
 }
 
 impl App {
@@ -137,6 +170,10 @@ impl App {
             state.cached_metadata_file_type_label = None;
         }
 
+        state.cached_sixel_data = None;
+        state.cached_image_path = None;
+        state.is_image_preview = false;
+        state.is_combined_preview = false;
         state.is_rendered = false;
         state.is_placeholder = false;
         let sender = self.pipeline.sender();
@@ -149,6 +186,10 @@ impl App {
     pub(crate) fn clear_preview_cache(&mut self) {
         if self.input_mode == InputMode::ExpandedPreview {
             self.input_mode = InputMode::Normal;
+        }
+
+        if self.preview.is_image_preview {
+            self.request_full_redraw = true;
         }
 
         self.preview.loader.cancel();
@@ -172,6 +213,49 @@ impl App {
         state.loading = false;
         state.is_rendered = event.is_rendered;
         state.is_placeholder = event.is_placeholder;
+        state.is_image_preview = false;
+        state.is_combined_preview = false;
+        state.cached_sixel_data = None;
+        state.cached_image_path = None;
+    }
+
+    /// Port of `HandleImagePreviewReady`.
+    pub fn handle_image_preview_ready(&mut self, event: ImagePreviewReadyEvent) {
+        if self.preview.pending_path.as_deref() != Some(event.path.as_str()) {
+            return;
+        }
+
+        let state = &mut self.preview;
+        state.cached_image_path = Some(event.path.clone());
+        state.cached_path = Some(event.path);
+        state.cached_sixel_data = Some(event.sixel_data);
+        state.cached_image_pixel_width = event.pixel_width;
+        state.cached_image_pixel_height = event.pixel_height;
+        state.cached_file_type_label = Some(event.file_type_label);
+        state.cached_styled_lines = None;
+        state.is_image_preview = true;
+        state.is_combined_preview = false;
+        state.loading = false;
+    }
+
+    /// Port of `HandleCombinedPreviewReady`.
+    pub fn handle_combined_preview_ready(&mut self, event: CombinedPreviewReadyEvent) {
+        if self.preview.pending_path.as_deref() != Some(event.path.as_str()) {
+            return;
+        }
+
+        let state = &mut self.preview;
+        state.cached_image_path = Some(event.path.clone());
+        state.cached_path = Some(event.path);
+        state.cached_styled_lines = Some(event.styled_lines);
+        state.cached_sixel_data = Some(event.sixel_data);
+        state.cached_image_pixel_width = event.pixel_width;
+        state.cached_image_pixel_height = event.pixel_height;
+        state.cached_file_type_label = event.file_type_label;
+        state.is_image_preview = false;
+        state.is_combined_preview = true;
+        state.is_rendered = event.is_rendered;
+        state.loading = false;
     }
 
     /// Port of `HandlePreviewLoadingComplete`.
@@ -228,8 +312,13 @@ impl App {
         }
 
         let path = selected.full_path.clone();
+        let was_image = self.preview.is_image_preview || self.preview.is_combined_preview;
         self.preview.active_provider_index = index;
         self.reload_active_provider(&path, true);
+
+        if was_image {
+            self.request_full_redraw = true;
+        }
     }
 
     /// True when Open on a file should enter expanded preview (App.cs:713).
@@ -277,8 +366,8 @@ impl App {
         self.preview.expanded_scroll_offset = 0;
         let expanded = self.layout.expanded_pane;
 
-        if let Some(path) = self.preview.cached_path.clone() {
-            self.preview.cached_styled_lines = None;
+        if let Some(path) = self.preview.reload_path() {
+            self.preview.drop_image_for_reload();
             self.preview.active_context = Some(self.build_preview_context(expanded.width, expanded.height));
             self.reload_active_provider(&path, false);
         } else {
@@ -300,8 +389,8 @@ impl App {
         self.input_mode = InputMode::Normal;
         self.preview.expanded_scroll_offset = 0;
 
-        if let Some(path) = self.preview.cached_path.clone() {
-            self.preview.cached_styled_lines = None;
+        if let Some(path) = self.preview.reload_path() {
+            self.preview.drop_image_for_reload();
             let right = self.layout.right_pane;
             self.preview.active_context = Some(self.build_preview_context(right.width, right.height));
             self.reload_active_provider(&path, true);
@@ -319,8 +408,8 @@ impl App {
             self.layout.right_pane
         };
 
-        if let Some(path) = self.preview.cached_path.clone() {
-            self.preview.cached_styled_lines = None;
+        if let Some(path) = self.preview.reload_path() {
+            self.preview.drop_image_for_reload();
             self.preview.active_context = Some(self.build_preview_context(pane.width, pane.height));
             self.reload_active_provider(&path, true);
         }
@@ -402,7 +491,11 @@ impl App {
                 self.preview.applicable_providers = Some(Vec::new());
                 self.preview.cached_path = Some(path.to_string());
             } else {
+                let was_image = self.preview.is_image_preview || self.preview.is_combined_preview;
                 self.reload_active_provider(path, true);
+                if was_image {
+                    buffer.force_full_redraw();
+                }
             }
         }
 
@@ -422,18 +515,37 @@ impl App {
             PaneRenderer::render_message(buffer, pane, message);
         } else if state.loading && state.cached_metadata_sections.is_none() {
             PaneRenderer::render_message(buffer, pane, "[loading\u{2026}]");
-        } else if let Some(sections) = state
-            .cached_metadata_sections
-            .as_ref()
-            .filter(|_| !state.loading && (state.cached_styled_lines.is_none() || state.is_placeholder))
-        {
+        } else if let Some(sections) = state.cached_metadata_sections.as_ref().filter(|_| {
+            !state.loading
+                && !state.is_image_preview
+                && !state.is_combined_preview
+                && (state.cached_styled_lines.is_none() || state.is_placeholder)
+        }) {
             // Metadata only (no preview provider, or a placeholder preview)
             let metadata_lines = metadata_renderer::render(sections, pane.width);
             PaneRenderer::render_preview(buffer, pane, &metadata_lines, 0, false);
+        } else if let (Some(sections), true, true) =
+            (&state.cached_metadata_sections, state.is_image_preview, state.cached_sixel_data.is_some())
+        {
+            // Metadata above the image
+            let image_top = render_metadata_with_image(buffer, pane, sections);
+            self.preview.sixel_image_top = image_top;
+            self.preview.sixel_pending = true;
         } else if let (Some(sections), Some(lines), false) =
             (&state.cached_metadata_sections, &state.cached_styled_lines, state.is_placeholder)
         {
             render_metadata_with_text(buffer, pane, sections, lines, state.is_rendered);
+        } else if let (true, Some(lines), true) =
+            (state.is_combined_preview, &state.cached_styled_lines, state.cached_sixel_data.is_some())
+        {
+            let image_top = render_combined_preview(buffer, pane, lines, state.is_rendered);
+            self.preview.sixel_image_top = image_top;
+            self.preview.sixel_pending = true;
+        } else if state.is_image_preview && state.cached_sixel_data.is_some() {
+            // Claim the pane for the image (the Sixel bypasses the cells)
+            fill_blank(buffer, pane, pane.top);
+            self.preview.sixel_image_top = 0;
+            self.preview.sixel_pending = true;
         } else if let Some(lines) = &state.cached_styled_lines {
             PaneRenderer::render_preview(buffer, pane, lines, 0, !state.is_rendered);
         }
@@ -441,11 +553,22 @@ impl App {
 
     /// Port of `RenderExpandedPreview` (the status bar is drawn by the
     /// caller with the cached preview path).
-    pub(crate) fn render_expanded_preview_pane(&self, buffer: &mut ScreenBuffer) {
+    pub(crate) fn render_expanded_preview_pane(&mut self, buffer: &mut ScreenBuffer) {
         let pane = self.layout.expanded_pane;
+        let state = &self.preview;
 
-        if self.preview.loading {
+        if state.loading {
             PaneRenderer::render_message(buffer, pane, "[loading\u{2026}]");
+        } else if let (true, Some(lines), true) =
+            (state.is_combined_preview, &state.cached_styled_lines, state.cached_sixel_data.is_some())
+        {
+            let image_top = render_combined_preview(buffer, pane, lines, state.is_rendered);
+            self.preview.sixel_image_top = image_top;
+            self.preview.sixel_pending = true;
+        } else if state.is_image_preview && state.cached_sixel_data.is_some() {
+            fill_blank(buffer, pane, pane.top);
+            self.preview.sixel_image_top = 0;
+            self.preview.sixel_pending = true;
         } else if let Some(lines) = &self.preview.cached_styled_lines {
             PaneRenderer::render_preview(buffer, pane, lines, self.preview.expanded_scroll_offset, !self.preview.is_rendered);
         }
@@ -465,6 +588,43 @@ impl App {
 
         (!sections.is_empty()).then_some(sections)
     }
+}
+
+/// Fills `pane` from `top` down with blank cells so the buffer claims the
+/// area the Sixel image draws over.
+fn fill_blank(buffer: &mut ScreenBuffer, pane: Rect, top: i32) {
+    for row in top..pane.top + pane.height {
+        buffer.fill_row(row, pane.left, pane.width, ' ', CellStyle::default());
+    }
+}
+
+/// Port of `RenderMetadataWithImage`: metadata on top (at most half the
+/// pane, the last row a separator), blank image area below. Returns the
+/// image's top row.
+pub fn render_metadata_with_image(buffer: &mut ScreenBuffer, pane: Rect, sections: &[MetadataSection]) -> i32 {
+    let metadata_lines = metadata_renderer::render(sections, pane.width);
+    let metadata_rows = (metadata_lines.len() as i32 + 1).min(pane.height / 2);
+
+    let metadata_rect = Rect::new(pane.left, pane.top, pane.width, metadata_rows);
+    PaneRenderer::render_preview(buffer, metadata_rect, &metadata_lines, 0, false);
+    buffer.fill_row(pane.top + metadata_rows - 1, pane.left, pane.width, '\u{2500}', META_SEPARATOR_STYLE);
+
+    let image_top = pane.top + metadata_rows;
+    fill_blank(buffer, pane, image_top);
+    image_top
+}
+
+/// Port of `RenderCombinedPreview`: text on top (at most half the pane, at
+/// least one row), blank image area below. Returns the image's top row.
+pub fn render_combined_preview(buffer: &mut ScreenBuffer, pane: Rect, lines: &[StyledLine], is_rendered: bool) -> i32 {
+    let text_rows = (lines.len() as i32).min(pane.height / 2).max(1);
+
+    let text_rect = Rect::new(pane.left, pane.top, pane.width, text_rows);
+    PaneRenderer::render_preview(buffer, text_rect, lines, 0, !is_rendered);
+
+    let image_top = pane.top + text_rows;
+    fill_blank(buffer, pane, image_top);
+    image_top
 }
 
 /// Port of `RenderMetadataWithText`: metadata on top (at most half the
@@ -530,6 +690,8 @@ mod tests {
 
             match app.pipeline.try_take() {
                 Some(InputEvent::PreviewReady(event)) => app.handle_preview_ready(event),
+                Some(InputEvent::ImagePreviewReady(event)) => app.handle_image_preview_ready(event),
+                Some(InputEvent::CombinedPreviewReady(event)) => app.handle_combined_preview_ready(event),
                 Some(InputEvent::MetadataReady(event)) => app.handle_metadata_ready(event),
                 Some(InputEvent::PreviewLoadingComplete(event)) => app.handle_preview_loading_complete(event),
                 Some(_) => {}
@@ -597,6 +759,74 @@ mod tests {
         app.config.image_previews_enabled = false;
         app.set_capabilities(app.capabilities);
         assert!(!app.build_preview_context(40, 20).image_previews_enabled);
+    }
+
+    fn sixel_app(name: &str) -> (App, std::path::PathBuf) {
+        let (mut app, root) = app_with(name, &[]);
+        image::RgbImage::from_fn(64, 32, |x, y| image::Rgb([x as u8 * 4, y as u8 * 8, 90]))
+            .save(root.join("pic.png"))
+            .unwrap();
+        app.set_capabilities(crate::terminal_caps::TerminalCapabilities {
+            sixel_supported: true,
+            cell_pixel_width: 8,
+            cell_pixel_height: 16,
+        });
+        (app, root)
+    }
+
+    #[test]
+    fn image_preview_loads_and_writes_sixel_after_render() {
+        let (mut app, _root) = sixel_app("app-image");
+        render(&mut app);
+        pump(&mut app, |app| loaded(app) && app.preview.cached_metadata_sections.is_some());
+
+        assert!(app.preview.is_image_preview);
+        assert_eq!(app.preview.cached_file_type_label.as_deref(), Some("PNG Image (64 x 32)"));
+        assert_eq!((app.preview.cached_image_pixel_width, app.preview.cached_image_pixel_height), (64, 32));
+
+        // Metadata above the image: the Sixel starts below the header
+        render(&mut app);
+        assert!(app.preview.sixel_pending);
+        assert!(app.preview.sixel_image_top > app.layout.right_pane.top);
+
+        let sixel = app.take_pending_sixel().expect("sixel written");
+        let cursor = crate::ansi::move_cursor(app.preview.sixel_image_top, app.layout.right_pane.left);
+        assert!(sixel.starts_with(&format!("{cursor}\x1bPq")));
+        assert!(app.take_pending_sixel().is_none(), "written once per render");
+    }
+
+    #[test]
+    fn sixel_is_suppressed_under_modals_and_without_sixel_support() {
+        let (mut app, _root) = sixel_app("app-image-modal");
+        render(&mut app);
+        pump(&mut app, |app| loaded(app) && app.preview.cached_metadata_sections.is_some());
+        render(&mut app);
+
+        app.input_mode = InputMode::Help;
+        assert!(app.take_pending_sixel().is_none());
+
+        let (mut plain, _root) = app_with("app-image-nosixel", &[]);
+        image::RgbImage::new(8, 8).save(_root.join("pic.png")).unwrap();
+        render(&mut plain);
+        pump(&mut plain, loaded);
+        assert!(!plain.preview.is_image_preview, "no Sixel support: no image provider");
+    }
+
+    #[test]
+    fn expanded_image_is_centered() {
+        let (mut app, _root) = sixel_app("app-image-expanded");
+        render(&mut app);
+        pump(&mut app, |app| loaded(app) && app.preview.cached_metadata_sections.is_some());
+
+        app.dispatch(AppAction::Open);
+        assert_eq!(app.input_mode, InputMode::ExpandedPreview);
+        pump(&mut app, |app| loaded(app) && app.preview.is_image_preview);
+        render(&mut app);
+
+        // 64x32 px over 8x16 px cells: 8x2 cells centered in the 80x24 pane
+        let expected = app.layout.expanded_pane.center_content(8, 2);
+        let sixel = app.take_pending_sixel().expect("sixel");
+        assert!(sixel.starts_with(&crate::ansi::move_cursor(expected.0, expected.1)));
     }
 
     #[test]

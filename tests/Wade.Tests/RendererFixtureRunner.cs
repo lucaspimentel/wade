@@ -419,6 +419,22 @@ internal static class RendererFixtureRunner
                         isRendered: tokens[2] == "hex");
                     break;
                 }
+                case "metaimage":
+                {
+                    // metaimage PANE: metadata header above a blank image area
+                    int imageTop = App.RenderMetadataWithImage(buffer, PaneRect(layout, tokens[1]), [.. metadataSections]);
+                    buffer.WriteString(0, 0, $"top={imageTop}", CellStyle.Default, 20);
+                    break;
+                }
+                case "combined":
+                {
+                    // combined PANE text|hex FILE: preview text above a blank image area
+                    StyledLine[] previewLines = LoadPreviewLines(scenarioPath, tokens[2], tokens[3]);
+                    int imageTop = App.RenderCombinedPreview(buffer, PaneRect(layout, tokens[1]), previewLines,
+                        isRendered: tokens[2] == "hex");
+                    buffer.WriteString(0, 0, $"top={imageTop}", CellStyle.Default, 20);
+                    break;
+                }
                 case "flush":
                     buffer.Serialize(sb);
                     flushes.Add(sb.ToString());
