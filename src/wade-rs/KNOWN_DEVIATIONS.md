@@ -80,20 +80,26 @@ this file to be empty or fully accepted.
   `fullRefresh` flag, so a buffer overflow followed within 300ms by an
   ordinary change loses the full refresh. Rust ORs the flag across the
   window.
-- **Finder match positions count code points (Phase 5).** The scorer runs
-  over `char`s, so positions index code points; C# indexes UTF-16 units.
-  They agree for BMP paths. For astral-plane names (emoji) C# draws split
-  surrogate halves, while Rust draws whole characters.
-- **Scorer character classes follow std outside ASCII (Phase 5).** The
-  boundary bonuses use .NET `char.IsUpper`/`IsLower`/`IsDigit`/
-  `IsLetterOrDigit` (Unicode general categories); Rust uses std
-  `is_uppercase`/`is_lowercase`/`is_numeric`/`is_alphanumeric`, which use
-  different Unicode properties (for example Roman numerals count as
-  uppercase and numeric). Case folding takes the first char of std's
-  lowercase mapping and only single-char uppercase mappings (matching the
-  .NET simple mappings for common cases such as `İ` and `ß`). ASCII scores
-  are identical, pinned by `tests/golden/search/scorer.golden.txt`;
-  non-ASCII names can tie-break differently.
+- **Text positions count code points (Phases 5-6).** The finder scorer and
+  the syntax highlighters run over `char`s, so match positions and span
+  `start`/`len` index code points; C# indexes UTF-16 units. They agree for
+  BMP text. For astral-plane characters (emoji) C# finder rows draw split
+  surrogate halves, while Rust draws whole characters; the highlight
+  golden harness maps Rust positions to UTF-16 units and matches C#
+  exactly, so the difference is only that mapping.
+- **Character classes follow std outside ASCII (Phases 5-6).** The search
+  scorer's boundary bonuses and the highlighters' identifier, digit and
+  whitespace tests use .NET `char.IsUpper`/`IsLower`/`IsDigit`/`IsLetter`/
+  `IsLetterOrDigit`/`IsWhiteSpace` (Unicode general categories); Rust
+  (`crate::text`) uses std `is_uppercase`/`is_lowercase`/`is_numeric`/
+  `is_alphabetic`/`is_alphanumeric`/`is_whitespace`, which use different
+  Unicode properties (for example Roman numerals count as uppercase and
+  numeric). Case folding takes the first char of std's lowercase mapping
+  and only single-char uppercase mappings (matching the .NET simple
+  mappings for common cases such as `İ` and `ß`). ASCII behavior is
+  identical, pinned by `tests/golden/search/scorer.golden.txt` and
+  `tests/golden/highlight/`; non-ASCII names can tie-break differently and
+  rare non-ASCII identifiers or digits can tokenize differently.
 - **Finder results appear once their entries arrive (Phase 5).** A result
   can reach the finder before the walk's batch carrying its entry. C# does
   not rebuild its cached display list when entries arrive, so such results

@@ -68,8 +68,8 @@ done (ScreenBuffer golden frames shipped with Phase 0's harness), Phase 3
 done (split into 3a app spine, 3b modal overlays, 3c config dialog /
 bookmarks / path completion / paste / mouse + context menu), Phase 4
 done (4a git status, 4b git actions, 4c file operations, 4d loaders,
-watcher, and properties), Phase 5 done (search + file finder). Next:
-Phase 6 syntax highlighting.
+watcher, and properties), Phase 5 done (search + file finder), Phase 6
+done (syntax highlighting). Next: Phase 7 preview + metadata core.
 
 ### Phase 0 — Scaffold + golden-frame harness
 
@@ -125,12 +125,13 @@ Phase 6 syntax highlighting.
 - **Verify**: the C# FuzzyScorer/SearchQuery tests port nearly 1:1 here — this module is pure;
   port them as behavioral parity evidence.
 
-### Phase 6 — Syntax highlighting (agent fan-out)
+### Phase 6 — Syntax highlighting
 
-- SyntaxHighlighter/SyntaxTheme plus all 21 language modules. Establish the pattern by hand on
-  2-3 languages, then fan out agents per language using the established module as template.
-- **Verify**: C# per-language tests become golden-token fixtures shared conceptually across both
-  implementations (same input -> same spans).
+- SyntaxHighlighter/SyntaxTheme plus all 21 language modules. Ported sequentially (no agent
+  fan-out): the `RegexLanguage` base became a `CLikeLanguage` trait whose default methods are the
+  C# virtual hooks; Markdown's .NET regexes became hand-written matchers.
+- **Verify**: `tests/golden/highlight/` — every C# highlighting test input plus hand-written,
+  fuzz and token-soup cases; C# writes the exact spans and char styles, Rust reproduces them.
 
 ### Phase 7 — Preview + metadata core
 
