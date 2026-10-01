@@ -31,3 +31,82 @@ text - list item
 spans 0+1:Punctuation
 %%%% case 9
 text just plain text here
+%%%% case 10
+text # Title
+spans 0+7:Heading
+text ## Sub *heading*
+spans 0+16:Heading
+text 
+text Plain text with `code`, **bold**, __bold2__, *italic*, _italic2_ and a [link](https://x.y/z).
+spans 16+6:CodeSpan 24+8:Bold 34+9:Bold 45+8:Italic 55+9:Italic 71+21:Link
+text Mixed: **bold *nested italic* text** and *italic **bold** inside*.
+spans 7+29:Bold 49+8:Bold 14+15:Italic 41+24:Italic
+text Edge: ``double `tick` code`` and ```triple``` and `unterminated
+spans 6+22:CodeSpan 33+12:CodeSpan
+text Stars: * not italic *, a*b*c, a**b**c, ***both***, **, ****, * *.
+spans 31+5:Bold 39+9:Bold 51+6:Bold 7+14:Italic 24+3:Italic 61+3:Italic
+text Underscores: snake_case_name, __init__, _a_b_, ___x___.
+spans 30+8:Bold 47+6:Bold 18+6:Italic 40+3:Italic
+text Links: [a](b) [c] (d) [](e) [f]() [g](h)(i) [[nested]](url) [x](y [z](w)
+spans 7+6:Link 34+6:Link 60+12:Link
+text Backticks `` ` `` and `a`b`c` and ``a`
+spans 10+7:CodeSpan 22+3:CodeSpan 26+3:CodeSpan 34+4:CodeSpan
+text > quoted **bold**
+spans 0+1:Operator
+text >no space
+spans 0+1:Operator
+text - item one
+spans 0+1:Punctuation
+text * item *two*
+spans 0+1:Punctuation 0+8:Italic
+text + item three
+spans 0+1:Punctuation
+text    - indented item
+spans 3+1:Punctuation
+text 1. first
+spans 0+2:Punctuation
+text 10. tenth
+spans 0+3:Punctuation
+text 2) not a marker
+text 3.no space
+spans 0+2:Punctuation
+text ---
+spans 0+3:Operator
+text ***
+spans 0+3:Operator
+text ___
+spans 0+3:Operator
+text - - -
+spans 0+5:Operator
+text * * *
+spans 0+5:Operator
+text -- 
+spans 0+1:Punctuation
+text **
+spans 0+1:Punctuation
+text   ```rust
+spans 0+9:CodeSpan
+text   let x = 1; // inside fence
+spans 0+28:CodeSpan
+text   ```
+spans 0+5:CodeSpan
+text after fence
+text ~~~
+spans 0+3:CodeSpan
+text tilde fence **not bold**
+spans 0+24:CodeSpan
+text ~~~
+spans 0+3:CodeSpan
+%%%% case 11
+text ```
+spans 0+3:CodeSpan
+text unterminated fence
+spans 0+18:CodeSpan
+text still code
+spans 0+10:CodeSpan
+%%%% case 12
+text \u0009tab-indented *text*
+spans 14+6:Italic
+%%%% case 13
+text emoji 😀 **bold** after
+spans 9+8:Bold

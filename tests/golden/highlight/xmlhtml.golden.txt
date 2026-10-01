@@ -20,3 +20,37 @@ spans 0+5:Constant
 %%%% case 5
 text </div>
 spans 2+3:TagName 5+1:Punctuation
+%%%% case 6
+text <?xml version="1.0" encoding="utf-8"?>
+spans 1+4:AttrName 6+7:AttrName 13+1:Operator 14+5:AttrValue 20+8:AttrName 28+1:Operator 29+7:AttrValue 36+1:AttrName 37+1:Punctuation
+text <!DOCTYPE html>
+spans 1+8:AttrName 10+4:AttrName 14+1:Punctuation
+text <Project Sdk="Microsoft.NET.Sdk">
+spans 1+7:TagName 9+3:AttrName 12+1:Operator 13+19:AttrValue 32+1:Punctuation
+text   <!-- single-line comment -->
+spans 2+28:Comment
+text   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+spans 3+13:TagName 17+9:AttrName 26+1:Operator 27+33:AttrValue 60+1:Punctuation
+text     <TargetFramework>net10.0</TargetFramework>
+spans 5+15:TagName 20+1:Punctuation 30+15:TagName 45+1:Punctuation
+text     <Nullable>enable</Nullable>
+spans 5+8:TagName 13+1:Punctuation 22+8:TagName 30+1:Punctuation
+text   </PropertyGroup>
+spans 4+13:TagName 17+1:Punctuation
+text   <!-- multi
+spans 2+10:Comment
+text        line
+spans 0+11:Comment
+text   comment --> <after attr=unquoted />
+spans 0+13:Comment 15+5:TagName 21+4:AttrName 25+1:Operator 26+8:AttrName 35+1:Punctuation 36+1:Punctuation
+text   <img src='a.png' alt="x &amp; y" hidden/>
+spans 3+3:TagName 7+3:AttrName 10+1:Operator 11+7:AttrValue 19+3:AttrName 22+1:Operator 23+11:AttrValue 35+7:AttrName 42+1:Punctuation
+text   <ns:tag data-x="1">Tom &amp; Jerry &lt;3 &copy &#169;</ns:tag>
+spans 3+6:TagName 10+6:AttrName 16+1:Operator 17+3:AttrValue 20+1:Punctuation 25+5:Constant 37+4:Constant 43+5:Constant 49+6:Constant 57+6:TagName 63+1:Punctuation
+text   <unclosed attr="value
+spans 3+8:TagName 12+4:AttrName 16+1:Operator 17+6:AttrValue
+text </Project>
+spans 2+7:TagName 9+1:Punctuation
+%%%% case 7
+text <!-- unterminated
+spans 0+17:Comment

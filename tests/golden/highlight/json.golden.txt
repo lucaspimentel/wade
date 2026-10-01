@@ -19,3 +19,29 @@ spans 0+1:Punctuation 2+3:Key 5+1:Punctuation 7+1:Number 9+1:Punctuation
 %%%% case 6
 text { "a": { "b": 1 } }
 spans 0+1:Punctuation 2+3:Key 5+1:Punctuation 7+1:Punctuation 9+3:Key 12+1:Punctuation 14+1:Number 16+1:Punctuation 18+1:Punctuation
+%%%% case 7
+text {
+spans 0+1:Punctuation
+text   "name": "wade",
+spans 2+6:Key 8+1:Punctuation 10+6:String 16+1:Punctuation
+text   "version": 1.2e-3,
+spans 2+9:Key 11+1:Punctuation 13+6:Number 19+1:Punctuation
+text   "neg": -42,
+spans 2+5:Key 7+1:Punctuation 9+3:Number 12+1:Punctuation
+text   "flags": [true, false, null],
+spans 2+7:Key 9+1:Punctuation 11+1:Punctuation 12+4:Constant 16+1:Punctuation 18+5:Constant 23+1:Punctuation 25+4:Constant 29+1:Punctuation 30+1:Punctuation
+text   "nested": { "key": "va\\"lue", "arr": [1, 2, {"deep": "x"}] },
+spans 2+8:Key 10+1:Punctuation 12+1:Punctuation 14+5:Key 19+1:Punctuation 21+9:String 30+1:Punctuation 32+5:String 37+1:Punctuation 39+1:Punctuation 40+1:Number 41+1:Punctuation 43+1:Number 44+1:Punctuation 46+1:Punctuation 47+6:Key 53+1:Punctuation 55+3:String 58+1:Punctuation 59+1:Punctuation 61+1:Punctuation 62+1:Punctuation
+text   "escaped \\\\ key": "end"
+spans 2+16:Key 18+1:Punctuation 20+5:String
+text }
+spans 0+1:Punctuation
+%%%% case 8
+text "unterminated: "value
+spans 0+16:Key
+%%%% case 9
+text [ "a", "b" ]
+spans 0+1:Punctuation 2+3:Key 5+1:Punctuation 7+3:String 11+1:Punctuation
+%%%% case 10
+text truefalse nullx -
+spans 0+4:Constant 4+5:Constant 10+4:Constant 16+1:Number

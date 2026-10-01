@@ -78,3 +78,29 @@ spans 0+4:Keyword 5+6:Attribute
 %%%% case 26
 text from ubuntu:22.04
 spans 0+4:Keyword
+%%%% case 27
+text # syntax=docker/dockerfile:1
+spans 0+28:Comment
+text FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+spans 0+4:Keyword 39+2:Keyword
+text ARG VERSION=1.0
+spans 0+3:Keyword
+text ENV PATH="/app/bin:${PATH}" HOME=$HOME
+spans 0+3:Keyword 9+18:String 33+5:Constant
+text WORKDIR /src
+spans 0+7:Keyword
+text COPY --from=build --chown=app:app /src/out /app
+spans 0+4:Keyword 5+6:Attribute 18+7:Attribute
+text RUN apt-get update && apt-get install -y curl \\
+spans 0+3:Keyword
+text     && rm -rf /var/lib/apt/lists/* # cleanup
+spans 35+9:Comment
+text   run echo 'single' "double \\"esc\\"" ${UNCLOSED
+spans 2+3:Keyword 11+8:String 20+16:String 37+10:Constant
+text HEALTHCHECK --interval=30s CMD curl -f http://localhost/ || exit 1
+spans 0+11:Keyword 12+10:Attribute
+text ENTRYPOINT ["dotnet", "app.dll"]
+spans 0+10:Keyword 12+8:String 22+9:String
+text from base as final
+spans 0+4:Keyword 10+2:Keyword
+text NOTAKEYWORD value

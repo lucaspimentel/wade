@@ -23,3 +23,46 @@ code here
 - list item
 %%%%
 just plain text here
+%%%%
+# Title
+## Sub *heading*
+
+Plain text with `code`, **bold**, __bold2__, *italic*, _italic2_ and a [link](https://x.y/z).
+Mixed: **bold *nested italic* text** and *italic **bold** inside*.
+Edge: ``double `tick` code`` and ```triple``` and `unterminated
+Stars: * not italic *, a*b*c, a**b**c, ***both***, **, ****, * *.
+Underscores: snake_case_name, __init__, _a_b_, ___x___.
+Links: [a](b) [c] (d) [](e) [f]() [g](h)(i) [[nested]](url) [x](y [z](w)
+Backticks `` ` `` and `a`b`c` and ``a`
+> quoted **bold**
+>no space
+- item one
+* item *two*
++ item three
+   - indented item
+1. first
+10. tenth
+2) not a marker
+3.no space
+---
+***
+___
+- - -
+* * *
+-- 
+**
+  ```rust
+  let x = 1; // inside fence
+  ```
+after fence
+~~~
+tilde fence **not bold**
+~~~
+%%%%
+```
+unterminated fence
+still code
+%%%%
+	tab-indented *text*
+%%%%
+emoji 😀 **bold** after

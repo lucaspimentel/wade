@@ -3,9 +3,11 @@
 //! extensionless shell-like names.
 
 use super::languages::{
-    c::CLanguage, cpp::CppLanguage, csharp::CSharpLanguage, css::CssLanguage, go::GoLanguage, java::JavaLanguage,
-    javascript::JavaScriptLanguage, powershell::PowerShellLanguage, python::PythonLanguage, rust::RustLanguage,
-    shell::ShellLanguage, typescript::TypeScriptLanguage,
+    c::CLanguage, cpp::CppLanguage, csharp::CSharpLanguage, css::CssLanguage, dockerfile::DockerfileLanguage,
+    gitignore::GitIgnoreLanguage, go::GoLanguage, java::JavaLanguage, javascript::JavaScriptLanguage,
+    json::JsonLanguage, markdown::MarkdownLanguage, powershell::PowerShellLanguage, python::PythonLanguage,
+    rust::RustLanguage, shell::ShellLanguage, toml::TomlLanguage, typescript::TypeScriptLanguage,
+    xml_html::XmlHtmlLanguage, yaml::YamlLanguage,
 };
 use super::Language;
 
@@ -21,6 +23,13 @@ static JAVA: JavaLanguage = JavaLanguage;
 static SHELL: ShellLanguage = ShellLanguage;
 static POWERSHELL: PowerShellLanguage = PowerShellLanguage;
 static CSS: CssLanguage = CssLanguage;
+static JSON: JsonLanguage = JsonLanguage;
+static TOML: TomlLanguage = TomlLanguage;
+static YAML: YamlLanguage = YamlLanguage;
+static XML_HTML: XmlHtmlLanguage = XmlHtmlLanguage;
+static MARKDOWN: MarkdownLanguage = MarkdownLanguage;
+static GIT_IGNORE: GitIgnoreLanguage = GitIgnoreLanguage;
+static DOCKERFILE: DockerfileLanguage = DockerfileLanguage;
 
 /// Port of `ByExtension` (keys lowercase, with the dot).
 fn by_extension(extension: &str) -> Option<&'static dyn Language> {
@@ -37,6 +46,13 @@ fn by_extension(extension: &str) -> Option<&'static dyn Language> {
         ".sh" | ".bash" | ".zsh" | ".fish" => &SHELL,
         ".ps1" | ".psm1" | ".psd1" => &POWERSHELL,
         ".css" | ".scss" | ".sass" => &CSS,
+        ".json" | ".slnf" => &JSON,
+        ".toml" | ".ini" | ".cfg" | ".conf" | ".properties" | ".inf" | ".url" | ".editorconfig" | ".gitconfig" => &TOML,
+        ".yaml" | ".yml" => &YAML,
+        ".xml" | ".xsd" | ".html" | ".htm" | ".csproj" | ".vbproj" | ".fsproj" | ".props" | ".targets" | ".slnx"
+        | ".resx" | ".config" | ".nuspec" | ".xaml" => &XML_HTML,
+        ".md" | ".markdown" => &MARKDOWN,
+        ".dockerfile" => &DOCKERFILE,
         _ => return None,
     };
 
@@ -44,8 +60,16 @@ fn by_extension(extension: &str) -> Option<&'static dyn Language> {
 }
 
 /// Port of `ByFilename` (keys lowercase).
-fn by_file_name(_file_name: &str) -> Option<&'static dyn Language> {
-    None
+fn by_file_name(file_name: &str) -> Option<&'static dyn Language> {
+    let language: &'static dyn Language = match file_name {
+        ".gitignore" | ".dockerignore" | ".npmignore" | ".prettierignore" | ".eslintignore" | ".gitattributes" => {
+            &GIT_IGNORE
+        }
+        "dockerfile" | "containerfile" => &DOCKERFILE,
+        _ => return None,
+    };
+
+    Some(language)
 }
 
 /// Port of `NoExtensionShellNames`.

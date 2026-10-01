@@ -19,3 +19,43 @@ spans 0+7:Key 8+1:Operator 10+4:Constant
 %%%% case 6
 text enabled = false
 spans 0+7:Key 8+1:Operator 10+5:Constant
+%%%% case 7
+text # Cargo manifest
+spans 0+16:Comment
+text [package]
+spans 0+9:Key
+text name = "wade" # trailing comment is not scanned
+spans 0+4:Key 5+1:Operator 7+6:String
+text version = "0.1.0"
+spans 0+7:Key 8+1:Operator 10+7:String
+text edition = '2024'
+spans 0+7:Key 8+1:Operator 10+6:String
+text "quoted key" = true
+spans 0+12:Key 13+1:Operator 15+4:Constant
+text dotted.key-name = false
+spans 0+15:Key 16+1:Operator 18+5:Constant
+text date = 2024-01-02T03:04:05Z
+spans 0+4:Key 5+1:Operator 7+20:Number
+text neg = -1_000
+spans 0+3:Key 4+1:Operator 6+6:Number
+text float = +3.14
+spans 0+5:Key 6+1:Operator 8+5:Number
+text list = [1, 2, 3]
+spans 0+4:Key 5+1:Operator
+text inline = { a = 1 }
+spans 0+6:Key 7+1:Operator
+text [[bin]]
+spans 0+7:Key
+text [[broken]
+spans 0+1:Punctuation 1+8:Key
+text [unclosed
+spans 0+1:Punctuation
+text desc = """
+spans 0+4:Key 5+1:Operator 7+3:String
+text multi
+spans 0+5:String
+text line """ tail = 1
+spans 0+8:String 9+4:Key 14+1:Operator 16+1:Number
+text key=value
+spans 0+3:Key 3+1:Operator
+text =no key

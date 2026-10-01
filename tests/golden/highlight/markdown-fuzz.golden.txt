@@ -1,0 +1,662 @@
+%%%% case 0
+text ab-. _~`
+text _`*`# [
+spans 1+3:CodeSpan
+text [.(( [a*]1]
+text >#`b -*# 
+spans 0+1:Operator
+text __> ` `-)*>#*.]#
+spans 4+3:CodeSpan 9+4:Italic
+text #`>(.]]_[[[*.a[#_
+spans 0+17:Heading
+text a._`##>-b>(1
+text `[b#*#]]1*- #`_]`>
+spans 0+14:CodeSpan 4+6:Italic
+text )]`[-bb~11[1`(`_#>
+spans 2+11:CodeSpan
+text ``~`1a
+spans 0+4:CodeSpan
+text (*~]]*~ *[.1`
+spans 1+5:Italic
+text `1#_--aa#))1 [b]
+text *a[#_ .>`1a
+spans 0+1:Punctuation
+text .``b(.`* ~~`
+spans 1+6:CodeSpan
+text .`b(
+text [`_~>_``a( *-)`
+spans 1+6:CodeSpan 7+8:CodeSpan 2+4:Italic
+text  *[``()#`
+spans 1+1:Punctuation 3+6:CodeSpan
+text #
+spans 0+1:Heading
+text _.`_~*
+spans 0+4:Italic
+text *# ~].
+spans 0+1:Punctuation
+text --]]*b_>*`1
+spans 0+1:Punctuation 4+5:Italic
+text b
+text  # [)b
+text #)__1a _a `_()_>
+spans 0+16:Heading
+text *~[>
+spans 0+1:Punctuation
+text `1_..a)`#__)1_a`
+spans 0+8:CodeSpan 2+12:Italic
+text b _
+text ).#-`(`* b]
+spans 4+3:CodeSpan
+text `[_b-[b1b.~b*a~_
+spans 2+14:Italic
+text )()>bb *`a)#`_(`#_
+spans 8+5:CodeSpan 13+5:Italic
+text _1 1b])*>
+text ]*1* ~1]`
+spans 1+3:Italic
+text **__#]ba~``*a
+spans 0+1:Punctuation
+text ]#) -
+text a.*a.] .->a>_``
+text )]-a
+text .-
+text  -*~~ 
+spans 1+1:Punctuation
+text `a` ]*`.`((`a ) 
+spans 0+3:CodeSpan 6+3:CodeSpan
+text )
+text b_#b.[~-~_`> 1
+spans 1+9:Italic
+text ~`_ab_a 
+spans 2+4:Italic
+text *a*)_(-_.*
+spans 0+1:Punctuation 0+3:Italic 4+4:Italic
+text [1`
+text *bb[-(~[.>`*1_- a)
+spans 0+1:Punctuation 0+12:Italic
+text _~]*)` 
+text a_1b.][)`1-`([
+spans 8+4:CodeSpan
+text (. ((~#1 _>#[~`b
+text ]b
+text ~>_***]**
+spans 3+6:Bold
+text --*a~ *>(
+spans 0+1:Punctuation 2+5:Italic
+text *` ()_a_[[>
+spans 0+1:Punctuation 5+3:Italic
+text __#*~11 ]. -
+text #_~a~_.] b_[b.
+spans 0+14:Heading
+text _b.[). *)#`_.a#_`
+spans 10+7:CodeSpan 0+12:Italic
+text *#--ba _1_`~>>>_  
+spans 0+1:Punctuation 7+3:Italic
+text  #>)*`a__~)
+text b#
+text _a.]
+text  1__>1
+text  `)a->_)> .
+text ##`*(b 
+spans 0+7:Heading
+text )_)>` .
+text _
+text ]#__`_b~ #
+text  b# (~~.#`
+text ]
+text `(
+text _([ 
+text .-_*_>`>**b1-1*~
+spans 2+3:Italic
+text  a* >]*])>*~-*
+spans 2+5:Italic 10+4:Italic
+text ##
+spans 0+2:Heading
+text *1)`*~)-`>ba
+spans 0+1:Punctuation 3+6:CodeSpan 0+5:Italic
+text >  _
+spans 0+1:Operator
+text #*_#.#b_`*a] 
+spans 0+13:Heading
+text .*]` b>(*
+spans 1+8:Italic
+text 1a1 *1`>]>
+text ._(*[.`-]~
+text b*-
+text )b`~ b #b**> `)[.
+spans 2+12:CodeSpan
+text `~**~_ ``1
+spans 0+8:CodeSpan
+text ` `~[-)
+spans 0+3:CodeSpan
+text _)>-#[a ._` [>__(>
+spans 0+10:Italic
+text [)~ a
+text  __)~#]1))_*
+text . .~-1](`
+text ).
+text _[-> b>_b- [_
+spans 0+8:Italic
+text ]_
+text *b*# 1]*~
+spans 0+1:Punctuation 0+3:Italic
+text #.* _b1->
+spans 0+9:Heading
+text ~[1*]`  ]#`a]] )
+spans 5+6:CodeSpan
+text ]>>b`>-*_
+text )1]#_-` -1#*
+text (a-#1>**]>*#~ -] b
+text  b)[)`*.-a )
+text ` `_>[.` (*_
+spans 0+3:CodeSpan 3+9:Italic
+text [~*[[a.``#.a`_ ~[
+spans 7+6:CodeSpan
+text ` b[`).(#*`11 *#_*
+spans 0+5:CodeSpan 9+6:Italic
+text #~` ]a-# ~>~__
+spans 0+14:Heading
+text 1[[]**.
+text *~`.b#1_*1*`**
+spans 0+1:Punctuation 2+10:CodeSpan 0+9:Italic
+text )``]*.[)*
+spans 4+5:Italic
+text -a)~*
+spans 0+1:Punctuation
+text a*#a] *_ (`.#ab
+spans 1+6:Italic
+text >
+spans 0+1:Operator
+text  
+text (>~(a_
+text .[>**
+text _#-_*)*>[*
+spans 0+4:Italic 4+3:Italic
+text `
+text `_](#))(#~](`. #[
+spans 0+13:CodeSpan
+text `*`.`
+spans 0+3:CodeSpan
+text ] -.b[`*)`-_(
+spans 6+4:CodeSpan
+text ** _
+spans 0+1:Punctuation
+text b[- ~
+text *)>[b))
+spans 0+1:Punctuation
+text 1`>#b(*[(]*`->``]~
+spans 1+11:CodeSpan 6+5:Italic
+text 1a
+text ~``a_) 
+text `]`-b1a.`)-__)a]b
+spans 0+3:CodeSpan
+text ~
+text - (a~`
+spans 0+1:Punctuation
+text _[.
+text _a->]
+text (_`1~
+text a>#_)>_[_.(b>.(
+spans 3+4:Italic
+text )*>**) ``a*-_)
+spans 1+10:Italic
+text (b>.`*_
+text ~[.#)->*) 
+text )*`>*a[_*_bb*_
+spans 1+4:Italic 7+3:Italic
+text .(.ab []->~
+text ba **
+text ` [(_
+text .) ` b*`b 1*#`
+spans 3+5:CodeSpan 6+6:Italic
+text 1)``*`a``~ 
+spans 2+7:CodeSpan
+text []b1
+text `
+text a* a*1..-(__
+spans 1+4:Italic
+text -1 *(#))# _b
+spans 0+1:Punctuation
+text .(b-`]**a-` ).]``
+spans 4+7:CodeSpan
+text ]-)_*a) `
+text -.>1]_>b.b  >>1)>
+spans 0+1:Punctuation
+text # b_
+spans 0+4:Heading
+text  -``[((>._(>] _ ~
+spans 1+1:Punctuation 9+6:Italic
+text ~] b)
+text (_a a.
+text  )_*~ -
+text ~#[>-`b *
+text `` 
+text ]_`` [>
+text a>()*-`((*_ _] 
+spans 4+6:Italic 10+3:Italic
+text a#(`b*`>[`])`
+spans 3+4:CodeSpan 9+4:CodeSpan
+text #`*_`>#`-*
+spans 0+10:Heading
+text _[*#1*]_-(**(_)_
+spans 0+8:Italic 13+3:Italic
+text (`_
+text  #
+text _(*1>1_ a> `#.*
+spans 0+7:Italic
+text -[>*.[.
+spans 0+1:Punctuation
+text -- 1*`a
+spans 0+1:Punctuation
+text _b_`(_**]_>`_
+spans 3+9:CodeSpan 0+3:Italic 5+5:Italic
+text ~_`)* 
+text ]-`)>
+text _ `_a``)-~`1#~~
+spans 2+4:CodeSpan 6+5:CodeSpan 0+4:Italic
+text *a
+spans 0+1:Punctuation
+text ~>*]* .a#* a>-
+spans 2+3:Italic
+text )-`)>)#1*)_[~`(.
+spans 2+12:CodeSpan
+text _# b1]b`-
+text ~*)[1[ 1
+text  (]
+text )
+text ~#`#b~.
+text `#*
+text `[]a#>_``* `a ]
+spans 0+8:CodeSpan 8+4:CodeSpan
+text .#
+text `*
+text ))_1([~#
+text _~>
+text ~>].-` * .` 
+spans 5+6:CodeSpan
+text `_.-[**#1`#*)[` `b
+spans 0+10:CodeSpan 14+3:CodeSpan
+text _`)`*]-> . 
+spans 1+3:CodeSpan
+text #~a
+spans 0+3:Heading
+text *-a>(~(_-(
+spans 0+1:Punctuation
+text *1)`]#b>#[  #[ a
+spans 0+1:Punctuation
+text ** 
+spans 0+1:Punctuation
+text *) #b.
+spans 0+1:Punctuation
+text ]*`*`a_``>ab`a
+spans 2+3:CodeSpan 7+6:CodeSpan 1+3:Italic
+text >a1~)##b`-**(> #~
+spans 0+1:Operator
+text ~.`*1_). 
+text *
+spans 0+1:Punctuation
+text ] )(_ _(`]] 
+spans 4+3:Italic
+text ```_#`a[_)_*_
+spans 0+13:CodeSpan
+text ~_~- _`1~][[
+spans 0+12:CodeSpan
+text 1`[1~1] #` #-b.``>
+spans 0+18:CodeSpan
+text ->(`.`*`~ _1``
+spans 0+14:CodeSpan
+text >_.*
+spans 0+4:CodeSpan
+text >
+spans 0+1:CodeSpan
+text -*>*b`
+spans 0+6:CodeSpan
+text  -a*b>*)[
+spans 0+9:CodeSpan
+text #[)
+spans 0+3:CodeSpan
+text  _1(
+spans 0+4:CodeSpan
+text `*`[b>
+spans 0+6:CodeSpan
+text  
+spans 0+1:CodeSpan
+text *-
+spans 0+2:CodeSpan
+text  #.~*#>`
+spans 0+8:CodeSpan
+text )]`~`*[`#>*_-..#`>
+spans 0+18:CodeSpan
+text  )_*)>*`_ _*
+spans 0+12:CodeSpan
+text #a)
+spans 0+3:CodeSpan
+text .#)a*_
+spans 0+6:CodeSpan
+text _-a>_[ >a1``[
+spans 0+13:CodeSpan
+text .`)*(  a)->
+spans 0+11:CodeSpan
+text  .
+spans 0+2:CodeSpan
+text .*
+spans 0+2:CodeSpan
+text `* _.>`# ~a_``**>
+spans 0+17:CodeSpan
+text (a) [ _- (*)
+spans 0+12:CodeSpan
+text _1*[).]__>b_~ >`
+spans 0+16:CodeSpan
+text `#b.
+spans 0+4:CodeSpan
+text `[`( `_`a * _b
+spans 0+14:CodeSpan
+text `~[_[1-1_-[`[`[_b
+spans 0+17:CodeSpan
+text _`)-abb*b
+spans 0+9:CodeSpan
+text  *~ #)`b
+spans 0+8:CodeSpan
+text b.#
+spans 0+3:CodeSpan
+text -])b.*.`_b.)>_)a#]
+spans 0+18:CodeSpan
+text >a.~.a(1-(*)bb*# 
+spans 0+17:CodeSpan
+text `(`*
+spans 0+4:CodeSpan
+text )-.*
+spans 0+4:CodeSpan
+text * 
+spans 0+2:CodeSpan
+text #`a)
+spans 0+4:CodeSpan
+text ]  *~[.a`-._>~a
+spans 0+15:CodeSpan
+text [#.*_ _`-`*-
+spans 0+12:CodeSpan
+text *`* ~1~ 1 *[
+spans 0+12:CodeSpan
+text -[[_#-`_~`>*.[ 
+spans 0+15:CodeSpan
+text 1ba# > )(1]b*]>*
+spans 0+16:CodeSpan
+text (a b.-]
+spans 0+7:CodeSpan
+text * ~`_]>b  ()..b` (
+spans 0+18:CodeSpan
+text >b*``1.b_>`-__)
+spans 0+15:CodeSpan
+text _ - _*a.*
+spans 0+9:CodeSpan
+text `*`a1]
+spans 0+6:CodeSpan
+text > ) ..`)>( `
+spans 0+12:CodeSpan
+text `[  ] ]a)
+spans 0+9:CodeSpan
+text #)b
+spans 0+3:CodeSpan
+text  1b1_*1`` b_)`_a_)
+spans 0+18:CodeSpan
+text (~)(`#1_#>~_ _1)
+spans 0+16:CodeSpan
+text `
+spans 0+1:CodeSpan
+text  #` >)~**#*._
+spans 0+13:CodeSpan
+text _- ->-*> _ *#)1_#[
+spans 0+18:CodeSpan
+text *1a` .~ ~1  [_`1
+spans 0+16:CodeSpan
+text 1(]1 *  )
+spans 0+9:CodeSpan
+text #)`
+spans 0+3:CodeSpan
+text .b*._)``
+spans 0+8:CodeSpan
+text ( _
+spans 0+3:CodeSpan
+text -b]`
+spans 0+4:CodeSpan
+text #b#~( -~-  
+spans 0+11:CodeSpan
+text )~
+spans 0+2:CodeSpan
+text *)_ *
+spans 0+5:CodeSpan
+text _-
+spans 0+2:CodeSpan
+text _~ `-_~b_)
+spans 0+10:CodeSpan
+text a)  bb_
+spans 0+7:CodeSpan
+text b*>#]].*_
+spans 0+9:CodeSpan
+text ]b*])[**_[a
+spans 0+11:CodeSpan
+text ` ))(
+spans 0+5:CodeSpan
+text a*`#1
+spans 0+5:CodeSpan
+text _-
+spans 0+2:CodeSpan
+text (_*)#(]~.*
+spans 0+10:CodeSpan
+text >_*1]]*
+spans 0+7:CodeSpan
+text _->#__*-a_
+spans 0+10:CodeSpan
+text . #..
+spans 0+5:CodeSpan
+text `_.>* [
+spans 0+7:CodeSpan
+text _  #[( b
+spans 0+8:CodeSpan
+text ][ [(.*-b```#]a[
+spans 0+16:CodeSpan
+text *>
+spans 0+2:CodeSpan
+text _] ` _b-> ~*]**
+spans 0+15:CodeSpan
+text ~-[ `.[~a#*
+spans 0+11:CodeSpan
+text #-`-1[-[ _
+spans 0+10:CodeSpan
+text [(-  >`_`*]
+spans 0+11:CodeSpan
+text #-`(b 
+spans 0+6:CodeSpan
+text ~~~1
+spans 0+4:CodeSpan
+text ))~)*>a*.
+spans 4+4:Italic
+text  bb.*~*_ab~*]``1(b
+spans 4+3:Italic
+text ))b~
+text )# *1~ >-*~*.
+spans 3+7:Italic
+text # 
+spans 0+2:Heading
+text *(*`__~).
+spans 0+1:Punctuation 0+3:Italic
+text [~a(
+text  -1a*
+spans 1+1:Punctuation
+text   .[*>)
+text ]]`(-`
+spans 2+4:CodeSpan
+text a`*_a*-~`][a`1]
+spans 1+8:CodeSpan 2+4:Italic
+text `
+text a`*#_a _1#_ ~ b-
+spans 4+4:Italic
+text b)`
+text a[ba~_*
+text .`a*a#[b *[-_b
+spans 3+7:Italic
+text .`(a
+text a~_a
+text *#`-*`)._
+spans 0+1:Punctuation 2+4:CodeSpan 0+5:Italic
+text  `> )(a()
+text )>`  #  *`]#[_
+spans 2+8:CodeSpan
+text `)1)_)`1
+spans 0+7:CodeSpan
+text b``[a.1]*a_`~a
+spans 1+11:CodeSpan
+text b~_
+text *b(_1`#*#*_b.
+spans 0+1:Punctuation 0+8:Italic
+text b_._.[[b
+spans 1+3:Italic
+text 1~[*))1 a`_ [-])a 
+text _#[[`
+text ``
+text 1#`1#~-(
+text *]#]~`a*>_>`*] 
+spans 0+1:Punctuation 5+7:CodeSpan 0+8:Italic
+text .a>] _.*).]*~_
+spans 5+9:Italic
+text _b1]# -(`a__]>#1.~
+text a) #
+text )b(~]-
+text _b~*~ *_*11]([`
+spans 0+8:Italic
+text  1(a*_*.(`)_
+spans 4+3:Italic
+text )`-(a]
+text  -_>(
+spans 1+1:Punctuation
+text **a (a_ [* ba#]b*
+spans 0+1:Punctuation 9+8:Italic
+text .(-]._)_*b>])( 
+spans 5+3:Italic
+text `~#b #``_1`[(_#
+spans 0+7:CodeSpan 7+4:CodeSpan 8+6:Italic
+text # *__`._``
+spans 0+10:Heading
+text b`[b*_]b~
+text  -
+spans 1+1:Punctuation
+text (>a1)a_
+text (*`1 *)
+spans 1+5:Italic
+text b```[b ( *
+spans 1+3:CodeSpan
+text ]#)_ _
+spans 3+3:Italic
+text __]`_~`*`]***b#_>(
+spans 3+4:CodeSpan 4+12:Italic
+text >>_]1[`[
+spans 0+1:Operator
+text )__b>>` b-
+text 1#-_
+text .*. ab-->
+text .[
+text `a)[._
+text *>#> ##[.abb[( >)
+spans 0+1:Punctuation
+text `
+text [1>.b ~_b## ]-.a)`
+text ._1 >##`> -
+text ( #a(`
+text (].~]`#`[  _. 
+spans 5+3:CodeSpan
+text  
+text a*
+text a>~b[-.`*
+text b_)b**a*__-b>~_#
+spans 1+14:Italic
+text `
+text a[.b_)_>[ #]1 
+spans 4+3:Italic
+text 1` [ (>.
+text ]# .` -1`)a]`*>
+spans 4+5:CodeSpan
+text ]*]
+text 1``*
+text [*~
+text  a*[ # #`>
+text (b** >_#
+text _)_-
+spans 0+3:Italic
+text >`b[_*.)]
+spans 0+1:Operator
+text (*.[#- ~
+text b)b-((`__`* .)1#
+spans 6+4:CodeSpan
+text #a
+spans 0+2:Heading
+text   --#1b**[[_   1
+spans 2+1:Punctuation
+text `>(-[`>.  b)#1_`)>
+spans 0+6:CodeSpan
+text ~*[*1*_)b
+spans 1+3:Italic
+text ` )~_.
+text _(*`1`# _#[)a)b`
+spans 3+3:CodeSpan 0+9:Italic
+text # _
+spans 0+3:Heading
+text >)_._1__**-
+spans 0+1:Operator
+text [ >.])`-.]*
+text  (- -*]b>a >*
+spans 5+8:Italic
+text ](.)a`~-_[.[)
+text ~b*b~]b a ]~ _`*
+spans 2+14:Italic
+text *[_
+spans 0+1:Punctuation
+text [)__
+text a]**`.~
+text 1b`1 ` [1_b
+spans 2+4:CodeSpan
+text a]~*_`_(- `~ 
+spans 5+6:CodeSpan 4+3:Italic
+text *`>(**~`* `   
+spans 0+1:Punctuation 1+7:CodeSpan 0+9:Italic
+text [)`_1[[a]
+text -*>* aa*#*#
+spans 0+1:Punctuation 1+3:Italic 7+3:Italic
+text ..#`.-(`
+spans 3+5:CodeSpan
+text `1*_#.[( 1[(` *(1
+spans 0+13:CodeSpan 2+13:Italic
+text  `_1(`_. _~a*-)( 
+spans 1+5:CodeSpan 2+5:Italic
+text *]_
+spans 0+1:Punctuation
+text b``*#].[( ]a[b>-[*
+spans 3+15:Italic
+text `b_ ]_~
+spans 2+4:Italic
+text ) )`
+text -#[*1b*~**
+spans 0+1:Punctuation 3+4:Italic
+text ]> .**.._*~1>
+text >
+spans 0+1:Operator
+text )`)*#()_a(-]  )**
+text  *_~.a[[-1>1-~
+spans 1+1:Punctuation
+text (~_~
+text .
+text a* ((_b``*
+spans 1+9:Italic
+text a[_-#`_a`].[ >.#`
+spans 5+4:CodeSpan 2+5:Italic
+text b-aa1b[ _]*)  ~
+text ` `[ ~_ a`[#_# ][ 
+spans 0+3:CodeSpan 6+7:Italic
+text `*_a_-a`1_(
+spans 0+8:CodeSpan 2+3:Italic
+text `-~_`
+spans 0+5:CodeSpan
+text `
+text `1#~1>b
+text ~[~a](a**``*_
+text []`.`[b
+spans 2+3:CodeSpan

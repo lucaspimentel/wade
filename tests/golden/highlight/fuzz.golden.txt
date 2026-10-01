@@ -1,0 +1,3060 @@
+%%%% case 0
+text ]|a`/!?'''FROM"Z|0
+spans 0+1:Punctuation 1+1:Operator 4+1:Operator 5+1:Operator 6+1:Operator 7+2:String 9+9:String
+%%%% case 1
+text &amp;}.a{#12<!--{"""&amp; r"
+spans 0+1:Operator 4+1:Punctuation 5+1:Punctuation 6+1:Punctuation 8+1:Punctuation 10+2:Number 12+1:Operator 13+1:Operator 14+2:Operator 16+1:Punctuation 17+2:String 19+9:String
+%%%% case 2
+text }0null}\\0"""|.é^'
+spans 0+1:Punctuation 1+5:Number 6+1:Punctuation 8+1:Number 9+2:String 11+6:String
+%%%% case 3
+text """ f"fn*/<{^0)Z
+spans 0+2:String 2+4:String 8+1:Operator 9+1:Operator 10+1:Operator 11+1:Punctuation 12+1:Operator 13+1:Number 14+1:Punctuation
+%%%% case 4
+text 0#[%x=
+spans 0+1:Number 2+1:Punctuation 3+1:Operator 5+1:Operator
+%%%% case 5
+text 1Éa*.:"<!--var'''#[
+spans 0+3:Number 3+1:Operator 4+1:Punctuation 5+1:Punctuation 6+13:String
+%%%% case 6
+text <#null>|#,#12#>}
+spans 0+1:Operator 6+1:Operator 7+1:Operator 9+1:Punctuation 11+2:Number 14+1:Operator 15+1:Punctuation
+%%%% case 7
+text  {@"@"#[[Éa#12
+spans 1+1:Punctuation 2+1:Operator 3+3:String 7+1:Punctuation 8+1:Punctuation 9+2:Type 12+2:Number
+%%%% case 8
+text fn&amp;].Z@"|;
+spans 2+1:Operator 6+1:Punctuation 7+1:Punctuation 8+1:Punctuation 10+1:Operator 11+3:String
+%%%% case 9
+text "
+spans 0+1:String
+%%%% case 10
+text < """. ^@"<!--Éa
+spans 0+1:Operator 2+2:String 4+6:String 10+1:Operator 11+1:Operator 12+2:Operator 14+2:Type
+%%%% case 11
+text &amp;#fff|Z?
+spans 0+1:Operator 4+1:Punctuation 9+1:Operator 11+1:Operator
+%%%% case 12
+text %|!#[&var~AS"""+#[
+spans 0+1:Operator 1+1:Operator 2+1:Operator 4+1:Punctuation 5+1:Operator 9+1:Operator 12+2:String 14+4:String
+%%%% case 13
+text ZFROM#>|+null/@"@,')
+spans 6+1:Operator 7+1:Operator 8+1:Operator 13+1:Operator 14+1:Operator 15+5:String
+%%%% case 14
+text '''"""&@.-Z*#12|[
+spans 0+2:String 2+15:String
+%%%% case 15
+text e}'''"""! FROM!
+spans 1+1:Punctuation 2+2:String 4+11:String
+%%%% case 16
+text }
+spans 0+1:Punctuation
+%%%% case 17
+text (\\%~$'>]+a@"&
+spans 0+1:Punctuation 2+1:Operator 3+1:Operator 5+8:String
+%%%% case 18
+text "=.r"%r"@"if%$null"""
+spans 0+5:String 5+1:Operator 7+3:String 10+2:Keyword 12+1:Operator 18+2:String 20+1:String
+%%%% case 19
+text """`]^if
+spans 0+2:String 2+6:String
+%%%% case 20
+text if?f"r"'''
+spans 0+2:Keyword 2+1:Operator 4+3:String 7+2:String 9+1:String
+%%%% case 21
+text ]
+spans 0+1:Punctuation
+%%%% case 22
+text _`;-->
+spans 2+1:Punctuation 3+2:Operator 5+1:Operator
+%%%% case 23
+text `#1f"-->[
+spans 2+2:Number 4+5:String
+%%%% case 24
+text )--=
+spans 0+1:Punctuation 1+2:Operator 3+1:Operator
+%%%% case 25
+text &[>[/*Éa',
+spans 0+1:Operator 1+1:Punctuation 2+1:Operator 3+1:Punctuation 4+6:Comment
+%%%% case 26
+text -,true-^<#xx>
+spans 0+1:Operator 1+1:Punctuation 2+4:Constant 6+1:Operator 7+1:Operator 8+1:Operator 12+1:Operator
+%%%% case 27
+text +FROM_/<#.AS
+spans 0+1:Operator 6+1:Operator 7+1:Operator 9+1:Punctuation
+%%%% case 28
+text #[r"*#>=e'''Z,-:=<#[
+spans 0+20:Directive
+%%%% case 29
+text *
+spans 0+1:Operator
+%%%% case 30
+text ?
+spans 0+1:Operator
+%%%% case 31
+text @)}'''`@x&amp;xnull{?[
+spans 0+1:Operator 1+1:Punctuation 2+1:Punctuation 3+2:String 5+17:String
+%%%% case 32
+text @:r"<);#'#12true r"
+spans 0+1:Operator 1+1:Punctuation 3+16:String
+%%%% case 33
+text 09if*
+spans 0+4:Number 4+1:Operator
+%%%% case 34
+text <!--Éa{`"""
+spans 0+1:Operator 1+1:Operator 2+2:Operator 4+2:Type 6+1:Punctuation 8+2:String 10+1:String
+%%%% case 35
+text )x'"""-->f"
+spans 0+1:Punctuation 2+9:String
+%%%% case 36
+text #/*='*-->$|/~a
+spans 0+14:Directive
+%%%% case 37
+text Ze
+spans 0+2:Type
+%%%% case 38
+text >#fff,
+spans 0+1:Operator 5+1:Punctuation
+%%%% case 39
+text <##12Éa%
+spans 0+1:Operator 3+4:Number 7+1:Operator
+%%%% case 40
+text  =fn`.
+spans 1+1:Operator 5+1:Punctuation
+%%%% case 41
+text @"(;(/é+<-#>?|?
+spans 0+1:Operator 1+14:String
+%%%% case 42
+text <#-$"*
+spans 0+1:Operator 2+1:Operator 4+2:String
+%%%% case 43
+text #fff FROM=true'''
+spans 0+17:Directive
+%%%% case 44
+text """x/var;]&amp;e{.
+spans 0+2:String 2+16:String
+%%%% case 45
+text &amp;>!Éa#Éa|
+spans 0+1:Operator 4+1:Punctuation 5+1:Operator 6+1:Operator 7+2:Type 10+2:Type 12+1:Operator
+%%%% case 46
+text <!--<#Z$a>
+spans 0+1:Operator 1+1:Operator 2+2:Operator 4+1:Operator 9+1:Operator
+%%%% case 47
+text )
+spans 0+1:Punctuation
+%%%% case 48
+text -^^){{<9/*-->
+spans 0+1:Operator 1+1:Operator 2+1:Operator 3+1:Punctuation 4+1:Punctuation 5+1:Punctuation 6+1:Operator 7+1:Number 8+5:Comment
+%%%% case 49
+text  ;,
+spans 1+1:Punctuation 2+1:Punctuation
+%%%% case 50
+text >%$")
+spans 0+1:Operator 1+1:Operator 3+2:String
+%%%% case 51
+text =$"0'''!<!--a$if/@'
+spans 0+1:Operator 2+17:String
+%%%% case 52
+text $"FROM@*if}<#-->
+spans 1+15:String
+%%%% case 53
+text '''!
+spans 0+2:String 2+2:String
+%%%% case 54
+text !'''?--"-(@"'''*>%a[
+spans 0+1:Operator 1+2:String 3+10:String 13+2:String 15+1:Operator 16+1:Operator 17+1:Operator 19+1:Punctuation
+%%%% case 55
+text <--0:r"<!-- /*
+spans 0+1:Operator 1+2:Operator 3+1:Number 4+1:Punctuation 6+8:String
+%%%% case 56
+text Z@"\\^ 
+spans 1+1:Operator 2+4:String
+%%%% case 57
+text /& :`AS*1fn.-
+spans 0+1:Operator 1+1:Operator 3+1:Punctuation 7+1:Operator 8+3:Number 11+1:Punctuation 12+1:Operator
+%%%% case 58
+text @Zfn'''9
+spans 0+1:Operator 1+3:Type 4+2:String 6+2:String
+%%%% case 59
+text :/{*/,/*,%x?<#*/
+spans 0+1:Punctuation 1+1:Operator 2+1:Punctuation 3+1:Operator 4+1:Operator 5+1:Punctuation 6+10:Comment
+%%%% case 60
+text {f"
+spans 0+1:Punctuation 2+1:String
+%%%% case 61
+text 1
+spans 0+1:Number
+%%%% case 62
+text r"Zx@%^ ÉaZ"""
+spans 1+11:String 12+2:String
+%%%% case 63
+text #12'''}#fff+
+spans 0+12:Directive
+%%%% case 64
+text @^FROM^@
+spans 0+1:Operator 1+1:Operator 6+1:Operator 7+1:Operator
+%%%% case 65
+text )@
+spans 0+1:Punctuation 1+1:Operator
+%%%% case 66
+text f"{;a*//$Z
+spans 1+9:String
+%%%% case 67
+text var/*<#--[)true&@" var_
+spans 3+20:Comment
+%%%% case 68
+text *#é#[-xnull*(a=<'
+spans 0+1:Operator 4+1:Punctuation 5+1:Operator 11+1:Operator 12+1:Punctuation 14+1:Operator 15+1:Operator 16+1:String
+%%%% case 69
+text  |9$if;=
+spans 1+1:Operator 2+1:Number 4+2:Keyword 6+1:Punctuation 7+1:Operator
+%%%% case 70
+text }'9
+spans 0+1:Punctuation 1+2:String
+%%%% case 71
+text AS#fff?|@"AS$".;)
+spans 6+1:Operator 7+1:Operator 8+1:Operator 9+5:String 14+1:Punctuation 15+1:Punctuation 16+1:Punctuation
+%%%% case 72
+text =#>x*/
+spans 0+1:Operator 2+1:Operator 4+1:Operator 5+1:Operator
+%%%% case 73
+text if.x'&amp; #><
+spans 0+2:Keyword 2+1:Punctuation 4+10:String
+%%%% case 74
+text `FROM"""& f"#[fn"""'''@
+spans 5+2:String 7+5:String 13+1:Punctuation 16+2:String 18+5:String
+%%%% case 75
+text ,varnull?_($"
+spans 0+1:Punctuation 8+1:Operator 10+1:Punctuation 12+1:String
+%%%% case 76
+text +"""#12~AS[$"f"|*
+spans 0+1:Operator 1+2:String 3+10:String 14+3:String
+%%%% case 77
+text ($%f"@'é/*"""+;%[--
+spans 0+1:Punctuation 2+1:Operator 4+7:String 11+2:String 13+1:Operator 14+1:Punctuation 15+1:Operator 16+1:Punctuation 17+2:Operator
+%%%% case 78
+text )'/*e Éaa<#"""/
+spans 0+1:Punctuation 1+14:String
+%%%% case 79
+text /*#ffffn;&*/`"1/
+spans 0+12:Comment 13+3:String
+%%%% case 80
+text \\'?(#fff%AS?01'''!)
+spans 1+14:String 15+2:String 17+1:Operator 18+1:Punctuation
+%%%% case 81
+text #xZ#fff
+spans 0+7:Directive
+%%%% case 82
+text */?'''-
+spans 0+1:Operator 1+1:Operator 2+1:Operator 3+2:String 5+2:String
+%%%% case 83
+text if.@^00
+spans 0+2:Keyword 2+1:Punctuation 3+1:Operator 4+1:Operator 5+2:Number
+%%%% case 84
+text \\#12'[]<.
+spans 2+2:Number 4+5:String
+%%%% case 85
+text }Éa%<!--,r"1*x
+spans 0+1:Punctuation 1+2:Type 3+1:Operator 4+1:Operator 5+1:Operator 6+2:Operator 8+1:Punctuation 10+4:String
+%%%% case 86
+text 9null-/'null
+spans 0+5:Number 5+1:Operator 6+1:Operator 7+5:String
+%%%% case 87
+text --é
+spans 0+2:Operator
+%%%% case 88
+text 1&amp;&{
+spans 0+1:Number 1+1:Operator 5+1:Punctuation 6+1:Operator 7+1:Punctuation
+%%%% case 89
+text :=0true#ffffn--
+spans 0+1:Punctuation 1+1:Operator 2+5:Number 13+2:Operator
+%%%% case 90
+text `r"90fnef""""#FROM"""
+spans 2+8:String 10+2:String 12+7:String 19+2:String
+%%%% case 91
+text */--f"*/&amp;true- 0~^;
+spans 0+1:Operator 1+1:Operator 2+2:Operator 5+18:String
+%%%% case 92
+text /-$x ~*9var@\\
+spans 0+1:Operator 1+1:Operator 5+1:Operator 6+1:Operator 7+4:Number 11+1:Operator
+%%%% case 93
+text <#</*AS=null/Z
+spans 0+1:Operator 2+1:Operator 3+11:Comment
+%%%% case 94
+text >ZAS{/*</ var11$f"
+spans 0+1:Operator 4+1:Punctuation 5+13:Comment
+%%%% case 95
+text */
+spans 0+1:Operator 1+1:Operator
+%%%% case 96
+text FROM0&amp;#[#@,_ null: ;
+spans 5+1:Operator 9+1:Punctuation 11+1:Punctuation 13+1:Operator 14+1:Punctuation 21+1:Punctuation 23+1:Punctuation
+%%%% case 97
+text */*/truex+[>@"@)
+spans 0+1:Operator 1+15:Comment
+%%%% case 98
+text \\*/
+spans 1+1:Operator 2+1:Operator
+%%%% case 99
+text @"--ifÉa_#fff
+spans 0+1:Operator 1+12:String
+%%%% case 100
+text #12AS@"#[ #{#12é#>
+spans 0+18:Directive
+%%%% case 101
+text é@"
+spans 1+1:Operator 2+1:String
+%%%% case 102
+text ;}[}.1
+spans 0+1:Punctuation 1+1:Punctuation 2+1:Punctuation 3+1:Punctuation 4+1:Punctuation 5+1:Number
+%%%% case 103
+text  /*/,\\`#>/
+spans 1+9:Comment
+%%%% case 104
+text r"<0%+
+spans 1+5:String
+%%%% case 105
+text *
+spans 0+1:Operator
+%%%% case 106
+text */ !r"#[#fff_AS
+spans 0+1:Operator 1+1:Operator 3+1:Operator 5+10:String
+%%%% case 107
+text 9)--~#9nullZ( x<!--
+spans 0+1:Number 1+1:Punctuation 2+2:Operator 4+1:Operator 6+6:Number 12+1:Punctuation 15+1:Operator 16+1:Operator 17+2:Operator
+%%%% case 108
+text """varif--f"FROM@"/*0)#fffZ]
+spans 0+2:String 2+10:String 16+1:Operator 17+11:String
+%%%% case 109
+text /*é\\[
+spans 0+5:Comment
+%%%% case 110
+text )+*^-->"#12\\>.*)
+spans 0+1:Punctuation 1+1:Operator 2+1:Operator 3+1:Operator 4+2:Operator 6+1:Operator 7+9:String
+%%%% case 111
+text :9x(9
+spans 0+1:Punctuation 1+2:Number 3+1:Punctuation 4+1:Number
+%%%% case 112
+text *AS#>['"""+@"!f"if#
+spans 0+1:Operator 4+1:Operator 5+1:Punctuation 6+13:String
+%%%% case 113
+text <#fn?/fnnull!/9fn
+spans 0+1:Operator 4+1:Operator 5+1:Operator 12+1:Operator 13+1:Operator 14+3:Number
+%%%% case 114
+text >/
+spans 0+1:Operator 1+1:Operator
+%%%% case 115
+text '''*/)0/*&amp;AS). 
+spans 0+2:String 2+17:String
+%%%% case 116
+text <$"#12<<!--"""_*#fffa<;"
+spans 0+1:Operator 2+10:String 12+2:String 15+1:Operator 21+1:Operator 22+1:Punctuation 23+1:String
+%%%% case 117
+text *
+spans 0+1:Operator
+%%%% case 118
+text *FROM[r"#-ififfn x <!--Z
+spans 0+1:Operator 5+1:Punctuation 7+17:String
+%%%% case 119
+text #{_
+spans 0+3:Directive
+%%%% case 120
+text )Éa#>|<#<!-->Éa
+spans 0+1:Punctuation 1+2:Type 4+1:Operator 5+1:Operator 6+1:Operator 8+1:Operator 9+1:Operator 10+2:Operator 12+1:Operator 13+2:Type
+%%%% case 121
+text [!if \\xFROM'#[/*<!--;$"9
+spans 0+1:Punctuation 1+1:Operator 2+2:Keyword 11+13:String
+%%%% case 122
+text )FROM:!.-];% &amp;^*
+spans 0+1:Punctuation 5+1:Punctuation 6+1:Operator 7+1:Punctuation 8+1:Operator 9+1:Punctuation 10+1:Punctuation 11+1:Operator 13+1:Operator 17+1:Punctuation 18+1:Operator 19+1:Operator
+%%%% case 123
+text $"`<<!--*FROM?~
+spans 0+15:String
+%%%% case 124
+text  $#fff#>"?!"~@/<{
+spans 7+1:Operator 8+4:String 12+1:Operator 13+1:Operator 14+1:Operator 15+1:Operator 16+1:Punctuation
+%%%% case 125
+text :9
+spans 0+1:Punctuation 1+1:Number
+%%%% case 126
+text Éa.& 
+spans 0+2:Type 2+1:Punctuation 3+1:Operator
+%%%% case 127
+text }é
+spans 0+1:Punctuation
+%%%% case 128
+text */<(?"<!--_,)% eAS
+spans 0+1:Operator 1+1:Operator 2+1:Operator 3+1:Punctuation 4+1:Operator 5+13:String
+%%%% case 129
+text }9f"\\-->]Éa<</*<(#[$
+spans 0+1:Punctuation 1+2:Number 3+17:String
+%%%% case 130
+text >null@"+'e*
+spans 0+1:Operator 1+4:Constant 5+6:String
+%%%% case 131
+text )=fn
+spans 0+1:Punctuation 1+1:Operator
+%%%% case 132
+text f"&amp;]/*[if_if#12'''9
+spans 1+22:String
+%%%% case 133
+text ASif'''<<#null+ &amp;
+spans 0+4:Type 4+2:String 6+15:String
+%%%% case 134
+text ;
+spans 0+1:Punctuation
+%%%% case 135
+text #ffftrue*#12true9
+spans 0+17:Directive
+%%%% case 136
+text true0x%/'#12,@"_#12
+spans 6+1:Operator 7+1:Operator 8+11:String
+%%%% case 137
+text """|'''01')!é
+spans 0+13:String
+%%%% case 138
+text $"9=&'''ife?- 
+spans 0+14:String
+%%%% case 139
+text ]0\\null--var1,fn}&Z9&
+spans 0+1:Punctuation 1+1:Number 3+4:Constant 7+2:Operator 13+1:Punctuation 16+1:Punctuation 17+1:Operator 20+1:Operator
+%%%% case 140
+text \\ée{
+spans 3+1:Punctuation
+%%%% case 141
+text ##12#12ifax^1(~
+spans 0+15:Directive
+%%%% case 142
+text r"_?é@"\\f"*/.true0%+true
+spans 1+6:String 9+15:String
+%%%% case 143
+text varé:$" 
+spans 4+1:Punctuation 5+3:String
+%%%% case 144
+text \\<!--r"-->'''
+spans 1+1:Operator 2+1:Operator 3+2:Operator 6+7:String
+%%%% case 145
+text etrue|
+spans 5+1:Operator
+%%%% case 146
+text <{[$<#*/%]+true#_*#fff
+spans 0+1:Operator 1+1:Punctuation 2+8:Attribute 10+1:Operator 11+4:Constant 17+1:Operator
+%%%% case 147
+text #/r"null^FROM\\if#>*,
+spans 0+20:Directive
+%%%% case 148
+text eif"/~.,$">a
+spans 3+7:String 10+1:Operator
+%%%% case 149
+text *%&
+spans 0+1:Operator 1+1:Operator 2+1:Operator
+%%%% case 150
+text 'xe
+spans 0+3:String
+%%%% case 151
+text <#fff+)\\.#>-,|
+spans 0+1:Operator 5+1:Operator 6+1:Punctuation 8+1:Punctuation 10+1:Operator 11+1:Operator 12+1:Punctuation 13+1:Operator
+%%%% case 152
+text (@if{^0Éafnea!''')fn
+spans 0+1:Punctuation 1+1:Operator 2+2:Keyword 4+1:Punctuation 5+1:Operator 6+7:Number 13+1:Operator 14+2:String 16+4:String
+%%%% case 153
+text &e.<var-->/#>&,#[f"
+spans 0+1:Operator 2+1:Punctuation 3+1:Operator 4+3:Keyword 7+2:Operator 9+1:Operator 10+1:Operator 12+1:Operator 13+1:Operator 14+1:Punctuation 16+1:Punctuation 18+1:String
+%%%% case 154
+text f""#12"
+spans 1+2:String 4+2:Number 6+1:String
+%%%% case 155
+text @'''\\=Éa?@"%
+spans 0+1:Operator 1+2:String 3+9:String
+%%%% case 156
+text @":([~$"
+spans 0+8:String
+%%%% case 157
+text <!--*/_#12^%#fff. !--><#
+spans 0+1:Operator 1+1:Operator 2+2:Operator 4+1:Operator 5+1:Operator 8+2:Number 10+1:Operator 11+1:Operator 16+1:Punctuation 18+1:Operator 19+2:Operator 21+1:Operator 22+1:Operator
+%%%% case 158
+text ?)9@=?9-#[*fnZ
+spans 0+1:Operator 1+1:Punctuation 2+1:Number 3+1:Operator 4+1:Operator 5+1:Operator 6+1:Number 7+1:Operator 9+1:Punctuation 10+1:Operator
+%%%% case 159
+text <!--/#[!fn/*/*[fn1|
+spans 0+1:Operator 1+1:Operator 2+2:Operator 4+1:Operator 6+1:Punctuation 7+1:Operator 10+9:Comment
+%%%% case 160
+text !9
+spans 0+1:Operator 1+1:Number
+%%%% case 161
+text &amp;1.#'"@".var~ /
+spans 0+1:Operator 4+1:Punctuation 5+1:Number 6+1:Punctuation 8+11:String
+%%%% case 162
+text $:$@"~@
+spans 1+1:Punctuation 3+4:String
+%%%% case 163
+text +<#"é
+spans 0+1:Operator 1+1:Operator 3+2:String
+%%%% case 164
+text #>e1{f":}var{-->r"1,;
+spans 0+21:Directive
+%%%% case 165
+text #[.
+spans 0+3:Directive
+%%%% case 166
+text }:@"*)Éa#1&amp;[~FROM
+spans 0+1:Punctuation 1+1:Punctuation 2+19:String
+%%%% case 167
+text !'''*/:$"é='''[-->fnASnull
+spans 0+1:Operator 1+2:String 3+9:String 12+2:String 14+1:Punctuation 15+2:Operator 17+1:Operator
+%%%% case 168
+text {#12}|"""r"e<#_<0f";
+spans 0+1:Punctuation 2+2:Number 4+1:Punctuation 5+1:Operator 6+14:String
+%%%% case 169
+text <#9'
+spans 0+1:Operator 2+1:Number 3+1:String
+%%%% case 170
+text `{@@"FROM$)
+spans 1+1:Punctuation 2+1:Operator 3+8:String
+%%%% case 171
+text \\é(
+spans 2+1:Punctuation
+%%%% case 172
+text //.<!--:
+spans 0+8:Comment
+%%%% case 173
+text {/+&<!--#Z e/
+spans 0+1:Punctuation 1+1:Operator 2+1:Operator 3+1:Operator 4+1:Operator 5+1:Operator 6+2:Operator 12+1:Operator
+%%%% case 174
+text --$"_[/*'<Z
+spans 0+2:Operator 2+9:String
+%%%% case 175
+text 0true^*/--/*-->'
+spans 0+5:Number 5+1:Operator 6+1:Operator 7+1:Operator 8+2:Operator 10+6:Comment
+%%%% case 176
+text , if_)#fff|Z^0
+spans 0+1:Punctuation 5+1:Punctuation 10+1:Operator 12+1:Operator 13+1:Number
+%%%% case 177
+text $'  x|
+spans 1+5:String
+%%%% case 178
+text &-$="
+spans 0+1:Operator 1+1:Operator 3+1:Operator 4+1:String
+%%%% case 179
+text -->é+^%$"+!#fff~ 
+spans 0+2:Operator 2+1:Operator 4+1:Operator 5+1:Operator 6+1:Operator 7+10:String
+%%%% case 180
+text é0#>é-->*^/r"ASéfn
+spans 3+1:Operator 5+2:Operator 7+1:Operator 8+1:Operator 9+1:Operator 10+1:Operator 12+6:String
+%%%% case 181
+text  &
+spans 1+1:Operator
+%%%% case 182
+text [/*nullAS-]-->
+spans 0+1:Punctuation 1+13:Comment
+%%%% case 183
+text <#'''`*/#[1$"/&amp; Z\\
+spans 0+1:Operator 2+2:String 4+19:String
+%%%% case 184
+text }<#:"""=1<!--*e}<!--<#--*
+spans 0+1:Punctuation 1+1:Operator 3+1:Punctuation 4+21:String
+%%%% case 185
+text #fff}+<
+spans 4+1:Punctuation 5+1:Operator 6+1:Operator
+%%%% case 186
+text \\#fff&amp;&amp;]#[+1#>{<!--
+spans 5+1:Operator 9+1:Punctuation 10+1:Operator 14+1:Punctuation 15+1:Punctuation 17+1:Punctuation 18+1:Operator 19+1:Number 21+1:Operator 22+1:Punctuation 23+1:Operator 24+1:Operator 25+2:Operator
+%%%% case 187
+text 0-->@Zé*/&amp;=r"#12true
+spans 0+1:Number 1+2:Operator 3+1:Operator 4+3:Attribute 7+1:Operator 8+1:Operator 9+1:Operator 13+1:Punctuation 14+1:Operator 16+8:String
+%%%% case 188
+text 0r"$"[<!--Z:.?var
+spans 0+2:Number 2+3:String 5+1:Punctuation 6+1:Operator 7+1:Operator 8+2:Operator 11+1:Punctuation 12+1:Punctuation 13+1:Operator 14+3:Keyword
+%%%% case 189
+text ^<!--&amp;[f"~&|!?
+spans 0+1:Operator 1+1:Operator 2+1:Operator 3+2:Operator 5+1:Operator 9+1:Punctuation 10+1:Punctuation 12+6:String
+%%%% case 190
+text  \\(fnif$"/fn}nullvar#
+spans 2+1:Punctuation 8+13:String
+%%%% case 191
+text (({var_#[
+spans 0+1:Punctuation 1+1:Punctuation 2+1:Punctuation 8+1:Punctuation
+%%%% case 192
+text |{/*-->e'''+<!--
+spans 0+1:Operator 1+1:Punctuation 2+14:Comment
+%%%% case 193
+text --
+spans 0+2:Operator
+%%%% case 194
+text <!--AS"""r"f">
+spans 0+1:Operator 1+1:Operator 2+2:Operator 6+8:String
+%%%% case 195
+text  
+%%%% case 196
+text ;<1
+spans 0+1:Punctuation 1+1:Operator 2+1:Number
+%%%% case 197
+text {_#12fn=ASr"@Z
+spans 0+1:Punctuation 3+4:Number 7+1:Operator 8+3:Type 11+3:String
+%%%% case 198
+text +<!--$/
+spans 0+1:Operator 1+1:Operator 2+1:Operator 3+2:Operator 6+1:Operator
+%%%% case 199
+text 9&.
+spans 0+1:Number 1+1:Operator 2+1:Punctuation
+%%%% case 200
+text {var 9?#[ =Z;#[|
+spans 0+1:Punctuation 1+3:Keyword 5+1:Number 6+1:Operator 8+1:Punctuation 10+1:Operator 12+1:Punctuation 14+1:Punctuation 15+1:Operator
+%%%% case 201
+text #[}x;-@var-->/]r"/*fn
+spans 1+1:Punctuation 2+1:Punctuation 4+1:Punctuation 5+1:Operator 6+4:Attribute 10+2:Operator 12+1:Operator 13+1:Operator 14+1:Punctuation 16+5:String
+%%%% case 202
+text ?true^e$+:  ,\\>*/ 
+spans 0+1:Operator 1+4:Constant 5+1:Operator 8+1:Operator 9+1:Punctuation 12+1:Punctuation 14+1:Operator 15+1:Operator 16+1:Operator
+%%%% case 203
+text var-@*xr"@
+spans 0+3:Keyword 3+1:Operator 4+1:Operator 5+1:Operator 8+2:String
+%%%% case 204
+text %)_"e-.>\\a,:
+spans 0+1:Operator 1+1:Punctuation 3+9:String
+%%%% case 205
+text \\|!_r"%^!aÉa
+spans 1+1:Operator 2+1:Operator 5+7:String
+%%%% case 206
+text x&amp;!--(<!--
+spans 1+1:Operator 5+1:Punctuation 6+1:Operator 7+2:Operator 9+1:Punctuation 10+1:Operator 11+1:Operator 12+2:Operator
+%%%% case 207
+text }9] fn?!FROM<=<!--ASZ
+spans 0+1:Punctuation 1+1:Number 2+1:Punctuation 6+1:Operator 7+1:Operator 12+2:Operator 14+1:Operator 15+1:Operator 16+2:Operator
+%%%% case 208
+text ;#fff~
+spans 0+1:Punctuation 5+1:Operator
+%%%% case 209
+text :var#|(<&(AS_"'.a
+spans 0+1:Punctuation 1+3:Keyword 5+1:Operator 6+1:Punctuation 7+1:Operator 8+1:Operator 9+1:Punctuation 13+4:String
+%%%% case 210
+text a><&amp;1'''&^true=9~#>@
+spans 1+1:Operator 2+1:Operator 3+1:Operator 7+1:Punctuation 8+1:Number 9+2:String 11+13:String
+%%%% case 211
+text *x
+spans 0+1:Operator
+%%%% case 212
+text if#12{AS
+spans 0+2:Keyword 3+2:Number 5+1:Punctuation
+%%%% case 213
+text <!--
+spans 0+1:Operator 1+1:Operator 2+2:Operator
+%%%% case 214
+text FROM
+%%%% case 215
+text if>
+spans 0+2:Keyword 2+1:Operator
+%%%% case 216
+text /*fn_f"var#"trueÉa/*&amp;r"#>#[
+spans 0+31:Comment
+%%%% case 217
+text Éa"""}%\\<:
+spans 0+2:Type 2+8:String
+%%%% case 218
+text )#xnull
+spans 0+1:Punctuation
+%%%% case 219
+text AS.).` *>null-->xe
+spans 2+1:Punctuation 3+1:Punctuation 4+1:Punctuation 7+1:Operator 8+1:Operator 9+4:Constant 13+2:Operator 15+1:Operator
+%%%% case 220
+text ^
+spans 0+1:Operator
+%%%% case 221
+text é*>}`@if
+spans 1+1:Operator 2+1:Operator 3+1:Punctuation 5+3:Attribute
+%%%% case 222
+text ,@|9r"\\)
+spans 0+1:Punctuation 1+1:Operator 2+1:Operator 3+2:Number 5+3:String
+%%%% case 223
+text (#['''Zfn<FROM""" /*[
+spans 0+1:Punctuation 2+1:Punctuation 3+2:String 5+16:String
+%%%% case 224
+text true}/AS>>e#12a# 
+spans 0+4:Constant 4+1:Punctuation 5+1:Operator 8+2:Operator 12+3:Number
+%%%% case 225
+text if~fn#12<!--&amp;
+spans 0+2:Keyword 2+1:Operator 6+2:Number 8+1:Operator 9+1:Operator 10+2:Operator 12+1:Operator 16+1:Punctuation
+%%%% case 226
+text ]--0)0{var
+spans 0+1:Punctuation 1+2:Operator 3+1:Number 4+1:Punctuation 5+1:Number 6+1:Punctuation 7+3:Keyword
+%%%% case 227
+text @"aZ{`-.)xx_AS
+spans 0+1:Operator 1+13:String
+%%%% case 228
+text /&amp; ="""
+spans 0+1:Operator 1+1:Operator 5+1:Punctuation 7+1:Operator 8+3:String
+%%%% case 229
+text $"/#"}];true
+spans 1+4:String 5+1:Punctuation 6+1:Punctuation 7+1:Punctuation 8+4:Constant
+%%%% case 230
+text ) #fff 
+spans 0+1:Punctuation
+%%%% case 231
+text #>(;
+spans 1+1:Operator 2+1:Punctuation 3+1:Punctuation
+%%%% case 232
+text #12/*&amp;#[<#fn !/null(
+spans 1+2:Number 3+21:Comment
+%%%% case 233
+text 09'''-AS|~ */,
+spans 0+2:Number 2+2:String 4+10:String
+%%%% case 234
+text ]#>.:1|>
+spans 0+1:Punctuation 2+1:Operator 3+1:Punctuation 4+1:Punctuation 5+1:Number 6+1:Operator 7+1:Operator
+%%%% case 235
+text $"1$~.<!-->
+spans 1+10:String
+%%%% case 236
+text  "~#[/
+spans 1+5:String
+%%%% case 237
+text 0\\FROMFROM,9{
+spans 0+1:Number 10+1:Punctuation 11+1:Number 12+1:Punctuation
+%%%% case 238
+text ;"<0~ÉaFROM@"r"--#{$
+spans 0+1:Punctuation 1+12:String 14+6:String
+%%%% case 239
+text |ea#>--if-->var^'''
+spans 0+1:Operator 4+1:Operator 5+2:Operator 7+2:Keyword 9+2:Operator 11+1:Operator 12+3:Keyword 15+1:Operator 16+2:String 18+1:String
+%%%% case 240
+text  }
+spans 1+1:Punctuation
+%%%% case 241
+text '#fff=
+spans 0+6:String
+%%%% case 242
+text [Éa
+spans 0+1:Punctuation 1+2:Type
+%%%% case 243
+text @r"&amp;^))#fff=var
+spans 0+1:Operator 2+17:String
+%%%% case 244
+text --^1#12----#>\\"~
+spans 0+2:Operator 2+1:Operator 3+1:Number 5+2:Number 7+2:Operator 9+2:Operator 12+1:Operator 14+2:String
+%%%% case 245
+text */%/*"""f"@</9
+spans 0+1:Operator 1+1:Operator 2+1:Operator 3+11:Comment
+%%%% case 246
+text &amp;"""1true]Z(true@")^*#[
+spans 0+1:Operator 4+1:Punctuation 5+2:String 7+15:String 22+1:Punctuation 23+1:Operator 24+1:Operator 26+1:Punctuation
+%%%% case 247
+text )r"  
+spans 0+1:Punctuation 2+3:String
+%%%% case 248
+text xr"é~{a
+spans 2+5:String
+%%%% case 249
+text #fff
+%%%% case 250
+text #[[9\\
+spans 1+1:Punctuation 2+1:Punctuation 3+1:Number
+%%%% case 251
+text */fnnull 
+spans 0+1:Operator 1+1:Operator
+%%%% case 252
+text &r"-_>
+spans 0+1:Operator 2+4:String
+%%%% case 253
+text =/-->{#AS:e)9+:x
+spans 0+1:Operator 1+1:Operator 2+2:Operator 4+1:Operator 5+1:Punctuation 9+1:Punctuation 11+1:Punctuation 12+1:Number 13+1:Operator 14+1:Punctuation
+%%%% case 254
+text }#fff!ASe
+spans 0+1:Punctuation 5+1:Operator 6+3:Type
+%%%% case 255
+text a=/null
+spans 1+1:Operator 2+1:Operator
+%%%% case 256
+text %@>#12null<!--~<#*/ÉaZ@"
+spans 0+1:Operator 1+1:Operator 2+1:Operator 4+6:Number 10+1:Operator 11+1:Operator 12+2:Operator 14+1:Operator 15+1:Operator 17+1:Operator 18+1:Operator 19+3:Type 22+1:Operator 23+1:String
+%%%% case 257
+text }"'''f"&amp;--.'9$"
+spans 0+1:Punctuation 1+6:String 7+1:Operator 11+1:Punctuation 12+2:Operator 14+1:Punctuation 15+4:String
+%%%% case 258
+text .
+spans 0+1:Punctuation
+%%%% case 259
+text (|\\1~'''$"`%
+spans 0+1:Punctuation 1+1:Operator 3+1:Number 4+1:Operator 5+2:String 7+5:String
+%%%% case 260
+text x#12 )`)x[?"""@"}
+spans 2+2:Number 5+1:Punctuation 6+11:String
+%%%% case 261
+text é<#`a,Zf"if'''a}$"
+spans 1+1:Operator 3+15:String
+%%%% case 262
+text ]*
+spans 0+1:Punctuation 1+1:Operator
+%%%% case 263
+text ]--r"%
+spans 0+1:Punctuation 1+2:Operator 4+2:String
+%%%% case 264
+text FROM<#:
+spans 4+1:Operator 6+1:Punctuation
+%%%% case 265
+text $"{
+spans 1+2:String
+%%%% case 266
+text true<<##fff<é\\<!--)
+spans 0+4:Constant 4+2:Operator 11+1:Operator 14+1:Operator 15+1:Operator 16+2:Operator 18+1:Punctuation
+%%%% case 267
+text -#12<!--""",^*/*/"-0!
+spans 0+1:Operator 2+2:Number 4+1:Operator 5+1:Operator 6+2:Operator 8+2:String 10+8:String 18+1:Operator 19+1:Number 20+1:Operator
+%%%% case 268
+text "$^fn@"~>éf"Éa
+spans 0+7:String 7+1:Operator 8+1:Operator 11+3:String
+%%%% case 269
+text ? ,~#>$"Z?#[
+spans 0+1:Operator 2+1:Punctuation 3+1:Operator 5+1:Operator 7+5:String
+%%%% case 270
+text ,*/"""@"&amp;#12_Z ^!#ffff"
+spans 0+1:Punctuation 1+1:Operator 2+1:Operator 3+2:String 5+3:String 8+1:Operator 12+1:Punctuation 14+4:Number 19+1:Operator 20+1:Operator 26+1:String
+%%%% case 271
+text Z? AS''''''""")) Éa
+spans 1+1:Operator 5+2:String 7+2:String 9+2:String 11+2:String 13+6:String
+%%%% case 272
+text #[*/
+spans 1+1:Punctuation 2+1:Operator 3+1:Operator
+%%%% case 273
+text f"#>($varr" 
+spans 1+10:String
+%%%% case 274
+text \\!Z9FROM<+f"@FROMnull
+spans 1+1:Operator 8+1:Operator 9+1:Operator 11+10:String
+%%%% case 275
+text (/-->)x
+spans 0+1:Punctuation 1+1:Operator 2+2:Operator 4+1:Operator 5+1:Punctuation
+%%%% case 276
+text fn@" &/.|
+spans 2+1:Operator 3+6:String
+%%%% case 277
+text #[f""$r"$null=\\]-Z
+spans 1+1:Punctuation 3+2:String 7+11:String
+%%%% case 278
+text a'''*,/*!%}null '''
+spans 1+2:String 3+14:String 17+2:String
+%%%% case 279
+text '''@~^@#><!--<0:
+spans 0+2:String 2+14:String
+%%%% case 280
+text AS$"é]{r"/*evar?[#>0
+spans 3+6:String 9+11:Comment
+%%%% case 281
+text ,]'''$+#fff=ifZ=\\a*/
+spans 0+1:Punctuation 1+1:Punctuation 2+2:String 4+16:String
+%%%% case 282
+text #>@%fn^'''@"
+spans 1+1:Operator 2+1:Operator 3+1:Operator 6+1:Operator 7+2:String 9+3:String
+%%%% case 283
+text ]0ee#fffAS.-'''
+spans 0+1:Punctuation 1+3:Number 10+1:Punctuation 11+1:Operator 12+2:String 14+1:String
+%%%% case 284
+text r"r"
+spans 1+3:String
+%%%% case 285
+text %?f"&amp;<#"""~=#fff
+spans 0+1:Operator 1+1:Operator 3+9:String 12+2:String 14+1:Operator 15+1:Operator
+%%%% case 286
+text #>=;`%-->(?
+spans 1+2:Operator 3+1:Punctuation 4+7:String
+%%%% case 287
+text '}'''`~)=0/x[Z)
+spans 0+3:String 3+2:String 5+10:String
+%%%% case 288
+text =]*&,\\Éa\\
+spans 0+1:Operator 1+1:Punctuation 2+1:Operator 3+1:Operator 4+1:Punctuation 6+2:Type
+%%%% case 289
+text =:
+spans 0+1:Operator 1+1:Punctuation
+%%%% case 290
+text `&amp;^~Éa*1_
+spans 0+13:String
+%%%% case 291
+text [&f"'>&amp;0`!a\\?AS
+spans 0+1:Punctuation 1+1:Operator 3+16:String
+%%%% case 292
+text <<fn&/*)=
+spans 0+2:Operator 4+1:Operator 5+4:Comment
+%%%% case 293
+text `
+spans 0+1:String
+%%%% case 294
+text true
+spans 0+4:Constant
+%%%% case 295
+text 1 #null
+spans 0+1:Number
+%%%% case 296
+text !<#' '@"--"""r"}['
+spans 0+1:Operator 1+1:Operator 3+3:String 6+1:Operator 7+4:String 11+2:String 14+4:String
+%%%% case 297
+text é
+%%%% case 298
+text <#null@"^
+spans 0+1:Operator 6+1:Operator 7+2:String
+%%%% case 299
+text true|<#12true{ '''
+spans 0+4:Constant 4+1:Operator 5+1:Operator 7+6:Number 13+1:Punctuation 15+2:String 17+1:String
+%%%% case 300
+text /*FROM} */@AS{<!--étrue`null"
+spans 0+10:Comment 10+1:Operator 13+1:Punctuation 14+1:Operator 15+1:Operator 16+2:Operator 28+1:String
+%%%% case 301
+text `.@é)*/"""&amp;
+spans 1+1:Punctuation 2+1:Operator 4+1:Punctuation 5+1:Operator 6+1:Operator 7+2:String 9+6:String
+%%%% case 302
+text ;'^
+spans 0+1:Punctuation 2+1:Operator
+%%%% case 303
+text {FROM}Éa&+r"#[
+spans 0+1:Punctuation 5+1:Punctuation 6+2:Type 8+1:Operator 9+1:Operator 11+3:String
+%%%% case 304
+text @_true r"'''^!(}&amp;[;&
+spans 0+1:Operator 8+16:String
+%%%% case 305
+text -->}1&&f"%e
+spans 0+2:Operator 2+1:Operator 3+1:Punctuation 4+1:Number 5+2:Operator 8+3:String
+%%%% case 306
+text null>"#r"^if],":<#>FROM
+spans 4+1:Operator 5+4:String 9+1:Operator 10+2:Keyword 12+1:Punctuation 13+1:Punctuation 14+9:String
+%%%% case 307
+text _"""##[10:;
+spans 1+2:String 3+8:String
+%%%% case 308
+text $[9Z)varif"""]"{var#>
+spans 1+1:Punctuation 2+2:Number 4+1:Punctuation 10+2:String 12+3:String 15+1:Punctuation 20+1:Operator
+%%%% case 309
+text /'$"#9AS<'''true)
+spans 0+1:Operator 3+14:String
+%%%% case 310
+text #12]@"
+spans 1+2:Number 3+1:Punctuation 4+1:Operator 5+1:String
+%%%% case 311
+text '''f"fn)x1#[var=
+spans 0+3:String 4+12:String
+%%%% case 312
+text |
+spans 0+1:Operator
+%%%% case 313
+text e!&amp;<!--var
+spans 1+1:Operator 2+1:Operator 6+1:Punctuation 7+1:Operator 8+1:Operator 9+2:Operator
+%%%% case 314
+text --"{*
+spans 0+2:Operator 2+3:String
+%%%% case 315
+text --#[varif
+spans 0+2:Operator 2+7:Attribute
+%%%% case 316
+text +&)@"AS&amp;$"varAS/*($".
+spans 0+1:Operator 1+1:Operator 2+1:Punctuation 3+1:Operator 4+10:String 19+6:Comment
+%%%% case 317
+text #1'
+spans 1+1:Number 2+1:String
+%%%% case 318
+text */(
+spans 0+1:Operator 1+1:Operator 2+1:Punctuation
+%%%% case 319
+text null&|^0<#
+spans 4+1:Operator 5+1:Operator 6+1:Operator 7+1:Number 8+1:Operator
+%%%% case 320
+text @"'''>--true-->}<!--\\
+spans 0+1:Operator 1+21:String
+%%%% case 321
+text null  ?`é}f"
+spans 6+1:Operator 9+1:Punctuation 11+1:String
+%%%% case 322
+text $<#FROMtrue"""if|f"null``
+spans 1+1:Operator 3+8:Type 11+2:String 13+6:String
+%%%% case 323
+text <fné#12<#[*#r"@"
+spans 0+1:Operator 5+2:Number 7+1:Operator 8+8:Attribute
+%%%% case 324
+text 9#|Éa{Z{
+spans 0+1:Number 2+1:Operator 3+2:Type 5+1:Punctuation 7+1:Punctuation
+%%%% case 325
+text ~Éa^a
+spans 0+1:Operator 1+2:Type 3+1:Operator
+%%%% case 326
+text e_)?<#''''*_'''="
+spans 2+1:Punctuation 3+1:Operator 4+1:Operator 6+3:String 10+1:Operator 12+3:String 15+1:Operator 16+1:String
+%%%% case 327
+text f"r"--,*ZFROMif f"
+spans 1+3:String 4+2:Operator 6+1:Punctuation 7+1:Operator 8+7:Type 17+1:String
+%%%% case 328
+text -<#./*(fn##[[if
+spans 0+1:Operator 1+1:Operator 3+1:Punctuation 4+11:Comment
+%%%% case 329
+text f".#"{<!--
+spans 1+4:String 5+1:Punctuation 6+1:Operator 7+1:Operator 8+2:Operator
+%%%% case 330
+text a\\<e-->--x.>
+spans 2+1:Operator 4+2:Operator 6+1:Operator 7+2:Operator 10+1:Punctuation 11+1:Operator
+%%%% case 331
+text #[/*/
+spans 0+5:Attribute
+%%%% case 332
+text &amp;true*/*/@",$"&?^^#12#[
+spans 0+1:Operator 4+1:Punctuation 5+4:Keyword 9+1:Operator 10+17:Comment
+%%%% case 333
+text #12\\?f"/**null[Éa/FROM
+spans 1+2:Number 4+1:Operator 6+16:String
+%%%% case 334
+text if0, Znull$%\\
+spans 3+1:Punctuation 5+5:Type 11+1:Operator
+%%%% case 335
+text @"^.#[true~&amp;AS$"_FROMAS
+spans 0+1:Operator 1+19:String
+%%%% case 336
+text 9
+spans 0+1:Number
+%%%% case 337
+text */#>AS/
+spans 0+1:Operator 1+1:Operator 3+1:Operator 6+1:Operator
+%%%% case 338
+text %*/\\):#Éafn|é**"
+spans 0+1:Operator 1+1:Operator 2+1:Operator 4+1:Punctuation 5+1:Punctuation 7+4:Type 11+1:Operator 13+1:Operator 14+1:Operator 15+1:String
+%%%% case 339
+text '#[;-->(
+spans 1+7:Attribute
+%%%% case 340
+text AS-/*`$"#12}`<_:
+spans 2+1:Operator 3+13:Comment
+%%%% case 341
+text /*#fff/->
+spans 0+9:Comment
+%%%% case 342
+text $FROMASvar, %
+spans 1+9:Type 10+1:Punctuation 12+1:Operator
+%%%% case 343
+text [^~var_)'''xvar{%}<
+spans 0+1:Punctuation 1+1:Operator 2+1:Operator 7+1:Punctuation 8+3:String 15+1:Punctuation 16+1:Operator 17+1:Punctuation 18+1:Operator
+%%%% case 344
+text &amp;@"var_é"r"`[01-
+spans 0+1:Operator 4+1:Punctuation 5+1:Operator 6+7:String 14+6:String
+%%%% case 345
+text FROM^
+spans 4+1:Operator
+%%%% case 346
+text %<#
+spans 0+1:Operator 1+1:Operator
+%%%% case 347
+text !-$""00[#>@"9
+spans 0+1:Operator 1+1:Operator 3+2:String 5+2:Number 7+1:Punctuation 9+1:Operator 10+1:Operator 11+2:String
+%%%% case 348
+text 1é<;
+spans 0+2:Number 2+1:Operator 3+1:Punctuation
+%%%% case 349
+text 9"""
+spans 0+1:Number 1+2:String 3+1:String
+%%%% case 350
+text 99#>FROM&#12f"
+spans 0+2:Number 3+1:Operator 8+1:Operator 10+3:Number 13+1:String
+%%%% case 351
+text *@"if
+spans 0+1:Operator 1+1:Operator 2+3:String
+%%%% case 352
+text '#fff #[&amp;
+spans 6+7:Attribute
+%%%% case 353
+text '<##}?#"""
+spans 1+1:Operator 4+1:Punctuation 5+1:Operator 7+2:String 9+1:String
+%%%% case 354
+text *~/*=
+spans 0+1:Operator 1+1:Operator 2+3:Comment
+%%%% case 355
+text =-[<<AS
+spans 0+1:Operator 1+1:Operator 2+1:Punctuation 3+2:Operator
+%%%% case 356
+text  ;&amp;$FROM%_r".e[
+spans 1+1:Punctuation 2+1:Operator 6+1:Punctuation 12+1:Operator 15+4:String
+%%%% case 357
+text = Éa]9% #fff
+spans 0+1:Operator 2+2:Type 4+1:Punctuation 5+1:Number 6+1:Operator
+%%%% case 358
+text }Z!|/*
+spans 0+1:Punctuation 2+1:Operator 3+1:Operator 4+2:Comment
+%%%% case 359
+text 0<!--`-->=#[--var
+spans 0+1:Number 1+1:Operator 2+1:Operator 3+2:Operator 6+2:Operator 8+2:Operator 10+7:Attribute
+%%%% case 360
+text _'.  
+spans 1+4:String
+%%%% case 361
+text -trueé0"Z*-
+spans 0+1:Operator 7+4:String
+%%%% case 362
+text Z"""
+spans 1+2:String 3+1:String
+%%%% case 363
+text /*'x'=<9*
+spans 0+9:Comment
+%%%% case 364
+text =FROMf"<*/'-->@"?<#":|
+spans 0+1:Operator 1+5:Type 6+10:String 16+1:Operator 17+1:Operator 19+3:String
+%%%% case 365
+text [eZ'''if/".x+
+spans 0+1:Punctuation 3+2:String 5+8:String
+%%%% case 366
+text `
+spans 0+1:String
+%%%% case 367
+text ?;
+spans 0+1:Operator 1+1:Punctuation
+%%%% case 368
+text é-->+if:9@">-1~{>-
+spans 1+2:Operator 3+1:Operator 4+1:Operator 5+2:Keyword 7+1:Punctuation 8+1:Number 9+1:Operator 10+8:String
+%%%% case 369
+text {*>f"?var["""x{e
+spans 0+1:Punctuation 1+1:Operator 2+1:Operator 4+7:String 11+2:String 14+1:Punctuation
+%%%% case 370
+text ?
+spans 0+1:Operator
+%%%% case 371
+text :`@"]>#12if!x|<#
+spans 0+1:Punctuation 1+15:String
+%%%% case 372
+text ?
+spans 0+1:Operator
+%%%% case 373
+text !@"0?-[true
+spans 0+1:Operator 1+1:Operator 2+9:String
+%%%% case 374
+text Z-->if'%Éa&amp;
+spans 1+2:Operator 3+1:Operator 4+2:Keyword 6+9:String
+%%%% case 375
+text Éa$"%.@|<!--* ,(.*
+spans 0+2:Type 3+15:String
+%%%% case 376
+text $*/>$if}null""",$1 ''' 
+spans 1+1:Operator 2+1:Operator 3+1:Operator 5+2:Keyword 7+1:Punctuation 8+4:Constant 12+2:String 14+9:String
+%%%% case 377
+text _
+%%%% case 378
+text -->@--> f"{{)--f"_-)
+spans 0+2:Operator 2+1:Operator 3+1:Operator 4+2:Operator 6+1:Operator 9+8:String 18+1:Operator 19+1:Punctuation
+%%%% case 379
+text #12
+spans 1+2:Number
+%%%% case 380
+text Z* `Z9é'''0@{Éa}=
+spans 1+1:Operator 3+14:String
+%%%% case 381
+text =>'~
+spans 0+2:Operator 2+2:String
+%%%% case 382
+text $"{<#
+spans 1+4:String
+%%%% case 383
+text f"r"é<!--#fff'null;""""
+spans 1+3:String 5+1:Operator 6+1:Operator 7+2:Operator 13+10:String
+%%%% case 384
+text (<<#+AS/*true&amp;iff"if-->$"
+spans 0+1:Punctuation 1+2:Operator 4+1:Operator 7+22:Comment
+%%%% case 385
+text e$"]?@"">/*
+spans 2+5:String 7+4:String
+%%%% case 386
+text 9\\!_r"{"Éa;var--"""^+
+spans 0+1:Number 2+1:Operator 5+3:String 8+2:Type 10+1:Punctuation 11+3:Keyword 14+2:Operator 16+2:String 18+3:String
+%%%% case 387
+text */<!--
+spans 0+1:Operator 1+1:Operator 2+1:Operator 3+1:Operator 4+2:Operator
+%%%% case 388
+text \\*/;+@AS+*
+spans 1+1:Operator 2+1:Operator 3+1:Punctuation 4+1:Operator 5+1:Operator 8+1:Operator 9+1:Operator
+%%%% case 389
+text Éa%(/
+spans 0+2:Type 2+1:Operator 3+1:Punctuation 4+1:Operator
+%%%% case 390
+text <}#[^xnull'@"%if#
+spans 0+1:Operator 1+1:Punctuation 3+1:Punctuation 4+1:Operator 10+7:String
+%%%% case 391
+text >true true
+spans 0+1:Operator 1+4:Constant 6+4:Constant
+%%%% case 392
+text |*/\\<?*/ #[@0Éa
+spans 0+1:Operator 1+1:Operator 2+1:Operator 4+1:Operator 5+1:Operator 6+1:Operator 7+1:Operator 10+1:Punctuation 11+1:Operator 12+3:Number
+%%%% case 393
+text FROM;*:-->&&amp;!+/
+spans 4+1:Punctuation 5+1:Operator 6+1:Punctuation 7+2:Operator 9+1:Operator 10+2:Operator 15+1:Punctuation 16+1:Operator 17+1:Operator 18+1:Operator
+%%%% case 394
+text :[#>%var&?* @
+spans 0+1:Punctuation 1+1:Punctuation 3+1:Operator 4+1:Operator 5+3:Keyword 8+1:Operator 9+1:Operator 10+1:Operator 12+1:Operator
+%%%% case 395
+text ='=#fff'
+spans 0+1:Operator 1+7:String
+%%%% case 396
+text ]!#--{+//*--
+spans 0+1:Punctuation 1+1:Operator 3+2:Operator 5+1:Punctuation 6+1:Operator 7+5:Comment
+%%%% case 397
+text { /*/*+$@"`*/]FROM#[Z
+spans 0+1:Punctuation 2+11:Comment 13+1:Punctuation 19+1:Punctuation
+%%%% case 398
+text <!--
+spans 0+1:Operator 1+1:Operator 2+2:Operator
+%%%% case 399
+text FROM]
+spans 4+1:Punctuation
+%%%% case 400
+text 09)fn@
+spans 0+2:Number 2+1:Punctuation 5+1:Operator
+%%%% case 401
+text #ifnull]$"}#[!é. 
+spans 7+1:Punctuation 9+8:String
+%%%% case 402
+text =#>@"#>@"(null
+spans 0+1:Operator 2+1:Operator 3+1:Operator 4+5:String 9+1:Punctuation 10+4:Constant
+%%%% case 403
+text FROM.+&xefné 
+spans 4+1:Punctuation 5+1:Operator 6+1:Operator
+%%%% case 404
+text if? [+/,é@x\\<ér"
+spans 0+2:Keyword 2+1:Operator 4+1:Punctuation 5+1:Operator 6+1:Operator 7+1:Punctuation 9+1:Operator 12+1:Operator 15+1:String
+%%%% case 405
+text  f"'#[09Z, #[<*= 
+spans 2+15:String
+%%%% case 406
+text .!_`
+spans 0+1:Punctuation 1+1:Operator 3+1:String
+%%%% case 407
+text FROM$@"ÉaZ(fnFROMatrue'
+spans 5+1:Operator 6+17:String
+%%%% case 408
+text |<!--1#$.#[ r"'''*/=
+spans 0+1:Operator 1+1:Operator 2+1:Operator 3+2:Operator 5+1:Number 8+1:Punctuation 10+1:Punctuation 13+7:String
+%%%% case 409
+text %]",
+spans 0+1:Operator 1+1:Punctuation 2+2:String
+%%%% case 410
+text &amp;--.*/#fff#12Z-var~=
+spans 0+1:Operator 4+1:Punctuation 5+2:Operator 7+1:Punctuation 8+1:Operator 9+1:Operator 15+3:Number 18+1:Operator 19+3:Keyword 22+1:Operator 23+1:Operator
+%%%% case 411
+text #fffx\\'''`*r"a!#[
+spans 6+2:String 8+9:String
+%%%% case 412
+text r" !~)
+spans 1+5:String
+%%%% case 413
+text &$"+}`!'''if
+spans 0+1:Operator 2+10:String
+%%%% case 414
+text *//*FROM*|}+<éFROM'+1
+spans 0+1:Operator 1+20:Comment
+%%%% case 415
+text #>'''$"if'
+spans 1+1:Operator 2+2:String 4+6:String
+%%%% case 416
+text .x^
+spans 0+1:Punctuation 2+1:Operator
+%%%% case 417
+text .?_+1( '
+spans 0+1:Punctuation 1+1:Operator 3+1:Operator 4+1:Number 5+1:Punctuation 7+1:String
+%%%% case 418
+text ,fn&amp;#12é("""-->{$"^x/x
+spans 0+1:Punctuation 3+1:Operator 7+1:Punctuation 9+3:Number 12+1:Punctuation 13+2:String 15+7:String 22+1:Operator 24+1:Operator
+%%%% case 419
+text Z&'''@"Z/*$"trueÉa'<!--#12+$
+spans 1+1:Operator 2+2:String 4+15:String 19+1:Operator 20+1:Operator 21+2:Operator 24+2:Number 26+1:Operator
+%%%% case 420
+text null/*if
+spans 0+4:Constant 4+4:Comment
+%%%% case 421
+text *
+spans 0+1:Operator
+%%%% case 422
+text .[
+spans 0+1:Punctuation 1+1:Punctuation
+%%%% case 423
+text Éa?varFROM('.-->
+spans 0+2:Type 2+1:Operator 10+1:Punctuation 11+5:String
+%%%% case 424
+text x/var/\\#fff[-->,ASee&|
+spans 1+1:Operator 2+3:Keyword 5+1:Operator 11+1:Punctuation 12+2:Operator 14+1:Operator 15+1:Punctuation 16+4:Type 20+1:Operator 21+1:Operator
+%%%% case 425
+text enull0AS)
+spans 8+1:Punctuation
+%%%% case 426
+text <#
+spans 0+1:Operator
+%%%% case 427
+text &amp;''' 
+spans 0+1:Operator 4+1:Punctuation 5+2:String 7+2:String
+%%%% case 428
+text ~'''@"&!{!' AS
+spans 0+1:Operator 1+2:String 3+8:String
+%%%% case 429
+text ASFROM<!--"""Z
+spans 6+1:Operator 7+1:Operator 8+2:Operator 10+2:String 12+2:String
+%%%% case 430
+text }#12<|"""? ,|f"
+spans 0+1:Punctuation 2+2:Number 4+1:Operator 5+1:Operator 6+2:String 8+7:String
+%%%% case 431
+text """&amp; |}a--/<
+spans 0+2:String 2+14:String
+%%%% case 432
+text 1)190_}&amp;Z;?9null
+spans 0+1:Number 1+1:Punctuation 2+4:Number 6+1:Punctuation 7+1:Operator 11+1:Punctuation 13+1:Punctuation 14+1:Operator 15+5:Number
+%%%% case 433
+text 1=-->x|_fn:/*=var&
+spans 0+1:Number 1+1:Operator 2+2:Operator 4+1:Operator 6+1:Operator 10+1:Punctuation 11+7:Comment
+%%%% case 434
+text $"--;}x
+spans 1+6:String
+%%%% case 435
+text {<#
+spans 0+1:Punctuation 1+1:Operator
+%%%% case 436
+text $"&amp;
+spans 1+6:String
+%%%% case 437
+text (]'.#>r"(
+spans 0+1:Punctuation 1+1:Punctuation 2+7:String
+%%%% case 438
+text (<!--#>
+spans 0+1:Punctuation 1+1:Operator 2+1:Operator 3+2:Operator 6+1:Operator
+%%%% case 439
+text "@"(-[
+spans 0+3:String 3+1:Punctuation 4+1:Operator 5+1:Punctuation
+%%%% case 440
+text &
+spans 0+1:Operator
+%%%% case 441
+text #[(% 11$"
+spans 1+1:Punctuation 2+1:Punctuation 3+1:Operator 5+2:Number 8+1:String
+%%%% case 442
+text r"
+spans 1+1:String
+%%%% case 443
+text /truetruefn\\
+spans 0+1:Operator
+%%%% case 444
+text ?var?+,x;"&,.a$"&
+spans 0+1:Operator 1+3:Keyword 4+1:Operator 5+1:Operator 6+1:Punctuation 8+1:Punctuation 9+7:String 16+1:Operator
+%%%% case 445
+text a
+%%%% case 446
+text >|&amp;null/\\<!--/ <!---
+spans 0+1:Operator 1+1:Operator 2+1:Operator 6+1:Punctuation 7+4:Constant 11+1:Operator 13+1:Operator 14+1:Operator 15+2:Operator 17+1:Operator 19+1:Operator 20+1:Operator 21+2:Operator 23+1:Operator
+%%%% case 447
+text '''#>--Z1#fff
+spans 0+2:String 2+11:String
+%%%% case 448
+text f"FROMif_$*["
+spans 1+12:String
+%%%% case 449
+text =[null#>#12FROM!!<#
+spans 0+1:Operator 1+1:Punctuation 2+4:Constant 7+1:Operator 9+6:Number 15+1:Operator 16+1:Operator 17+1:Operator
+%%%% case 450
+text @`#'''~9;-->
+spans 0+1:Operator 1+11:String
+%%%% case 451
+text \\|$ASé0
+spans 1+1:Operator 3+4:Type
+%%%% case 452
+text ^#>&
+spans 0+1:Operator 2+1:Operator 3+1:Operator
+%%%% case 453
+text */>fn?<e<!--
+spans 0+1:Operator 1+1:Operator 2+1:Operator 5+1:Operator 6+1:Operator 8+1:Operator 9+1:Operator 10+2:Operator
+%%%% case 454
+text [#[&amp;''''''Z}"1<!#>@
+spans 0+1:Punctuation 2+1:Punctuation 3+1:Operator 7+1:Punctuation 8+2:String 10+2:String 12+2:String 15+1:Punctuation 16+7:String
+%%%% case 455
+text '''?nullvarFROM
+spans 0+2:String 2+13:String
+%%%% case 456
+text Z:_}/*%"|@"|&amp;#fffZ
+spans 1+1:Punctuation 3+1:Punctuation 4+18:Comment
+%%%% case 457
+text FROM&}Éa0FROM'''%fn--(<#!
+spans 4+1:Operator 5+1:Punctuation 6+7:Type 13+2:String 15+10:String
+%%%% case 458
+text 9;,."$e
+spans 0+1:Number 1+1:Punctuation 2+1:Punctuation 3+1:Punctuation 4+3:String
+%%%% case 459
+text '%$"*/fn>*@"#>:
+spans 0+15:String
+%%%% case 460
+text 1;/*
+spans 0+1:Number 1+1:Punctuation 2+2:Comment
+%%%% case 461
+text Éae
+spans 0+3:Type
+%%%% case 462
+text 0%
+spans 0+1:Number 1+1:Operator
+%%%% case 463
+text #fff]>/*-->@*9fn-@#[
+spans 4+1:Punctuation 5+1:Operator 6+14:Comment
+%%%% case 464
+text 9"~}#12f"FROM\\-->FROM|!fn
+spans 0+1:Number 1+8:String 14+2:Operator 16+1:Operator 21+1:Operator 22+1:Operator
+%%%% case 465
+text -->#ffffn*1_>#>]$"^if
+spans 0+2:Operator 2+1:Operator 9+1:Operator 10+2:Number 12+1:Operator 14+1:Operator 15+1:Punctuation 17+4:String
+%%%% case 466
+text _</'''-@"FROM*<!--#['<!--
+spans 1+1:Operator 2+1:Operator 3+2:String 5+16:String 21+1:Operator 22+1:Operator 23+2:Operator
+%%%% case 467
+text .]x<!--f"<#<#$/
+spans 0+1:Punctuation 1+1:Punctuation 3+1:Operator 4+1:Operator 5+2:Operator 8+7:String
+%%%% case 468
+text :[
+spans 0+1:Punctuation 1+1:Punctuation
+%%%% case 469
+text x#,@",e
+spans 2+1:Punctuation 3+1:Operator 4+3:String
+%%%% case 470
+text "{r"0_]<#
+spans 0+4:String 4+2:Number 6+1:Punctuation 7+1:Operator
+%%%% case 471
+text Zfn
+spans 0+3:Type
+%%%% case 472
+text Z/<a1,?|
+spans 1+1:Operator 2+1:Operator 5+1:Punctuation 6+1:Operator 7+1:Operator
+%%%% case 473
+text null!true?var#12%(x+
+spans 0+4:Constant 4+1:Operator 5+4:Constant 9+1:Operator 10+3:Keyword 14+2:Number 16+1:Operator 17+1:Punctuation 19+1:Operator
+%%%% case 474
+text ``-@#}>?f"\\var_'''
+spans 0+2:String 2+1:Operator 3+1:Operator 5+1:Punctuation 6+1:Operator 7+1:Operator 9+9:String
+%%%% case 475
+text >>fn@" <!--=
+spans 0+2:Operator 4+1:Operator 5+7:String
+%%%% case 476
+text f"&var<9:!
+spans 1+9:String
+%%%% case 477
+text :.1!&amp;ifif
+spans 0+1:Punctuation 1+1:Punctuation 2+1:Number 3+1:Operator 4+1:Operator 8+1:Punctuation
+%%%% case 478
+text a?(}(
+spans 1+1:Operator 2+1:Punctuation 3+1:Punctuation 4+1:Punctuation
+%%%% case 479
+text <#\\$`^
+spans 0+1:Operator 4+2:String
+%%%% case 480
+text ;Éa.{%_%}`
+spans 0+1:Punctuation 1+2:Type 3+1:Punctuation 4+1:Punctuation 5+1:Operator 7+1:Operator 8+1:Punctuation
+%%%% case 481
+text --><#]_^+/-Éa1
+spans 0+2:Operator 2+1:Operator 3+1:Operator 4+10:Comment
+%%%% case 482
+text #12|[
+spans 0+5:Comment
+%%%% case 483
+text @"<
+spans 0+1:Operator 1+2:String
+%%%% case 484
+text "#12[;nullé@"<#>
+spans 0+13:String 13+1:Operator 14+2:Comment
+%%%% case 485
+text :];a-->
+spans 0+1:Punctuation 1+1:Punctuation 2+1:Punctuation 4+2:Operator 6+1:Operator
+%%%% case 486
+text |true*AS(~*<#<[*
+spans 0+1:Operator 5+1:Operator 8+1:Punctuation 9+1:Operator 10+1:Operator 11+1:Operator 12+4:Comment
+%%%% case 487
+text (]=xé"
+spans 0+1:Punctuation 1+1:Punctuation 2+1:Operator 5+1:String
+%%%% case 488
+text <# "
+spans 0+1:Operator 1+3:Comment
+%%%% case 489
+text var]`}1@--a'--"FROM\\f"
+spans 3+1:Punctuation 5+1:Punctuation 6+1:Number 7+1:Operator 8+2:Operator 11+11:String
+%%%% case 490
+text x]r"$+
+spans 1+1:Punctuation 2+4:String
+%%%% case 491
+text #fff\\<*/@\\
+spans 0+10:Comment
+%%%% case 492
+text --9%é--->Zr"|({é(
+spans 0+2:Operator 2+1:Number 3+1:Operator 5+2:Operator 7+2:Operator 9+2:Type 10+7:String
+%%%% case 493
+text ({é $"}é """'''Z
+spans 0+1:Punctuation 1+1:Punctuation 5+5:String 10+2:String 12+4:String
+%%%% case 494
+text var0]^&amp;'
+spans 4+1:Punctuation 5+1:Operator 6+1:Operator 10+1:Punctuation 11+1:String
+%%%% case 495
+text }!null&amp;---<#"""~?!Éafntrue
+spans 0+1:Punctuation 1+1:Operator 6+1:Operator 10+1:Punctuation 11+2:Operator 13+1:Operator 14+1:Operator 15+15:Comment
+%%%% case 496
+text true`- #[~?]*/
+spans 5+1:Operator 7+7:Comment
+%%%% case 497
+text fn
+%%%% case 498
+text fnvar~[
+spans 5+1:Operator 6+1:Punctuation
+%%%% case 499
+text $~fnx/]#fffé'''-->#12.,{
+spans 1+1:Operator 5+1:Operator 6+1:Punctuation 7+17:Comment
+%%%% case 500
+text $\\(if''''''r"
+spans 2+1:Punctuation 3+2:Keyword 4+7:String 11+2:String
+%%%% case 501
+text var
+%%%% case 502
+text '-!{,#[//*@$
+spans 0+12:String
+%%%% case 503
+text `&--1null~/**/x#12
+spans 1+1:Operator 2+2:Operator 4+5:Number 9+1:Operator 10+1:Operator 11+1:Operator 12+1:Operator 13+1:Operator 15+3:Comment
+%%%% case 504
+text #9var$"0
+spans 0+8:Comment
+%%%% case 505
+text AS;@#>)<##?
+spans 2+1:Punctuation 3+1:Operator 4+7:Comment
+%%%% case 506
+text  ,}var/_
+spans 1+1:Punctuation 2+1:Punctuation 6+1:Operator
+%%%% case 507
+text '[-null\\<#9
+spans 0+11:String
+%%%% case 508
+text 9`\\
+spans 0+1:Number
+%%%% case 509
+text énull@|f"*/*,_Éa
+spans 5+1:Operator 6+1:Operator 7+9:String
+%%%% case 510
+text FROM1+''',%<#&amp;#^#AS,var
+spans 5+1:Operator 6+21:String
+%%%% case 511
+text <#ÉaFROMvar&}*/
+spans 0+1:Operator 1+14:Comment
+%%%% case 512
+text +"$AS"ér"fn "
+spans 0+1:Operator 1+5:String 7+6:String
+%%%% case 513
+text true|&amp;/*:<!--#>if
+spans 4+1:Operator 5+1:Operator 9+1:Punctuation 10+1:Operator 11+1:Operator 12+1:Punctuation 13+1:Operator 14+1:Operator 15+2:Operator 17+4:Comment
+%%%% case 514
+text %\\
+spans 0+1:Operator
+%%%% case 515
+text ~?*/ /"""$"$"a\\}
+spans 0+1:Operator 1+1:Operator 2+1:Operator 3+1:Operator 5+1:Operator 6+10:String
+%%%% case 516
+text :fn.>var=(null<!--
+spans 0+1:Punctuation 3+1:Punctuation 4+1:Operator 8+1:Operator 9+1:Punctuation 14+1:Operator 15+1:Operator 16+2:Operator
+%%%% case 517
+text =_+,+AS{
+spans 0+1:Operator 2+1:Operator 3+1:Punctuation 4+1:Operator 7+1:Punctuation
+%%%% case 518
+text var)fn^>{&amp; ,.
+spans 3+1:Punctuation 6+1:Operator 7+1:Operator 8+1:Punctuation 9+1:Operator 13+1:Punctuation 15+1:Punctuation 16+1:Punctuation
+%%%% case 519
+text """#12
+spans 0+6:String
+%%%% case 520
+text &&Éa/"$'''#>$"e
+spans 0+2:Operator 2+2:Type 4+1:Operator 5+9:String
+%%%% case 521
+text $"#12&0}%-null[=<#"
+spans 1+18:String
+%%%% case 522
+text {
+spans 0+1:Punctuation
+%%%% case 523
+text x
+%%%% case 524
+text #[*/#12var
+spans 0+10:Comment
+%%%% case 525
+text  AS-fnÉa!
+spans 3+1:Operator 8+1:Operator
+%%%% case 526
+text -->}if)+x+~\\#1$"'''
+spans 0+2:Operator 2+1:Operator 3+1:Punctuation 4+2:Keyword 6+1:Punctuation 7+1:Operator 9+1:Operator 10+1:Operator 12+7:Comment
+%%%% case 527
+text #12
+spans 0+3:Comment
+%%%% case 528
+text é<!--#12!~Z{r"%#fff
+spans 1+1:Operator 2+1:Operator 3+2:Operator 5+14:Comment
+%%%% case 529
+text :<#"e-->>.?&"""<#^`
+spans 0+1:Punctuation 1+1:Operator 2+17:Comment
+%%%% case 530
+text `-->
+spans 1+2:Operator 3+1:Operator
+%%%% case 531
+text &--_~
+spans 0+1:Operator 1+2:Operator 4+1:Operator
+%%%% case 532
+text \\
+%%%% case 533
+text #fff#12`0-*/;-9%9<'
+spans 0+19:Comment
+%%%% case 534
+text |"""#&amp;;9`ASnull
+spans 0+1:Operator 1+18:String
+%%%% case 535
+text """"&&
+spans 0+6:String
+%%%% case 536
+text /*0'
+spans 0+1:Operator 1+1:Operator 2+1:Number 3+1:String
+%%%% case 537
+text *<##>FROMf"&|
+spans 0+1:Operator 1+1:Operator 2+11:Comment
+%%%% case 538
+text r"#>éfn\\null
+spans 0+12:String
+%%%% case 539
+text ,.^ 
+spans 0+1:Punctuation 1+1:Punctuation 2+1:Operator
+%%%% case 540
+text <!--
+spans 0+1:Operator 1+1:Operator 2+2:Operator
+%%%% case 541
+text $#fff"true@;*{+#[
+spans 1+16:Comment
+%%%% case 542
+text '''`'''!*/ *=.?
+spans 0+2:String 2+3:String 5+2:String 7+1:Operator 8+1:Operator 9+1:Operator 11+1:Operator 12+1:Operator 13+1:Punctuation 14+1:Operator
+%%%% case 543
+text [!`
+spans 0+1:Punctuation 1+1:Operator
+%%%% case 544
+text e&#fff,true='f"'''",
+spans 1+1:Operator 2+18:Comment
+%%%% case 545
+text <-AS=#fff>{--
+spans 0+1:Operator 1+1:Operator 4+1:Operator 5+8:Comment
+%%%% case 546
+text _
+%%%% case 547
+text $" \\#12
+spans 1+6:String
+%%%% case 548
+text _é#fff'varif*(#*$
+spans 2+15:Comment
+%%%% case 549
+text <#{*}a}#fff<!--
+spans 0+1:Operator 1+14:Comment
+%%%% case 550
+text &.<1.:+#>
+spans 0+1:Operator 1+1:Punctuation 2+1:Operator 3+1:Number 4+1:Punctuation 5+1:Punctuation 6+1:Operator 7+2:Comment
+%%%% case 551
+text ,~r"<#*|
+spans 0+1:Punctuation 1+1:Operator 3+5:String
+%%%% case 552
+text '''-->AS--9#>AS\\0r"!
+spans 0+2:String 2+18:String
+%%%% case 553
+text '''= >'''`fn--Z
+spans 0+2:String 2+5:String 7+2:String 12+2:Operator
+%%%% case 554
+text r"%'/*{; x
+spans 1+9:String
+%%%% case 555
+text { r" #fff0a;{
+spans 0+1:Punctuation 3+10:String
+%%%% case 556
+text ^AS$&$
+spans 0+1:Operator 4+1:Operator
+%%%% case 557
+text Z<##>`%
+spans 1+1:Operator 2+5:Comment
+%%%% case 558
+text  
+%%%% case 559
+text @"0f":a
+spans 0+1:Operator 1+4:String 5+1:Punctuation
+%%%% case 560
+text #fffe-->#{-->AS}
+spans 0+16:Comment
+%%%% case 561
+text -@"//#fff*/@#fff
+spans 0+1:Operator 1+1:Operator 2+14:String
+%%%% case 562
+text f"1[%#[--$".----
+spans 1+10:String 11+1:Punctuation 12+2:Operator 14+2:Operator
+%%%% case 563
+text = +=Éa ?#>>
+spans 0+1:Operator 2+1:Operator 3+1:Operator 4+2:Type 7+1:Operator 8+3:Comment
+%%%% case 564
+text +
+spans 0+1:Operator
+%%%% case 565
+text Éa$
+spans 0+2:Type
+%%%% case 566
+text 1
+spans 0+1:Number
+%%%% case 567
+text if*/Ztrue$nullfn
+spans 0+2:Keyword 2+1:Operator 3+1:Operator 4+5:Type
+%%%% case 568
+text ~ #>Z[^
+spans 0+1:Operator 2+5:Comment
+%%%% case 569
+text x(|"
+spans 1+1:Punctuation 2+1:Operator 3+1:String
+%%%% case 570
+text $"*1.?%''':xZ#[
+spans 1+14:String
+%%%% case 571
+text \\;-&'"}$"/null*/truevar<
+spans 1+1:Punctuation 2+1:Operator 3+1:Operator 4+20:String
+%%%% case 572
+text a+<-->>@"/*&amp;`
+spans 1+1:Operator 2+1:Operator 3+2:Operator 5+2:Operator 7+1:Operator 8+9:String
+%%%% case 573
+text &amp;:eZ"""!@"--"""
+spans 0+1:Operator 4+1:Punctuation 5+1:Punctuation 8+2:String 10+4:String 14+2:Operator 16+2:String 18+1:String
+%%%% case 574
+text --""":#fff%AS*/
+spans 0+2:Operator 2+2:String 4+11:String
+%%%% case 575
+text {
+spans 0+1:Punctuation
+%%%% case 576
+text @",?@0--=a#>var'if
+spans 0+1:Operator 1+17:String
+%%%% case 577
+text null_^
+spans 5+1:Operator
+%%%% case 578
+text f"--Éa:aé}x=
+spans 1+11:String
+%%%% case 579
+text e--'
+spans 1+2:Operator 3+1:String
+%%%% case 580
+text #fff?
+spans 0+5:Comment
+%%%% case 581
+text <1FROM
+spans 0+1:Operator 1+5:Number
+%%%% case 582
+text a """'fn<!--
+spans 2+2:String 4+8:String
+%%%% case 583
+text .|/*9#12!var
+spans 0+1:Punctuation 1+1:Operator 2+1:Operator 3+1:Operator 4+1:Number 5+7:Comment
+%%%% case 584
+text =Z#12
+spans 0+1:Operator 2+3:Comment
+%%%% case 585
+text <#|var#fff=:"'@*/&
+spans 0+1:Operator 1+17:Comment
+%%%% case 586
+text ;@é&amp;^>#-->
+spans 0+1:Punctuation 1+1:Operator 3+1:Operator 7+1:Punctuation 8+1:Operator 9+1:Operator 10+4:Comment
+%%%% case 587
+text :
+spans 0+1:Punctuation
+%%%% case 588
+text #[<if^é=varx.fn
+spans 0+15:Comment
+%%%% case 589
+text "-->%{f"Éa1
+spans 0+8:String 8+3:Type
+%%%% case 590
+text AS
+%%%% case 591
+text *&amp;*/<!--#[
+spans 0+1:Operator 1+1:Operator 5+1:Punctuation 6+1:Operator 7+1:Operator 8+1:Operator 9+1:Operator 10+2:Operator 12+2:Comment
+%%%% case 592
+text @-->a.Éa /
+spans 0+1:Operator 1+2:Operator 3+1:Operator 5+1:Punctuation 6+2:Type 9+1:Operator
+%%%% case 593
+text $
+%%%% case 594
+text -->)("
+spans 0+2:Operator 2+1:Operator 3+1:Punctuation 4+1:Punctuation 5+1:String
+%%%% case 595
+text \\<##fff+&amp;#>;==
+spans 1+1:Operator 2+16:Comment
+%%%% case 596
+text |{if9'''r"FROM19,(*var
+spans 0+1:Operator 1+1:Punctuation 5+2:String 7+15:String
+%%%% case 597
+text `} #[@x/**/--
+spans 1+1:Punctuation 3+10:Comment
+%%%% case 598
+text Éaa#[\\(=é>`&amp;$AS
+spans 0+3:Type 3+16:Comment
+%%%% case 599
+text nullf"Éa?fn#fff/-->[/*:<#:/*
+spans 5+23:String
+%%%% case 600
+text #_'''a
+spans 0+6:Comment
+%%%% case 601
+text ]#>trueaAS
+spans 0+1:Punctuation 1+9:Comment
+%%%% case 602
+text fne_/*{.x
+spans 4+1:Operator 5+1:Operator 6+1:Punctuation 7+1:Punctuation
+%%%% case 603
+text -->/|xe_<:;
+spans 0+2:Operator 2+1:Operator 3+1:Operator 4+1:Operator 8+1:Operator 9+1:Punctuation 10+1:Punctuation
+%%%% case 604
+text ~r">%_&
+spans 0+1:Operator 2+5:String
+%%%% case 605
+text a0#fff#[ÉaFROM*/'
+spans 2+15:Comment
+%%%% case 606
+text #[+x
+spans 0+4:Comment
+%%%% case 607
+text FROM[?#true#[
+spans 4+1:Punctuation 5+1:Operator 6+7:Comment
+%%%% case 608
+text "fn&amp;*/.null]nullnull^
+spans 0+25:String
+%%%% case 609
+text )ASvar#>true
+spans 0+1:Punctuation 1+5:Type 6+6:Comment
+%%%% case 610
+text =#--#fff~ #fff/,*/&null;Z
+spans 0+1:Operator 1+24:Comment
+%%%% case 611
+text 1r"xZtrue,var)++varvar
+spans 0+2:Number 2+20:String
+%%%% case 612
+text FROM(!
+spans 4+1:Punctuation 5+1:Operator
+%%%% case 613
+text $"'%"#[#>_\\
+spans 1+4:String 5+6:Comment
+%%%% case 614
+text _#>&&FROM
+spans 1+8:Comment
+%%%% case 615
+text '''Éa,+/*'''_+[if&"
+spans 0+2:String 2+8:String 10+2:String 13+1:Operator 14+1:Punctuation 15+2:Keyword 17+1:Operator 18+1:String
+%%%% case 616
+text &%
+spans 0+1:Operator 1+1:Operator
+%%%% case 617
+text @"nullFROM*|é-/*#>&amp;9~1
+spans 0+1:Operator 1+25:String
+%%%% case 618
+text },~![null.null.&/
+spans 0+1:Punctuation 1+1:Punctuation 2+1:Operator 3+1:Operator 4+1:Punctuation 9+1:Punctuation 14+1:Punctuation 15+1:Operator 16+1:Operator
+%%%% case 619
+text null^] é:#[e_\\@"truetrue
+spans 4+1:Operator 5+1:Punctuation 8+1:Punctuation 9+15:Comment
+%%%% case 620
+text (%0varé^,fn
+spans 0+1:Punctuation 1+1:Operator 2+5:Number 7+1:Operator 8+1:Punctuation
+%%%% case 621
+text '##><*
+spans 0+6:String
+%%%% case 622
+text  {
+spans 1+1:Punctuation
+%%%% case 623
+text :|
+spans 0+1:Punctuation 1+1:Operator
+%%%% case 624
+text |"""
+spans 0+1:Operator 1+2:String 3+1:String
+%%%% case 625
+text <!--$"#>Z-->/.,FROM9
+spans 0+1:Operator 1+1:Operator 2+2:Operator 5+15:String
+%%%% case 626
+text r"r"@-
+spans 1+3:String 4+1:Operator 5+1:Operator
+%%%% case 627
+text $"$"0$
+spans 1+3:String 4+1:Number
+%%%% case 628
+text @"/&_true~Éavar*/f"f"@}
+spans 0+1:Operator 1+18:String 20+3:String
+%%%% case 629
+text *1f"@"--/*:1;[r"=
+spans 0+1:Operator 1+2:Number 3+3:String 6+2:Operator 8+1:Operator 9+1:Operator 10+1:Punctuation 11+1:Number 12+1:Punctuation 13+1:Punctuation 15+2:String
+%%%% case 630
+text @~fnfn:1
+spans 0+1:Operator 1+1:Operator 6+1:Punctuation 7+1:Number
+%%%% case 631
+text var[*/*'''#/
+spans 0+3:Keyword 3+1:Punctuation 4+1:Operator 5+1:Operator 6+1:Operator 7+2:String 9+3:String
+%%%% case 632
+text $<!--)1^fn9
+spans 1+1:Operator 2+1:Operator 3+2:Operator 5+1:Punctuation 6+1:Number 7+1:Operator
+%%%% case 633
+text }^é;|f"--,<
+spans 0+1:Punctuation 1+1:Operator 3+1:Punctuation 4+1:Operator 6+5:String
+%%%% case 634
+text ]@"
+spans 0+1:Punctuation 1+1:Operator 2+1:String
+%%%% case 635
+text #fff#>&*/"AS1%
+spans 0+14:Comment
+%%%% case 636
+text #>#[*/(
+spans 0+7:Comment
+%%%% case 637
+text @/true!"#>;*/#>/?$"
+spans 0+1:Operator 1+1:Operator 6+1:Operator 7+12:String
+%%%% case 638
+text #[%$a$a@"
+spans 0+9:Comment
+%%%% case 639
+text ,9--`#>&+\\
+spans 0+1:Punctuation 1+1:Number 2+2:Operator 5+5:Comment
+%%%% case 640
+text /--
+spans 0+1:Operator 1+2:Operator
+%%%% case 641
+text varZ<#---->
+spans 4+7:Comment
+%%%% case 642
+text -->1#[9ASevar}
+spans 0+2:Operator 2+1:Operator 3+1:Number 4+10:Comment
+%%%% case 643
+text /*#12&--
+spans 0+1:Operator 1+1:Operator 2+6:Comment
+%%%% case 644
+text `Éa@|"@".$"1=`  
+spans 1+2:Type 3+1:Operator 4+1:Operator 5+3:String 8+1:Punctuation 10+6:String
+%%%% case 645
+text -9[
+spans 0+1:Operator 1+1:Number 2+1:Punctuation
+%%%% case 646
+text #[}fn#fff+0@?ifx1$/*
+spans 0+20:Comment
+%%%% case 647
+text <!--):`trueZvar} <!--Éa}r"
+spans 0+1:Operator 1+1:Operator 2+2:Operator 4+1:Punctuation 5+1:Punctuation 15+1:Punctuation 17+1:Operator 18+1:Operator 19+2:Operator 21+2:Type 23+1:Punctuation 25+1:String
+%%%% case 648
+text f"/#fffÉa%
+spans 1+9:String
+%%%% case 649
+text -->&amp;<#(AS!?fn#/
+spans 0+2:Operator 2+1:Operator 3+1:Operator 7+1:Punctuation 8+11:Comment
+%%%% case 650
+text -xf"@"
+spans 0+1:Operator 3+3:String
+%%%% case 651
+text >e>-*]##>?x
+spans 0+1:Operator 2+1:Operator 3+1:Operator 4+1:Operator 5+1:Punctuation 6+5:Comment
+%%%% case 652
+text ;if&null;_
+spans 0+1:Punctuation 1+2:Keyword 3+1:Operator 8+1:Punctuation
+%%%% case 653
+text $"1 /*~<!--`
+spans 1+11:String
+%%%% case 654
+text 9 )/étrue<.var`$"
+spans 0+1:Number 2+1:Punctuation 3+1:Operator 9+1:Operator 10+1:Punctuation 11+3:Keyword 16+1:String
+%%%% case 655
+text )<#\\ ;"fn9#12FROM
+spans 0+1:Punctuation 1+16:Comment
+%%%% case 656
+text /*#fff+-null#12~%#["""null]>#
+spans 0+1:Operator 1+1:Operator 2+27:Comment
+%%%% case 657
+text `>`:#12
+spans 1+1:Operator 3+1:Punctuation 4+3:Comment
+%%%% case 658
+text *@?(
+spans 0+1:Operator 1+1:Operator 2+1:Operator 3+1:Punctuation
+%%%% case 659
+text -`Éa?fn%true#>~
+spans 0+1:Operator 2+2:Type 4+1:Operator 7+1:Operator 12+3:Comment
+%%%% case 660
+text ;-&amp;:null-x>-/trueÉa;
+spans 0+1:Punctuation 6+1:Punctuation 7+1:Punctuation 23+1:Punctuation
+%%%% case 661
+text <\\a1/*9<
+spans 4+4:Comment
+%%%% case 662
+text <;#12FROM,*,*/?Z$"-->)#fff
+spans 1+1:Punctuation 9+1:Punctuation 11+1:Punctuation 17+9:String
+%%%% case 663
+text @"
+spans 1+1:String
+%%%% case 664
+text ~null-->|9#FROM*/#12fn&amp;Éa
+spans 26+1:Punctuation
+%%%% case 665
+text (/<#
+spans 0+1:Punctuation
+%%%% case 666
+text """r"*#12|null`
+spans 0+2:String 2+3:String
+%%%% case 667
+text true%*:**/1#>[?Z"`AS
+spans 6+1:Punctuation 16+4:String
+%%%% case 668
+text |%a%@%@é
+%%%% case 669
+text ['
+spans 1+1:String
+%%%% case 670
+text @".null &amp;<fnZvar--Éaa$a
+spans 1+26:String
+%%%% case 671
+text <#x'\\,fn
+spans 3+5:String
+%%%% case 672
+text x/*@"#&amp;r"''FROM#12[+--
+spans 1+25:Comment
+%%%% case 673
+text #>@"
+spans 3+1:String
+%%%% case 674
+text ]FROM*--
+%%%% case 675
+text #fff/*;&^if|](!if
+spans 4+13:Comment
+%%%% case 676
+text `|]][
+%%%% case 677
+text #>x]:<#[- e'\\_%e
+spans 4+1:Punctuation 11+5:String
+%%%% case 678
+text FROM#12#12#12$x{
+spans 15+1:Punctuation
+%%%% case 679
+text &amp;~$"AS
+spans 4+1:Punctuation 7+3:String
+%%%% case 680
+text r"-FROM*/9=:?true
+spans 1+16:String
+%%%% case 681
+text r",`f"e|~$"["""("""x
+spans 1+5:String 10+3:String 13+2:String 15+1:Punctuation 16+2:String 18+2:String
+%%%% case 682
+text @=&amp;0*/;|~@";
+spans 6+1:Punctuation 10+1:Punctuation 14+2:String
+%%%% case 683
+text @"\\<e--,& ^\\x
+spans 1+12:String
+%%%% case 684
+text ,|Z\\9,/*&*>AS-->e
+spans 0+1:Punctuation 5+1:Punctuation 6+11:Comment
+%%%% case 685
+text """0
+spans 0+2:String 2+2:String
+%%%% case 686
+text >%*/<!--~;+!é\\!1x<
+spans 9+1:Punctuation
+%%%% case 687
+text ,/*,--^%.
+spans 0+1:Punctuation 1+8:Comment
+%%%% case 688
+text +`if1' é%%if
+spans 5+7:String
+%%%% case 689
+text (a9>'''@"é#12@"--&+0#>
+spans 0+1:Punctuation 4+2:String 6+16:String
+%%%% case 690
+text a/#Éaa
+%%%% case 691
+text &1'Zr"r"\\),a~
+spans 2+11:String
+%%%% case 692
+text ''''''~e=@/*a-&amp;'*e
+spans 0+2:String 2+2:String 4+2:String 10+12:Comment
+%%%% case 693
+text  & /*$"#[afn#[]?
+spans 3+13:Comment
+%%%% case 694
+text [<!--&
+%%%% case 695
+text &amp;*--]`'#12
+spans 4+1:Punctuation 10+4:String
+%%%% case 696
+text 9null$"fnr"` ("""
+spans 6+5:String 13+1:Punctuation 14+2:String 16+1:String
+%%%% case 697
+text {~ Znull#>e.-</;~
+spans 0+1:Punctuation 15+1:Punctuation
+%%%% case 698
+text """<#'ASr"-@"\\Z#fff
+spans 0+2:String 2+8:String 12+7:String
+%%%% case 699
+text '''#12é=`?-f"r"
+spans 0+2:String 2+13:String
+%%%% case 700
+text :true!&amp;
+spans 0+1:Punctuation 10+1:Punctuation
+%%%% case 701
+text &amp;
+spans 4+1:Punctuation
+%%%% case 702
+text """#>fn#>%/null
+spans 0+2:String 2+13:String
+%%%% case 703
+text !)~:+1FROM*,fn~',
+spans 1+1:Punctuation 3+1:Punctuation 11+1:Punctuation 15+2:String
+%%%% case 704
+text <r"$"*/0
+spans 2+3:String
+%%%% case 705
+text 1
+%%%% case 706
+text <#`
+%%%% case 707
+text <!--?
+%%%% case 708
+text true<f"^étrueif]:-<#
+spans 6+14:String
+%%%% case 709
+text @/*null$"
+spans 1+8:Comment
+%%%% case 710
+text 0^%
+%%%% case 711
+text */(null_+=~\\;$(-<%
+spans 2+1:Punctuation 12+1:Punctuation 14+1:Punctuation
+%%%% case 712
+text *=
+%%%% case 713
+text if $]!$":
+spans 7+2:String
+%%%% case 714
+text @"%trueFROM;=true"""
+spans 1+17:String 18+2:String
+%%%% case 715
+text 9|*&*/if'<é~FROM
+spans 8+8:String
+%%%% case 716
+text |
+%%%% case 717
+text :&=Éa
+spans 0+1:Punctuation
+%%%% case 718
+text Z#12<!--[_Éa;FROMÉaAS$<
+spans 12+1:Punctuation
+%%%% case 719
+text *:\\<#
+spans 1+1:Punctuation
+%%%% case 720
+text }truetrue#fff}if=nulla"
+spans 0+1:Punctuation 1+4:Constant 5+4:Constant 13+1:Punctuation 17+4:Constant 22+1:String
+%%%% case 721
+text /<!--|``
+spans 3+2:Number
+%%%% case 722
+text =`1<@--é
+spans 2+1:Number 5+2:Number
+%%%% case 723
+text )@"`0f"&amp;'
+spans 2+5:Key
+%%%% case 724
+text /&[(
+spans 2+1:Punctuation
+%%%% case 725
+text Z*/
+%%%% case 726
+text &amp;
+%%%% case 727
+text */%f"fn_#12'''
+spans 4+10:Key
+%%%% case 728
+text { if=|>trueZ
+spans 0+1:Punctuation 7+4:Constant
+%%%% case 729
+text )Éa&null e._[#fff}`
+spans 4+4:Constant 12+1:Punctuation 17+1:Punctuation
+%%%% case 730
+text ".#fffZ@<)fn
+spans 0+12:Key
+%%%% case 731
+text [x$&amp;/<#""" |if aFROM
+spans 0+1:Punctuation 11+2:Key 13+11:String
+%%%% case 732
+text ~FROMatruenull-'''0(<!--AS
+spans 6+4:Constant 10+4:Constant 14+1:Number 18+1:Number 22+2:Number
+%%%% case 733
+text >]nullf"#FROM--><#++
+spans 1+1:Punctuation 2+4:Constant 7+13:String
+%%%% case 734
+text .}{)é*Zvaré^\\
+spans 1+1:Punctuation 2+1:Punctuation
+%%%% case 735
+text `(*!
+%%%% case 736
+text 1
+spans 0+1:Number
+%%%% case 737
+text (&
+%%%% case 738
+text .true--<@"r"ASÉafn"-$$
+spans 1+4:Constant 5+2:Number 9+3:String 18+4:String
+%%%% case 739
+text fn*/<!--0#<#_AS
+spans 6+3:Number
+%%%% case 740
+text #[-->1x$_:|
+spans 1+1:Punctuation 2+2:Number 5+1:Number 9+1:Punctuation
+%%%% case 741
+text a#12''/*"""r"r"1{{~%!
+spans 2+2:Number 8+2:String 10+3:String 14+7:String
+%%%% case 742
+text """é''''''.#[
+spans 0+2:Key 2+11:String
+%%%% case 743
+text (&'<=Éa
+%%%% case 744
+text r"&
+spans 1+2:Key
+%%%% case 745
+text :'''$"r"--Éaé?ASr"{AS<!--
+spans 0+1:Punctuation 5+3:String 8+2:Number 17+8:String
+%%%% case 746
+text `##[fn#fff%`~
+spans 3+1:Punctuation
+%%%% case 747
+text #fff&0&#fffnull'''|
+spans 5+1:Number 11+4:Constant
+%%%% case 748
+text )|Z<!--f"``Éa*/a,~/*$
+spans 5+2:Number 8+13:String
+%%%% case 749
+text <-->
+spans 1+2:Number
+%%%% case 750
+text &amp;&true-->#12aif"&;$"@"$"
+spans 6+4:Constant 10+2:Number 14+2:Number 19+5:String 25+3:String
+%%%% case 751
+text }9r"1fn$-é %
+spans 0+1:Punctuation 1+1:Number 3+9:String
+%%%% case 752
+text ?="""#fff&amp;"""/*<#,\\1
+spans 2+2:Key 4+11:String 15+2:String 21+1:Punctuation 23+1:Number
+%%%% case 753
+text /Éa0$"=#12<|/*if%:
+spans 3+1:Number 5+13:String
+%%%% case 754
+text  #fffifr"Z@{ '#12r"Éa+
+spans 8+11:Key
+%%%% case 755
+text *(xnull)
+spans 3+4:Constant
+%%%% case 756
+text fn#[>ÉatrueAS^r"=var0<
+spans 3+1:Punctuation 7+4:Constant 15+7:String
+%%%% case 757
+text nullé+,
+spans 0+4:Constant 6+1:Punctuation
+%%%% case 758
+text 1#12FROM-->#
+spans 0+1:Number 2+2:Number 8+2:Number
+%%%% case 759
+text _#|true#>-(r"<#"
+spans 3+4:Constant 9+1:Number 12+4:String
+%%%% case 760
+text /*}ASAS".
+spans 2+1:Punctuation 7+2:Key
+%%%% case 761
+text %null(,
+spans 1+4:Constant 6+1:Punctuation
+%%%% case 762
+text truetrue#fff(ASfnÉa
+spans 0+4:Constant 4+4:Constant
+%%%% case 763
+text >~-|#>|*?0+&
+spans 2+1:Number 9+2:Number
+%%%% case 764
+text >--ifvar--~null0|--}
+spans 1+2:Number 8+2:Number 11+4:Constant 15+1:Number 17+2:Number 19+1:Punctuation
+%%%% case 765
+text <#@"-->
+spans 3+4:Key
+%%%% case 766
+text ~!
+%%%% case 767
+text x?/
+%%%% case 768
+text `&amp;#fff:#>*&
+spans 10+1:Punctuation
+%%%% case 769
+text &*/=[
+spans 4+1:Punctuation
+%%%% case 770
+text %fn-->0fn!<
+spans 3+2:Number 6+1:Number
+%%%% case 771
+text )0&1~?$"AStrue1]#fff
+spans 1+1:Number 3+1:Number 7+13:String
+%%%% case 772
+text --><0FROM[fn$AS$"<!--truefn
+spans 0+2:Number 4+1:Number 9+1:Punctuation 16+11:Key
+%%%% case 773
+text Z true$\\<#,~<#]
+spans 2+4:Constant 10+1:Punctuation 14+1:Punctuation
+%%%% case 774
+text #12true%é-->
+spans 1+2:Number 3+4:Constant 9+2:Number
+%%%% case 775
+text +'\\&9 
+spans 4+1:Number
+%%%% case 776
+text AS-<&#9,<#"#[#[)*
+spans 2+1:Number 6+1:Number 7+1:Punctuation 10+7:String
+%%%% case 777
+text aeFROM
+%%%% case 778
+text |<!--#fffa/*"""#12Éa{#[~*}1
+spans 3+2:Number 12+2:String 14+13:String
+%%%% case 779
+text Znull1AS< _'-->FROMnull_
+spans 1+4:Constant 5+1:Number 12+2:Number 19+4:Constant
+%%%% case 780
+text ;1Éanullf"f"~"=#12
+%%%% case 781
+text .1)ÉaÉa"
+%%%% case 782
+text :9=
+spans 1+1:Key 2+1:Operator
+%%%% case 783
+text @"#fff .([<!--$#fff-#fff:)
+%%%% case 784
+text '$$"Z]%9)<!--null.
+%%%% case 785
+text &amp;^
+%%%% case 786
+text _>}var$"\\='''?*/#>true}
+spans 2+1:Punctuation
+%%%% case 787
+text % $!&amp;(----$]FROM
+spans 15+1:Punctuation
+%%%% case 788
+text +$nullévar'{f"var#[/*$
+spans 11+1:Punctuation
+%%%% case 789
+text [&amp;;AS/_
+spans 0+1:Punctuation
+%%%% case 790
+text AS"e!
+%%%% case 791
+text #>--_`-f"#[]--9
+spans 0+15:Comment
+%%%% case 792
+text (fn@$"-) f",
+spans 11+1:Punctuation
+%%%% case 793
+text fn:"""ASé
+%%%% case 794
+text . 
+%%%% case 795
+text )!atrue%if:*/@"
+%%%% case 796
+text #fffr"|@r"9?
+spans 0+12:Comment
+%%%% case 797
+text */iffn#>FROM%
+spans 6+7:Comment
+%%%% case 798
+text Éa}Z
+spans 2+1:Punctuation
+%%%% case 799
+text %vare@"&?=/
+%%%% case 800
+text xÉa>r"*/'"""-->
+%%%% case 801
+text --><#--#;<#ASr"~#_*
+spans 4+15:Comment
+%%%% case 802
+text &amp;^#12{ '''#[f"
+spans 6+12:Comment
+%%%% case 803
+text ~xe&a-:@"1,.//*@"
+%%%% case 804
+text FROMASé1""""""}var
+spans 14+1:Punctuation
+%%%% case 805
+text &amp;nullAS:#>FROM!}
+spans 12+8:Comment
+%%%% case 806
+text !%
+%%%% case 807
+text \\
+%%%% case 808
+text $"'''+'*/!if|)\\,
+%%%% case 809
+text \\
+%%%% case 810
+text [/*+FROM:
+spans 0+1:Punctuation
+%%%% case 811
+text ~,<#,f"<!--ÉaÉa?/#[
+spans 1+1:Punctuation 3+16:Comment
+%%%% case 812
+text true[? --/*var
+spans 4+1:Punctuation
+%%%% case 813
+text ~e
+%%%% case 814
+text r"||
+%%%% case 815
+text Éa~$"#[@"évar&
+%%%% case 816
+text truevar?ZAS.<#
+spans 13+1:Comment
+%%%% case 817
+text '''var0Zfn--
+%%%% case 818
+text Z
+%%%% case 819
+text --#[fn
+spans 2+4:Comment
+%%%% case 820
+text r"]#12a`FROM#12/;]$"[)\\
+spans 20+1:Punctuation
+%%%% case 821
+text @"@!{%#é}#[-*/*'''(
+%%%% case 822
+text _@:var[=true$"x?=.
+spans 6+1:Punctuation
+%%%% case 823
+text ]if!<!--+^~*-->~`/*
+spans 0+1:Punctuation
+%%%% case 824
+text 9%
+%%%% case 825
+text ]'.__<\\:"9a#>
+spans 0+1:Punctuation
+%%%% case 826
+text r"#12#[^9#[1:%fnvar
+%%%% case 827
+text """#ffffné/*Z &amp;#Z<#r"fn
+%%%% case 828
+text &amp;0@"~#fffif%null(#[<!----,&
+%%%% case 829
+text fn<!--'''#12$
+spans 9+4:Comment
+%%%% case 830
+text /^
+%%%% case 831
+text true+]f"AS&amp;x >,>
+spans 5+1:Punctuation
+%%%% case 832
+text  1_0a<#+@a _
+spans 6+6:Comment
+%%%% case 833
+text AS|~$)&''')--
+%%%% case 834
+text x
+%%%% case 835
+text 0&eaZ? null/*&%
+%%%% case 836
+text AS~if_$"_!x@"
+%%%% case 837
+text AS1
+%%%% case 838
+text null-#>\\$"?%r"/*
+spans 5+11:Comment
+%%%% case 839
+text */if
+%%%% case 840
+text !"/'''
+%%%% case 841
+text (#>true=`
+%%%% case 842
+text \\!Z<#+f"+Z^
+%%%% case 843
+text &-->\\*fnfn[<#` "?>
+%%%% case 844
+text e}&#fff'''e
+%%%% case 845
+text if:r";~#>/*.#fff"
+spans 0+2:Key 2+1:Punctuation
+%%%% case 846
+text */@"x;a<!--*/<!--+x!f" 0
+%%%% case 847
+text %e_$(a
+%%%% case 848
+text AS<!--/*AS
+%%%% case 849
+text `étrue"é"""0
+%%%% case 850
+text :[~&amp;+ASZ/*-_<!--^$"<!--
+spans 0+0:Key 0+1:Punctuation
+%%%% case 851
+text ] :1,$AS& 
+spans 0+2:Key 2+1:Punctuation 3+6:Number
+%%%% case 852
+text %[%.
+%%%% case 853
+text #[=##fff/*x/*@r"-*/
+spans 0+19:Comment
+%%%% case 854
+text {9$//*--
+%%%% case 855
+text $"
+%%%% case 856
+text #fff^'(|/*r"\\Éa$"--;-a
+spans 0+22:Comment
+%%%% case 857
+text ^ */*Zif#>-xé}
+%%%% case 858
+text true& AS$"$^
+spans 0+12:Constant
+%%%% case 859
+text .*/ >null+@ }'
+%%%% case 860
+text   FROM'&amp;>var*/*'?+>
+%%%% case 861
+text nullvar<!---<
+spans 0+13:Constant
+%%%% case 862
+text ^=Éa<*/&{~Éa#[
+%%%% case 863
+text */.1@
+%%%% case 864
+text a
+%%%% case 865
+text é% |fn xvar+{\\\\
+%%%% case 866
+text *9
+%%%% case 867
+text  true+"Z|
+spans 1+8:Constant
+%%%% case 868
+text Z){"""+evarAS$''':_#12
+spans 0+17:Key 17+1:Punctuation
+%%%% case 869
+text [@">`"""_
+%%%% case 870
+text \\!-
+%%%% case 871
+text var}AS
+%%%% case 872
+text x|(e<#]--:(%{&#
+%%%% case 873
+text é/null%<!-- true
+%%%% case 874
+text ÉaZa#fff #fffif9AS*)
+spans 9+11:Comment
+%%%% case 875
+text =AS.(;>#]9#
+%%%% case 876
+text =/*+\\]' -fnAS*null'''
+%%%% case 877
+text |
+%%%% case 878
+text 019&amp;-1]"""\\>é<#x
+spans 0+18:Number
+%%%% case 879
+text #12a@"&e^#>@"x>
+spans 0+15:Comment
+%%%% case 880
+text {f"'0<#$"%FROM*/:#>*/
+%%%% case 881
+text r"@var#12
+%%%% case 882
+text &amp;`#>"if^$
+%%%% case 883
+text ,&amp;1$";+true
+%%%% case 884
+text afn_]if&!+>$"<#0@"
+%%%% case 885
+text =:r"]&é--#fff-'"""?<#
+spans 0+1:Key 1+1:Punctuation
+%%%% case 886
+text var
+%%%% case 887
+text {~
+%%%% case 888
+text $$"é`/*(f":'#\\r"|/
+spans 0+10:Key 10+1:Punctuation 11+7:String
+%%%% case 889
+text ,
+%%%% case 890
+text ?#`
+%%%% case 891
+text FROM&$"/
+%%%% case 892
+text ? :1fn_
+spans 0+2:Key 2+1:Punctuation 3+4:Number
+%%%% case 893
+text <#var$
+%%%% case 894
+text (#ffff"#ffftrue&amp;|*/
+%%%% case 895
+text `/*{{/*r",^
+%%%% case 896
+text FROM 
+%%%% case 897
+text )
+%%%% case 898
+text ?!\\fn
+%%%% case 899
+text nullZ*)--'#12~
+spans 0+14:Constant
+%%%% case 900
+text Z<#/*Éa.r"Z#12[/*
+spans 2+15:AttrName
+%%%% case 901
+text r"&amp;null)*/if:a
+spans 2+5:Constant
+%%%% case 902
+text #
+%%%% case 903
+text #fff 
+%%%% case 904
+text >&amp;-->
+spans 1+5:Constant
+%%%% case 905
+text var#[:<#/9<[Éa
+spans 7+7:AttrName
+%%%% case 906
+text ;|Éa\\x/if[*/#>1fn:
+%%%% case 907
+text fn<#-/#["""<1Zf" 
+spans 3+13:AttrName
+%%%% case 908
+text `vartrue[<
+%%%% case 909
+text fn"""xZ`!
+%%%% case 910
+text """#>é&1&amp;[#>&/*x)%
+spans 6+7:Constant 16+6:Constant
+%%%% case 911
+text a$"9':0,
+%%%% case 912
+text FROM*$"+%*AS
+%%%% case 913
+text :
+%%%% case 914
+text $"&amp;/)&amp;x.if]@"""r"=
+spans 2+5:Constant 9+5:Constant
+%%%% case 915
+text  .#12'##[-->#*.$"
+%%%% case 916
+text #0~!/*+r"
+%%%% case 917
+text {%\\var<#|é_
+spans 7+4:AttrName
+%%%% case 918
+text #
+%%%% case 919
+text ?null0-->-
+%%%% case 920
+text @if"9^:[<!--=!r"#
+spans 8+9:Comment
+%%%% case 921
+text #fff*/<a#fff=-->fn
+spans 7+1:TagName 8+4:AttrName 12+1:Operator 13+2:AttrName 15+1:Punctuation
+%%%% case 922
+text "1-->f"*/FROM}/*
+%%%% case 923
+text ]?&amp;1Zvar)~éf"'
+spans 2+5:Constant
+%%%% case 924
+text ,&amp;%null#>null>)
+spans 1+5:Constant
+%%%% case 925
+text ^[ _~r"-*Éa
+%%%% case 926
+text Z<!--+$<#''']f"Z#12
+spans 1+18:Comment
+%%%% case 927
+text )]&amp;AS\\!.#12<?éfna
+spans 2+5:Constant 16+5:AttrName
+%%%% case 928
+text e 
+%%%% case 929
+text #éf"null 1\\^~
+%%%% case 930
+text e._}#>`[-->if'''ae1true
+%%%% case 931
+text AS_.|-@;(é'
+%%%% case 932
+text x;@'if]fn&amp;{< $&amp;
+spans 9+5:Constant 17+6:AttrName
+%%%% case 933
+text *|
+%%%% case 934
+text &amp;}!#fff.,"""true-,$ *
+spans 0+5:Constant
+%%%% case 935
+text {&f"#12]:'''iftrue
+spans 1+17:Constant
+%%%% case 936
+text 9var
+%%%% case 937
+text $"\\"#
+%%%% case 938
+text ?'''f"AStrue>=+
+%%%% case 939
+text FROM"""\\-->#12
+%%%% case 940
+text &{r"--?+>$"Z<# :
+spans 0+14:Constant
+%%%% case 941
+text xf"#12|0--*:--r"9
+%%%% case 942
+text x<
+%%%% case 943
+text )&,é<!--FROM%+,?
+spans 1+15:Constant
+%%%% case 944
+text /Éa~\\#fff'''*@#fff
+%%%% case 945
+text ;# -<\\
+spans 5+1:AttrName
+%%%% case 946
+text AS*/["""var
+%%%% case 947
+text (r"true?#f">>
+%%%% case 948
+text <##[/*
+spans 1+5:AttrName
+%%%% case 949
+text  . +@".-! AS`#_[
+%%%% case 950
+text .'$
+%%%% case 951
+text ]
+%%%% case 952
+text anull
+%%%% case 953
+text */#12~" 
+%%%% case 954
+text /a*}/fn<null
+spans 8+4:TagName
+%%%% case 955
+text %_Z:>>x<!-- "?:
+spans 7+8:Comment
+%%%% case 956
+text [!&+:;/Z{$FROM{^
+spans 2+4:Constant
+%%%% case 957
+text */!'''Éa
+%%%% case 958
+text e$Éa#-->1\\+é
+%%%% case 959
+text #12/*<!--
+spans 5+4:Comment
+%%%% case 960
+text --fn!>f"{*e
+spans 0+4:Attribute 7+4:String
+%%%% case 961
+text ,&amp;#12--'''=~x;1&amp;-
+spans 6+19:Comment
+%%%% case 962
+text <#@"ASif$+<!--
+spans 1+13:Comment
+%%%% case 963
+text #["true<#
+spans 0+9:Comment
+%%%% case 964
+text */a\\1#12:'FROM$"&amp;1,
+spans 5+18:Comment
+%%%% case 965
+text -"{]`
+spans 1+4:String
+%%%% case 966
+text +$"@"| `#12<*/#>/*
+spans 2+3:String 8+10:Comment
+%%%% case 967
+text '''?ASf"true|'''&
+spans 0+2:String 2+12:String 14+2:String
+%%%% case 968
+text _* <--#fn=Éa
+spans 4+2:Attribute 6+6:Comment
+%%%% case 969
+text */e#12,,&<!--null:(true-->
+spans 3+23:Comment
+%%%% case 970
+text $0|{<&amp;e|,@"/-->
+spans 0+2:Constant 14+5:String
+%%%% case 971
+text (#fff
+spans 1+4:Comment
+%%%% case 972
+text =Z<!--/ Z_
+spans 4+2:Attribute
+%%%% case 973
+text _"_[%
+spans 1+4:String
+%%%% case 974
+text _*/@"[&amp;`""" true&r";null[
+spans 4+9:String 13+2:String 22+7:String
+%%%% case 975
+text '''!var;#12var~ null?
+spans 0+2:String 2+19:String
+%%%% case 976
+text 9
+%%%% case 977
+text \\&!<Z
+%%%% case 978
+text  +
+%%%% case 979
+text x?--null
+spans 2+6:Attribute
+%%%% case 980
+text #fff|
+spans 0+5:Comment
+%%%% case 981
+text $"*/=)(?>!^a
+spans 1+11:String
+%%%% case 982
+text 9[ZAS&amp;#
+spans 10+1:Comment
+%%%% case 983
+text #>f"/*e`:
+spans 0+9:Comment
+%%%% case 984
+text #[(&FROM*true/*#[
+spans 0+17:Comment
+%%%% case 985
+text _AS(#>ife|.&amp;:('''
+spans 4+17:Comment
+%%%% case 986
+text [()a`$"
+spans 6+1:String
+%%%% case 987
+text $"~|null#>$<*/@#%?(
+spans 1+18:String
+%%%% case 988
+text  """%@$"9Z(Éa
+spans 1+2:String 3+5:String
+%%%% case 989
+text 0+
+%%%% case 990
+text ~*&amp;--}")f"
+spans 7+2:Attribute 10+4:String
+%%%% case 991
+text #true/*~]0$""
+spans 0+13:Comment
+%%%% case 992
+text "null";"""Éa|]\\$"f"
+spans 0+6:String 7+2:String 9+8:String 18+1:String
+%%%% case 993
+text Z{#f"ifZ*/.!\\)
+spans 2+12:Comment
+%%%% case 994
+text )fnÉa'''-->}#[--#[}e
+spans 5+2:String 7+13:String
+%%%% case 995
+text 9}1^
+%%%% case 996
+text ; AS
+spans 2+2:Keyword
+%%%% case 997
+text -_-->({ 
+%%%% case 998
+text !if>\\}
+%%%% case 999
+text var"true|é9--&>
+spans 3+12:String
+%%%% case 1000
+text ;FROM|9FROM#fff:/*=
+spans 11+8:Comment
+%%%% case 1001
+text  /-->=true:
+spans 2+2:Attribute
+%%%% case 1002
+text var ^#12!AS]FROM--
+spans 5+13:Comment
+%%%% case 1003
+text %\\true*'''
+spans 7+2:String 9+1:String
+%%%% case 1004
+text !Z=!-#12#>#[=}AS;$"]
+spans 5+15:Comment
+%%%% case 1005
+text <#FROM(^&*/f";fn
+spans 1+15:Comment
+%%%% case 1006
+text if[-,!*/+ifnull$"1
+spans 16+2:String
+%%%% case 1007
+text */Z "'''_/é@"~f")#
+spans 4+9:String 15+3:String
+%%%% case 1008
+text $!* #ffff"/*
+spans 4+8:Comment
+%%%% case 1009
+text ?#
+spans 1+1:Comment
+%%%% case 1010
+text e::FROM~e&]9#fff;<|(
+spans 12+8:Comment
+%%%% case 1011
+text """@
+spans 0+2:String 2+2:String
+%%%% case 1012
+text <!--]a`#=
+spans 2+2:Attribute 7+2:Comment
+%%%% case 1013
+text '''<_
+spans 0+2:String 2+3:String
+%%%% case 1014
+text  }@"null."
+spans 3+7:String
+%%%% case 1015
+text true\\%FROM#fff!+
+spans 10+6:Comment
+%%%% case 1016
+text :&amp;"=+<!--
+spans 6+7:String
+%%%% case 1017
+text 1'''@\\!&#9*true@"
+spans 1+2:String 3+14:String
+%%%% case 1018
+text 0_*#12-$"Z$">-
+spans 3+11:Comment
+%%%% case 1019
+text @"'$#[x@ 1!^é?if:
+spans 1+16:String
+%%%% case 1020
+text )é/*+'''Z]#>é<#
+spans 2+1:Punctuation 3+1:Keyword
+%%%% case 1021
+text /*#fff$"FROM(
+spans 0+1:Punctuation 1+1:Keyword
+%%%% case 1022
+text (Éa'''~r"FROM)
+%%%% case 1023
+text -\\][ASnull[==:>9
+spans 1+2:String
+%%%% case 1024
+text a$]varAS_if.#fff
+%%%% case 1025
+text ~*/'`/*a0&"<!--nulle
+spans 1+1:Keyword 2+1:Punctuation 5+1:Punctuation 6+1:Keyword
+%%%% case 1026
+text }.<#=(xx$ _|/!r"
+spans 12+1:Punctuation
+%%%% case 1027
+text AS~ $$'>]
+%%%% case 1028
+text &amp;0]#fff#>##12a/*é
+spans 18+1:Punctuation 19+1:Keyword
+%%%% case 1029
+text #.#>{Éa
+spans 0+7:Comment
+%%%% case 1030
+text @"étrue*
+spans 7+1:Keyword
+%%%% case 1031
+text x
+%%%% case 1032
+text fn`FROM
+%%%% case 1033
+text if1a}`'''AS<
+%%%% case 1034
+text <!--9%<!--9{ 
+%%%% case 1035
+text Éa$"_
+%%%% case 1036
+text 9(>*(;a@^0r"r"
+spans 3+1:Keyword
+%%%% case 1037
+text @"}
+%%%% case 1038
+text <!--<#%
+%%%% case 1039
+text @"_|&amp;1
+%%%% case 1040
+text "{" #12(.@xr"
+%%%% case 1041
+text +''''-->$"
+%%%% case 1042
+text +>*>0}1eé
+spans 2+1:Keyword
+%%%% case 1043
+text ~+-->!}@null'''"""1<
+%%%% case 1044
+text &f"f"
+%%%% case 1045
+text %"""!*e#[-_AS0
+spans 5+1:Keyword
+%%%% case 1046
+text &amp;<&\\_.
+spans 7+2:String
+%%%% case 1047
+text """+'''Z.
+%%%% case 1048
+text ^+@'1&amp;.AS
+%%%% case 1049
+text ?var''' >!FROM#12
+spans 0+1:Keyword
+%%%% case 1050
+text null$"9/*$1}"""<ZFROM>-&
+spans 7+1:Punctuation 8+1:Keyword
+%%%% case 1051
+text *a
+spans 0+1:Keyword
+%%%% case 1052
+text Éa*/1#12
+spans 2+1:Keyword 3+1:Punctuation
+%%%% case 1053
+text if#12x?éa=*
+spans 6+1:Keyword 10+1:Keyword
+%%%% case 1054
+text :~
+%%%% case 1055
+text .#12f"@"ASAS](%/#121
+spans 15+1:Punctuation
+%%%% case 1056
+text ,r")!-->+{/*
+spans 10+1:Punctuation 11+1:Keyword
+%%%% case 1057
+text --e0nullÉa/*+e$"varx?
+spans 10+1:Punctuation 11+1:Keyword 20+1:Keyword
+%%%% case 1058
+text |^'''#fff'<!--1ex`#@"'+
+%%%% case 1059
+text 0($"<!--Éavar/*>fn!
+spans 13+1:Punctuation 14+1:Keyword
+%%%% case 1060
+text -->
+%%%% case 1061
+text @!a%if.[if)é}
+%%%% case 1062
+text f";
+%%%% case 1063
+text true#[9Éaé\\)var
+spans 10+2:String
+%%%% case 1064
+text )]varxa]/*:|!^
+spans 8+1:Punctuation 9+1:Keyword
+%%%% case 1065
+text fn/*é.^$"'--é}&é--
+spans 2+1:Punctuation 3+1:Keyword
+%%%% case 1066
+text +
+%%%% case 1067
+text 1?
+spans 1+1:Keyword
+%%%% case 1068
+text )/*true`<#
+spans 1+1:Punctuation 2+1:Keyword
+%%%% case 1069
+text )*/\\~>FROMnull
+spans 1+1:Keyword 2+1:Punctuation 3+2:String
+%%%% case 1070
+text `e1''';@"^varZ*/1
+spans 14+1:Keyword 15+1:Punctuation
+%%%% case 1071
+text (-*"""@"#[&*/,,
+spans 2+1:Keyword 11+1:Keyword 12+1:Punctuation
+%%%% case 1072
+text ;var='''/*""""r"-&Éa%<!----
+spans 8+1:Punctuation 9+1:Keyword
+%%%% case 1073
+text { "#>
+%%%% case 1074
+text )Éaa9Znull
+%%%% case 1075
+text é#>#>!
+%%%% case 1076
+text }
+%%%% case 1077
+text $"%'''~(`=é0--`*{f"
+spans 15+1:Keyword
+%%%% case 1078
+text &` +^^
+%%%% case 1079
+text "e`,@"]#[=1?1?
+spans 11+1:Keyword 13+1:Keyword

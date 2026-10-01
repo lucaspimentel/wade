@@ -10,18 +10,8 @@ use wade::screen::{CellStyle, Color};
 
 /// Case files and C# language classes not ported yet (emptied as the
 /// standalone languages land).
-const PENDING: &[&str] = &[
-    "dockerfile", "json", "markdown", "toml", "xmlhtml", "yaml",
-];
-const PENDING_LANGUAGES: &[&str] = &[
-    "DockerfileLanguage",
-    "GitIgnoreLanguage",
-    "JsonLanguage",
-    "MarkdownLanguage",
-    "TomlLanguage",
-    "XmlHtmlLanguage",
-    "YamlLanguage",
-];
+const PENDING: &[&str] = &[];
+const PENDING_LANGUAGES: &[&str] = &[];
 
 fn golden_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/golden/highlight")
@@ -87,20 +77,50 @@ fn format_style(style: &CellStyle) -> String {
     format!("{}/{}/{flags}", format_color(style.fg), format_color(style.bg))
 }
 
+/// Rust spans index code points; C# indexes UTF-16 units. Mapping positions
+/// to UTF-16 lets astral-plane text compare equal (KNOWN_DEVIATIONS.md).
+fn utf16_offsets(text: &str) -> Vec<usize> {
+    let mut offsets = vec![0];
+
+    for ch in text.chars() {
+        offsets.push(offsets.last().unwrap() + ch.len_utf16());
+    }
+
+    offsets
+}
+
+fn to_utf16(offsets: &[usize], index: usize) -> usize {
+    // Positions past the end (an escape at the last char) keep their excess
+    match offsets.get(index) {
+        Some(&offset) => offset,
+        None => offsets.last().unwrap() + (index + 1 - offsets.len()),
+    }
+}
+
 fn append_line(out: &mut String, line: &StyledLine) {
     let _ = writeln!(out, "text {}", escape(&line.text));
+    let offsets = utf16_offsets(&line.text);
 
     if let Some(spans) = &line.spans {
         out.push_str("spans");
 
         for span in spans {
-            let _ = write!(out, " {}+{}:{:?}", span.start, span.len, span.kind);
+            let start = to_utf16(&offsets, span.start);
+            let end = to_utf16(&offsets, span.start + span.len);
+            let _ = write!(out, " {start}+{}:{:?}", end - start, span.kind);
         }
 
         out.push('\n');
     }
 
     if let Some(styles) = &line.char_styles {
+        // One style per UTF-16 unit, as C# stores them
+        let styles: Vec<CellStyle> = line
+            .text
+            .chars()
+            .zip(styles)
+            .flat_map(|(ch, style)| std::iter::repeat_n(*style, ch.len_utf16()))
+            .collect();
         out.push_str("chars");
         let mut i = 0;
 
@@ -146,7 +166,13 @@ fn run_cases(path: &Path) -> String {
     for (index, case) in cases.iter().enumerate() {
         let _ = writeln!(out, "%%%% case {index}");
 
-        for line in highlight_case(case, &target) {
+        // A leading "target: NAME" line overrides the file's target for this case
+        let (case, case_target) = match case.first().and_then(|line| line.strip_prefix("target: ")) {
+            Some(case_target) => (&case[1..], case_target),
+            None => (&case[..], target.as_str()),
+        };
+
+        for line in highlight_case(case, case_target) {
             append_line(&mut out, &line);
         }
     }

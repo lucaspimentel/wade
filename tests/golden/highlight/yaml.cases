@@ -11,3 +11,34 @@ count: 42
 # comment
 %%%%
 - item
+%%%%
+# Workflow
+---
+name: CI
+on:
+  push:
+    branches: [ main ]
+jobs:
+  build:
+    runs-on: ubuntu-latest # comment
+    steps:
+      - uses: actions/checkout@v4
+      - name: "Quoted value" # trailing
+      - 'single quoted'
+      - 42
+      - -3.5 # negative
+      - true
+      - nothing
+      - yesterday # starts with yes
+      - ~
+    env:
+      KEY: "a \" b"
+      "quoted key": value
+      'single key' : spaced
+      url: http://x#not-comment
+      empty:
+...
+-not a list
+key with spaces: value
+plain continuation line
+  indented # comment here

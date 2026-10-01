@@ -50,7 +50,17 @@ public class HighlightGoldenTests
         for (int c = 0; c < cases.Count; c++)
         {
             sb.Append("%%%% case ").Append(c).Append('\n');
-            StyledLine[] styled = Highlight([.. cases[c]], target);
+
+            // A leading "target: NAME" line overrides the file's target for this case
+            List<string> caseLines = cases[c];
+            string caseTarget = target;
+            if (caseLines.Count > 0 && caseLines[0].StartsWith("target: ", StringComparison.Ordinal))
+            {
+                caseTarget = caseLines[0]["target: ".Length..];
+                caseLines = caseLines[1..];
+            }
+
+            StyledLine[] styled = Highlight([.. caseLines], caseTarget);
 
             foreach (StyledLine styledLine in styled)
             {

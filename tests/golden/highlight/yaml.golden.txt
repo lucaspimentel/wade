@@ -13,3 +13,62 @@ spans 0+9:Comment
 %%%% case 4
 text - item
 spans 0+1:Punctuation
+%%%% case 5
+text # Workflow
+spans 0+10:Comment
+text ---
+spans 0+3:Directive
+text name: CI
+spans 0+4:Key 4+1:Punctuation
+text on:
+spans 0+2:Key 2+1:Punctuation
+text   push:
+spans 2+4:Key 6+1:Punctuation
+text     branches: [ main ]
+spans 4+8:Key 12+1:Punctuation
+text jobs:
+spans 0+4:Key 4+1:Punctuation
+text   build:
+spans 2+5:Key 7+1:Punctuation
+text     runs-on: ubuntu-latest # comment
+spans 4+7:Key 11+1:Punctuation 27+9:Comment
+text     steps:
+spans 4+5:Key 9+1:Punctuation
+text       - uses: actions/checkout@v4
+spans 6+1:Punctuation
+text       - name: "Quoted value" # trailing
+spans 6+1:Punctuation 29+10:Comment
+text       - 'single quoted'
+spans 6+1:Punctuation 8+15:String
+text       - 42
+spans 6+1:Punctuation 8+2:Number
+text       - -3.5 # negative
+spans 6+1:Punctuation 8+4:Number 13+10:Comment
+text       - true
+spans 6+1:Punctuation 8+4:Constant
+text       - nothing
+spans 6+1:Punctuation 8+7:Constant
+text       - yesterday # starts with yes
+spans 6+1:Punctuation 8+9:Constant 18+17:Comment
+text       - ~
+spans 6+1:Punctuation 8+1:Constant
+text     env:
+spans 4+3:Key 7+1:Punctuation
+text       KEY: "a \\" b"
+spans 6+3:Key 9+1:Punctuation 11+8:String
+text       "quoted key": value
+spans 6+12:Key 18+1:Punctuation
+text       'single key' : spaced
+spans 6+12:Key 19+1:Punctuation
+text       url: http://x#not-comment
+spans 6+3:Key 9+1:Punctuation
+text       empty:
+spans 6+5:Key 11+1:Punctuation
+text ...
+spans 0+3:Directive
+text -not a list
+text key with spaces: value
+spans 0+15:Key 15+1:Punctuation
+text plain continuation line
+text   indented # comment here
+spans 11+14:Comment

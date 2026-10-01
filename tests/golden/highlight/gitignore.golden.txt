@@ -1,0 +1,30 @@
+%%%% case 0
+text # Build output
+spans 0+14:Comment
+text bin/
+spans 3+1:Punctuation
+text obj/
+spans 3+1:Punctuation
+text **/node_modules/
+spans 0+2:Keyword 2+1:Punctuation 15+1:Punctuation
+text *.log
+spans 0+1:Keyword
+text !important.log
+spans 0+1:Operator
+text docs/**/*.md
+spans 4+1:Punctuation 5+2:Keyword 7+1:Punctuation 8+1:Keyword
+text file?.txt
+spans 4+1:Keyword
+text [Dd]ebug/
+spans 0+4:String 8+1:Punctuation
+text [unclosed
+text \\#not-a-comment
+spans 0+2:String
+text \\!literal
+spans 0+2:String
+text trailing\\
+text    # indented comment
+spans 3+18:Comment
+text    
+text /rooted
+spans 0+1:Punctuation

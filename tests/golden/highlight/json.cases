@@ -15,3 +15,18 @@ file: sample.json
 { "a": 1 }
 %%%%
 { "a": { "b": 1 } }
+%%%%
+{
+  "name": "wade",
+  "version": 1.2e-3,
+  "neg": -42,
+  "flags": [true, false, null],
+  "nested": { "key": "va\"lue", "arr": [1, 2, {"deep": "x"}] },
+  "escaped \\ key": "end"
+}
+%%%%
+"unterminated: "value
+%%%%
+[ "a", "b" ]
+%%%%
+truefalse nullx -

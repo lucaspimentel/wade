@@ -15,3 +15,24 @@ count = 42
 enabled = true
 %%%%
 enabled = false
+%%%%
+# Cargo manifest
+[package]
+name = "wade" # trailing comment is not scanned
+version = "0.1.0"
+edition = '2024'
+"quoted key" = true
+dotted.key-name = false
+date = 2024-01-02T03:04:05Z
+neg = -1_000
+float = +3.14
+list = [1, 2, 3]
+inline = { a = 1 }
+[[bin]]
+[[broken]
+[unclosed
+desc = """
+multi
+line """ tail = 1
+key=value
+=no key

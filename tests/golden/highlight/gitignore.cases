@@ -1,0 +1,20 @@
+# Highlight parity cases for GitIgnoreLanguage (no C# test file exists).
+# Each %%%% block is tokenized from state 0.
+file: .gitignore
+%%%%
+# Build output
+bin/
+obj/
+**/node_modules/
+*.log
+!important.log
+docs/**/*.md
+file?.txt
+[Dd]ebug/
+[unclosed
+\#not-a-comment
+\!literal
+trailing\
+   # indented comment
+   
+/rooted
