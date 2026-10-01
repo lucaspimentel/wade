@@ -1,0 +1,10 @@
+# Metadata-only right pane (no preview, or a placeholder preview)
+size 80 25
+layout 3pane
+msection "photo.jpg"
+mentry "Git" "Modified"
+msection "Image"
+mentry "Resolution" "4000 x 3000"
+mentry "" "list item value"
+metadata right
+flush

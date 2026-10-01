@@ -14,6 +14,8 @@ pub mod git_status_loader;
 pub mod inline_dir_size_loader;
 pub mod dialogs;
 pub mod input_reader;
+pub mod preview;
+pub mod preview_loader;
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -159,6 +161,8 @@ pub struct App {
     last_width: i32,
     last_height: i32,
     pub(crate) modal: dialogs::ModalState,
+    /// Preview cache and loader (C# `_cachedPreview*` fields).
+    pub(crate) preview: preview::PreviewState,
 }
 
 impl App {
@@ -184,6 +188,7 @@ impl App {
             last_width: 0,
             last_height: 0,
             modal: dialogs::ModalState::default(),
+            preview: preview::PreviewState::default(),
             bookmark_store: crate::fs::bookmark_store::BookmarkStore::new(None),
             pipeline: crate::input::input_pipeline::InputPipeline::new(),
             git_status_loader: crate::app::git_status_loader::GitStatusLoader::new(),
@@ -304,6 +309,9 @@ impl App {
                     InputEvent::FileFinderPartialResult(event) => self.handle_file_finder_partial_result(event),
                     InputEvent::FileFinderScanComplete(event) => self.handle_file_finder_scan_complete(event),
                     InputEvent::FileFinderSearchResult(event) => self.handle_file_finder_search_result(event),
+                    InputEvent::PreviewReady(event) => self.handle_preview_ready(event),
+                    InputEvent::MetadataReady(event) => self.handle_metadata_ready(event),
+                    InputEvent::PreviewLoadingComplete(event) => self.handle_preview_loading_complete(event),
                 }
             }
 
@@ -325,6 +333,9 @@ impl App {
                 InputEvent::FileFinderPartialResult(event) => self.handle_file_finder_partial_result(event),
                 InputEvent::FileFinderScanComplete(event) => self.handle_file_finder_scan_complete(event),
                 InputEvent::FileFinderSearchResult(event) => self.handle_file_finder_search_result(event),
+                InputEvent::PreviewReady(event) => self.handle_preview_ready(event),
+                InputEvent::MetadataReady(event) => self.handle_metadata_ready(event),
+                InputEvent::PreviewLoadingComplete(event) => self.handle_preview_loading_complete(event),
             }
 
             // Clamp selection and adjust scroll
@@ -359,6 +370,9 @@ impl App {
             buffer.resize(resize.width, resize.height);
             self.layout.calculate(resize.width, resize.height, self.preview_pane_enabled, self.parent_pane_enabled);
             clear_screen();
+
+            // Re-render the preview at the new size
+            self.reload_preview_after_resize();
         }
     }
 
@@ -405,9 +419,12 @@ impl App {
                             self.notification = None;
                             self.marked_paths.clear();
                             self.clear_search_filter();
+                            self.clear_preview_cache();
+                            self.update_terminal_title();
+                            self.refresh_git_status();
                         }
-                    } else {
-                        self.show_notification("Open: previews not yet ported", NotificationKind::Info);
+                    } else if self.active_provider_is_previewable() {
+                        self.enter_expanded_preview();
                     }
                 }
             }
@@ -438,7 +455,9 @@ impl App {
                 self.marked_paths.clear();
                 self.clear_search_filter();
                 self.directory_contents.invalidate_all();
+                self.clear_preview_cache();
                 self.refresh_git_status();
+                self.request_full_redraw = true;
             }
             A::ToggleMark => {
                 if !entries.is_empty() && self.selected_index < entries.len() {
@@ -456,6 +475,7 @@ impl App {
                 self.config.show_hidden_files = !self.config.show_hidden_files;
                 self.directory_contents.show_hidden_files = self.config.show_hidden_files;
                 self.directory_contents.invalidate_all();
+                self.clear_preview_cache();
             }
             A::ToggleParentPane => {
                 self.parent_pane_enabled = !self.parent_pane_enabled;
@@ -466,6 +486,8 @@ impl App {
                 self.preview_pane_enabled = !self.preview_pane_enabled;
                 self.layout.calculate(self.last_width, self.last_height, self.preview_pane_enabled, self.parent_pane_enabled);
                 clear_screen();
+                self.clear_preview_cache();
+                self.request_full_redraw = true;
             }
             A::CycleSortMode => {
                 self.config.sort_mode = match self.config.sort_mode {
@@ -476,11 +498,13 @@ impl App {
                 };
                 self.directory_contents.sort_mode = self.config.sort_mode;
                 self.directory_contents.invalidate_all();
+                self.clear_preview_cache();
             }
             A::ToggleSortDirection => {
                 self.config.sort_ascending = !self.config.sort_ascending;
                 self.directory_contents.sort_ascending = self.config.sort_ascending;
                 self.directory_contents.invalidate_all();
+                self.clear_preview_cache();
             }
             A::ShowHelp => {
                 self.input_mode = InputMode::Help;
@@ -568,6 +592,7 @@ impl App {
             A::OpenTerminal => self.open_terminal_here(),
             A::ShowProperties => self.show_properties(),
             A::ShowFileFinder => self.show_file_finder(),
+            A::ShowPreviewMenu => self.show_preview_menu(),
             other => {
                 // Unported in 3a: navigation to the subsystem lands in later phases.
                 self.show_notification("Not yet ported", NotificationKind::Info);
@@ -590,6 +615,8 @@ impl App {
         if DirectoryContents::is_drive_root(&self.current_path) {
             // Go up to the drives list
             self.current_path = DRIVES_PATH.to_string();
+            self.update_terminal_title();
+            self.refresh_git_status();
             let drive_entries = self.directory_contents.get_entries(DRIVES_PATH);
             let root = drive_root(&old_path)
                 .map(|r| r.trim_end_matches(['\\', '/']).to_string())
@@ -599,6 +626,8 @@ impl App {
         } else if let Some(parent) = Path::new(&self.current_path).parent() {
             let parent_path = capitalize_drive_letter(&parent.to_string_lossy());
             self.current_path = parent_path;
+            self.update_terminal_title();
+            self.refresh_git_status();
             let parent_entries = self.directory_contents.get_entries(&self.current_path);
             let old_name = Path::new(&old_path)
                 .file_name()
@@ -609,6 +638,7 @@ impl App {
         }
 
         self.scroll_offset = 0;
+        self.clear_preview_cache();
     }
 
     /// Port of `GetVisibleEntries`.
@@ -687,7 +717,7 @@ impl App {
         use crate::input::MouseButton;
 
         if self.input_mode == InputMode::ExpandedPreview {
-            // Expanded-preview scrolling lands with previews in Phase 7.
+            self.handle_expanded_preview_mouse(&mouse);
             return;
         }
 
@@ -784,6 +814,7 @@ impl App {
         self.scroll_offset = 0;
         self.marked_paths.clear();
         self.clear_search_filter();
+        self.clear_preview_cache();
         self.update_terminal_title();
         self.refresh_git_status();
     }
@@ -900,8 +931,7 @@ impl App {
         }
     }
 
-    /// Port of `HandleFileSystemChanged` (App.cs:1531). Preview-cache
-    /// clearing lands in Phase 7.
+    /// Port of `HandleFileSystemChanged` (App.cs:1531).
     pub fn handle_file_system_changed(&mut self, event: crate::input::FileSystemChangedEvent) {
         if !paths_equal_ignore_case(&event.directory_path, &self.current_path) {
             return; // Stale event for a directory we've navigated away from
@@ -936,7 +966,11 @@ impl App {
             self.selected_index = self.selected_index.min(new_entries.len().saturating_sub(1));
         }
 
-        let _ = selected_survived; // preview-cache clear lands in Phase 7
+        // Only clear the preview if the selected file was deleted/renamed away
+        if !selected_survived {
+            self.clear_preview_cache();
+        }
+
         self.refresh_git_status();
         self.request_full_redraw = true;
     }
@@ -984,13 +1018,13 @@ impl App {
         };
 
         match key.key {
-            ConsoleKey::Escape | ConsoleKey::Enter => close(self),
-            ConsoleKey::UpArrow => {
+            ConsoleKey::Escape | ConsoleKey::Enter | ConsoleKey::I | ConsoleKey::Q => close(self),
+            ConsoleKey::UpArrow | ConsoleKey::K => {
                 if self.properties_scroll_offset > 0 {
                     self.properties_scroll_offset -= 1;
                 }
             }
-            ConsoleKey::DownArrow => {
+            ConsoleKey::DownArrow | ConsoleKey::J => {
                 self.properties_scroll_offset += 1;
             }
             ConsoleKey::PageUp => {
@@ -1299,6 +1333,7 @@ impl App {
             self.scroll_offset = 0;
             self.marked_paths.clear();
             self.clear_search_filter();
+            self.clear_preview_cache();
         }
     }
 
@@ -1378,6 +1413,11 @@ impl App {
 
     /// Port of the 3a subset of `App.Render`.
     pub fn render(&mut self, buffer: &mut ScreenBuffer) {
+        if self.input_mode == InputMode::ExpandedPreview {
+            self.render_expanded_preview(buffer);
+            return;
+        }
+
         let entries = self.get_visible_entries();
         let show_search_bar = self.input_mode == crate::input::InputMode::Search || !self.search_filter.is_empty();
         let mut file_list_pane = self.layout.center_pane;
@@ -1440,9 +1480,9 @@ impl App {
             entries.len(),
             self.selected_index,
             selected_entry,
-            None,
-            None,
-            None,
+            self.preview.cached_file_type_label.as_deref(),
+            self.preview.cached_encoding.as_deref(),
+            self.preview.cached_line_ending.as_deref(),
             self.notification.clone(),
             self.marked_paths.len(),
             self.config.sort_mode,
@@ -1551,8 +1591,42 @@ impl App {
                 PaneRenderer::render_message(buffer, self.layout.right_pane, "[empty directory]");
             }
         } else {
-            PaneRenderer::render_message(buffer, self.layout.right_pane, "[no preview available]");
+            let path = selected.full_path.clone();
+            self.render_file_preview(buffer, &path);
         }
+    }
+
+    /// Port of `RenderExpandedPreview`: the preview fills the screen above
+    /// the status bar, which shows the previewed file's path.
+    fn render_expanded_preview(&mut self, buffer: &mut ScreenBuffer) {
+        self.render_expanded_preview_pane(buffer);
+
+        let entries = self.get_visible_entries();
+        let selected_entry = entries.get(self.selected_index);
+        let mut display_path = self.preview.cached_path.clone().unwrap_or_else(|| self.current_path.clone());
+        if display_path == DRIVES_PATH {
+            display_path = "Drives".to_string();
+        }
+
+        crate::ui::status_bar::render(
+            buffer,
+            self.layout.status_bar,
+            &display_path,
+            entries.len(),
+            self.selected_index,
+            selected_entry,
+            self.preview.cached_file_type_label.as_deref(),
+            self.preview.cached_encoding.as_deref(),
+            self.preview.cached_line_ending.as_deref(),
+            self.notification.clone(),
+            self.marked_paths.len(),
+            self.config.sort_mode,
+            self.config.sort_ascending,
+            0,
+            false,
+            self.current_branch_name.as_deref(),
+            self.ahead_behind_text.as_deref(),
+        );
     }
 }
 
@@ -1695,7 +1769,7 @@ fn terminal_size() -> Option<(i32, i32)> {
     }
 }
 
-fn clear_screen() {
+pub(crate) fn clear_screen() {
     print!("{}", crate::ansi::CLEAR_SCREEN);
 }
 

@@ -1,0 +1,7 @@
+# Metadata header, separator row, then the text preview below
+size 80 25
+layout 3pane
+msection "long.rs"
+mentry "Git" "Modified, Staged"
+metatext right text long.rs
+flush

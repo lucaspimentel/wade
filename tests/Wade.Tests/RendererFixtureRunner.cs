@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Text;
 using Wade.FileSystem;
+using Wade.Highlighting;
+using Wade.Preview;
 using Wade.Terminal;
 using Wade.UI;
 
@@ -41,6 +43,7 @@ internal static class RendererFixtureRunner
         int[] finderArgs = [];
         string finderState = "";
         List<App.FinderDisplayEntry>? finderEntries = null;
+        var metadataSections = new List<MetadataSection>();
         var flushes = new List<string>();
         var sb = new StringBuilder();
 
@@ -377,6 +380,45 @@ internal static class RendererFixtureRunner
                         Entries: finderEntries!));
                     finderEntries = null;
                     break;
+                case "preview":
+                {
+                    // preview PANE text|hex FILE SCROLL lines|nolines
+                    StyledLine[] previewLines = LoadPreviewLines(scenarioPath, tokens[2], tokens[3]);
+                    PaneRenderer.RenderPreview(buffer, PaneRect(layout, tokens[1]), previewLines, ParseInt(tokens[4]),
+                        showLineNumbers: tokens[5] == "lines");
+                    break;
+                }
+                case "msection":
+                {
+                    // msection "HEADER" | msection - (no header)
+                    string? header = tokens[1] == "-" ? null : QuotedSpans(line)[0];
+                    metadataSections.Add(new MetadataSection(header, []));
+                    break;
+                }
+                case "mentry":
+                {
+                    // mentry "LABEL" "VALUE"
+                    List<string> args = QuotedSpans(line);
+                    MetadataSection last = metadataSections[^1];
+                    metadataSections[^1] = last with { Entries = [.. last.Entries, new MetadataEntry(args[0], args[1])] };
+                    break;
+                }
+                case "metadata":
+                {
+                    // metadata PANE: metadata-only right pane
+                    Rect pane = PaneRect(layout, tokens[1]);
+                    PaneRenderer.RenderPreview(buffer, pane, MetadataRenderer.Render([.. metadataSections], pane.Width),
+                        showLineNumbers: false);
+                    break;
+                }
+                case "metatext":
+                {
+                    // metatext PANE text|hex FILE: metadata header above the preview
+                    StyledLine[] previewLines = LoadPreviewLines(scenarioPath, tokens[2], tokens[3]);
+                    App.RenderMetadataWithText(buffer, PaneRect(layout, tokens[1]), [.. metadataSections], previewLines,
+                        isRendered: tokens[2] == "hex");
+                    break;
+                }
                 case "flush":
                     buffer.Serialize(sb);
                     flushes.Add(sb.ToString());
@@ -503,8 +545,25 @@ internal static class RendererFixtureRunner
     {
         "left" => layout.LeftPane,
         "right" => layout.RightPane,
+        "expanded" => layout.ExpandedPane,
         _ => layout.CenterPane,
     };
+
+    /// <summary>
+    /// Preview lines for a file in tests/golden/preview/files: highlighted
+    /// text (as TextPreviewProvider) or the hex dump.
+    /// </summary>
+    private static StyledLine[] LoadPreviewLines(string scenarioPath, string kind, string fileName)
+    {
+        string path = Path.Combine(Path.GetDirectoryName(scenarioPath)!, "..", "preview", "files", fileName);
+
+        if (kind == "hex")
+        {
+            return HexPreview.GetPreviewLines(path, CancellationToken.None)!;
+        }
+
+        return SyntaxHighlighter.Highlight(FilePreview.GetPreviewLines(path, out _), path);
+    }
 
     /// <summary>
     /// Finder fixtures root their entries at a real absolute path so the

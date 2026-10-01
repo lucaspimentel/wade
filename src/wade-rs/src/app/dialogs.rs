@@ -185,6 +185,10 @@ impl App {
                 self.handle_file_finder_key(key);
                 true
             }
+            InputMode::ExpandedPreview => {
+                self.handle_expanded_preview_key(&key);
+                true
+            }
             _ => false,
         }
     }
@@ -919,7 +923,55 @@ impl App {
             return;
         }
 
-        // Navigation on the top level's filtered list
+        match key.key {
+            crate::console_key::ConsoleKey::Escape => {
+                self.modal.action_menu_stack.pop();
+                if self.modal.action_menu_stack.is_empty() {
+                    self.input_mode = InputMode::Normal;
+                }
+            }
+            crate::console_key::ConsoleKey::Enter => {
+                if let Some((action, data)) = self.action_palette_activate() {
+                    self.dispatch_action_palette_action(action, data);
+                }
+            }
+            _ => self.handle_action_palette_navigation_key(key),
+        }
+
+        if self.modal.action_menu_stack.is_empty() {
+            return;
+        }
+
+        // Adjust scroll offset to keep selection visible
+        let level = self.modal.action_menu_stack.last_mut().expect("checked above");
+        let filtered_count = level.get_filtered_items().len();
+
+        if filtered_count > 0 {
+            level.selected_index = level.selected_index.min(filtered_count - 1);
+        } else {
+            level.selected_index = 0;
+        }
+
+        let max_visible = 18usize;
+        if level.selected_index < level.scroll_offset {
+            level.scroll_offset = level.selected_index;
+        } else if level.selected_index >= level.scroll_offset + max_visible {
+            level.scroll_offset = level.selected_index - max_visible + 1;
+        }
+    }
+
+    /// Port of `DispatchActionPaletteAction`: the main dispatch, plus the
+    /// item data for `SelectPreviewProvider`.
+    pub fn dispatch_action_palette_action(&mut self, action: AppAction, data: i32) {
+        if action == AppAction::SelectPreviewProvider {
+            self.handle_select_preview_provider(data);
+        } else {
+            self.dispatch(action);
+        }
+    }
+
+    /// The navigation and filter-editing arms of `HandleActionPaletteKey`.
+    fn handle_action_palette_navigation_key(&mut self, key: KeyEvent) {
         {
             let level = self.modal.action_menu_stack.last_mut().expect("checked above");
             let filtered_count = level.get_filtered_items().len();
@@ -979,33 +1031,12 @@ impl App {
                 }
             }
         }
-
-        if self.modal.action_menu_stack.is_empty() {
-            return;
-        }
-
-        // Adjust scroll offset to keep selection visible
-        let level = self.modal.action_menu_stack.last_mut().expect("checked above");
-        let filtered_count = level.get_filtered_items().len();
-
-        if filtered_count > 0 {
-            level.selected_index = level.selected_index.min(filtered_count - 1);
-        } else {
-            level.selected_index = 0;
-        }
-
-        let max_visible = 18usize;
-        if level.selected_index < level.scroll_offset {
-            level.scroll_offset = level.selected_index;
-        } else if level.selected_index >= level.scroll_offset + max_visible {
-            level.scroll_offset = level.selected_index - max_visible + 1;
-        }
     }
 
     /// Port of the palette Enter handling (a separate step in C# so the
     /// dispatch happens after the selection clamp). Returns Some(action)
     /// when a leaf item was selected.
-    pub fn action_palette_activate(&mut self) -> Option<AppAction> {
+    pub fn action_palette_activate(&mut self) -> Option<(AppAction, i32)> {
         let level = self.modal.action_menu_stack.last()?;
         let filtered = level.get_filtered_items();
         let selected = filtered.get(level.selected_index)?;
@@ -1016,10 +1047,10 @@ impl App {
             self.modal.action_menu_stack.push(ActionMenuLevel::new(&title, sub_items));
             None
         } else {
-            let action = selected.action;
+            let (action, data) = (selected.action, selected.data);
             self.modal.action_menu_stack.clear();
             self.input_mode = InputMode::Normal;
-            Some(action)
+            Some((action, data))
         }
     }
 
@@ -1035,7 +1066,24 @@ impl App {
     }
 
     fn build_action_palette_items(&mut self) -> Vec<ActionMenuItem> {
+        // C# order; Copy/Cut/Paste/Copy absolute path and "Download cloud
+        // file" need the clipboard and cloud APIs (Phase 9)
         let mut items = vec![
+            ActionMenuItem::new("Open with default app", "o", AppAction::OpenExternal),
+            ActionMenuItem::new("Rename", "F2", AppAction::Rename),
+            ActionMenuItem::new("Delete", "Del", AppAction::Delete),
+            ActionMenuItem::new("New file", "n", AppAction::NewFile),
+            ActionMenuItem::new("New directory", "Shift+N", AppAction::NewDirectory),
+            ActionMenuItem::new("Create symlink", "Ctrl+L", AppAction::CreateSymlink),
+            ActionMenuItem::new("Properties", "i", AppAction::ShowProperties),
+        ];
+
+        // Preview provider submenu, when multiple providers are available
+        if let Some(preview_items) = self.build_preview_menu_items() {
+            items.push(ActionMenuItem::submenu("Change preview", "p", preview_items));
+        }
+
+        items.extend([
             ActionMenuItem::new("Toggle hidden files", ".", AppAction::ToggleHiddenFiles),
             ActionMenuItem::new("Toggle left pane", "[", AppAction::ToggleParentPane),
             ActionMenuItem::new("Toggle right pane", "]", AppAction::TogglePreviewPane),
@@ -1046,10 +1094,11 @@ impl App {
             ActionMenuItem::new("Go to path", "Ctrl+G", AppAction::GoToPath),
             ActionMenuItem::new("Search / Find file", "Ctrl+F", AppAction::ShowFileFinder),
             ActionMenuItem::new("Filter", "/", AppAction::Search),
+            ActionMenuItem::new("Open terminal here", "Ctrl+T", AppAction::OpenTerminal),
             ActionMenuItem::new("Configuration", ",", AppAction::ShowConfig),
             ActionMenuItem::new("Help", "?", AppAction::ShowHelp),
             ActionMenuItem::new("Refresh", "Ctrl+R", AppAction::Refresh),
-        ];
+        ]);
 
         // Git block, gated on the repo root (App.cs:2958-3018)
         let entries = self.get_visible_entries();
@@ -1088,8 +1137,7 @@ impl App {
         self.text_input_target = target;
     }
 
-    /// Port of `NavigateToPath` (App.cs:2514), minus the file-selection side
-    /// effects that need the preview subsystem.
+    /// Port of `NavigateToPath` (App.cs:2514).
     pub fn navigate_to_path(&mut self, path: &str) {
         if path.trim().is_empty() {
             return;
@@ -1108,6 +1156,7 @@ impl App {
             self.marked_paths.clear();
             self.clear_search_filter();
             self.notification = None;
+            self.clear_preview_cache();
             self.refresh_git_status();
         } else if is_file(&full) {
             let parent = match parent_of(&full) {
@@ -1127,6 +1176,7 @@ impl App {
             self.marked_paths.clear();
             self.clear_search_filter();
             self.notification = None;
+            self.clear_preview_cache();
             self.refresh_git_status();
         } else {
             self.show_notification("Path not found", crate::ui::NotificationKind::Error);
@@ -1213,6 +1263,7 @@ impl App {
                         .as_ref()
                         .and_then(|statuses| crate::fs::git_utils::statuses_get(statuses, &entry.full_path));
                     let dir_size_text = self.properties_dir_size_text.clone();
+                    let metadata = self.properties_metadata_sections(&entry.name);
 
                     self.properties_content_height = crate::ui::properties_overlay::render(
                         buffer,
@@ -1221,7 +1272,7 @@ impl App {
                         entry,
                         dir_size_text.as_deref(),
                         git_status,
-                        None, // metadata sections are Phase 7
+                        metadata.as_deref(),
                         self.properties_scroll_offset,
                     );
 
@@ -1454,8 +1505,7 @@ impl App {
         }
     }
 
-    /// Port of `ApplyConfigChanges` (App.cs). Preview-cache clearing and the
-    /// git status refresh are skipped: those subsystems land in later phases.
+    /// Port of `ApplyConfigChanges` (App.cs:4196).
     fn apply_config_changes(&mut self) {
         let Some(mut state) = self.modal.config_state.take() else {
             return;
@@ -1472,9 +1522,11 @@ impl App {
         self.preview_pane_enabled = self.config.preview_pane_enabled;
 
         self.directory_contents.invalidate_all();
+        self.clear_preview_cache();
         self.layout
             .calculate(self.last_width, self.last_height, self.preview_pane_enabled, self.parent_pane_enabled);
         self.update_terminal_title();
+        self.refresh_git_status();
 
         match crate::app::config_io::save_config(&self.config) {
             Ok(()) => self.show_notification("Configuration saved", NotificationKind::Success),

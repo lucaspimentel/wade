@@ -181,6 +181,41 @@ fn wait_with_timeout(child: &mut std::process::Child, timeout_ms: u128) -> Optio
     }
 }
 
+/// Port of `GitUtils.GetDiff`: `git diff [--staged] -- <path>` in the repo
+/// root, split on '\n' (a trailing empty element and '\r' kept, as in C#).
+/// None on failure, empty output, a non-zero exit, timeout (10 s) or
+/// cancellation.
+#[must_use]
+pub fn get_diff(repo_root: &str, file_path: &str, staged: bool, cancel: &CancelToken) -> Option<Vec<String>> {
+    let relative = relative_path(repo_root, file_path).replace('\\', "/");
+    let mut args = vec!["diff"];
+
+    if staged {
+        args.push("--staged");
+    }
+
+    args.extend(["--", relative.as_str()]);
+
+    // Only stdout is redirected (C# leaves stderr alone), so a large diff
+    // cannot block on a full stderr pipe
+    let mut child = Command::new("git")
+        .args(&args)
+        .current_dir(repo_root)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .ok()?;
+
+    let output = read_stream(child.stdout.take());
+    let status = wait_with_timeout(&mut child, 10_000)?;
+
+    if cancel.is_cancelled() || !status.success() || output.is_empty() {
+        return None;
+    }
+
+    Some(output.split('\n').map(str::to_string).collect())
+}
+
 /// Port of `GitUtils.QueryStatus`: runs `git status --porcelain=v1` in the
 /// repo root; returns the parsed status map or None on error/cancellation.
 #[must_use]

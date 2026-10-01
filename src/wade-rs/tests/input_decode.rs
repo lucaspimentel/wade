@@ -168,6 +168,9 @@ fn format_events(events: &[InputEvent]) -> String {
             InputEvent::FileOperationComplete(_) => {}
             InputEvent::FileOperationProgress(_) => {}
             InputEvent::DirectorySizeReady(_) => {}
+            InputEvent::PreviewReady(_) => {}
+            InputEvent::MetadataReady(_) => {}
+            InputEvent::PreviewLoadingComplete(_) => {}
             InputEvent::InlineDirSizeReady(_) => {}
             InputEvent::InlineDirSizeComplete(_) => {}
             InputEvent::FileSystemChanged(_) => {}

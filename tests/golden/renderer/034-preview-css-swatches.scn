@@ -1,0 +1,5 @@
+# CSS hex color swatches: per-cell styles with line numbers
+size 100 12
+layout preview
+preview right text colors.css 0 lines
+flush

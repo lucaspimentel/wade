@@ -5,6 +5,7 @@ pub mod app;
 pub mod console_key;
 pub mod fs;
 pub mod input;
+pub mod preview;
 pub mod rune_width;
 pub mod highlight;
 pub mod screen;

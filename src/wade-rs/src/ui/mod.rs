@@ -9,7 +9,7 @@ pub mod help_overlay;
 pub mod text_input;
 pub mod format_helpers;
 pub mod layout;
-pub mod metadata;
+pub mod metadata_renderer;
 pub mod notification;
 pub mod pane_renderer;
 pub mod progress_overlay;

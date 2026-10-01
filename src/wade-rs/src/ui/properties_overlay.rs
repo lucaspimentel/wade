@@ -72,7 +72,7 @@ pub fn render(
     entry: &FileSystemEntry,
     directory_size_text: Option<&str>,
     git_status: Option<GitFileStatus>,
-    metadata_sections: Option<&[crate::ui::metadata::MetadataSection]>,
+    metadata_sections: Option<&[crate::preview::MetadataSection]>,
     scroll_offset: usize,
 ) -> usize {
     let values = build_values(entry, directory_size_text, git_status);
@@ -584,7 +584,7 @@ mod tests {
     use crate::fs::directory_contents::{FileSystemEntry, GitFileStatus};
     use crate::screen::ScreenBuffer;
     use crate::ui::format_helpers::DateParts;
-    use crate::ui::metadata::{MetadataEntry, MetadataSection};
+    use crate::preview::{MetadataEntry, MetadataSection};
 
     fn entry(name: &str, full_path: &str, is_directory: bool, size: i64) -> FileSystemEntry {
         FileSystemEntry {

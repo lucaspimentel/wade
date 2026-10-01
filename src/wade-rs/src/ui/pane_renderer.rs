@@ -572,6 +572,119 @@ impl PaneRenderer {
         }
     }
 
+    /// Port of `RenderPreview`: styled lines from `scroll_offset`, with an
+    /// optional 4-wide right-aligned line number plus a space.
+    pub fn render_preview(
+        buffer: &mut ScreenBuffer,
+        pane: Rect,
+        lines: &[crate::highlight::StyledLine],
+        scroll_offset: usize,
+        show_line_numbers: bool,
+    ) {
+        let default_style = style(ui::FILE_COLOR, None);
+        let line_num_style = style((100, 100, 100), None);
+        let line_num_width = if show_line_numbers { 5 } else { 0 };
+        let mut content_line_number = scroll_offset;
+
+        for row in 0..pane.height.max(0) {
+            let line_index = scroll_offset + row as usize;
+            let Some(styled_line) = lines.get(line_index) else {
+                break;
+            };
+
+            content_line_number += 1;
+
+            if show_line_numbers {
+                // C# TryFormat into 4 chars: wider numbers leave it blank
+                let number = content_line_number.to_string();
+                let text = if number.len() <= 4 { format!("{number:>4}") } else { "    ".to_string() };
+
+                for (i, ch) in text.chars().enumerate() {
+                    buffer.put(pane.top + row, pane.left + i as i32, ch, line_num_style);
+                }
+
+                buffer.put(pane.top + row, pane.left + 4, ' ', line_num_style);
+            }
+
+            let content_col = pane.left + line_num_width;
+            let content_width = pane.width - line_num_width;
+
+            if let Some(char_styles) = &styled_line.char_styles {
+                Self::render_per_char_content(buffer, pane.top + row, content_col, content_width, &styled_line.text, char_styles, default_style);
+            } else if let Some(spans) = styled_line.spans.as_ref().filter(|spans| !spans.is_empty()) {
+                Self::render_styled_content(buffer, pane.top + row, content_col, content_width, &styled_line.text, spans, default_style);
+            } else {
+                buffer.write_string(pane.top + row, content_col, &styled_line.text, default_style, i64::from(content_width));
+            }
+        }
+    }
+
+    /// Port of `RenderStyledContent`: the first span covering a position
+    /// wins. Positions are chars (C#: UTF-16 units).
+    fn render_styled_content(
+        buffer: &mut ScreenBuffer,
+        row: i32,
+        start_col: i32,
+        max_width: i32,
+        text: &str,
+        spans: &[crate::highlight::StyledSpan],
+        default_style: CellStyle,
+    ) {
+        let mut col = start_col;
+        let mut chars_written = 0;
+
+        for (pos, ch) in text.chars().enumerate() {
+            if chars_written >= max_width {
+                break;
+            }
+
+            let style = spans
+                .iter()
+                .find(|span| span.start <= pos && pos < span.start + span.len)
+                .map_or(default_style, |span| crate::highlight::theme::get_style(span.kind));
+
+            let w = crate::rune_width::rune_width(ch) as i32;
+            if chars_written + w > max_width {
+                break;
+            }
+
+            buffer.put(row, col, ch, style);
+            col += w;
+            chars_written += w;
+        }
+    }
+
+    /// Port of `RenderPerCharContent`: one style per char, default past
+    /// the end of `char_styles`.
+    fn render_per_char_content(
+        buffer: &mut ScreenBuffer,
+        row: i32,
+        start_col: i32,
+        max_width: i32,
+        text: &str,
+        char_styles: &[CellStyle],
+        default_style: CellStyle,
+    ) {
+        let mut col = start_col;
+        let mut chars_written = 0;
+
+        for (index, ch) in text.chars().enumerate() {
+            if chars_written >= max_width {
+                break;
+            }
+
+            let style = char_styles.get(index).copied().unwrap_or(default_style);
+            let w = crate::rune_width::rune_width(ch) as i32;
+            if chars_written + w > max_width {
+                break;
+            }
+
+            buffer.put(row, col, ch, style);
+            col += w;
+            chars_written += w;
+        }
+    }
+
     /// Port of `RenderMessage`.
     pub fn render_message(buffer: &mut ScreenBuffer, pane: Rect, message: &str) {
         // C# uses DimColor (100,100,100), not DetailColor

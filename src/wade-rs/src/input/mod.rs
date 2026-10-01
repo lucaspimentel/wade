@@ -89,6 +89,9 @@ pub enum InputEvent {
     FileFinderPartialResult(FileFinderPartialResultEvent),
     FileFinderScanComplete(FileFinderScanCompleteEvent),
     FileFinderSearchResult(FileFinderSearchResultEvent),
+    PreviewReady(PreviewReadyEvent),
+    MetadataReady(MetadataReadyEvent),
+    PreviewLoadingComplete(PreviewLoadingCompleteEvent),
 }
 
 /// Port of the `DirectorySizeReadyEvent` record
@@ -135,6 +138,33 @@ pub struct FileFinderSearchResultEvent {
     pub results: Vec<crate::search::SearchResult>,
     pub is_complete: bool,
     pub search_id: u64,
+}
+
+/// Port of the `PreviewReadyEvent` record: text preview lines for `path`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PreviewReadyEvent {
+    pub path: String,
+    pub styled_lines: Vec<crate::highlight::StyledLine>,
+    pub file_type_label: Option<String>,
+    pub is_rendered: bool,
+    pub is_placeholder: bool,
+}
+
+/// Port of the `MetadataReadyEvent` record: merged metadata sections, plus
+/// the text encoding and line ending for non-binary files.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MetadataReadyEvent {
+    pub path: String,
+    pub sections: Vec<crate::preview::MetadataSection>,
+    pub file_type_label: Option<String>,
+    pub encoding: Option<String>,
+    pub line_ending: Option<String>,
+}
+
+/// Port of the `PreviewLoadingCompleteEvent` record (no preview provider).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PreviewLoadingCompleteEvent {
+    pub path: String,
 }
 
 /// Port of the `FileSystemChangedEvent` record.

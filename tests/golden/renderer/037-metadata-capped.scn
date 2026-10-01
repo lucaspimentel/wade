@@ -1,0 +1,12 @@
+# Metadata taller than half the pane is cut at half; hex preview below
+size 90 14
+layout 3pane
+msection "binary.bin"
+mentry "Cloud" "not downloaded"
+mentry "Git" "Untracked"
+msection "Details"
+mentry "A" "1"
+mentry "B" "2"
+mentry "C" "3"
+metatext right hex binary.bin
+flush

@@ -1,0 +1,5 @@
+# Text preview with line numbers (highlighted C#, tab expansion)
+size 80 25
+layout 3pane
+preview right text lf.cs 0 lines
+flush

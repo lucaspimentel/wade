@@ -1,0 +1,6 @@
+/* palette 🎨 */
+#main { color: #ff0000; background: #0f08; }
+.box {
+  border: 1px solid #12345678;
+  margin: 0;
+}

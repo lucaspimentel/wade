@@ -1,0 +1,7 @@
+# Wide and astral characters truncated at a narrow pane edge
+size 60 12
+layout 3pane
+preview right text unicode.py 0 lines
+flush
+preview center text tabs.go 0 nolines
+flush

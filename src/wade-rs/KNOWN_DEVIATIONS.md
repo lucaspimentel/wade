@@ -23,12 +23,18 @@ this file to be empty or fully accepted.
   Properties overlay uses `Permissions::readonly()` (no write bit for
   anyone); .NET reports ReadOnly when the current user lacks write
   permission. Revisit with the Phase 9 unix work.
-- **Properties overlay metadata sections are empty (Phase 4d).** The
-  `metadata_sections` parameter is ported and rendered, but no metadata
-  providers exist until Phase 7.
-- **FS-change handling does not clear the preview cache (Phase 4d).**
-  `HandleFileSystemChanged` calls `ClearPreviewCache` when the selected
-  entry did not survive; previews land in Phase 7.
+- **Later-phase preview and metadata providers are absent (Phase 7a).**
+  The registries hold only the ported providers, in C# order. Missing until
+  their phases: archive contents and archive metadata (7b), shortcut
+  properties (7c), rendered Markdown (7d), image and PDF previews and
+  metadata (Phase 8), and the MSI preview plus executable, Office, NuGet,
+  media and MSI metadata (Phase 9). Files of those types fall through to
+  the next applicable provider (usually None, Text or Hex). Image and
+  combined (text + Sixel) results, Sixel detection and cell-pixel-size
+  detection are Phase 8; `PreviewContext` carries 8x16 px cells and
+  image/Sixel flags off until then.
+- **Expanded preview y/Y copy nothing (Phase 7a).** The copy-path and
+  copy-git-relative-path keys need the OS clipboard (Phase 9).
 - **No golden fixture covers the Properties overlay (Phase 4d).** Its rows
   come from live filesystem metadata (created/accessed dates, attributes),
   so no fixture renders identically from both runners without a test seam
@@ -39,20 +45,20 @@ this file to be empty or fully accepted.
   a fixture later.
 
 - **Unported actions are stubbed with a notification (Phase 3a).** Actions
-  whose subsystems land in later phases (previews: phase 7) show a
-  status-bar notification ("Not yet ported") instead of performing the
-  action. The action palette omits
-  entries whose actions are not yet ported (preview providers, file
-  operations, terminal); the submenu stack machinery is
-  ported and remaining entries are added in their phases. Git actions are
-  ported (Phase 4b), except "Git: Copy relative path" (Y), which needs the
-  OS clipboard and is omitted until Phase 9 alongside the context menu
-  Paste/Copy/Cut entries.
+  whose subsystems land in later phases (clipboard, cloud download: Phase
+  9) show a status-bar notification ("Not yet ported") instead of
+  performing the action. The action palette omits Copy, Cut, Paste, "Copy
+  absolute path" and "Download cloud file" until Phase 9; every other C#
+  entry, including the "Change preview" submenu, is listed in C# order.
+  Git actions are ported (Phase 4b), except "Git: Copy relative path" (Y),
+  which needs the OS clipboard and is omitted until Phase 9 alongside the
+  context menu Paste/Copy/Cut entries.
 - **Config toggles for unported subsystems are inert (Phase 3c).** The
   config dialog ports all 27 settings and persists them, but toggles
-  gating subsystems that land in later phases (image/PDF/markdown/archive
-  previews, file/archive/pdf/media metadata, git status, directory sizes,
-  copy symlinks as links) have no runtime effect until those phases land.
+  gating providers that land in later phases (image/PDF/Markdown/archive
+  previews, archive/PDF/media metadata) have no runtime effect until those
+  phases land.
+- **Dates carry no local timezone offset (Phase 3a).**
   `FileSystemEntry.last_modified` converts `SystemTime` without a local
   timezone offset (C# `LastWriteTime` is local). No timezone crate has been
   chosen yet; date display and Modified sort may differ by the UTC offset.
@@ -80,9 +86,10 @@ this file to be empty or fully accepted.
   `fullRefresh` flag, so a buffer overflow followed within 300ms by an
   ordinary change loses the full refresh. Rust ORs the flag across the
   window.
-- **Text positions count code points (Phases 5-6).** The finder scorer and
-  the syntax highlighters run over `char`s, so match positions and span
-  `start`/`len` index code points; C# indexes UTF-16 units. They agree for
+- **Text positions count code points (Phases 5-7).** The finder scorer,
+  the syntax highlighters and the preview renderer run over `char`s, so
+  match positions, span `start`/`len` and `char_styles` index code points;
+  C# indexes UTF-16 units. They agree for
   BMP text. For astral-plane characters (emoji) C# finder rows draw split
   surrogate halves, while Rust draws whole characters; the highlight
   golden harness maps Rust positions to UTF-16 units and matches C#

@@ -2157,9 +2157,18 @@ internal sealed class App
         _sixelPending = true;
     }
 
-    private void RenderMetadataWithText(ScreenBuffer buffer, Rect pane)
+    private void RenderMetadataWithText(ScreenBuffer buffer, Rect pane) =>
+        RenderMetadataWithText(buffer, pane, _cachedMetadataSections!, _cachedStyledLines!, _isRenderedPreview);
+
+    /// <summary>
+    /// Metadata at the top of <paramref name="pane"/> (at most half, its last
+    /// row a separator) and the preview text below. Static so renderer
+    /// fixtures can drive it without App state.
+    /// </summary>
+    internal static void RenderMetadataWithText(ScreenBuffer buffer, Rect pane, MetadataSection[] sections, StyledLine[] lines,
+        bool isRendered)
     {
-        StyledLine[] metadataLines = MetadataRenderer.Render(_cachedMetadataSections!, pane.Width);
+        StyledLine[] metadataLines = MetadataRenderer.Render(sections, pane.Width);
 
         // Metadata at top, separator row, preview text below
         int metadataRows = Math.Min(metadataLines.Length + 1, pane.Height / 2); // +1 for separator row
@@ -2175,7 +2184,7 @@ internal sealed class App
         if (previewRows > 0)
         {
             var previewRect = new Rect(pane.Left, pane.Top + metadataRows, pane.Width, previewRows);
-            PaneRenderer.RenderPreview(buffer, previewRect, _cachedStyledLines!, showLineNumbers: !_isRenderedPreview);
+            PaneRenderer.RenderPreview(buffer, previewRect, lines, showLineNumbers: !isRendered);
         }
     }
 

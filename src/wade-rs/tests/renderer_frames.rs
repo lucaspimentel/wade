@@ -10,6 +10,7 @@ use wade::app::dialogs;
 use wade::app::input_reader::AppAction;
 use wade::fs::directory_contents::{FileSystemEntry, GitFileStatus, SortMode, DRIVES_PATH};
 use wade::screen::{CellStyle, Color, ScreenBuffer};
+use wade::preview::{MetadataEntry, MetadataSection};
 use wade::ui::action_palette::{ActionMenuItem, ActionMenuLevel};
 use wade::ui::format_helpers::DateParts;
 use wade::ui::help_overlay;
@@ -134,8 +135,30 @@ fn pane_rect(layout: &Layout, pane: &str) -> Rect {
     match pane {
         "left" => layout.left_pane,
         "right" => layout.right_pane,
+        "expanded" => layout.expanded_pane,
         _ => layout.center_pane,
     }
+}
+
+/// Port of RendererFixtureRunner.LoadPreviewLines: highlighted text (as
+/// TextPreviewProvider) or the hex dump of a tests/golden/preview/files file.
+fn load_preview_lines(scenario_path: &Path, kind: &str, file_name: &str) -> Vec<wade::highlight::StyledLine> {
+    let path = scenario_path
+        .parent()
+        .expect("scenario dir")
+        .join("..")
+        .join("preview")
+        .join("files")
+        .join(file_name);
+    let path = path.to_string_lossy();
+
+    if kind == "hex" {
+        return wade::fs::hex_preview::get_preview_lines(&path, &wade::input::CancelToken::new()).expect("hex lines");
+    }
+
+    let (lines, _) = wade::fs::file_preview::get_preview_lines(&path);
+    let lines: Vec<&str> = lines.iter().map(String::as_str).collect();
+    wade::highlight::highlight(&lines, &path)
 }
 
 fn run_scenario(path: &Path) -> String {
@@ -169,6 +192,7 @@ fn run_scenario(path: &Path) -> String {
     let mut finder_args: Vec<usize> = Vec::new();
     let mut finder_state = String::new();
     let mut finder_entries: Option<Vec<(FileSystemEntry, Vec<usize>)>> = None;
+    let mut metadata_sections: Vec<MetadataSection> = Vec::new();
 
     for raw_line in text.lines() {
         let line = raw_line.trim();
@@ -541,6 +565,51 @@ fn run_scenario(path: &Path) -> String {
                     height,
                     &view,
                     &mut TextInput::new(&finder_query),
+                );
+            }
+            "preview" => {
+                // preview PANE text|hex FILE SCROLL lines|nolines
+                let lines = load_preview_lines(path, tokens[2], tokens[3]);
+                let buffer = buffer.as_mut().expect("size op first");
+                PaneRenderer::render_preview(
+                    buffer,
+                    pane_rect(&layout, tokens[1]),
+                    &lines,
+                    tokens[4].parse().expect("scroll"),
+                    tokens[5] == "lines",
+                );
+            }
+            "msection" => {
+                // msection "HEADER" | msection - (no header)
+                let header = (tokens[1] != "-").then(|| quoted_spans(line)[0].clone());
+                metadata_sections.push(MetadataSection { header, entries: Vec::new() });
+            }
+            "mentry" => {
+                // mentry "LABEL" "VALUE"
+                let args = quoted_spans(line);
+                metadata_sections
+                    .last_mut()
+                    .expect("msection first")
+                    .entries
+                    .push(MetadataEntry::new(&args[0], &args[1]));
+            }
+            "metadata" => {
+                // metadata PANE: metadata-only right pane
+                let pane = pane_rect(&layout, tokens[1]);
+                let lines = wade::ui::metadata_renderer::render(&metadata_sections, pane.width);
+                let buffer = buffer.as_mut().expect("size op first");
+                PaneRenderer::render_preview(buffer, pane, &lines, 0, false);
+            }
+            "metatext" => {
+                // metatext PANE text|hex FILE: metadata header above the preview
+                let lines = load_preview_lines(path, tokens[2], tokens[3]);
+                let buffer = buffer.as_mut().expect("size op first");
+                wade::app::preview::render_metadata_with_text(
+                    buffer,
+                    pane_rect(&layout, tokens[1]),
+                    &metadata_sections,
+                    &lines,
+                    tokens[2] == "hex",
                 );
             }
             "flush" => {

@@ -1,0 +1,6 @@
+# Hex dump: per-cell styles, no line numbers, clipped to the pane
+size 100 20
+layout preview
+preview center hex binary.bin 0 nolines
+preview right hex hex-partial.bin 0 nolines
+flush

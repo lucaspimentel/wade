@@ -1,0 +1,5 @@
+# Expanded preview: full width above the status bar, scrolled
+size 80 20
+layout 3pane
+preview expanded text long.rs 150 lines
+flush
