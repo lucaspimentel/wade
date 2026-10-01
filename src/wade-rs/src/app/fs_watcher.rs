@@ -1,10 +1,11 @@
 //! Port of `src/Wade/FileSystemWatcherManager.cs`: watches the current
 //! directory for changes and injects a debounced `FileSystemChangedEvent`.
 //!
-//! The C# version uses `System.IO.FileSystemWatcher`; this port uses the
-//! `notify` crate (ReadDirectoryChangesW, inotify, FSEvents/kqueue), with
-//! the same non-recursive scope, `.git` filter, 300ms debounce and
-//! full-refresh-on-error semantics.
+//! The C# version uses `System.IO.FileSystemWatcher`. On Windows this port
+//! is hand-rolled on `ReadDirectoryChangesW`, which reports what
+//! `FileSystemWatcher` does (buffer overflow and a deleted watched
+//! directory request a full refresh); the `notify` crate's Windows backend
+//! drops both. Linux and macOS use `notify` (inotify, FSEvents/kqueue).
 
 use std::sync::mpsc::Sender;
 
@@ -19,8 +20,9 @@ pub struct FileSystemWatcherManager {
     sender: Sender<InputEvent>,
     watched_path: Option<String>,
     shutdown: Option<Sender<()>>,
-    /// Dropping the watcher stops watching.
-    worker: Option<notify::RecommendedWatcher>,
+    /// Dropping the worker stops and joins the watch thread.
+    #[allow(dead_code)] // held only for its Drop
+    worker: Option<WatchWorker>,
 }
 
 impl FileSystemWatcherManager {
@@ -113,8 +115,8 @@ impl FileSystemWatcherManager {
             let _ = shutdown.send(());
         }
 
-        // Drops the watcher; its event sender drops with it, which ends the
-        // debounce pump (the shutdown signal discards a pending event).
+        // Joins the watch thread; its event sender drops with it, which
+        // ends the debounce pump without delivering a pending event.
         self.worker = None;
         self.watched_path = None;
     }
@@ -141,11 +143,282 @@ pub fn is_git_internal_event(file_name: &str) -> bool {
     file_name.eq_ignore_ascii_case(".git")
 }
 
+/// The running watch thread. Dropping it signals the stop event and joins
+/// the thread, so the directory handle is closed before `stop` returns.
+#[cfg(windows)]
+struct WatchWorker {
+    stop_event: std::os::windows::io::OwnedHandle,
+    thread: Option<std::thread::JoinHandle<()>>,
+}
+
+#[cfg(windows)]
+impl Drop for WatchWorker {
+    fn drop(&mut self) {
+        use std::os::windows::io::AsRawHandle;
+
+        unsafe {
+            windows_sys::Win32::System::Threading::SetEvent(self.stop_event.as_raw_handle() as _);
+        }
+
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
+        }
+    }
+}
+
+/// Elsewhere the `notify` watcher; dropping it stops watching.
+#[cfg(not(windows))]
+type WatchWorker = notify::RecommendedWatcher;
+
+/// `FileSystemWatcher.NotifyFilter` in the C# version.
+#[cfg(windows)]
+const NOTIFY_FILTER: u32 = windows_sys::Win32::Storage::FileSystem::FILE_NOTIFY_CHANGE_FILE_NAME
+    | windows_sys::Win32::Storage::FileSystem::FILE_NOTIFY_CHANGE_DIR_NAME
+    | windows_sys::Win32::Storage::FileSystem::FILE_NOTIFY_CHANGE_LAST_WRITE
+    | windows_sys::Win32::Storage::FileSystem::FILE_NOTIFY_CHANGE_SIZE;
+
+/// Buffer and OVERLAPPED for the pending read, heap-pinned so moving the
+/// boxes into the watch thread does not move what the kernel writes to.
+/// The buffer is DWORD-aligned, as overlapped ReadDirectoryChangesW
+/// requires.
+#[cfg(windows)]
+struct PendingRead {
+    buffer: Box<[u32]>,
+    overlapped: Box<windows_sys::Win32::System::IO::OVERLAPPED>,
+}
+
+// SAFETY: only the raw event handle inside OVERLAPPED is !Send; it is owned
+// by the watch thread's OwnedHandle and outlives every use.
+#[cfg(windows)]
+unsafe impl Send for PendingRead {}
+
+/// Issues one overlapped read; false means the directory is gone or
+/// inaccessible.
+#[cfg(windows)]
+fn issue_read(
+    directory: windows_sys::Win32::Foundation::HANDLE,
+    io_event: windows_sys::Win32::Foundation::HANDLE,
+    read: &mut PendingRead,
+) -> bool {
+    use windows_sys::Win32::Storage::FileSystem::ReadDirectoryChangesW;
+    use windows_sys::Win32::System::Threading::ResetEvent;
+
+    *read.overlapped = unsafe { std::mem::zeroed() };
+    read.overlapped.hEvent = io_event;
+    let buffer_bytes = std::mem::size_of_val(&*read.buffer) as u32;
+
+    unsafe {
+        ResetEvent(io_event);
+        ReadDirectoryChangesW(
+            directory,
+            read.buffer.as_mut_ptr().cast(),
+            buffer_bytes,
+            0, // IncludeSubdirectories = false
+            NOTIFY_FILTER,
+            std::ptr::null_mut(),
+            &mut *read.overlapped,
+            None,
+        ) != 0
+    }
+}
+
+/// Spawns the overlapped ReadDirectoryChangesW watch thread.
+///
+/// The thread waits on the I/O event and the worker's stop event, so
+/// `WatchWorker`'s drop can cancel the pending read and join. Mirrors
+/// `FileSystemWatcher` error semantics: a buffer overflow (0 bytes
+/// returned) requests a full refresh and keeps watching; any other failure
+/// requests one full refresh and stops watching.
+#[cfg(windows)]
+fn spawn_watch_thread(
+    directory_path: &str,
+    event_tx: std::sync::mpsc::Sender<bool>,
+) -> Result<WatchWorker, ()> {
+    use std::os::windows::ffi::OsStrExt;
+    use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
+
+    use windows_sys::Win32::Foundation::{
+        ERROR_OPERATION_ABORTED, GetLastError, INVALID_HANDLE_VALUE, WAIT_OBJECT_0,
+    };
+    use windows_sys::Win32::Storage::FileSystem::{
+        CreateFileW, FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OVERLAPPED,
+        FILE_LIST_DIRECTORY, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING,
+    };
+    use windows_sys::Win32::System::IO::{CancelIoEx, GetOverlappedResult};
+    use windows_sys::Win32::System::Threading::{CreateEventW, INFINITE, WaitForMultipleObjects};
+
+    let wide_path: Vec<u16> = std::ffi::OsStr::new(directory_path)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+
+    let raw_directory = unsafe {
+        CreateFileW(
+            wide_path.as_ptr(),
+            FILE_LIST_DIRECTORY,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            std::ptr::null(),
+            OPEN_EXISTING,
+            FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
+            std::ptr::null_mut(),
+        )
+    };
+
+    if raw_directory == INVALID_HANDLE_VALUE || raw_directory.is_null() {
+        return Err(());
+    }
+
+    let directory = unsafe { OwnedHandle::from_raw_handle(raw_directory as _) };
+
+    // Manual-reset events: one for I/O completion, one for stop
+    let raw_io_event = unsafe { CreateEventW(std::ptr::null(), 1, 0, std::ptr::null()) };
+    let raw_stop_event = unsafe { CreateEventW(std::ptr::null(), 1, 0, std::ptr::null()) };
+
+    if raw_io_event.is_null() || raw_stop_event.is_null() {
+        unsafe {
+            if !raw_io_event.is_null() {
+                drop(OwnedHandle::from_raw_handle(raw_io_event as _));
+            }
+
+            if !raw_stop_event.is_null() {
+                drop(OwnedHandle::from_raw_handle(raw_stop_event as _));
+            }
+        }
+
+        return Err(());
+    }
+
+    let io_event = unsafe { OwnedHandle::from_raw_handle(raw_io_event as _) };
+    let stop_event = unsafe { OwnedHandle::from_raw_handle(raw_stop_event as _) };
+
+    let dir_raw = directory.as_raw_handle() as _;
+    let io_raw = io_event.as_raw_handle() as _;
+
+    let mut read = PendingRead {
+        buffer: vec![0u32; 16 * 1024].into_boxed_slice(),
+        overlapped: Box::new(unsafe { std::mem::zeroed() }),
+    };
+
+    // The first read is issued before watch() returns, like C#'s
+    // EnableRaisingEvents: Windows only buffers changes once a read is
+    // pending, so issuing it on the thread would drop changes made right
+    // after watch().
+    if !issue_read(dir_raw, io_raw, &mut read) {
+        return Err(());
+    }
+
+    // The thread borrows the stop event by raw value; WatchWorker owns it
+    // and joins the thread before closing it. Raw handles are not Send, so
+    // they cross as integers.
+    let stop_raw = stop_event.as_raw_handle() as usize;
+    let dir_raw_value = dir_raw as usize;
+    let io_raw_value = io_raw as usize;
+
+    let thread = std::thread::spawn(move || {
+        // Keep the handles alive (and closed on exit) on this thread
+        let _directory = directory;
+        let _io_event = io_event;
+        let mut read = read;
+        let dir_raw = dir_raw_value as _;
+        let handles = [io_raw_value as _, stop_raw as _];
+
+        loop {
+            let wait = unsafe { WaitForMultipleObjects(2, handles.as_ptr(), 0, INFINITE) };
+            let mut bytes_returned: u32 = 0;
+
+            if wait != WAIT_OBJECT_0 {
+                // Stop requested (or the wait failed): cancel the pending read
+                // and wait for it to drain before the buffer is freed.
+                unsafe {
+                    CancelIoEx(dir_raw, &*read.overlapped);
+                    GetOverlappedResult(dir_raw, &*read.overlapped, &mut bytes_returned, 1);
+                }
+
+                break;
+            }
+
+            if unsafe { GetOverlappedResult(dir_raw, &*read.overlapped, &mut bytes_returned, 0) } == 0 {
+                if unsafe { GetLastError() } != ERROR_OPERATION_ABORTED {
+                    let _ = event_tx.send(true);
+                }
+
+                break;
+            }
+
+            if bytes_returned == 0 {
+                // Buffer overflow: changes were lost, request a full refresh
+                let _ = event_tx.send(true);
+            } else {
+                let bytes = unsafe {
+                    std::slice::from_raw_parts(read.buffer.as_ptr().cast::<u8>(), bytes_returned as usize)
+                };
+                parse_notify_buffer(bytes, &event_tx);
+            }
+
+            if !issue_read(dir_raw, handles[0], &mut read) {
+                // Directory gone or inaccessible: report once (OnError) and stop
+                let _ = event_tx.send(true);
+                break;
+            }
+        }
+
+        // _directory and _io_event close here (OwnedHandle drop)
+    });
+
+    Ok(WatchWorker {
+        stop_event,
+        thread: Some(thread),
+    })
+}
+
+/// Parses a `FILE_NOTIFY_INFORMATION` sequence, forwarding one debounce
+/// signal per batch (unless every entry is a .git internal event).
+#[cfg(windows)]
+fn parse_notify_buffer(buffer: &[u8], event_tx: &std::sync::mpsc::Sender<bool>) {
+    let mut offset = 0usize;
+    let mut has_reportable = false;
+
+    while offset + 12 <= buffer.len() {
+        let next_entry_offset = u32::from_ne_bytes(buffer[offset..offset + 4].try_into().unwrap());
+        let file_name_length =
+            u32::from_ne_bytes(buffer[offset + 8..offset + 12].try_into().unwrap()) as usize;
+
+        if offset + 12 + file_name_length > buffer.len() {
+            break;
+        }
+
+        let name_bytes = &buffer[offset + 12..offset + 12 + file_name_length];
+        let name_utf16: Vec<u16> = name_bytes
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|pair| u16::from_ne_bytes(*pair))
+            .collect();
+
+        if let Ok(name) = String::from_utf16(&name_utf16)
+            && !is_git_internal_event(&name)
+        {
+            has_reportable = true;
+        }
+
+        if next_entry_offset == 0 {
+            break;
+        }
+
+        offset += next_entry_offset as usize;
+    }
+
+    if has_reportable {
+        let _ = event_tx.send(false);
+    }
+}
+
 /// Starts a non-recursive watch. Each reportable change sends `false`;
 /// a watcher error, a rescan request (queue overflow) or the removal of
 /// the watched directory sends `true` (C# `OnError`, full refresh). Mirrors `FileSystemWatcher.NotifyFilter`
 /// (FileName | DirectoryName | LastWrite | Size): creations, removals,
 /// renames and modifications count; accesses do not.
+#[cfg(not(windows))]
 fn spawn_watch_thread(
     directory_path: &str,
     event_tx: std::sync::mpsc::Sender<bool>,
