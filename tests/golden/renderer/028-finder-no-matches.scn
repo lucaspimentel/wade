@@ -1,0 +1,5 @@
+# File finder: a query with no results, at the 78-column minimum width
+size 78 30
+finder "zzz" 0 0 0 5 done
+endfinder
+flush

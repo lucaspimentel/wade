@@ -1,0 +1,12 @@
+# File finder: before the first batch (no entries yet), then scanning with
+# an empty query listing every entry
+size 100 30
+finder "" 0 0 0 0 none
+endfinder
+flush
+finder "" 0 0 3 3 scanning
+fentry README.md file -
+fentry src dir -
+fentry build.sh file -
+endfinder
+flush

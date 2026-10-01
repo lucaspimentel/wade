@@ -4800,11 +4800,37 @@ return items.ToArray();
     private void RenderFileFinder(ScreenBuffer buffer, int width, int height)
     {
         List<FinderDisplayEntry> filtered = GetFinderDisplayEntries();
+        string query = _fileFinderInput?.Value ?? "";
+        int total = _fileFinderSearchIndex?.Count
+            ?? _fileFinderAllEntries?.Count ?? 0;
+        int matching = string.IsNullOrEmpty(query)
+            ? total
+            : _fileFinderSearchResults?.Count ?? 0;
+
+        RenderFileFinderView(buffer, width, height, new FinderView(
+            Scanning: _fileFinderScanning && _fileFinderAllEntries != null,
+            HasEntries: _fileFinderAllEntries != null,
+            Input: _fileFinderInput,
+            Matching: matching,
+            Total: total,
+            CurrentPath: _currentPath,
+            ScrollOffset: _fileFinderScrollOffset,
+            SelectedIndex: _fileFinderSelectedIndex,
+            Entries: filtered));
+    }
+
+    /// <summary>
+    /// Draws the file finder dialog from <paramref name="view"/>. Pure with respect to
+    /// App state so the renderer golden fixtures can drive it.
+    /// </summary>
+    internal static void RenderFileFinderView(ScreenBuffer buffer, int width, int height, FinderView view)
+    {
+        List<FinderDisplayEntry> filtered = view.Entries;
         int contentWidth = Math.Clamp(width * 3 / 4, 70, width - 8);
         const int maxItemRows = 18;
         int contentHeight = maxItemRows + 3; // text input + separator + count + item rows
         const string Footer = "[↑↓] Navigate  [Enter] Open  [Esc] Cancel";
-        string title = _fileFinderScanning && _fileFinderAllEntries != null
+        string title = view.Scanning
             ? "Find File [scanning...]"
             : "Find File";
 
@@ -4819,20 +4845,14 @@ return items.ToArray();
         var prefixStyle = new CellStyle(new Color(220, 220, 100), DialogBox.BgColor);
         var inputStyle = new CellStyle(new Color(200, 200, 200), DialogBox.BgColor);
         buffer.WriteString(content.Top, content.Left, "> ", prefixStyle);
-        _fileFinderInput?.Render(
+        view.Input?.Render(
             buffer, content.Top, content.Left + 2, content.Width - 2, inputStyle);
 
         // Row 1: result count + separator
         var separatorStyle = new CellStyle(
             DialogBox.BorderColor, DialogBox.BgColor, Dim: true);
 
-        string query = _fileFinderInput?.Value ?? "";
-        int total = _fileFinderSearchIndex?.Count
-            ?? _fileFinderAllEntries?.Count ?? 0;
-        int matching = string.IsNullOrEmpty(query)
-            ? total
-            : _fileFinderSearchResults?.Count ?? 0;
-        string countText = $"  {matching}/{total} ";
+        string countText = $"  {view.Matching}/{view.Total} ";
 
         // Write count left-aligned, then fill rest with separator
         var countStyle = new CellStyle(new Color(180, 180, 60), DialogBox.BgColor);
@@ -4849,7 +4869,7 @@ return items.ToArray();
         {
             var emptyStyle = new CellStyle(
                 new Color(120, 120, 140), DialogBox.BgColor);
-            string emptyText = _fileFinderAllEntries == null ? "" : "No matches";
+            string emptyText = view.HasEntries ? "No matches" : "";
             buffer.WriteString(
                 content.Top + 2, content.Left + 1, emptyText, emptyStyle);
             return;
@@ -4869,7 +4889,7 @@ return items.ToArray();
 
         for (int i = 0; i < visibleCount; i++)
         {
-            int itemIndex = _fileFinderScrollOffset + i;
+            int itemIndex = view.ScrollOffset + i;
 
             if (itemIndex >= filtered.Count)
             {
@@ -4879,7 +4899,7 @@ return items.ToArray();
             FinderDisplayEntry display = filtered[itemIndex];
             FileSystemEntry entry = display.Entry;
             int[] matchPositions = display.MatchPositions;
-            bool selected = itemIndex == _fileFinderSelectedIndex;
+            bool selected = itemIndex == view.SelectedIndex;
             int row = content.Top + 2 + i;
 
             CellStyle baseStyle = selected ? selectedStyle : normalStyle;
@@ -4898,7 +4918,7 @@ return items.ToArray();
 
             // Full relative path with match highlighting
             string relativePath = Path.GetRelativePath(
-                _currentPath, entry.FullPath);
+                view.CurrentPath, entry.FullPath);
             int maxChars = content.Width - 3;
             int col = content.Left + 3;
             int mi = 0; // index into matchPositions
@@ -4920,6 +4940,20 @@ return items.ToArray();
         }
     }
 
-    private readonly record struct FinderDisplayEntry(
+    internal readonly record struct FinderDisplayEntry(
         FileSystemEntry Entry, int[] MatchPositions);
+
+    /// <summary>
+    /// Inputs of <see cref="RenderFileFinderView"/>: the App state the finder dialog draws.
+    /// </summary>
+    internal sealed record FinderView(
+        bool Scanning,
+        bool HasEntries,
+        TextInput? Input,
+        int Matching,
+        int Total,
+        string CurrentPath,
+        int ScrollOffset,
+        int SelectedIndex,
+        List<FinderDisplayEntry> Entries);
 }

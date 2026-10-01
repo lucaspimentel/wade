@@ -1,0 +1,30 @@
+# File finder: scrolled list; C# draws 19 rows (one past the 18-row scroll window)
+size 100 30
+finder "f" 22 5 25 25 done
+fentry f00.txt file 0
+fentry f01.txt file 0
+fentry f02.txt file 0
+fentry f03.txt file 0
+fentry f04.txt file 0
+fentry f05.txt file 0
+fentry f06.txt file 0
+fentry f07.txt file 0
+fentry f08.txt file 0
+fentry f09.txt file 0
+fentry f10.txt file 0
+fentry f11.txt file 0
+fentry f12.txt file 0
+fentry f13.txt file 0
+fentry f14.txt file 0
+fentry f15.txt file 0
+fentry f16.txt file 0
+fentry f17.txt file 0
+fentry f18.txt file 0
+fentry f19.txt file 0
+fentry f20.txt file 0
+fentry f21.txt file 0
+fentry f22.txt file 0
+fentry f23.txt file 0
+fentry f24.txt file 0
+endfinder
+flush

@@ -37,6 +37,10 @@ internal static class RendererFixtureRunner
         string branchName = "";
         string aheadBehindText = "";
         Notification? notification = null;
+        string finderQuery = "";
+        int[] finderArgs = [];
+        string finderState = "";
+        List<App.FinderDisplayEntry>? finderEntries = null;
         var flushes = new List<string>();
         var sb = new StringBuilder();
 
@@ -340,6 +344,39 @@ internal static class RendererFixtureRunner
                     new TextInput(value).Render(buffer, row, col, w, new CellStyle(new Terminal.Color(200, 200, 200), null));
                     break;
                 }
+                case "finder":
+                {
+                    // finder "QUERY" SELECTED SCROLL MATCHING TOTAL scanning|done|none
+                    finderQuery = Unquote(FirstQuotedSpan(line));
+                    string[] rest = line[(line.LastIndexOf('"') + 1)..].Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    finderArgs = [ParseInt(rest[0]), ParseInt(rest[1]), ParseInt(rest[2]), ParseInt(rest[3])];
+                    finderState = rest[4];
+                    finderEntries = [];
+                    break;
+                }
+                case "fentry":
+                {
+                    // fentry NAME dir|file POSITIONS (comma-separated, or -)
+                    int[] positions = tokens[3] == "-" ? [] : [.. tokens[3].Split(',').Select(ParseInt)];
+                    var entry = new FileSystemEntry(
+                        tokens[1], Path.Combine(FinderBasePath, tokens[1]), IsDirectory: tokens[2] == "dir", Size: 0,
+                        LastModified: default, LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
+                    finderEntries!.Add(new App.FinderDisplayEntry(entry, positions));
+                    break;
+                }
+                case "endfinder":
+                    App.RenderFileFinderView(buffer, width, height, new App.FinderView(
+                        Scanning: finderState == "scanning",
+                        HasEntries: finderState != "none",
+                        Input: new TextInput(finderQuery),
+                        Matching: finderArgs[2],
+                        Total: finderArgs[3],
+                        CurrentPath: FinderBasePath,
+                        ScrollOffset: finderArgs[1],
+                        SelectedIndex: finderArgs[0],
+                        Entries: finderEntries!));
+                    finderEntries = null;
+                    break;
                 case "flush":
                     buffer.Serialize(sb);
                     flushes.Add(sb.ToString());
@@ -468,6 +505,12 @@ internal static class RendererFixtureRunner
         "right" => layout.RightPane,
         _ => layout.CenterPane,
     };
+
+    /// <summary>
+    /// Finder fixtures root their entries at a real absolute path so the
+    /// relative-path display matches across OSes (names carry no separators).
+    /// </summary>
+    private static readonly string FinderBasePath = OperatingSystem.IsWindows() ? @"C:\fixture" : "/fixture";
 
     private static FileSystemEntry MakeEntry(string name, bool isDirectory, long size, DateTime modified) => new(
         name, @"C:\fixture\" + name, IsDirectory: isDirectory, Size: size, LastModified: modified,

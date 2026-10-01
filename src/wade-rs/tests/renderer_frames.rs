@@ -82,6 +82,12 @@ fn quoted_spans(s: &str) -> Vec<String> {
     out
 }
 
+/// Finder fixtures root their entries at a real absolute path so the
+/// relative-path display matches across OSes (names carry no separators).
+fn finder_base_path() -> &'static str {
+    if cfg!(windows) { "C:\\fixture" } else { "/fixture" }
+}
+
 fn make_entry(name: &str, is_directory: bool, size: i64, modified: DateParts) -> FileSystemEntry {
     FileSystemEntry {
         name: name.to_string(),
@@ -159,6 +165,10 @@ fn run_scenario(path: &Path) -> String {
     let mut repo_root: Option<String> = None;
     let mut flushes: Vec<String> = Vec::new();
     let mut out = String::new();
+    let mut finder_query = String::new();
+    let mut finder_args: Vec<usize> = Vec::new();
+    let mut finder_state = String::new();
+    let mut finder_entries: Option<Vec<(FileSystemEntry, Vec<usize>)>> = None;
 
     for raw_line in text.lines() {
         let line = raw_line.trim();
@@ -482,6 +492,56 @@ fn run_scenario(path: &Path) -> String {
             }
             "aheadbehind" => {
                 ahead_behind_text = extract_quoted_arg(line, "aheadbehind ");
+            }
+            "finder" => {
+                // finder "QUERY" SELECTED SCROLL MATCHING TOTAL scanning|done|none
+                finder_query = quoted_spans(line)[0].clone();
+                let rest: Vec<&str> = line[line.rfind('"').unwrap() + 1..].split_whitespace().collect();
+                finder_args = rest[..4].iter().map(|t| t.parse().expect("finder number")).collect();
+                finder_state = rest[4].to_string();
+                finder_entries = Some(Vec::new());
+            }
+            "fentry" => {
+                // fentry NAME dir|file POSITIONS (comma-separated, or -)
+                let positions: Vec<usize> = if tokens[3] == "-" {
+                    Vec::new()
+                } else {
+                    tokens[3].split(',').map(|t| t.parse().expect("position")).collect()
+                };
+                let mut entry = make_entry(tokens[1], tokens[2] == "dir", 0, DateParts::default());
+                entry.full_path = Path::new(finder_base_path()).join(tokens[1]).to_string_lossy().into_owned();
+                finder_entries.as_mut().expect("finder first").push((entry, positions));
+            }
+            "endfinder" => {
+                let entries = finder_entries.take().expect("finder first");
+                let scroll = finder_args[1];
+                let items: Vec<wade::app::file_finder::FinderItem<'_>> = entries
+                    .iter()
+                    .skip(scroll)
+                    .map(|(entry, positions)| wade::app::file_finder::FinderItem {
+                        entry,
+                        match_positions: positions,
+                    })
+                    .collect();
+                let view = wade::app::file_finder::FinderView {
+                    scanning: finder_state == "scanning",
+                    has_entries: finder_state != "none",
+                    display_count: entries.len(),
+                    matching: finder_args[2],
+                    total: finder_args[3],
+                    current_path: finder_base_path(),
+                    selected_index: finder_args[0],
+                    scroll_offset: scroll,
+                    items: &items,
+                };
+                let buffer = buffer.as_mut().expect("size op first");
+                wade::app::file_finder::render_file_finder_view(
+                    buffer,
+                    width,
+                    height,
+                    &view,
+                    &mut TextInput::new(&finder_query),
+                );
             }
             "flush" => {
                 let buffer = buffer.as_mut().expect("size op first");

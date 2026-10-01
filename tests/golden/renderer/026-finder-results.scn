@@ -1,0 +1,9 @@
+# File finder: ranked results with match highlighting, second row selected
+size 100 30
+finder "app" 1 0 4 9 done
+fentry App.cs file 0,1,2
+fentry apps dir 0,1,2
+fentry Application.json file 0,1,2
+fentry happy.txt file 1,2,3
+endfinder
+flush
