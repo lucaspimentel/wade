@@ -5,21 +5,23 @@ deliberate deviations are recorded here. The C# retirement trigger requires
 this file to be empty or fully accepted.
 
 ## Temporary (phase-scoped, expected to be removed by later phases)
+
+None. Phase 9 closed the last temporary entries.
+
+## Accepted (deliberate, permanent)
+- **`--version` prints the crate version (Phase 9g).** C# prints the
+  assembly informational version (`wade 1.x.y+commit`); Rust prints
+  `wade` plus the Cargo package version until the Phase 10 cutover aligns
+  the version numbers. `--help`, `--show-config`, `--cwd-file` and the
+  start-path checks match C# output byte for byte.
 - **The file-operation progress overlay is enhanced (Phase 4c).** C# shows
   only the operation label; the Rust overlay also shows the item count and
-  current file name. Deliberate divergence, so no golden fixture covers
-  this overlay.
-
+  current file name. No golden fixture covers this overlay.
 - **No golden fixture covers the Properties overlay (Phase 4d).** Its rows
   come from live filesystem metadata (created/accessed dates, attributes),
   so no fixture renders identically from both runners without a test seam
   in the frozen C# code. Parity evidence is the port of
-  `PropertiesOverlayTests` in `src/ui/properties_overlay.rs`. Phase 5
-  established that behavior-preserving C# render seams are allowed (see
-  `App.RenderFileFinderView`), so a seam that injects the facts could add
-  a fixture later.
-
-## Accepted (deliberate, permanent)
+  `PropertiesOverlayTests` in `src/ui/properties_overlay.rs`.
 - **Unix input details (Phase 9f).** Bracketed pastes are decoded as
   UTF-8; C#'s `VtParser` appends each byte as a Latin-1 char, so
   non-ASCII pastes arrive mangled there. The reader polls /dev/tty with a

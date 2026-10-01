@@ -69,6 +69,13 @@ pub struct AppConfig {
     /// C# `WadeConfig.ConfigFilePath`: where `Save()` writes. `None` means
     /// the default `~/.config/wade/config.toml`.
     pub config_file_path: Option<String>,
+    /// C# `StartFileName`: selected at startup when the start path is a file.
+    pub start_file_name: Option<String>,
+    /// C# `CwdFilePath` (`--cwd-file=`): receives the final directory.
+    pub cwd_file_path: Option<String>,
+    pub show_config: bool,
+    pub show_help: bool,
+    pub show_version: bool,
 }
 
 impl Default for AppConfig {
@@ -103,6 +110,11 @@ impl Default for AppConfig {
             ffprobe_enabled: true,
             mediainfo_enabled: true,
             config_file_path: None,
+            start_file_name: None,
+            cwd_file_path: None,
+            show_config: false,
+            show_help: false,
+            show_version: false,
         }
     }
 }
@@ -261,7 +273,7 @@ impl App {
     /// `InputPipeline`.
     pub fn run(&mut self, cancel: &crate::input::CancelToken) -> Option<String> {
         let start = if self.config.start_path.is_empty() { App::default_start_path() } else { self.config.start_path.clone() };
-        self.current_path = capitalize_drive_letter(&std::fs::canonicalize(&start).unwrap_or_else(|_| start.clone().into()).to_string_lossy());
+        self.current_path = capitalize_drive_letter(&dialogs::get_full_path(&start));
         self.directory_contents.show_hidden_files = self.config.show_hidden_files;
         self.directory_contents.show_system_files = self.config.show_system_files;
         self.directory_contents.sort_mode = self.config.sort_mode;
@@ -269,6 +281,14 @@ impl App {
         self.parent_pane_enabled = self.config.parent_pane_enabled;
         self.preview_pane_enabled = self.config.preview_pane_enabled;
         self.bookmark_store.load();
+
+        if let Some(start_file_name) = self.config.start_file_name.clone() {
+            let entries = self.directory_contents.get_entries(&self.current_path);
+
+            if let Some(index) = entries.iter().position(|e| e.name.eq_ignore_ascii_case(&start_file_name)) {
+                self.selected_index = index;
+            }
+        }
 
         // C# `using var terminal = new TerminalSetup()`: console modes and
         // the alternate screen for the lifetime of the loop

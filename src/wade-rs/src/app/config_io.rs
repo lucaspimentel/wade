@@ -104,11 +104,107 @@ pub fn load_config(args: &[String]) -> AppConfig {
             "markdown_preview_enabled" => config.markdown_preview_enabled = parse_bool(value, config.markdown_preview_enabled),
             "ffprobe_enabled" => config.ffprobe_enabled = parse_bool(value, config.ffprobe_enabled),
             "mediainfo_enabled" => config.mediainfo_enabled = parse_bool(value, config.mediainfo_enabled),
+            "detail_columns_enabled" => {
+                // Backward compat: sets both columns
+                let detail = parse_bool(value, true);
+                config.size_column_enabled = detail;
+                config.date_column_enabled = detail;
+            }
+            "disabled_tools" => {
+                for tool in value.split(',').map(str::trim).filter(|tool| !tool.is_empty()) {
+                    match tool {
+                        "pdftopng" => config.pdf_preview_enabled = false,
+                        "pdfinfo" => config.pdf_metadata_enabled = false,
+                        "markdown_preview" => config.markdown_preview_enabled = false,
+                        "ffprobe" => config.ffprobe_enabled = false,
+                        "mediainfo" => config.mediainfo_enabled = false,
+                        _ => {}
+                    }
+                }
+            }
             _ => {}
         }
     }
 
     config
+}
+
+/// The CLI half of `WadeConfig.Load`: `--cwd-file=`, `--show-config`,
+/// `--help`/`-h`, `--version`, and the first non-flag argument as the start
+/// path.
+pub fn apply_cli_args(config: &mut AppConfig, args: &[String]) {
+    for arg in args {
+        if let Some(path) = arg.strip_prefix("--cwd-file=") {
+            config.cwd_file_path = Some(path.to_string());
+            continue;
+        }
+
+        match arg.as_str() {
+            "--show-config" => config.show_config = true,
+            "--help" | "-h" => config.show_help = true,
+            "--version" => config.show_version = true,
+            _ => {}
+        }
+    }
+
+    if let Some(start) = args.iter().find(|arg| !arg.starts_with('-')) {
+        config.start_path = start.clone();
+    }
+}
+
+/// Port of `WadeConfig.ToJson` (`--show-config`).
+#[must_use]
+pub fn to_json(config: &AppConfig) -> String {
+    let flag = |value: bool| if value { "true" } else { "false" };
+    let sort_mode = match config.sort_mode {
+        SortMode::Name => "name",
+        SortMode::Modified => "modified",
+        SortMode::Size => "size",
+        SortMode::Extension => "extension",
+    };
+    let fields = [
+        ("show_icons_enabled", flag(config.show_icons_enabled)),
+        ("image_previews_enabled", flag(config.image_previews_enabled)),
+        ("show_hidden_files", flag(config.show_hidden_files)),
+        ("show_system_files", flag(config.show_system_files)),
+        ("sort_mode", ""),
+        ("sort_ascending", flag(config.sort_ascending)),
+        ("confirm_delete_enabled", flag(config.confirm_delete_enabled)),
+        ("parent_pane_enabled", flag(config.parent_pane_enabled)),
+        ("preview_pane_enabled", flag(config.preview_pane_enabled)),
+        ("size_column_enabled", flag(config.size_column_enabled)),
+        ("date_column_enabled", flag(config.date_column_enabled)),
+        ("column_headers_enabled", flag(config.column_headers_enabled)),
+        ("copy_symlinks_as_links_enabled", flag(config.copy_symlinks_as_links_enabled)),
+        ("zip_preview_enabled", flag(config.zip_preview_enabled)),
+        ("terminal_title_enabled", flag(config.terminal_title_enabled)),
+        ("git_status_enabled", flag(config.git_status_enabled)),
+        ("file_metadata_enabled", flag(config.file_metadata_enabled)),
+        ("file_previews_enabled", flag(config.file_previews_enabled)),
+        ("archive_metadata_enabled", flag(config.archive_metadata_enabled)),
+        ("dir_size_ssd_enabled", flag(config.dir_size_ssd_enabled)),
+        ("dir_size_hdd_enabled", flag(config.dir_size_hdd_enabled)),
+        ("dir_size_network_enabled", flag(config.dir_size_network_enabled)),
+        ("pdf_preview_enabled", flag(config.pdf_preview_enabled)),
+        ("pdf_metadata_enabled", flag(config.pdf_metadata_enabled)),
+        ("markdown_preview_enabled", flag(config.markdown_preview_enabled)),
+        ("ffprobe_enabled", flag(config.ffprobe_enabled)),
+        ("mediainfo_enabled", flag(config.mediainfo_enabled)),
+    ];
+
+    let mut json = String::from("{");
+
+    for (key, value) in fields {
+        if key == "sort_mode" {
+            json.push_str(&format!("\"sort_mode\":\"{sort_mode}\","));
+        } else {
+            json.push_str(&format!("\"{key}\":{value},"));
+        }
+    }
+
+    // C# escapes only backslashes in the start path
+    json.push_str(&format!("\"start_path\":\"{}\"}}", config.start_path.replace('\\', "\\\\")));
+    json
 }
 
 /// Port of `WadeConfig.Save`: all 27 keys in the C# order.
@@ -184,20 +280,24 @@ pub fn save_config(config: &AppConfig) -> std::io::Result<()> {
     std::fs::write(path, content)
 }
 
+/// Port of `WadeConfig.ParseBool`.
 fn parse_bool(value: &str, default: bool) -> bool {
-    match value.to_ascii_lowercase().as_str() {
-        "true" => true,
-        "false" => false,
+    match value.to_lowercase().as_str() {
+        "true" | "1" | "yes" => true,
+        "false" | "0" | "no" => false,
         _ => default,
     }
 }
 
+/// `Enum.TryParse<SortMode>(value, ignoreCase: true)`: member names or
+/// their numeric values (C# would also store undefined numbers; those are
+/// ignored here).
 fn parse_sort_mode(value: &str) -> Option<SortMode> {
     match value.to_ascii_lowercase().as_str() {
-        "name" => Some(SortMode::Name),
-        "modified" => Some(SortMode::Modified),
-        "size" => Some(SortMode::Size),
-        "extension" => Some(SortMode::Extension),
+        "name" | "0" => Some(SortMode::Name),
+        "modified" | "1" => Some(SortMode::Modified),
+        "size" | "2" => Some(SortMode::Size),
+        "extension" | "3" => Some(SortMode::Extension),
         _ => None,
     }
 }
@@ -272,5 +372,39 @@ mediainfo_enabled = true
         assert!(loaded.dir_size_hdd_enabled);
         assert!(loaded.mediainfo_enabled);
         assert_eq!(loaded.config_file_path, config.config_file_path);
+    }
+
+    #[test]
+    fn cli_args_set_flags_and_first_non_flag_start_path() {
+        let mut config = AppConfig::default();
+        let args: Vec<String> = ["--cwd-file=/tmp/out", "-h", "--version", "--show-config", "/start", "/ignored"]
+            .iter()
+            .map(|s| (*s).to_string())
+            .collect();
+        apply_cli_args(&mut config, &args);
+        assert_eq!(config.cwd_file_path.as_deref(), Some("/tmp/out"));
+        assert!(config.show_help && config.show_version && config.show_config);
+        assert_eq!(config.start_path, "/start");
+    }
+
+    #[test]
+    fn disabled_tools_and_detail_columns_keys() {
+        let config = config_with_path("legacy.toml");
+        let path = config.config_file_path.clone().unwrap();
+        std::fs::write(&path, "disabled_tools = pdftopng, markdown_preview ,mediainfo\ndetail_columns_enabled = no\n").unwrap();
+        let loaded = load_config(&[format!("--config-file={path}")]);
+        assert!(!loaded.pdf_preview_enabled && !loaded.markdown_preview_enabled && !loaded.mediainfo_enabled);
+        assert!(loaded.pdf_metadata_enabled && loaded.ffprobe_enabled);
+        assert!(!loaded.size_column_enabled && !loaded.date_column_enabled);
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn to_json_escapes_backslashes_only() {
+        let config = AppConfig { start_path: "C:\\a \"b\"".to_string(), ..AppConfig::default() };
+        let json = to_json(&config);
+        assert!(json.starts_with("{\"show_icons_enabled\":true,"));
+        assert!(json.contains("\"sort_mode\":\"name\","));
+        assert!(json.ends_with("\"start_path\":\"C:\\\\a \"b\"\"}"));
     }
 }

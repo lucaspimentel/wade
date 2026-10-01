@@ -160,9 +160,15 @@ impl App {
                 true
             }
             InputMode::FileOperation => {
-                // Any key cancels the running operation (App.cs:660-663)
-                if !key.is_modifier_only() {
+                // Escape cancels the running operation (App.cs:660-671)
+                if key.key == crate::console_key::ConsoleKey::Escape {
                     self.file_operation_runner.cancel();
+                    self.input_mode = InputMode::Normal;
+                    self.directory_contents.invalidate(&self.current_path);
+                    self.invalidate_filtered_entries();
+                    self.marked_paths.clear();
+                    self.refresh_git_status();
+                    self.show_notification("Operation cancelled", NotificationKind::Info);
                 }
 
                 true
@@ -571,10 +577,8 @@ impl App {
             return;
         }
 
-        let is_dir = std::path::Path::new(&target).is_dir();
-
         #[cfg(windows)]
-        let result = if is_dir {
+        let result = if std::path::Path::new(&target).is_dir() {
             std::os::windows::fs::symlink_dir(&target, &link_path)
         } else {
             std::os::windows::fs::symlink_file(&target, &link_path)
@@ -1166,6 +1170,12 @@ impl App {
     /// Port of `NavigateToPath` (App.cs:2514).
     pub fn navigate_to_path(&mut self, path: &str) {
         if path.trim().is_empty() {
+            return;
+        }
+
+        // C# Path.GetFullPath throws for an embedded NUL
+        if path.contains('\0') {
+            self.show_notification("Invalid path", NotificationKind::Error);
             return;
         }
 

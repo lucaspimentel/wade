@@ -3,16 +3,12 @@
 ## Rust port (src/wade-rs)
 
 The C# TUI is being ported to Rust in `src/wade-rs`, following
-`docs/rust-port-plan.md` (progress tracked there). Completed: scaffold and
-golden-frame harness, Windows terminal input, ScreenBuffer, app spine
-(3a), modal overlays (3b), config dialog, bookmarks, path completion,
-mouse and context menu (3c), git status display (4a), git actions (4b),
-file operations (4c), loaders/watcher/properties (4d), search and file
-finder (5), syntax highlighting (6), previews and metadata: text, diff,
-hex, archives, shortcuts and Markdown (7), Sixel image and PDF previews
-with image metadata (8). Next: the long tail (Phase 9). The C# tree
-is feature-frozen during the port; the items below are the C# backlog and
-map to remaining port phases where applicable (clipboard: Phase 9).
+`docs/rust-port-plan.md` (progress tracked there). Phases 0-9 are done:
+every C# feature is ported, and `src/wade-rs/KNOWN_DEVIATIONS.md` lists
+only accepted differences. Next: Phase 10 (full golden sweep, install
+scripts switched to the Rust binary, two weeks of daily use, then the C#
+tree is deleted). The C# tree is feature-frozen during the port; the items
+below are the C# backlog.
 
 ## Features
 
@@ -22,7 +18,7 @@ Progress dialog with file count, progress bar, current filename, and Esc to canc
 
 ### System clipboard — Unix/macOS file interop
 
-Windows file clipboard interop is implemented. Remaining: Unix/macOS file clipboard interop via `xclip`/`xsel`/`wl-copy`/`pbcopy` with `text/uri-list` MIME type.
+Windows file clipboard interop is implemented in both versions. The Rust port also implements Linux (`x-special/gnome-copied-files` / `text/uri-list` via `wl-copy`/`xclip`) and macOS (NSPasteboard via `osascript`); C# remains Windows-only.
 
 ### Format-specific metadata providers
 

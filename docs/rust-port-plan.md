@@ -71,8 +71,10 @@ done (4a git status, 4b git actions, 4c file operations, 4d loaders,
 watcher, and properties), Phase 5 done (search + file finder), Phase 6
 done (syntax highlighting), Phase 7 done (7a preview core and text family,
 7b archives, 7c shortcuts, 7d Markdown), Phase 8 done (8a terminal setup
-and capabilities, 8b Sixel image previews, 8c image metadata, 8d PDF).
-Next: Phase 9 long tail.
+and capabilities, 8b Sixel image previews, 8c image metadata, 8d PDF),
+Phase 9 done (9a file-system facts, 9b clipboard, 9c executable metadata,
+9d Office/NuGet/media metadata, 9e MSI, 9f unix watcher/terminal/input,
+9g CLI parity and close-out). Next: Phase 10 parity + cutover.
 
 ### Phase 0 — Scaffold + golden-frame harness
 
@@ -169,6 +171,16 @@ Next: Phase 9 long tail.
   Unix input source (`cfmakeraw`/`poll` via libc), Unix/macOS clipboard.
 - **Verify**: per-item unit tests + fixture files; the phase is done when `TODO.md`'s C# feature
   inventory maps 1:1 to Rust features.
+- **Done as**: sequential sub-phases instead of agent fan-out. Exe/PE and .NET metadata are read
+  in-tree (goblin/pelite lack the CLR tables); MSI uses the pure-Rust `msi` crate on every OS;
+  Office/NuGet use `roxmltree`, media JSON `serde_json`, local dates `chrono`; unix uses `libc`
+  and the `notify` watcher, while Windows keeps the hand-rolled ReadDirectoryChangesW watcher
+  (notify drops the overflow and deleted-directory signals). New C# goldens: executables,
+  documents and media JSON. The inventory walk (CLAUDE.md feature list plus a sweep of every
+  C# UI string) found and fixed CLI gaps: `--cwd-file`, `--help`, `--version`,
+  `--show-config`, start-path validation and file selection, `disabled_tools`,
+  `detail_columns_enabled`, `ParseBool`'s yes/no/1/0, and Esc-only file-operation cancel.
+  `KNOWN_DEVIATIONS.md` now holds only accepted entries.
 
 ### Phase 10 — Parity + cutover
 
