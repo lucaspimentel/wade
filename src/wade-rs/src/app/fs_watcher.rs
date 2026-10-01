@@ -116,19 +116,11 @@ impl Drop for FileSystemWatcherManager {
     }
 }
 
-/// Case-insensitive path equality on Windows (C# OrdinalIgnoreCase),
-/// case-sensitive elsewhere.
+/// Case-insensitive path equality on every platform (C# compares with
+/// `StringComparison.OrdinalIgnoreCase` regardless of OS).
 #[must_use]
 fn paths_equal(a: &str, b: &str) -> bool {
-    #[cfg(windows)]
-    {
-        a.eq_ignore_ascii_case(b)
-    }
-
-    #[cfg(not(windows))]
-    {
-        a == b
-    }
+    a.eq_ignore_ascii_case(b)
 }
 
 /// Port of `OnFileSystemEvent`'s `.git` filter: ignore changes to the .git
@@ -136,15 +128,7 @@ fn paths_equal(a: &str, b: &str) -> bool {
 /// with RefreshGitStatus).
 #[must_use]
 pub fn is_git_internal_event(file_name: &str) -> bool {
-    #[cfg(windows)]
-    {
-        file_name.eq_ignore_ascii_case(".git")
-    }
-
-    #[cfg(not(windows))]
-    {
-        file_name == ".git"
-    }
+    file_name.eq_ignore_ascii_case(".git")
 }
 
 /// Spawns the ReadDirectoryChangesW watch thread (Windows) or fails
@@ -302,7 +286,7 @@ mod tests {
     }
 
     #[test]
-    fn git_filter_matches_case_insensitively_on_windows() {
+    fn git_filter_matches_case_insensitively() {
         assert!(is_git_internal_event(".git"));
         assert!(is_git_internal_event(".GIT"));
         assert!(!is_git_internal_event(".github"));
@@ -310,7 +294,7 @@ mod tests {
     }
 
     #[test]
-    fn path_equality_ignores_case_on_windows() {
+    fn path_equality_ignores_case() {
         assert!(paths_equal("C:\\Data", "c:\\data"));
         assert!(!paths_equal("C:\\Data", "C:\\Data2"));
     }
