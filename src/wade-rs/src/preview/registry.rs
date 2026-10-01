@@ -3,17 +3,20 @@
 //! provider is the default; every metadata provider contributes).
 
 use super::image_metadata::ImageMetadataProvider;
-use super::metadata_providers::{ArchiveMetadataProvider, FileMetadataProvider, ShortcutMetadataProvider};
+use super::metadata_providers::{
+    ArchiveMetadataProvider, FileMetadataProvider, PdfMetadataProvider, ShortcutMetadataProvider,
+};
 use super::providers::{
-    DiffPreviewProvider, HexPreviewProvider, ImagePreviewProvider, MarkdigMarkdownPreviewProvider, NonePreviewProvider,
+    DiffPreviewProvider, HexPreviewProvider, ImagePreviewProvider, MarkdigMarkdownPreviewProvider, PdfPreviewProvider, NonePreviewProvider,
     TarContentsPreviewProvider, TextPreviewProvider, ZipContentsPreviewProvider,
 };
 use super::{MetadataProvider, PreviewContext, PreviewProvider};
 
 /// C# order: Image, PDF, Markdown, Zip, MSI, Tar, Text, Diff, None, Hex.
 /// Slots for providers of later phases are absent.
-static PREVIEW_PROVIDERS: [&dyn PreviewProvider; 8] = [
+static PREVIEW_PROVIDERS: [&dyn PreviewProvider; 9] = [
     &ImagePreviewProvider,
+    &PdfPreviewProvider,
     &MarkdigMarkdownPreviewProvider,
     &ZipContentsPreviewProvider,
     &TarContentsPreviewProvider,
@@ -25,8 +28,13 @@ static PREVIEW_PROVIDERS: [&dyn PreviewProvider; 8] = [
 
 /// C# order: File, Image, Executable, Office, Media, NuGet, MSI, Shortcut,
 /// Archive, PDF. Slots for providers of later phases are absent.
-static METADATA_PROVIDERS: [&dyn MetadataProvider; 4] =
-    [&FileMetadataProvider, &ImageMetadataProvider, &ShortcutMetadataProvider, &ArchiveMetadataProvider];
+static METADATA_PROVIDERS: [&dyn MetadataProvider; 5] = [
+    &FileMetadataProvider,
+    &ImageMetadataProvider,
+    &ShortcutMetadataProvider,
+    &ArchiveMetadataProvider,
+    &PdfMetadataProvider,
+];
 
 /// Port of `PreviewProviderRegistry.GetApplicableProviders`: nothing for
 /// broken symlinks and cloud placeholders; for secondary archive types
@@ -149,6 +157,24 @@ mod tests {
         assert_eq!(
             labels(&path.to_string_lossy(), &test_context()),
             ["Rendered markdown (built-in)", "Text", "None", "Hex dump"]
+        );
+    }
+
+    #[test]
+    fn pdf_providers_follow_tool_availability_and_sixel() {
+        let sixel = PreviewContext {
+            sixel_supported: true,
+            ..test_context()
+        };
+        let previews = labels("doc.pdf", &sixel);
+        assert_eq!(previews.contains(&"PDF"), crate::imaging::pdf::pdftopng_available());
+        assert!(!labels("doc.pdf", &PreviewContext { sixel_supported: false, ..test_context() }).contains(&"PDF"));
+
+        let metadata: Vec<&str> =
+            applicable_metadata_providers("doc.pdf", &test_context()).iter().map(|p| p.label()).collect();
+        assert_eq!(
+            metadata.contains(&"PDF metadata"),
+            crate::preview::metadata_providers::PdfMetadataProvider::is_available()
         );
     }
 

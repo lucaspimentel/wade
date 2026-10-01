@@ -1,5 +1,6 @@
 //! Metadata providers ported so far: `FileMetadataProvider`,
-//! `ShortcutMetadataProvider` and `ArchiveMetadataProvider`.
+//! `ShortcutMetadataProvider`, `ArchiveMetadataProvider` and
+//! `PdfMetadataProvider`.
 
 use super::{MetadataEntry, MetadataProvider, MetadataResult, MetadataSection, PreviewContext};
 use crate::fs::{lnk, tar_preview, zip_preview, GitFileStatus};
@@ -221,6 +222,78 @@ fn tar_metadata(path: &str, cancel: &CancelToken) -> Option<MetadataResult> {
     Some(archive_section(entries))
 }
 
+/// Port of `PdfMetadataProvider`: document fields from `pdfinfo`.
+pub struct PdfMetadataProvider;
+
+impl PdfMetadataProvider {
+    /// Port of `IsAvailable`.
+    #[must_use]
+    pub fn is_available() -> bool {
+        crate::preview::cli_tool_hints::is_available("pdfinfo", Some("-v"), false)
+    }
+}
+
+impl MetadataProvider for PdfMetadataProvider {
+    fn label(&self) -> &'static str {
+        "PDF metadata"
+    }
+
+    fn can_provide_metadata(&self, path: &str, context: &PreviewContext) -> bool {
+        context.pdf_metadata_enabled
+            && crate::fs::file_preview::extension(path).eq_ignore_ascii_case(".pdf")
+            && Self::is_available()
+    }
+
+    fn get_metadata(&self, path: &str, _context: &PreviewContext, cancel: &CancelToken) -> Option<MetadataResult> {
+        if cancel.is_cancelled() {
+            return None;
+        }
+
+        let output = crate::preview::cli_tool_hints::run("pdfinfo", &[path], 5000, cancel)?;
+        if cancel.is_cancelled() {
+            return None;
+        }
+
+        Some(MetadataResult {
+            sections: parse_pdf_info_output(&output)?,
+            file_type_label: Some("PDF".to_string()),
+        })
+    }
+}
+
+/// Port of `ParsePdfInfoOutput`: the known `Key: value` lines, renamed.
+/// Dates stay as pdfinfo prints them (C# reformats ones .NET can parse;
+/// KNOWN_DEVIATIONS.md).
+#[must_use]
+pub fn parse_pdf_info_output(output: &str) -> Option<Vec<MetadataSection>> {
+    if output.trim().is_empty() {
+        return None;
+    }
+
+    let entries: Vec<MetadataEntry> = output
+        .split('\n')
+        .filter_map(|line| {
+            let (key, value) = line.split_once(':')?;
+            let (key, value) = (key.trim(), value.trim());
+            let label = match key {
+                "Title" | "Subject" | "Keywords" | "Author" | "Creator" | "Producer" | "Pages" | "Page size"
+                | "PDF version" | "Encrypted" => key,
+                "CreationDate" => "Created",
+                "ModDate" => "Modified",
+                _ => return None,
+            };
+            (!value.is_empty()).then(|| MetadataEntry::new(label, value))
+        })
+        .collect();
+
+    (!entries.is_empty()).then(|| {
+        vec![MetadataSection {
+            header: Some("PDF Document".to_string()),
+            entries,
+        }]
+    })
+}
+
 #[cfg(test)]
 mod tests {
     //! Port of FileMetadataProviderTests.cs.
@@ -243,6 +316,39 @@ mod tests {
         let path = test_path("file.txt");
         std::fs::write(&path, "hello").unwrap();
         path.to_string_lossy().into_owned()
+    }
+
+    #[test]
+    fn pdf_info_parsing() {
+        use super::parse_pdf_info_output;
+
+        let full = "Title:           Cover Page English\nAuthor:          John Doe\nCreator:         Windows NT 4.0\n\
+                    Producer:        Acrobat Distiller 3.01 for Windows\nCreationDate:    Mon May 24 04:42:21 1999\n\
+                    ModDate:         Mon May 24 04:44:24 1999\nPages:           57\nEncrypted:       no\n\
+                    Page size:       595 x 842 pts (A4)\nPDF version:     1.2\nUnknown:   skipped\n";
+        let sections = parse_pdf_info_output(full).expect("sections");
+        assert_eq!(sections[0].header.as_deref(), Some("PDF Document"));
+        let flat: Vec<String> = sections[0].entries.iter().map(|e| format!("{}={}", e.label, e.value)).collect();
+        assert_eq!(
+            flat,
+            [
+                "Title=Cover Page English",
+                "Author=John Doe",
+                "Creator=Windows NT 4.0",
+                "Producer=Acrobat Distiller 3.01 for Windows",
+                "Created=Mon May 24 04:42:21 1999",
+                "Modified=Mon May 24 04:44:24 1999",
+                "Pages=57",
+                "Encrypted=no",
+                "Page size=595 x 842 pts (A4)",
+                "PDF version=1.2",
+            ]
+        );
+
+        let minimal = parse_pdf_info_output("Pages:           3\nPDF version:     1.7\n").expect("sections");
+        assert_eq!(minimal[0].entries.len(), 2);
+        assert!(parse_pdf_info_output("").is_none());
+        assert!(parse_pdf_info_output("Title:\nnothing here\n").is_none());
     }
 
     #[test]

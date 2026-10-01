@@ -21,7 +21,6 @@ const HEX_TAIL_ROWS: usize = 3;
 /// Providers of later phases: C# lists them, Rust's registries do not yet.
 const PENDING_LABELS: &[&str] = &[
     // Preview providers
-    "PDF",
     "Installer files",
     // Metadata providers
     "Executable metadata",
@@ -29,7 +28,6 @@ const PENDING_LABELS: &[&str] = &[
     "Media info",
     "NuGet metadata",
     "MSI metadata",
-    "PDF metadata",
 ];
 
 fn golden_dir() -> PathBuf {

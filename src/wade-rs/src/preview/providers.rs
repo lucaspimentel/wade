@@ -1,5 +1,5 @@
 //! Port of the providers in `PreviewProviders.cs` ported so far: image,
-//! rendered Markdown, archive contents (zip, tar/gzip), Text, Hex dump, None and
+//! PDF, rendered Markdown, archive contents (zip, tar/gzip), Text, Hex dump, None and
 //! Git diff.
 
 use super::{PreviewContext, PreviewProvider, PreviewResult};
@@ -39,6 +39,42 @@ impl PreviewProvider for ImagePreviewProvider {
             sixel_pixel_width: result.pixel_width,
             sixel_pixel_height: result.pixel_height,
             file_type_label: Some(result.label),
+            ..PreviewResult::default()
+        })
+    }
+}
+
+/// Port of `PdfPreviewProvider`: page 1 rendered by `pdftopng`, shown as a
+/// Sixel image.
+pub struct PdfPreviewProvider;
+
+impl PreviewProvider for PdfPreviewProvider {
+    fn label(&self) -> &'static str {
+        "PDF"
+    }
+
+    fn can_preview(&self, path: &str, context: &PreviewContext) -> bool {
+        context.pdf_preview_enabled && context.sixel_supported && crate::imaging::pdf::can_convert(path)
+    }
+
+    fn get_preview(&self, path: &str, context: &PreviewContext, cancel: &CancelToken) -> Option<PreviewResult> {
+        let page = crate::imaging::pdf::convert_to_image(path, cancel)?;
+        let result = crate::imaging::image_preview::load(
+            &page.path.to_string_lossy(),
+            context.pane_width_cells,
+            context.pane_height_cells,
+            context.cell_pixel_width,
+            context.cell_pixel_height,
+            cancel,
+        )?;
+
+        let doc_ext = file_preview::extension(path).trim_start_matches('.').to_uppercase();
+
+        Some(PreviewResult {
+            sixel_data: Some(result.sixel_data),
+            sixel_pixel_width: result.pixel_width,
+            sixel_pixel_height: result.pixel_height,
+            file_type_label: Some(format!("{doc_ext} Document (page 1)")),
             ..PreviewResult::default()
         })
     }

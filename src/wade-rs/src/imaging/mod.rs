@@ -4,4 +4,5 @@
 //! (KNOWN_DEVIATIONS.md).
 
 pub mod image_preview;
+pub mod pdf;
 pub mod sixel;

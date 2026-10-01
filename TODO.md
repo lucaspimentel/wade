@@ -9,8 +9,8 @@ golden-frame harness, Windows terminal input, ScreenBuffer, app spine
 mouse and context menu (3c), git status display (4a), git actions (4b),
 file operations (4c), loaders/watcher/properties (4d), search and file
 finder (5), syntax highlighting (6), previews and metadata: text, diff,
-hex, archives, shortcuts and Markdown (7). Next: imaging and Sixel
-(Phase 8). The C# tree
+hex, archives, shortcuts and Markdown (7), Sixel image and PDF previews
+with image metadata (8). Next: the long tail (Phase 9). The C# tree
 is feature-frozen during the port; the items below are the C# backlog and
 map to remaining port phases where applicable (clipboard: Phase 9).
 

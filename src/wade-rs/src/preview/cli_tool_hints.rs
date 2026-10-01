@@ -1,5 +1,6 @@
-//! Ports of `CliToolHints` and `CliTool.IsAvailable`: an install hint when a
-//! PDF or media file has no tool to preview it.
+//! Ports of `CliToolHints` and `CliTool`: an install hint when a PDF or
+//! media file has no tool to preview it, the cached availability probe,
+//! and `Run` (a tool's stdout on success).
 
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
@@ -85,4 +86,52 @@ fn probe(file_name: &str, argument: Option<&str>, require_zero_exit_code: bool) 
             }
         }
     }
+}
+
+/// Port of `CliTool.Run`: the tool's stdout when it exits 0 within
+/// `timeout_ms`; `None` on failure, timeout or cancellation (the process is
+/// killed).
+#[must_use]
+pub fn run(file_name: &str, args: &[&str], timeout_ms: u64, cancel: &crate::input::CancelToken) -> Option<String> {
+    use std::io::Read;
+
+    let mut command = std::process::Command::new(file_name);
+    command
+        .args(args)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null());
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+
+    let mut child = command.spawn().ok()?;
+    let mut stdout = child.stdout.take()?;
+    let reader = std::thread::spawn(move || {
+        let mut output = Vec::new();
+        let _ = stdout.read_to_end(&mut output);
+        output
+    });
+
+    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(timeout_ms);
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break Some(status),
+            Ok(None) if !cancel.is_cancelled() && std::time::Instant::now() < deadline => {
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            _ => {
+                let _ = child.kill();
+                let _ = child.wait();
+                break None;
+            }
+        }
+    };
+
+    let output = reader.join().ok()?;
+    status.filter(std::process::ExitStatus::success)?;
+    Some(String::from_utf8_lossy(&output).into_owned())
 }

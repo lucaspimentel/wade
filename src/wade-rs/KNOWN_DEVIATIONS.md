@@ -25,9 +25,8 @@ this file to be empty or fully accepted.
   permission. Revisit with the Phase 9 unix work.
 - **Later-phase preview and metadata providers are absent (Phase 7a).**
   The registries hold only the ported providers, in C# order. Missing until
-  their phases: PDF preview and metadata (8d), and
-  the MSI preview plus executable, Office, NuGet, media and MSI metadata
-  (Phase 9). Files of those types fall through to the next applicable
+  their phases: the MSI preview plus executable, Office, NuGet, media and
+  MSI metadata (Phase 9). Files of those types fall through to the next applicable
   provider (usually None, Text or Hex).
 - **Unix terminals report default capabilities (Phase 8a).** Windows
   detects Sixel via `WT_SESSION` like C#; the Unix DA1/cell-size query
@@ -56,9 +55,8 @@ this file to be empty or fully accepted.
   context menu Paste/Copy/Cut entries.
 - **Config toggles for unported subsystems are inert (Phase 3c).** The
   config dialog ports all 27 settings and persists them, but toggles
-  gating providers that land in later phases (PDF previews,
-  PDF/media metadata) have no runtime effect until those
-  phases land.
+  gating providers that land in later phases (media metadata) have no
+  runtime effect until Phase 9.
 - **Dates carry no local timezone offset (Phase 3a).**
   `FileSystemEntry.last_modified` converts `SystemTime` without a local
   timezone offset (C# `LastWriteTime` is local). No timezone crate has been
@@ -78,6 +76,11 @@ this file to be empty or fully accepted.
   without .NET's introsort tie order, so Sixel bytes differ from C#.
   Fit size (never upscaled), labels, layout and when the Sixel is written
   match C#; exact pixels were judged unnecessary for previews.
+- **PDF previews clean up their temp directory; pdfinfo dates stay raw
+  (Phase 8d).** C# deletes the rendered PNG but leaves its
+  `wade-pdf-*` directory behind; Rust removes the directory. C# reformats
+  CreationDate/ModDate when `DateTimeOffset.TryParse` accepts pdfinfo's
+  text (local offset); Rust shows the dates as pdfinfo prints them.
 - **Image metadata comes from the `image` crate and `kamadak-exif`
   (Phase 8c).** Entries, labels and EXIF formatting follow C#, but the
   values come from those crates: "Color depth" is the decoder's original

@@ -70,7 +70,9 @@ bookmarks / path completion / paste / mouse + context menu), Phase 4
 done (4a git status, 4b git actions, 4c file operations, 4d loaders,
 watcher, and properties), Phase 5 done (search + file finder), Phase 6
 done (syntax highlighting), Phase 7 done (7a preview core and text family,
-7b archives, 7c shortcuts, 7d Markdown). Next: Phase 8 imaging + Sixel.
+7b archives, 7c shortcuts, 7d Markdown), Phase 8 done (8a terminal setup
+and capabilities, 8b Sixel image previews, 8c image metadata, 8d PDF).
+Next: Phase 9 long tail.
 
 ### Phase 0 — Scaffold + golden-frame harness
 
@@ -153,6 +155,11 @@ done (syntax highlighting), Phase 7 done (7a preview core and text family,
   with EXIF.
 - **Verify**: encoder golden output vs C# encoder on fixture images; manual sixel verification in
   Windows Terminal.
+- **Done as**: pixel-exact output was dropped by decision (previews only need to look right and be
+  fast): `image` decode with a triangle-filter resize, the C# median-cut encoder, `kamadak-exif`.
+  Exact parity kept for layout (renderer frames 039-040) and behavior; unit tests port the C#
+  encoder, image, metadata, PDF and capability tests. 8a also wired the previously unused
+  `TerminalSetup` (alternate screen, raw console modes, UTF-8 code pages) into `App::run`.
 
 ### Phase 9 — Long tail (agent fan-out)
 
