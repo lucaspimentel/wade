@@ -25,7 +25,7 @@ this file to be empty or fully accepted.
   permission. Revisit with the Phase 9 unix work.
 - **Later-phase preview and metadata providers are absent (Phase 7a).**
   The registries hold only the ported providers, in C# order. Missing until
-  their phases: image metadata (8c), PDF preview and metadata (8d), and
+  their phases: PDF preview and metadata (8d), and
   the MSI preview plus executable, Office, NuGet, media and MSI metadata
   (Phase 9). Files of those types fall through to the next applicable
   provider (usually None, Text or Hex).
@@ -78,6 +78,14 @@ this file to be empty or fully accepted.
   without .NET's introsort tie order, so Sixel bytes differ from C#.
   Fit size (never upscaled), labels, layout and when the Sixel is written
   match C#; exact pixels were judged unnecessary for previews.
+- **Image metadata comes from the `image` crate and `kamadak-exif`
+  (Phase 8c).** Entries, labels and EXIF formatting follow C#, but the
+  values come from those crates: "Color depth" is the decoder's original
+  color type (e.g. 8 bpp for indexed PNGs where ImageSharp may report a
+  different pixel type), "Format" maps the detected format to ImageSharp's
+  name, and "Frames" counts GIF image descriptors, the APNG `acTL` frame
+  count and WebP `ANMF` chunks (multi-page TIFFs report no frame count).
+  EXIF `0.#` values round half-to-even rather than .NET's half-away.
 - **Markdown parses with pulldown-cmark, not Markdig (Phase 7d).** The
   renderer reproduces `MarkdigRenderer` on an equivalent tree (silent
   link-definition and HTML blocks, dropped entities, first-word fence

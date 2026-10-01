@@ -2,6 +2,7 @@
 //! providers that apply to a file, in priority order (the first preview
 //! provider is the default; every metadata provider contributes).
 
+use super::image_metadata::ImageMetadataProvider;
 use super::metadata_providers::{ArchiveMetadataProvider, FileMetadataProvider, ShortcutMetadataProvider};
 use super::providers::{
     DiffPreviewProvider, HexPreviewProvider, ImagePreviewProvider, MarkdigMarkdownPreviewProvider, NonePreviewProvider,
@@ -24,8 +25,8 @@ static PREVIEW_PROVIDERS: [&dyn PreviewProvider; 8] = [
 
 /// C# order: File, Image, Executable, Office, Media, NuGet, MSI, Shortcut,
 /// Archive, PDF. Slots for providers of later phases are absent.
-static METADATA_PROVIDERS: [&dyn MetadataProvider; 3] =
-    [&FileMetadataProvider, &ShortcutMetadataProvider, &ArchiveMetadataProvider];
+static METADATA_PROVIDERS: [&dyn MetadataProvider; 4] =
+    [&FileMetadataProvider, &ImageMetadataProvider, &ShortcutMetadataProvider, &ArchiveMetadataProvider];
 
 /// Port of `PreviewProviderRegistry.GetApplicableProviders`: nothing for
 /// broken symlinks and cloud placeholders; for secondary archive types

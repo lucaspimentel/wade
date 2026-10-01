@@ -21,7 +21,6 @@ const HEX_TAIL_ROWS: usize = 3;
 /// Providers of later phases: C# lists them, Rust's registries do not yet.
 const PENDING_LABELS: &[&str] = &[
     // Preview providers
-    "Image",
     "PDF",
     "Installer files",
     // Metadata providers
