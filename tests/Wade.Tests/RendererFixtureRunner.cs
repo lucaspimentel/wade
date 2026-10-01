@@ -258,17 +258,19 @@ internal static class RendererFixtureRunner
                     break;
                 case "confirmdlg":
                 {
-                    // confirmdlg "TITLE" "MESSAGE"
-                    string title = Unquote(tokens[1]);
-                    string message = Unquote(line.Split(' ', 3)[2]);
+                    // confirmdlg "TITLE" "MESSAGE" (\n in MESSAGE is a line break)
+                    List<string> args = QuotedSpans(line);
+                    string title = args[0];
+                    string message = args[1].Replace("\\n", "\n");
                     ConfirmDialog.Render(buffer, width, height, title == "-" ? null : title, message);
                     break;
                 }
                 case "textinputdlg":
                 {
                     // textinputdlg "TITLE" "VALUE"
-                    string title = Unquote(tokens[1]);
-                    string value = Unquote(line.Split(' ', 3)[2]);
+                    List<string> args = QuotedSpans(line);
+                    string title = args[0];
+                    string value = args[1];
                     TextInputDialog.Render(buffer, width, height, title == "-" ? null : title, new TextInput(value));
                     break;
                 }
@@ -483,6 +485,32 @@ internal static class RendererFixtureRunner
         int start = s.IndexOf('"');
         int end = s.IndexOf('"', start + 1);
         return s[(start + 1)..end];
+    }
+
+    /// All "..." spans in the string, in order.
+    private static List<string> QuotedSpans(string s)
+    {
+        var spans = new List<string>();
+        int i = 0;
+        while (i < s.Length)
+        {
+            int start = s.IndexOf('"', i);
+            if (start < 0)
+            {
+                break;
+            }
+
+            int end = s.IndexOf('"', start + 1);
+            if (end < 0)
+            {
+                break;
+            }
+
+            spans.Add(s[(start + 1)..end]);
+            i = end + 1;
+        }
+
+        return spans;
     }
 
     private static int ParseInt(string token) => int.Parse(token, CultureInfo.InvariantCulture);

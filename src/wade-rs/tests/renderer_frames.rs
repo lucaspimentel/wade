@@ -316,9 +316,10 @@ fn run_scenario(path: &Path) -> String {
                 help_overlay::render(buffer, width, height);
             }
             "confirmdlg" => {
-                // confirmdlg "TITLE" "MESSAGE"
-                let title = unquote(tokens[1]);
-                let message = unquote(line.splitn(3, ' ').nth(2).expect("message"));
+                // confirmdlg "TITLE" "MESSAGE" (\n in MESSAGE is a line break)
+                let args = quoted_spans(line);
+                let title = args[0].clone();
+                let message = args[1].replace("\\n", "\n");
                 let buffer = buffer.as_mut().expect("size op first");
                 dialogs::render_confirm_dialog(
                     buffer,
@@ -330,8 +331,9 @@ fn run_scenario(path: &Path) -> String {
             }
             "textinputdlg" => {
                 // textinputdlg "TITLE" "VALUE"
-                let title = unquote(tokens[1]);
-                let value = unquote(line.splitn(3, ' ').nth(2).expect("value"));
+                let args = quoted_spans(line);
+                let title = args[0].clone();
+                let value = args[1].clone();
                 let mut input = TextInput::new(&value);
                 let buffer = buffer.as_mut().expect("size op first");
                 dialogs::render_text_input_dialog(
