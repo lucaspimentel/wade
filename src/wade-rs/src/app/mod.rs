@@ -906,22 +906,18 @@ impl App {
         let new_entries = self.get_visible_entries();
         let mut selected_survived = false;
 
-        if let Some(name) = &selected_name {
-            if !new_entries.is_empty() {
-                match new_entries.iter().position(|entry| names_equal_ignore_case(&entry.name, name)) {
-                    Some(index) => {
-                        self.selected_index = index;
-                        selected_survived = true;
-                    }
-                    None => {
-                        self.selected_index = self.selected_index.min(new_entries.len() - 1);
-                    }
+        if let Some(name) = selected_name.as_ref().filter(|_| !new_entries.is_empty()) {
+            match new_entries.iter().position(|entry| names_equal_ignore_case(&entry.name, name)) {
+                Some(index) => {
+                    self.selected_index = index;
+                    selected_survived = true;
+                }
+                None => {
+                    self.selected_index = self.selected_index.min(new_entries.len() - 1);
                 }
             }
-        } else if !new_entries.is_empty() {
-            self.selected_index = self.selected_index.min(new_entries.len() - 1);
         } else {
-            self.selected_index = 0;
+            self.selected_index = self.selected_index.min(new_entries.len().saturating_sub(1));
         }
 
         let _ = selected_survived; // preview-cache clear lands in Phase 7
@@ -1601,18 +1597,11 @@ fn open_terminal(working_directory: &str) -> std::io::Result<()> {
             .map(|_| ())
     }
 }
-/// Case-insensitive path comparison (C# `OrdinalIgnoreCase` paths).
+/// Case-insensitive path comparison on every platform (C#
+/// `OrdinalIgnoreCase` paths, regardless of OS).
 #[must_use]
 pub(crate) fn paths_equal_ignore_case(a: &str, b: &str) -> bool {
-    #[cfg(windows)]
-    {
-        a.eq_ignore_ascii_case(b)
-    }
-
-    #[cfg(not(windows))]
-    {
-        a == b
-    }
+    a.eq_ignore_ascii_case(b)
 }
 
 /// Case-insensitive file-name comparison (C# `OrdinalIgnoreCase` names).
@@ -1707,3 +1696,160 @@ fn flush_buffer(buffer: &mut ScreenBuffer) {
 }
 
 
+
+#[cfg(test)]
+mod tests {
+    use super::{App, AppConfig};
+    use crate::fs::DriveMediaType;
+    use crate::input::FileSystemChangedEvent;
+
+    #[test]
+    fn should_compute_inline_dir_sizes_matches_csharp_theory() {
+        // (drive type, ssd, hdd, network, expected) from InlineDirSizeTests.cs
+        let cases = [
+            (DriveMediaType::Ssd, true, false, false, true),
+            (DriveMediaType::Ssd, false, false, false, false),
+            (DriveMediaType::Hdd, true, true, false, true),
+            (DriveMediaType::Hdd, true, false, false, false),
+            (DriveMediaType::Network, true, false, true, true),
+            (DriveMediaType::Network, true, false, false, false),
+            (DriveMediaType::Removable, true, false, false, true), // follows SSD
+            (DriveMediaType::Removable, false, false, false, false), // follows SSD
+            (DriveMediaType::Unknown, true, true, true, false), // Unknown = disabled
+        ];
+
+        for (drive_type, ssd, hdd, network, expected) in cases {
+            let config = AppConfig {
+                dir_size_ssd_enabled: ssd,
+                dir_size_hdd_enabled: hdd,
+                dir_size_network_enabled: network,
+                ..AppConfig::default()
+            };
+            assert_eq!(
+                App::should_compute_inline_dir_sizes_impl(drive_type, &config),
+                expected,
+                "{drive_type:?} ssd={ssd} hdd={hdd} network={network}"
+            );
+        }
+    }
+
+    fn test_root(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("wade-app-{}-{}", std::process::id(), name));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    /// An App listing `root` with git disabled (no subprocesses).
+    fn app_at(root: &std::path::Path, files: &[&str]) -> App {
+        for file in files {
+            std::fs::write(root.join(file), "x").unwrap();
+        }
+
+        let mut app = App::new(AppConfig {
+            git_status_enabled: false,
+            ..AppConfig::default()
+        });
+        app.current_path = root.to_string_lossy().into_owned();
+        app
+    }
+
+    fn changed(app: &App, full_refresh: bool) -> FileSystemChangedEvent {
+        FileSystemChangedEvent {
+            directory_path: app.current_path.clone(),
+            full_refresh,
+        }
+    }
+
+    fn selected_name(app: &mut App) -> Option<String> {
+        let index = app.selected_index;
+        app.get_visible_entries().get(index).map(|entry| entry.name.clone())
+    }
+
+    #[test]
+    fn file_system_changed_keeps_selection_by_name() {
+        let root = test_root("fsc-keep");
+        let mut app = app_at(&root, &["b.txt", "c.txt"]);
+        app.selected_index = 1; // c.txt
+        assert_eq!(selected_name(&mut app).as_deref(), Some("c.txt"));
+
+        // a.txt sorts ahead of the selection and shifts its index
+        std::fs::write(root.join("a.txt"), "x").unwrap();
+        let event = changed(&app, false);
+        app.handle_file_system_changed(event);
+
+        assert_eq!(app.selected_index, 2);
+        assert_eq!(selected_name(&mut app).as_deref(), Some("c.txt"));
+        assert!(app.request_full_redraw);
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn file_system_changed_clamps_when_selection_deleted() {
+        let root = test_root("fsc-clamp");
+        let mut app = app_at(&root, &["a.txt", "b.txt", "c.txt"]);
+        app.selected_index = 2; // c.txt
+        let _ = app.get_visible_entries(); // populate the cache
+
+        std::fs::remove_file(root.join("c.txt")).unwrap();
+        let event = changed(&app, true);
+        app.handle_file_system_changed(event);
+
+        assert_eq!(app.selected_index, 1);
+        assert_eq!(selected_name(&mut app).as_deref(), Some("b.txt"));
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn file_system_changed_resets_selection_when_directory_empties() {
+        // C# falls through to Math.Min(idx, Math.Max(0, count - 1)) = 0
+        let root = test_root("fsc-empty");
+        let mut app = app_at(&root, &["a.txt", "b.txt"]);
+        app.selected_index = 1;
+        let _ = app.get_visible_entries();
+
+        std::fs::remove_file(root.join("a.txt")).unwrap();
+        std::fs::remove_file(root.join("b.txt")).unwrap();
+        let event = changed(&app, false);
+        app.handle_file_system_changed(event);
+
+        assert_eq!(app.selected_index, 0);
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn file_system_changed_ignores_stale_directory() {
+        let root = test_root("fsc-stale");
+        let mut app = app_at(&root, &["a.txt", "b.txt"]);
+        app.selected_index = 1;
+        let _ = app.get_visible_entries();
+
+        std::fs::write(root.join("0.txt"), "x").unwrap();
+        app.handle_file_system_changed(FileSystemChangedEvent {
+            directory_path: root.join("elsewhere").to_string_lossy().into_owned(),
+            full_refresh: false,
+        });
+
+        // Cache not invalidated, selection and redraw flag untouched
+        assert_eq!(app.selected_index, 1);
+        assert_eq!(selected_name(&mut app).as_deref(), Some("b.txt"));
+        assert!(!app.request_full_redraw);
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn file_system_changed_matches_directory_case_insensitively() {
+        let root = test_root("fsc-case");
+        let mut app = app_at(&root, &["b.txt"]);
+        let _ = app.get_visible_entries();
+
+        std::fs::write(root.join("a.txt"), "x").unwrap();
+        app.handle_file_system_changed(FileSystemChangedEvent {
+            directory_path: app.current_path.to_uppercase(),
+            full_refresh: false,
+        });
+
+        assert!(app.request_full_redraw);
+        let _ = std::fs::remove_dir_all(&root);
+    }
+}
