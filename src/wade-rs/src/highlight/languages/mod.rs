@@ -2,6 +2,8 @@
 
 pub mod c;
 pub mod cpp;
+pub mod css;
+pub mod diff;
 pub mod csharp;
 pub mod go;
 pub mod java;
@@ -11,4 +13,3 @@ pub mod python;
 pub mod rust;
 pub mod shell;
 pub mod typescript;
-pub mod diff;

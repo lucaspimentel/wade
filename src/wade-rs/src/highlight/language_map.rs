@@ -3,7 +3,7 @@
 //! extensionless shell-like names.
 
 use super::languages::{
-    c::CLanguage, cpp::CppLanguage, csharp::CSharpLanguage, go::GoLanguage, java::JavaLanguage,
+    c::CLanguage, cpp::CppLanguage, csharp::CSharpLanguage, css::CssLanguage, go::GoLanguage, java::JavaLanguage,
     javascript::JavaScriptLanguage, powershell::PowerShellLanguage, python::PythonLanguage, rust::RustLanguage,
     shell::ShellLanguage, typescript::TypeScriptLanguage,
 };
@@ -20,6 +20,7 @@ static RUST: RustLanguage = RustLanguage;
 static JAVA: JavaLanguage = JavaLanguage;
 static SHELL: ShellLanguage = ShellLanguage;
 static POWERSHELL: PowerShellLanguage = PowerShellLanguage;
+static CSS: CssLanguage = CssLanguage;
 
 /// Port of `ByExtension` (keys lowercase, with the dot).
 fn by_extension(extension: &str) -> Option<&'static dyn Language> {
@@ -35,6 +36,7 @@ fn by_extension(extension: &str) -> Option<&'static dyn Language> {
         ".java" => &JAVA,
         ".sh" | ".bash" | ".zsh" | ".fish" => &SHELL,
         ".ps1" | ".psm1" | ".psd1" => &POWERSHELL,
+        ".css" | ".scss" | ".sass" => &CSS,
         _ => return None,
     };
 

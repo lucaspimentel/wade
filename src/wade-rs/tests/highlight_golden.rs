@@ -11,10 +11,9 @@ use wade::screen::{CellStyle, Color};
 /// Case files and C# language classes not ported yet (emptied as the
 /// standalone languages land).
 const PENDING: &[&str] = &[
-    "css", "diff", "dockerfile", "json", "markdown", "toml", "xmlhtml", "yaml",
+    "dockerfile", "json", "markdown", "toml", "xmlhtml", "yaml",
 ];
 const PENDING_LANGUAGES: &[&str] = &[
-    "CssLanguage",
     "DockerfileLanguage",
     "GitIgnoreLanguage",
     "JsonLanguage",

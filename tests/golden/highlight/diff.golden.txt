@@ -38,3 +38,34 @@ chars 0+12:80,200,80/-/-
 %%%% case 13
 text -removed content here
 chars 0+21:220,80,80/-/-
+%%%% case 14
+text diff --git a/src/app.rs b/src/app.rs
+chars 0+36:140,140,140/-/d
+text index 1234567..89abcde 100644
+chars 0+29:140,140,140/-/d
+text --- a/src/app.rs
+chars 0+16:140,140,140/-/d
+text +++ b/src/app.rs
+chars 0+16:140,140,140/-/d
+text @@ -1,4 +1,5 @@ fn main() {
+chars 0+27:80,180,220/-/d
+text  unchanged context
+text -removed line
+chars 0+13:220,80,80/-/-
+text +added line
+chars 0+11:80,200,80/-/-
+text +
+chars 0+1:80,200,80/-/-
+text -
+chars 0+1:220,80,80/-/-
+text  
+text 
+text \\ No newline at end of file
+%%%% case 15
+text ++not metadata
+chars 0+14:80,200,80/-/-
+text --not metadata
+chars 0+14:220,80,80/-/-
+text @ not a hunk
+text diffx
+text index

@@ -62,3 +62,60 @@ spans 0+5:Key 5+1:Punctuation 10+1:Punctuation
 text color: #f00000 ██;
 spans 0+5:Key 5+1:Punctuation 7+7:HexColor 17+1:Punctuation
 chars 0+5:156,220,254/-/- 5+1:180,180,180/-/- 6+1:200,200,200/-/- 7+7:86,156,214/-/- 14+1:-/-/- 15+2:240,0,0/-/- 17+1:180,180,180/-/-
+%%%% case 18
+text /* Theme */
+spans 0+11:Comment
+text :root {
+spans 0+1:Punctuation 6+1:Punctuation
+text   --accent: #3366CC ██;
+spans 2+8:Key 10+1:Punctuation 12+7:HexColor 22+1:Punctuation
+chars 0+2:200,200,200/-/- 2+8:156,220,254/-/- 10+1:180,180,180/-/- 11+1:200,200,200/-/- 12+7:86,156,214/-/- 19+1:-/-/- 20+2:51,102,204/-/- 22+1:180,180,180/-/-
+text   --muted: #abc8 ██;
+spans 2+7:Key 9+1:Punctuation 11+5:HexColor 19+1:Punctuation
+chars 0+2:200,200,200/-/- 2+7:156,220,254/-/- 9+1:180,180,180/-/- 10+1:200,200,200/-/- 11+5:86,156,214/-/- 16+1:-/-/- 17+2:170,187,204/-/- 19+1:180,180,180/-/-
+text }
+spans 0+1:Punctuation
+text a:hover #abc ██ { color: #fff ██; }
+spans 0+1:Key 1+1:Punctuation 8+4:HexColor 16+1:Punctuation 18+5:Key 23+1:Punctuation 25+4:HexColor 32+1:Punctuation 34+1:Punctuation
+chars 0+1:156,220,254/-/- 1+1:180,180,180/-/- 2+6:200,200,200/-/- 8+4:86,156,214/-/- 12+1:-/-/- 13+2:170,187,204/-/- 15+1:200,200,200/-/- 16+1:180,180,180/-/- 17+1:200,200,200/-/- 18+5:156,220,254/-/- 23+1:180,180,180/-/- 24+1:200,200,200/-/- 25+4:86,156,214/-/- 29+1:-/-/- 30+2:255,255,255/-/- 32+1:180,180,180/-/- 33+1:200,200,200/-/- 34+1:180,180,180/-/-
+text #main .card > p::first-line {
+spans 14+1:Key 15+1:Punctuation 16+1:Punctuation 28+1:Punctuation
+text   color: #12345678 ██;
+spans 2+5:Key 7+1:Punctuation 9+9:HexColor 21+1:Punctuation
+chars 0+2:200,200,200/-/- 2+5:156,220,254/-/- 7+1:180,180,180/-/- 8+1:200,200,200/-/- 9+9:86,156,214/-/- 18+1:-/-/- 19+2:18,52,86/-/- 21+1:180,180,180/-/-
+text   background: url("img/bg.png") no-repeat, #000 ██ !important;
+spans 2+10:Key 12+1:Punctuation 17+1:Punctuation 18+12:String 30+1:Punctuation 41+1:Punctuation 43+4:HexColor 61+1:Punctuation
+chars 0+2:200,200,200/-/- 2+10:156,220,254/-/- 12+1:180,180,180/-/- 13+4:200,200,200/-/- 17+1:180,180,180/-/- 18+12:206,145,120/-/- 30+1:180,180,180/-/- 31+10:200,200,200/-/- 41+1:180,180,180/-/- 42+1:200,200,200/-/- 43+4:86,156,214/-/- 47+1:-/-/- 48+2:0,0,0/-/- 50+11:200,200,200/-/- 61+1:180,180,180/-/-
+text   border: 1px solid #ABCDEF ██; font-family: 'Fira Code', monospace;
+spans 2+6:Key 8+1:Punctuation 20+7:HexColor 30+1:Punctuation 32+11:Key 43+1:Punctuation 45+11:String 56+1:Punctuation 67+1:Punctuation
+chars 0+2:200,200,200/-/- 2+6:156,220,254/-/- 8+1:180,180,180/-/- 9+11:200,200,200/-/- 20+7:86,156,214/-/- 27+1:-/-/- 28+2:171,205,239/-/- 30+1:180,180,180/-/- 31+1:200,200,200/-/- 32+11:156,220,254/-/- 43+1:180,180,180/-/- 44+1:200,200,200/-/- 45+11:206,145,120/-/- 56+1:180,180,180/-/- 57+10:200,200,200/-/- 67+1:180,180,180/-/-
+text }
+spans 0+1:Punctuation
+text @media (min-width: 600px) { .x { color: #0f0 ██; } }
+spans 7+1:Punctuation 8+9:Key 17+1:Punctuation 24+1:Punctuation 26+1:Punctuation 31+1:Punctuation 33+5:Key 38+1:Punctuation 40+4:HexColor 47+1:Punctuation 49+1:Punctuation 51+1:Punctuation
+chars 0+7:200,200,200/-/- 7+1:180,180,180/-/- 8+9:156,220,254/-/- 17+1:180,180,180/-/- 18+6:200,200,200/-/- 24+1:180,180,180/-/- 25+1:200,200,200/-/- 26+1:180,180,180/-/- 27+4:200,200,200/-/- 31+1:180,180,180/-/- 32+1:200,200,200/-/- 33+5:156,220,254/-/- 38+1:180,180,180/-/- 39+1:200,200,200/-/- 40+4:86,156,214/-/- 44+1:-/-/- 45+2:0,255,0/-/- 47+1:180,180,180/-/- 48+1:200,200,200/-/- 49+1:180,180,180/-/- 50+1:200,200,200/-/- 51+1:180,180,180/-/-
+text .bad { color: #gg0000; width: #12; margin: #12345; top: #1234567; }
+spans 5+1:Punctuation 7+5:Key 12+1:Punctuation 21+1:Punctuation 23+5:Key 28+1:Punctuation 33+1:Punctuation 35+6:Key 41+1:Punctuation 49+1:Punctuation 51+3:Key 54+1:Punctuation 64+1:Punctuation 66+1:Punctuation
+%%%% case 19
+text .multi {
+spans 7+1:Punctuation
+text   color:
+spans 2+5:Key 7+1:Punctuation
+text     #abc;
+spans 8+1:Punctuation
+text }
+spans 0+1:Punctuation
+%%%% case 20
+text /* unterminated
+spans 0+15:Comment
+text still comment */ .after { color: #f00 ██ }
+spans 0+16:Comment 24+1:Punctuation 26+5:Key 31+1:Punctuation 33+4:HexColor 41+1:Punctuation
+chars 0+16:106,153,85/-/- 16+8:200,200,200/-/- 24+1:180,180,180/-/- 25+1:200,200,200/-/- 26+5:156,220,254/-/- 31+1:180,180,180/-/- 32+1:200,200,200/-/- 33+4:86,156,214/-/- 37+1:-/-/- 38+2:255,0,0/-/- 40+1:200,200,200/-/- 41+1:180,180,180/-/-
+%%%% case 21
+text x { a: #fff ██ b: #000 ██ }
+spans 2+1:Punctuation 4+1:Key 5+1:Punctuation 7+4:HexColor 15+1:Key 16+1:Punctuation 18+4:HexColor 26+1:Punctuation
+chars 0+2:200,200,200/-/- 2+1:180,180,180/-/- 3+1:200,200,200/-/- 4+1:156,220,254/-/- 5+1:180,180,180/-/- 6+1:200,200,200/-/- 7+4:86,156,214/-/- 11+1:-/-/- 12+2:255,255,255/-/- 14+1:200,200,200/-/- 15+1:156,220,254/-/- 16+1:180,180,180/-/- 17+1:200,200,200/-/- 18+4:86,156,214/-/- 22+1:-/-/- 23+2:0,0,0/-/- 25+1:200,200,200/-/- 26+1:180,180,180/-/-
+%%%% case 22
+text x{color:#FFF ██;}
+spans 1+1:Punctuation 2+5:Key 7+1:Punctuation 8+4:HexColor 15+1:Punctuation 16+1:Punctuation
+chars 0+1:200,200,200/-/- 1+1:180,180,180/-/- 2+5:156,220,254/-/- 7+1:180,180,180/-/- 8+4:86,156,214/-/- 12+1:-/-/- 13+2:255,255,255/-/- 15+2:180,180,180/-/-
