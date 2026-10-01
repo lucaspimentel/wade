@@ -661,7 +661,7 @@ mod tests {
 
     #[cfg(windows)]
     #[test]
-    fn deleted_watched_directory_does_not_loop() {
+    fn deleted_watched_directory_requests_full_refresh_then_stops() {
         let dir = live_dir("vanish");
 
         let pipeline = InputPipeline::new();
@@ -669,12 +669,43 @@ mod tests {
         watcher.watch(dir.to_str().unwrap());
         std::fs::remove_dir_all(&dir).unwrap();
 
-        // Windows completes the pending read with an error (a full refresh,
-        // like FileSystemWatcher.Error); the watcher must then stop rather
-        // than re-issue the failing read in a loop. Wine reports nothing, so
-        // only the upper bound is asserted.
-        let events = count_changes(&pipeline, std::time::Duration::from_millis(2500));
-        assert!(events <= 2, "watcher kept firing after its directory vanished: {events}");
+        // Collect everything for a window comfortably past the debounce
+        let deadline = std::time::Instant::now() + std::time::Duration::from_millis(2500);
+        let mut events = Vec::new();
+
+        while std::time::Instant::now() < deadline {
+            if let Some(InputEvent::FileSystemChanged(event)) = pipeline.try_take() {
+                events.push(event);
+            }
+
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+
         watcher.stop();
+
+        // The pending read fails once the directory is gone; like
+        // FileSystemWatcher.Error that requests a full refresh, and the
+        // watcher then stops instead of re-issuing the failing read.
+        assert!(events.len() <= 2, "watcher kept firing after its directory vanished: {}", events.len());
+
+        // Wine's ReadDirectoryChangesW never completes for a deleted
+        // directory, so only the upper bound holds there.
+        if !running_under_wine() {
+            assert!(
+                events.iter().any(|event| event.full_refresh),
+                "expected a full-refresh event, got {events:?}"
+            );
+        }
+    }
+
+    /// Wine exports `wine_get_version` from ntdll; Windows does not.
+    #[cfg(windows)]
+    fn running_under_wine() -> bool {
+        use windows_sys::Win32::System::LibraryLoader::{GetModuleHandleA, GetProcAddress};
+
+        unsafe {
+            let ntdll = GetModuleHandleA(c"ntdll.dll".as_ptr().cast());
+            !ntdll.is_null() && GetProcAddress(ntdll, c"wine_get_version".as_ptr().cast()).is_some()
+        }
     }
 }
