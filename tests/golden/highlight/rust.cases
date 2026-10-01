@@ -1,0 +1,45 @@
+# Highlight parity cases extracted from tests/Wade.Tests/RustLanguageTests.cs
+# plus hand-written cases. Each %%%% block is tokenized from state 0.
+file: sample.rs
+%%%%
+fn
+%%%%
+let
+%%%%
+mut
+%%%%
+impl
+%%%%
+trait
+%%%%
+struct
+%%%%
+#[derive(Debug)]
+%%%%
+fn foo<'a>(x: &'a str)
+%%%%
+'x'
+%%%%
+'\n'
+%%%%
+#![allow(dead_code)]
+use std::collections::HashMap;
+
+#[derive(Debug, Clone)]
+pub struct Wrapper<'a> {
+    name: &'a str,
+    map: HashMap<String, Vec<u8>>,
+}
+
+impl<'a> Wrapper<'a> {
+    pub fn new(name: &'a str) -> Self {
+        let c = 'x';
+        let e = '\n';
+        let u = '\u{1F600}';
+        println!("{} {:?}", name, Some(42_u32));
+        Self { name, map: HashMap::new() }
+    }
+}
+/* block /* nested? */ after
+%%%%
+#[cfg(test)

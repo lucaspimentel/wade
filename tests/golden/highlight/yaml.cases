@@ -1,0 +1,13 @@
+# Highlight parity cases extracted from tests/Wade.Tests/YamlLanguageTests.cs
+# plus hand-written cases. Each %%%% block is tokenized from state 0.
+file: sample.yaml
+%%%%
+key: value
+%%%%
+key: "quoted"
+%%%%
+count: 42
+%%%%
+# comment
+%%%%
+- item

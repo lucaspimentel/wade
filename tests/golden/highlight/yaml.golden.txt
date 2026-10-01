@@ -1,0 +1,15 @@
+%%%% case 0
+text key: value
+spans 0+3:Key 3+1:Punctuation
+%%%% case 1
+text key: "quoted"
+spans 0+3:Key 3+1:Punctuation 5+8:String
+%%%% case 2
+text count: 42
+spans 0+5:Key 5+1:Punctuation 7+2:Number
+%%%% case 3
+text # comment
+spans 0+9:Comment
+%%%% case 4
+text - item
+spans 0+1:Punctuation

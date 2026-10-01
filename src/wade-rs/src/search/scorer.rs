@@ -8,6 +8,7 @@
 //! (exact for ASCII; see KNOWN_DEVIATIONS.md).
 
 use super::is_separator;
+use crate::text::{is_digit, is_letter_or_digit, is_lower, is_upper, to_lower, to_upper};
 
 // Scoring constants (fzf-inspired, proven to produce good rankings)
 pub const SCORE_MATCH: i32 = 16;
@@ -362,51 +363,6 @@ fn boundary_bonus(target: &[char], position: usize) -> i32 {
     }
 
     0
-}
-
-/// `char.ToLowerInvariant`: the first char of the full lowercase mapping
-/// equals the simple mapping .NET uses (e.g. `İ` -> `i`).
-fn to_lower(c: char) -> char {
-    if c.is_ascii() {
-        return c.to_ascii_lowercase();
-    }
-
-    c.to_lowercase().next().unwrap_or(c)
-}
-
-/// Per-char upper-casing for `OrdinalIgnoreCase`: simple mappings only, so
-/// characters whose uppercase expands (`ß` -> `SS`) stay as themselves.
-fn to_upper(c: char) -> char {
-    if c.is_ascii() {
-        return c.to_ascii_uppercase();
-    }
-
-    let mut upper = c.to_uppercase();
-
-    match (upper.next(), upper.next()) {
-        (Some(single), None) => single,
-        _ => c,
-    }
-}
-
-/// `char.IsUpper` (std approximation outside ASCII).
-pub(crate) fn is_upper(c: char) -> bool {
-    if c.is_ascii() { c.is_ascii_uppercase() } else { c.is_uppercase() }
-}
-
-/// `char.IsLower` (std approximation outside ASCII).
-fn is_lower(c: char) -> bool {
-    if c.is_ascii() { c.is_ascii_lowercase() } else { c.is_lowercase() }
-}
-
-/// `char.IsDigit` (std approximation outside ASCII).
-fn is_digit(c: char) -> bool {
-    if c.is_ascii() { c.is_ascii_digit() } else { c.is_numeric() }
-}
-
-/// `char.IsLetterOrDigit` (std approximation outside ASCII).
-fn is_letter_or_digit(c: char) -> bool {
-    if c.is_ascii() { c.is_ascii_alphanumeric() } else { c.is_alphanumeric() }
 }
 
 #[cfg(test)]

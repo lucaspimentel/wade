@@ -1,0 +1,22 @@
+%%%% case 0
+text <!--
+spans 0+4:Comment
+text text
+spans 0+4:Comment
+text -->
+spans 0+3:Comment
+%%%% case 1
+text <div class="x">
+spans 1+3:TagName 5+5:AttrName 10+1:Operator 11+3:AttrValue 14+1:Punctuation
+%%%% case 2
+text <!-- comment -->
+spans 0+16:Comment
+%%%% case 3
+text <br />
+spans 1+2:TagName 4+1:Punctuation 5+1:Punctuation
+%%%% case 4
+text &amp;
+spans 0+5:Constant
+%%%% case 5
+text </div>
+spans 2+3:TagName 5+1:Punctuation

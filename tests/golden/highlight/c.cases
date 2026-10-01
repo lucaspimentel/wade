@@ -1,0 +1,79 @@
+# Highlight parity cases extracted from tests/Wade.Tests/CLanguageTests.cs
+# plus hand-written cases. Each %%%% block is tokenized from state 0.
+file: sample.c
+%%%%
+/* comment
+   continues
+   end */
+%%%%
+if
+%%%%
+else
+%%%%
+for
+%%%%
+while
+%%%%
+struct
+%%%%
+typedef
+%%%%
+union
+%%%%
+extern
+%%%%
+register
+%%%%
+volatile
+%%%%
+NULL
+%%%%
+true
+%%%%
+false
+%%%%
+nullptr
+%%%%
+int
+%%%%
+void
+%%%%
+char
+%%%%
+unsigned
+%%%%
+size_t
+%%%%
+uint32_t
+%%%%
+FILE
+%%%%
+#include <stdio.h>
+%%%%
+#define MAX 100
+%%%%
+#ifdef DEBUG
+%%%%
+#endif
+%%%%
+  #pragma once
+%%%%
+// this is a comment
+%%%%
+"hello world"
+%%%%
+#include <stdio.h>
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+/* multi-line
+ * comment */
+static inline int add(int a, int b) { return a + b; }
+
+int main(void) {
+    char *s = "hi\n";
+    size_t n = sizeof(s);
+    for (unsigned i = 0u; i < 10; i++) printf("%d\n", i);
+    return NULL == s ? 1 : 0;
+}
+%%%%
+   #  ifdef DEBUG

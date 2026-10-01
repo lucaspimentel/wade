@@ -1,0 +1,17 @@
+# Highlight parity cases extracted from tests/Wade.Tests/JsonLanguageTests.cs
+# plus hand-written cases. Each %%%% block is tokenized from state 0.
+file: sample.json
+%%%%
+"key": "value"
+%%%%
+"key": 42
+%%%%
+"key": true
+%%%%
+"key": false
+%%%%
+"key": null
+%%%%
+{ "a": 1 }
+%%%%
+{ "a": { "b": 1 } }

@@ -1,0 +1,64 @@
+%%%% case 0
+text `raw string`
+spans 0+12:String
+%%%% case 1
+text func
+spans 0+4:Keyword
+%%%% case 2
+text defer
+spans 0+5:Keyword
+%%%% case 3
+text go
+spans 0+2:Keyword
+%%%% case 4
+text chan
+spans 0+4:Keyword
+%%%% case 5
+text goroutine
+%%%% case 6
+text nil
+spans 0+3:Constant
+%%%% case 7
+text iota
+spans 0+4:Constant
+%%%% case 8
+text true
+spans 0+4:Constant
+%%%% case 9
+text false
+spans 0+5:Constant
+%%%% case 10
+text make
+spans 0+4:BuiltinFunc
+%%%% case 11
+text append
+spans 0+6:BuiltinFunc
+%%%% case 12
+text len
+spans 0+3:BuiltinFunc
+%%%% case 13
+text package main
+spans 0+7:Keyword
+text 
+text import "fmt"
+spans 0+6:Keyword 7+5:String
+text 
+text type Point struct{ X, Y float64 }
+spans 0+4:Keyword 5+5:Type 11+6:Keyword 17+1:Punctuation 20+1:Punctuation 24+7:BuiltinFunc 32+1:Punctuation
+text 
+text func main() {
+spans 0+4:Keyword 9+1:Punctuation 10+1:Punctuation 12+1:Punctuation
+text \u0009p := Point{X: 1.5, Y: 2}
+spans 3+1:Punctuation 4+1:Operator 6+5:Type 11+1:Punctuation 13+1:Punctuation 15+3:Number 18+1:Punctuation 21+1:Punctuation 23+1:Number 24+1:Punctuation
+text \u0009raw := `C:\\no\\escapes`
+spans 5+1:Punctuation 6+1:Operator 8+15:String
+text \u0009unterminated := `open
+spans 14+1:Punctuation 15+1:Operator 17+5:String
+text \u0009for i := range make([]int, 3) {
+spans 1+3:Keyword 7+1:Punctuation 8+1:Operator 10+5:Keyword 16+4:BuiltinFunc 20+1:Punctuation 21+1:Punctuation 22+1:Punctuation 23+3:BuiltinFunc 26+1:Punctuation 28+1:Number 29+1:Punctuation 31+1:Punctuation
+text \u0009\u0009fmt.Println(i, p, raw, nil, iota)
+spans 5+1:Punctuation 6+7:Type 13+1:Punctuation 15+1:Punctuation 18+1:Punctuation 23+1:Punctuation 25+3:Constant 28+1:Punctuation 30+4:Constant 34+1:Punctuation
+text \u0009}
+spans 1+1:Punctuation
+text }
+spans 0+1:Punctuation

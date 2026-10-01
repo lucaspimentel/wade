@@ -1,0 +1,35 @@
+# Highlight parity cases extracted from tests/Wade.Tests/PowerShellLanguageTests.cs
+# plus hand-written cases. Each %%%% block is tokenized from state 0.
+file: sample.ps1
+%%%%
+<# block comment
+middle
+#>
+%%%%
+# inline comment
+%%%%
+[Parameter()]
+%%%%
+if
+%%%%
+function
+%%%%
+foreach
+%%%%
+param
+%%%%
+<#
+.SYNOPSIS
+  Block help comment
+#>
+function Get-Thing {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+    if ($Name -eq $null -or $Name -like "*x*") { return $false }
+    Write-Host "Name: $Name" # comment
+    foreach ($i in 1..3) { $i * 2 }
+}
+%%%%
+$x = <# inline #> 5

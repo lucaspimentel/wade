@@ -1,0 +1,35 @@
+# Highlight parity cases extracted from tests/Wade.Tests/ShellLanguageTests.cs
+# plus hand-written cases. Each %%%% block is tokenized from state 0.
+file: sample.sh
+%%%%
+# comment
+%%%%
+#!/bin/bash
+%%%%
+'no escape here'
+%%%%
+"hello world"
+%%%%
+if
+%%%%
+for
+%%%%
+while
+%%%%
+function
+%%%%
+export
+%%%%
+#!/usr/bin/env bash
+set -euo pipefail
+
+name="world" # comment
+echo "Hello, ${name}!" | grep -i 'hello' > /dev/null
+if [ -f "$HOME/.bashrc" ]; then
+  source "$HOME/.bashrc"
+fi
+for f in *.txt; do cat "$f"; done
+case "$1" in
+  start) export MODE=1 ;;
+  *) exit 2 ;;
+esac

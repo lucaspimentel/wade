@@ -1,0 +1,25 @@
+# Highlight parity cases extracted from tests/Wade.Tests/MarkdownLanguageTests.cs
+# plus hand-written cases. Each %%%% block is tokenized from state 0.
+file: sample.md
+%%%%
+```
+code here
+```
+%%%%
+# Heading
+%%%%
+## Sub heading
+%%%%
+### Third level
+%%%%
+**bold text**
+%%%%
+*italic text*
+%%%%
+`code span`
+%%%%
+[text](url)
+%%%%
+- list item
+%%%%
+just plain text here

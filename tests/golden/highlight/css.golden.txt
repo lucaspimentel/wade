@@ -1,0 +1,64 @@
+%%%% case 0
+text /* start
+spans 0+8:Comment
+text middle
+spans 0+6:Comment
+text end */
+spans 0+6:Comment
+%%%% case 1
+text color: red;
+spans 0+5:Key 5+1:Punctuation 10+1:Punctuation
+%%%% case 2
+text /* comment */
+spans 0+13:Comment
+%%%% case 3
+text content: "text";
+spans 0+7:Key 7+1:Punctuation 9+6:String 15+1:Punctuation
+%%%% case 4
+text { color: red; }
+spans 0+1:Punctuation 2+5:Key 7+1:Punctuation 12+1:Punctuation 14+1:Punctuation
+%%%% case 5
+text color: #e4e4e4 ██;
+spans 0+5:Key 5+1:Punctuation 7+7:HexColor 17+1:Punctuation
+chars 0+5:156,220,254/-/- 5+1:180,180,180/-/- 6+1:200,200,200/-/- 7+7:86,156,214/-/- 14+1:-/-/- 15+2:228,228,228/-/- 17+1:180,180,180/-/-
+%%%% case 6
+text color: #f00 ██;
+spans 0+5:Key 5+1:Punctuation 7+4:HexColor 14+1:Punctuation
+chars 0+5:156,220,254/-/- 5+1:180,180,180/-/- 6+1:200,200,200/-/- 7+4:86,156,214/-/- 11+1:-/-/- 12+2:255,0,0/-/- 14+1:180,180,180/-/-
+%%%% case 7
+text color: #ff000080 ██;
+spans 0+5:Key 5+1:Punctuation 7+9:HexColor 19+1:Punctuation
+chars 0+5:156,220,254/-/- 5+1:180,180,180/-/- 6+1:200,200,200/-/- 7+9:86,156,214/-/- 16+1:-/-/- 17+2:255,0,0/-/- 19+1:180,180,180/-/-
+%%%% case 8
+text color: #f008 ██;
+spans 0+5:Key 5+1:Punctuation 7+5:HexColor 15+1:Punctuation
+chars 0+5:156,220,254/-/- 5+1:180,180,180/-/- 6+1:200,200,200/-/- 7+5:86,156,214/-/- 12+1:-/-/- 13+2:255,0,0/-/- 15+1:180,180,180/-/-
+%%%% case 9
+text background: linear-gradient(#abc ██, #def ██);
+spans 0+10:Key 10+1:Punctuation 27+1:Punctuation 28+4:HexColor 35+1:Punctuation 37+4:HexColor 44+1:Punctuation 45+1:Punctuation
+chars 0+10:156,220,254/-/- 10+1:180,180,180/-/- 11+16:200,200,200/-/- 27+1:180,180,180/-/- 28+4:86,156,214/-/- 32+1:-/-/- 33+2:170,187,204/-/- 35+1:180,180,180/-/- 36+1:200,200,200/-/- 37+4:86,156,214/-/- 41+1:-/-/- 42+2:221,238,255/-/- 44+2:180,180,180/-/-
+%%%% case 10
+text #main { color: red; }
+spans 6+1:Punctuation 8+5:Key 13+1:Punctuation 18+1:Punctuation 20+1:Punctuation
+%%%% case 11
+text /* #ff0000 */
+spans 0+13:Comment
+%%%% case 12
+text content: "#ff0000";
+spans 0+7:Key 7+1:Punctuation 9+9:String 18+1:Punctuation
+%%%% case 13
+text color: #gg0000;
+spans 0+5:Key 5+1:Punctuation 14+1:Punctuation
+%%%% case 14
+text color: #12345;
+spans 0+5:Key 5+1:Punctuation 13+1:Punctuation
+%%%% case 15
+text color: #1234567;
+spans 0+5:Key 5+1:Punctuation 15+1:Punctuation
+%%%% case 16
+text color: #12;
+spans 0+5:Key 5+1:Punctuation 10+1:Punctuation
+%%%% case 17
+text color: #f00000 ██;
+spans 0+5:Key 5+1:Punctuation 7+7:HexColor 17+1:Punctuation
+chars 0+5:156,220,254/-/- 5+1:180,180,180/-/- 6+1:200,200,200/-/- 7+7:86,156,214/-/- 14+1:-/-/- 15+2:240,0,0/-/- 17+1:180,180,180/-/-

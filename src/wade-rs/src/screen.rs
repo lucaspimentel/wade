@@ -7,14 +7,14 @@
 use crate::ansi::{append_move_cursor, append_set_bg, append_set_fg, RESET_ATTRIBUTES};
 use crate::rune_width::rune_width;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Color {
     pub r: u8,
     pub g: u8,
     pub b: u8,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
 pub struct CellStyle {
     pub fg: Option<Color>,
     pub bg: Option<Color>,

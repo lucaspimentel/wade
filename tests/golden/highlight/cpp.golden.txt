@@ -1,0 +1,120 @@
+%%%% case 0
+text class
+spans 0+5:Keyword
+%%%% case 1
+text namespace
+spans 0+9:Keyword
+%%%% case 2
+text template
+spans 0+8:Keyword
+%%%% case 3
+text virtual
+spans 0+7:Keyword
+%%%% case 4
+text override
+spans 0+8:Keyword
+%%%% case 5
+text constexpr
+spans 0+9:Keyword
+%%%% case 6
+text noexcept
+spans 0+8:Keyword
+%%%% case 7
+text decltype
+spans 0+8:Keyword
+%%%% case 8
+text concept
+spans 0+7:Keyword
+%%%% case 9
+text requires
+spans 0+8:Keyword
+%%%% case 10
+text co_await
+spans 0+8:Keyword
+%%%% case 11
+text if
+spans 0+2:Keyword
+%%%% case 12
+text for
+spans 0+3:Keyword
+%%%% case 13
+text while
+spans 0+5:Keyword
+%%%% case 14
+text struct
+spans 0+6:Keyword
+%%%% case 15
+text nullptr
+spans 0+7:Constant
+%%%% case 16
+text NULL
+spans 0+4:Constant
+%%%% case 17
+text true
+spans 0+4:Constant
+%%%% case 18
+text false
+spans 0+5:Constant
+%%%% case 19
+text vector
+spans 0+6:BuiltinFunc
+%%%% case 20
+text string
+spans 0+6:BuiltinFunc
+%%%% case 21
+text shared_ptr
+spans 0+10:BuiltinFunc
+%%%% case 22
+text unique_ptr
+spans 0+10:BuiltinFunc
+%%%% case 23
+text optional
+spans 0+8:BuiltinFunc
+%%%% case 24
+text string_view
+spans 0+11:BuiltinFunc
+%%%% case 25
+text unordered_map
+spans 0+13:BuiltinFunc
+%%%% case 26
+text cout
+spans 0+4:BuiltinFunc
+%%%% case 27
+text int
+spans 0+3:BuiltinFunc
+%%%% case 28
+text void
+spans 0+4:BuiltinFunc
+%%%% case 29
+text size_t
+spans 0+6:BuiltinFunc
+%%%% case 30
+text #include <iostream>
+spans 0+19:Directive
+%%%% case 31
+text #define MAX 100
+spans 0+15:Directive
+%%%% case 32
+text #pragma once
+spans 0+12:Directive
+%%%% case 33
+text #pragma once
+spans 0+12:Directive
+text template <typename T>
+spans 0+8:Keyword 9+1:Operator 10+8:Keyword 20+1:Operator
+text class Box final : public Base {
+spans 0+5:Keyword 6+3:Type 10+5:Keyword 16+1:Punctuation 18+6:Keyword 25+4:Type 30+1:Punctuation
+text public:
+spans 0+6:Keyword 6+1:Punctuation
+text     explicit Box(T v) noexcept : value_(std::move(v)) {}
+spans 4+8:Keyword 13+3:Type 16+1:Punctuation 20+1:Punctuation 22+8:Keyword 31+1:Punctuation 39+1:Punctuation 43+1:Punctuation 44+1:Punctuation 49+1:Punctuation 51+1:Punctuation 52+1:Punctuation 54+1:Punctuation 55+1:Punctuation
+text     constexpr auto get() const -> const T& { return value_; }
+spans 4+9:Keyword 14+4:Keyword 22+1:Punctuation 23+1:Punctuation 25+5:Keyword 31+2:Operator 34+5:Keyword 41+1:Operator 43+1:Punctuation 45+6:Keyword 58+1:Punctuation 60+1:Punctuation
+text private:
+spans 0+7:Keyword 7+1:Punctuation
+text     std::unique_ptr<std::vector<std::string>> items_ = nullptr;
+spans 7+1:Punctuation 8+1:Punctuation 9+10:BuiltinFunc 19+1:Operator 23+1:Punctuation 24+1:Punctuation 25+6:BuiltinFunc 31+1:Operator 35+1:Punctuation 36+1:Punctuation 37+6:BuiltinFunc 43+2:Operator 53+1:Operator 55+7:Constant 62+1:Punctuation
+text };
+spans 0+1:Punctuation 1+1:Punctuation
+text std::cout << "x" << std::endl;
+spans 3+1:Punctuation 4+1:Punctuation 5+4:BuiltinFunc 10+2:Operator 13+3:String 17+2:Operator 23+1:Punctuation 24+1:Punctuation 25+4:BuiltinFunc 29+1:Punctuation

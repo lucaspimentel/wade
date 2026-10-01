@@ -1,0 +1,75 @@
+# Highlight parity cases extracted from tests/Wade.Tests/RegexLanguageTests.cs
+# plus hand-written cases. Each %%%% block is tokenized from state 0.
+file: sample.cs
+%%%%
+/* start
+middle
+end */
+%%%%
+   
+%%%%
+// comment
+%%%%
+    // indented comment
+%%%%
+x /* y */ z
+%%%%
+"hello"
+%%%%
+"say \"hi\""
+%%%%
+42
+%%%%
+3.14
+%%%%
+0xFF
+%%%%
+1_000
+%%%%
+if
+%%%%
+return
+%%%%
+class
+%%%%
+iffy
+%%%%
+true
+%%%%
+false
+%%%%
+null
+%%%%
+MyClass
+%%%%
+myVar
+%%%%
+=
+%%%%
++
+%%%%
+->
+%%%%
+=>
+%%%%
+{
+%%%%
+}
+%%%%
+(
+%%%%
+)
+%%%%
+a->b => c != d == e <= f >= g && h || i ++ j -- k << l >> m
+%%%%
+x ? y : z ~ w ^ v % u @ t
+%%%%
+1.5 2. .5 3.14f 10UL 0x1F 0XAB_cd 1__2 0
+%%%%
+foo.Bar.Baz(qux)[0];
+%%%%
+"esc \\" still" after
+%%%%
+'single' and "double" and 'unterminated
+%%%%
+MyType myVar YOURTYPE aB Ab A

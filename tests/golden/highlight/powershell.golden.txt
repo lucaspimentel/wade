@@ -1,0 +1,55 @@
+%%%% case 0
+text <# block comment
+spans 0+16:Comment
+text middle
+spans 0+6:Comment
+text #>
+spans 0+2:Comment
+%%%% case 1
+text # inline comment
+spans 0+16:Comment
+%%%% case 2
+text [Parameter()]
+spans 0+13:Attribute
+%%%% case 3
+text if
+spans 0+2:Keyword
+%%%% case 4
+text function
+spans 0+8:Keyword
+%%%% case 5
+text foreach
+spans 0+7:Keyword
+%%%% case 6
+text param
+spans 0+5:Keyword
+%%%% case 7
+text <#
+spans 0+2:Comment
+text .SYNOPSIS
+spans 0+9:Comment
+text   Block help comment
+spans 0+20:Comment
+text #>
+spans 0+2:Comment
+text function Get-Thing {
+spans 0+8:Keyword 9+3:Type 12+1:Operator 13+5:Type 19+1:Punctuation
+text     [CmdletBinding()]
+spans 4+17:Attribute
+text     param(
+spans 4+5:Keyword 9+1:Punctuation
+text         [Parameter(Mandatory = $true)][string]$Name
+spans 8+30:Attribute 38+8:Attribute 47+4:Type
+text     )
+spans 4+1:Punctuation
+text     if ($Name -eq $null -or $Name -like "*x*") { return $false }
+spans 4+2:Keyword 7+1:Punctuation 9+4:Type 14+1:Operator 24+1:Operator 29+4:Type 34+1:Operator 40+5:String 45+1:Punctuation 47+1:Punctuation 49+6:Keyword 63+1:Punctuation
+text     Write-Host "Name: $Name" # comment
+spans 4+5:Type 9+1:Operator 10+4:Type 15+13:String 29+9:Comment
+text     foreach ($i in 1..3) { $i * 2 }
+spans 4+7:Keyword 12+1:Punctuation 16+2:Keyword 19+1:Number 20+1:Punctuation 21+1:Punctuation 22+1:Number 23+1:Punctuation 25+1:Punctuation 30+1:Operator 32+1:Number 34+1:Punctuation
+text }
+spans 0+1:Punctuation
+%%%% case 8
+text $x = <# inline #> 5
+spans 3+1:Operator 5+12:Comment 18+1:Number

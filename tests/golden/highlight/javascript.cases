@@ -1,0 +1,41 @@
+# Highlight parity cases extracted from tests/Wade.Tests/JavaScriptLanguageTests.cs
+# plus hand-written cases. Each %%%% block is tokenized from state 0.
+file: sample.js
+%%%%
+`hello world`
+%%%%
+const
+%%%%
+let
+%%%%
+function
+%%%%
+async
+%%%%
+await
+%%%%
+import
+%%%%
+export
+%%%%
+true
+%%%%
+false
+%%%%
+null
+%%%%
+undefined
+%%%%
+=>
+%%%%
+import { readFile } from "fs/promises";
+
+export default async function load(path) {
+  const text = await readFile(path, 'utf8');
+  const tpl = `Hello ${name} \` escaped`;
+  if (text === undefined || isNaN(NaN)) return null;
+  /* note */ console.log(JSON.stringify({ a: 1, b: [2, 3] }));
+  return new Promise((resolve) => setTimeout(resolve, 1e3));
+}
+%%%%
+const open = `unterminated template

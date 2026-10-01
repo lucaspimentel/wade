@@ -1,0 +1,80 @@
+%%%% case 0
+text FROM
+spans 0+4:Keyword
+%%%% case 1
+text RUN
+spans 0+3:Keyword
+%%%% case 2
+text CMD
+spans 0+3:Keyword
+%%%% case 3
+text COPY
+spans 0+4:Keyword
+%%%% case 4
+text ADD
+spans 0+3:Keyword
+%%%% case 5
+text ENTRYPOINT
+spans 0+10:Keyword
+%%%% case 6
+text WORKDIR
+spans 0+7:Keyword
+%%%% case 7
+text ENV
+spans 0+3:Keyword
+%%%% case 8
+text ARG
+spans 0+3:Keyword
+%%%% case 9
+text EXPOSE
+spans 0+6:Keyword
+%%%% case 10
+text VOLUME
+spans 0+6:Keyword
+%%%% case 11
+text USER
+spans 0+4:Keyword
+%%%% case 12
+text LABEL
+spans 0+5:Keyword
+%%%% case 13
+text HEALTHCHECK
+spans 0+11:Keyword
+%%%% case 14
+text STOPSIGNAL
+spans 0+10:Keyword
+%%%% case 15
+text SHELL
+spans 0+5:Keyword
+%%%% case 16
+text ONBUILD
+spans 0+7:Keyword
+%%%% case 17
+text MAINTAINER
+spans 0+10:Keyword
+%%%% case 18
+text {instruction} something
+%%%% case 19
+text # this is a comment
+spans 0+19:Comment
+%%%% case 20
+text RUN echo "hello world"
+spans 0+3:Keyword 9+13:String
+%%%% case 21
+text RUN echo 'hello world'
+spans 0+3:Keyword 9+13:String
+%%%% case 22
+text FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+spans 0+4:Keyword 38+2:Keyword
+%%%% case 23
+text WORKDIR $APP_DIR
+spans 0+7:Keyword 8+8:Constant
+%%%% case 24
+text ENV PATH=${APP_DIR}/bin:$PATH
+spans 0+3:Keyword 9+10:Constant 24+5:Constant
+%%%% case 25
+text COPY --from=builder /app /app
+spans 0+4:Keyword 5+6:Attribute
+%%%% case 26
+text from ubuntu:22.04
+spans 0+4:Keyword

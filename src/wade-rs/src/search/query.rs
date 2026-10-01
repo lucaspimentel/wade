@@ -49,7 +49,7 @@ impl SearchQuery {
 }
 
 fn has_upper(s: &str) -> bool {
-    s.chars().any(super::scorer::is_upper)
+    s.chars().any(crate::text::is_upper)
 }
 
 #[cfg(test)]

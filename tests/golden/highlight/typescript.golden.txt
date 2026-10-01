@@ -1,0 +1,43 @@
+%%%% case 0
+text interface
+spans 0+9:Keyword
+%%%% case 1
+text type
+spans 0+4:Keyword
+%%%% case 2
+text keyof
+spans 0+5:Keyword
+%%%% case 3
+text readonly
+spans 0+8:Keyword
+%%%% case 4
+text declare
+spans 0+7:Keyword
+%%%% case 5
+text namespace
+spans 0+9:Keyword
+%%%% case 6
+text enum
+spans 0+4:Keyword
+%%%% case 7
+text `typed template`
+spans 0+16:String
+%%%% case 8
+text interface Shape { readonly kind: "circle" | "square"; area(): number }
+spans 0+9:Keyword 10+5:Type 16+1:Punctuation 18+8:Keyword 31+1:Punctuation 33+8:String 42+1:Operator 44+8:String 52+1:Punctuation 58+1:Punctuation 59+1:Punctuation 60+1:Punctuation 69+1:Punctuation
+text type Id = string & { __brand: "Id" };
+spans 0+4:Keyword 5+2:Type 8+1:Operator 17+1:Operator 19+1:Punctuation 28+1:Punctuation 30+4:String 35+1:Punctuation 36+1:Punctuation
+text export abstract class Base<T extends object> implements Shape {
+spans 0+6:Keyword 7+8:Keyword 16+5:Keyword 22+4:Type 26+1:Operator 29+7:Keyword 43+1:Operator 45+10:Keyword 56+5:Type 62+1:Punctuation
+text   declare readonly kind: "circle";
+spans 2+7:Keyword 10+8:Keyword 23+1:Punctuation 25+8:String 33+1:Punctuation
+text   constructor(private readonly value: T) { super(); }
+spans 13+1:Punctuation 14+7:Keyword 22+8:Keyword 36+1:Punctuation 39+1:Punctuation 41+1:Punctuation 43+5:Keyword 48+1:Punctuation 49+1:Punctuation 50+1:Punctuation 52+1:Punctuation
+text   abstract area(): number;
+spans 2+8:Keyword 15+1:Punctuation 16+1:Punctuation 17+1:Punctuation 25+1:Punctuation
+text   static is(x: unknown): x is Base<object> { return x instanceof Base; }
+spans 2+6:Keyword 9+2:Keyword 11+1:Punctuation 13+1:Punctuation 22+1:Punctuation 23+1:Punctuation 27+2:Keyword 30+4:Type 34+1:Operator 41+1:Operator 43+1:Punctuation 45+6:Keyword 54+10:Keyword 65+4:Type 69+1:Punctuation 71+1:Punctuation
+text }
+spans 0+1:Punctuation
+text const v = obj satisfies Shape as unknown as Id;
+spans 0+5:Keyword 8+1:Operator 14+9:Keyword 24+5:Type 30+2:Keyword 41+2:Keyword 44+2:Type 46+1:Punctuation

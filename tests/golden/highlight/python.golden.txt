@@ -1,0 +1,104 @@
+%%%% case 0
+text """
+spans 0+3:String
+text content
+spans 0+7:String
+text """
+spans 0+3:String
+%%%% case 1
+text # this is a comment
+spans 0+19:Comment
+%%%% case 2
+text """docstring"""
+spans 0+15:String
+%%%% case 3
+text '''docstring'''
+spans 0+15:String
+%%%% case 4
+text @decorator
+spans 0+10:Attribute
+%%%% case 5
+text def
+spans 0+3:Keyword
+%%%% case 6
+text class
+spans 0+5:Keyword
+%%%% case 7
+text lambda
+spans 0+6:Keyword
+%%%% case 8
+text import
+spans 0+6:Keyword
+%%%% case 9
+text from
+spans 0+4:Keyword
+%%%% case 10
+text True
+spans 0+4:Constant
+%%%% case 11
+text False
+spans 0+5:Constant
+%%%% case 12
+text None
+spans 0+4:Constant
+%%%% case 13
+text print
+spans 0+5:BuiltinFunc
+%%%% case 14
+text len
+spans 0+3:BuiltinFunc
+%%%% case 15
+text range
+spans 0+5:BuiltinFunc
+%%%% case 16
+text isinstance
+spans 0+10:BuiltinFunc
+%%%% case 17
+text f"text {var}"
+spans 0+13:String
+%%%% case 18
+text import os
+spans 0+6:Keyword
+text from typing import Optional
+spans 0+4:Keyword 12+6:Keyword 19+8:Type
+text 
+text @dataclass(frozen=True)
+spans 0+10:Attribute 10+1:Punctuation 17+1:Operator 18+4:Constant 22+1:Punctuation
+text class Item:
+spans 0+5:Keyword 6+4:Type 10+1:Punctuation
+text     """Docstring on
+spans 4+15:String
+text     several lines."""
+spans 0+21:String
+text     name: str = 'x'
+spans 8+1:Punctuation 10+3:BuiltinFunc 14+1:Operator 16+3:String
+text 
+text     @property
+spans 4+9:Attribute
+text     def path(self) -> Optional[str]:
+spans 4+3:Keyword 12+1:Punctuation 17+1:Punctuation 19+2:Operator 22+8:Type 30+1:Punctuation 31+3:BuiltinFunc 34+1:Punctuation 35+1:Punctuation
+text         raw = r"C:\\temp"
+spans 12+1:Operator 14+10:String
+text         fmt = f"{self.name!r}"
+spans 12+1:Operator 14+16:String
+text         data = b'\\x00\\xff'
+spans 13+1:Operator 15+11:String
+text         return os.path.join(raw, fmt) if self.name is not None else None
+spans 8+6:Keyword 17+1:Punctuation 22+1:Punctuation 27+1:Punctuation 31+1:Punctuation 36+1:Punctuation 38+2:Keyword 45+1:Punctuation 51+2:Keyword 54+3:Keyword 58+4:Constant 63+4:Keyword 68+4:Constant
+text 
+text # comment with "quotes"
+spans 0+23:Comment
+text x = 0x1F + 3.5e-2 + 1_000
+spans 2+1:Operator 4+4:Number 9+1:Operator 11+4:Number 15+1:Operator 16+1:Number 18+1:Operator 20+5:Number
+text s = '''single triple
+spans 2+1:Operator 4+16:String
+text still string'''
+spans 0+15:String
+text u = u"unicode" + R"raw" + F"fmt" + B"bytes"
+spans 2+1:Operator 4+10:String 15+1:Operator 18+5:String 24+1:Operator 27+5:String 33+1:Operator 36+7:String
+%%%% case 19
+text @app.route("/")
+spans 0+10:Attribute 10+1:Punctuation 11+3:String 14+1:Punctuation
+%%%% case 20
+text call(f'{x}', rb"mixed")
+spans 4+1:Punctuation 5+6:String 11+1:Punctuation 14+8:String 22+1:Punctuation

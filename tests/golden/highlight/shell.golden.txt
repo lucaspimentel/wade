@@ -1,0 +1,53 @@
+%%%% case 0
+text # comment
+spans 0+9:Comment
+%%%% case 1
+text #!/bin/bash
+spans 0+11:Comment
+%%%% case 2
+text 'no escape here'
+spans 0+16:String
+%%%% case 3
+text "hello world"
+spans 0+13:String
+%%%% case 4
+text if
+spans 0+2:Keyword
+%%%% case 5
+text for
+spans 0+3:Keyword
+%%%% case 6
+text while
+spans 0+5:Keyword
+%%%% case 7
+text function
+spans 0+8:Keyword
+%%%% case 8
+text export
+spans 0+6:Keyword
+%%%% case 9
+text #!/usr/bin/env bash
+spans 0+19:Comment
+text set -euo pipefail
+spans 4+1:Operator
+text 
+text name="world" # comment
+spans 4+1:Operator 5+7:String 13+9:Comment
+text echo "Hello, ${name}!" | grep -i 'hello' > /dev/null
+spans 0+4:BuiltinFunc 5+17:String 23+1:Operator 25+4:BuiltinFunc 30+1:Operator 33+7:String 41+1:Operator 43+1:Operator 47+1:Operator
+text if [ -f "$HOME/.bashrc" ]; then
+spans 0+2:Keyword 3+1:Punctuation 5+1:Operator 8+15:String 24+1:Punctuation 25+1:Punctuation 27+4:Keyword
+text   source "$HOME/.bashrc"
+spans 2+6:Keyword 9+15:String
+text fi
+spans 0+2:Keyword
+text for f in *.txt; do cat "$f"; done
+spans 0+3:Keyword 6+2:Keyword 9+1:Operator 10+1:Punctuation 14+1:Punctuation 16+2:Keyword 19+3:BuiltinFunc 23+4:String 27+1:Punctuation 29+4:Keyword
+text case "$1" in
+spans 0+4:Keyword 5+4:String 10+2:Keyword
+text   start) export MODE=1 ;;
+spans 7+1:Punctuation 9+6:Keyword 20+1:Operator 21+1:Number 23+1:Punctuation 24+1:Punctuation
+text   *) exit 2 ;;
+spans 2+1:Operator 3+1:Punctuation 5+4:Keyword 10+1:Number 12+1:Punctuation 13+1:Punctuation
+text esac
+spans 0+4:Keyword

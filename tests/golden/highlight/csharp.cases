@@ -1,0 +1,89 @@
+# Highlight parity cases extracted from tests/Wade.Tests/CSharpLanguageTests.cs
+# plus hand-written cases. Each %%%% block is tokenized from state 0.
+file: sample.cs
+%%%%
+"""
+content
+"""
+%%%%
+namespace
+%%%%
+using
+%%%%
+var
+%%%%
+async
+%%%%
+await
+%%%%
+record
+%%%%
+required
+%%%%
+[Obsolete]
+%%%%
+[Test("x")]
+%%%%
+[SerializeField]
+%%%%
+#if DEBUG
+%%%%
+#pragma warning disable
+%%%%
+#nullable enable
+%%%%
+"""triple"""
+%%%%
+@"path\to"
+%%%%
+$"hello {name}"
+%%%%
+bool
+%%%%
+int
+%%%%
+string
+%%%%
+void
+%%%%
+using System.Collections.Generic;
+
+namespace Wade.Demo;
+
+/// <summary>Doc comment</summary>
+[Serializable, Obsolete("old")]
+public sealed partial record Person(string Name, int Age) : IComparable<Person>
+{
+    private const double Ratio = 1.5e3; // trailing comment
+    private static readonly int Hex = 0xFF_FF, Bin = 0b1010, Big = 1_000_000L;
+
+    public int CompareTo(Person? other) => other is null ? 1 : Age.CompareTo(other.Age);
+
+    /* block
+       comment spanning
+       lines */ public string Greet() => $"Hello {Name}!";
+
+    public string Path => @"C:\temp\""quoted""";
+    public string Raw = """
+        raw "text" here
+        """;
+    char c = '\'';
+    string esc = "tab\tnew\nquote\"";
+    bool ok = x >= 1 && y != 2 || !z;
+#region Helpers
+    int[] arr = new int[] { 1, 2, 3 };
+#endregion
+}
+%%%%
+var s = "unterminated
+%%%%
+/* unterminated block
+still comment
+%%%%
+x /* a */ y /* b */ z
+%%%%
+int x = 42; // ünïcödé comment
+%%%%
+	tab	indented	line
+%%%%
+    #pragma warning disable CS1234

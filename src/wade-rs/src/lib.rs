@@ -6,8 +6,10 @@ pub mod console_key;
 pub mod fs;
 pub mod input;
 pub mod rune_width;
+pub mod highlight;
 pub mod screen;
 pub mod search;
+pub mod text;
 pub mod ui;
 #[cfg(windows)]
 pub mod terminal_setup;

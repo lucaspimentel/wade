@@ -1,0 +1,17 @@
+# Highlight parity cases extracted from tests/Wade.Tests/XmlHtmlLanguageTests.cs
+# plus hand-written cases. Each %%%% block is tokenized from state 0.
+file: sample.html
+%%%%
+<!--
+text
+-->
+%%%%
+<div class="x">
+%%%%
+<!-- comment -->
+%%%%
+<br />
+%%%%
+&amp;
+%%%%
+</div>

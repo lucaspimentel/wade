@@ -1,0 +1,17 @@
+# Highlight parity cases extracted from tests/Wade.Tests/TomlLanguageTests.cs
+# plus hand-written cases. Each %%%% block is tokenized from state 0.
+file: sample.toml
+%%%%
+[section]
+%%%%
+[package]
+%%%%
+key = "value"
+%%%%
+# this is a comment
+%%%%
+count = 42
+%%%%
+enabled = true
+%%%%
+enabled = false

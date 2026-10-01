@@ -1,0 +1,106 @@
+%%%% case 0
+text /* start
+spans 0+8:Comment
+text middle
+spans 0+6:Comment
+text end */
+spans 0+6:Comment
+%%%% case 1
+text    
+%%%% case 2
+text // comment
+spans 0+10:Comment
+%%%% case 3
+text     // indented comment
+spans 4+19:Comment
+%%%% case 4
+text x /* y */ z
+spans 2+7:Comment
+%%%% case 5
+text "hello"
+spans 0+7:String
+%%%% case 6
+text "say \\"hi\\""
+spans 0+12:String
+%%%% case 7
+text 42
+spans 0+2:Number
+%%%% case 8
+text 3.14
+spans 0+4:Number
+%%%% case 9
+text 0xFF
+spans 0+4:Number
+%%%% case 10
+text 1_000
+spans 0+5:Number
+%%%% case 11
+text if
+spans 0+2:Keyword
+%%%% case 12
+text return
+spans 0+6:Keyword
+%%%% case 13
+text class
+spans 0+5:Keyword
+%%%% case 14
+text iffy
+%%%% case 15
+text true
+spans 0+4:Constant
+%%%% case 16
+text false
+spans 0+5:Constant
+%%%% case 17
+text null
+spans 0+4:Constant
+%%%% case 18
+text MyClass
+spans 0+7:Type
+%%%% case 19
+text myVar
+%%%% case 20
+text =
+spans 0+1:Operator
+%%%% case 21
+text +
+spans 0+1:Operator
+%%%% case 22
+text ->
+spans 0+2:Operator
+%%%% case 23
+text =>
+spans 0+2:Operator
+%%%% case 24
+text {
+spans 0+1:Punctuation
+%%%% case 25
+text }
+spans 0+1:Punctuation
+%%%% case 26
+text (
+spans 0+1:Punctuation
+%%%% case 27
+text )
+spans 0+1:Punctuation
+%%%% case 28
+text a->b => c != d == e <= f >= g && h || i ++ j -- k << l >> m
+spans 1+2:Operator 5+2:Operator 10+2:Operator 15+2:Operator 20+2:Operator 25+2:Operator 30+2:Operator 35+2:Operator 40+2:Operator 45+2:Operator 50+2:Operator 55+2:Operator
+%%%% case 29
+text x ? y : z ~ w ^ v % u @ t
+spans 2+1:Operator 6+1:Punctuation 10+1:Operator 14+1:Operator 18+1:Operator 22+1:Operator
+%%%% case 30
+text 1.5 2. .5 3.14f 10UL 0x1F 0XAB_cd 1__2 0
+spans 0+3:Number 4+1:Number 5+1:Punctuation 7+1:Punctuation 8+1:Number 10+5:Number 16+4:Number 21+4:Number 26+7:Number 34+4:Number 39+1:Number
+%%%% case 31
+text foo.Bar.Baz(qux)[0];
+spans 3+1:Punctuation 4+3:Type 7+1:Punctuation 8+3:Type 11+1:Punctuation 15+1:Punctuation 16+3:Attribute 19+1:Punctuation
+%%%% case 32
+text "esc \\\\" still" after
+spans 0+8:String 14+7:String
+%%%% case 33
+text 'single' and "double" and 'unterminated
+spans 0+8:String 9+3:Keyword 13+8:String 22+3:Keyword 26+13:String
+%%%% case 34
+text MyType myVar YOURTYPE aB Ab A
+spans 0+6:Type 25+2:Type

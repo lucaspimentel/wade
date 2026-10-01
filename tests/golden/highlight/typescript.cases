@@ -1,0 +1,29 @@
+# Highlight parity cases extracted from tests/Wade.Tests/TypeScriptLanguageTests.cs
+# plus hand-written cases. Each %%%% block is tokenized from state 0.
+file: sample.ts
+%%%%
+interface
+%%%%
+type
+%%%%
+keyof
+%%%%
+readonly
+%%%%
+declare
+%%%%
+namespace
+%%%%
+enum
+%%%%
+`typed template`
+%%%%
+interface Shape { readonly kind: "circle" | "square"; area(): number }
+type Id = string & { __brand: "Id" };
+export abstract class Base<T extends object> implements Shape {
+  declare readonly kind: "circle";
+  constructor(private readonly value: T) { super(); }
+  abstract area(): number;
+  static is(x: unknown): x is Base<object> { return x instanceof Base; }
+}
+const v = obj satisfies Shape as unknown as Id;

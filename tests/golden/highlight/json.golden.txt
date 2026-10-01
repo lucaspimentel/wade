@@ -1,0 +1,21 @@
+%%%% case 0
+text "key": "value"
+spans 0+5:Key 5+1:Punctuation 7+7:String
+%%%% case 1
+text "key": 42
+spans 0+5:Key 5+1:Punctuation 7+2:Number
+%%%% case 2
+text "key": true
+spans 0+5:Key 5+1:Punctuation 7+4:Constant
+%%%% case 3
+text "key": false
+spans 0+5:Key 5+1:Punctuation 7+5:Constant
+%%%% case 4
+text "key": null
+spans 0+5:Key 5+1:Punctuation 7+4:Constant
+%%%% case 5
+text { "a": 1 }
+spans 0+1:Punctuation 2+3:Key 5+1:Punctuation 7+1:Number 9+1:Punctuation
+%%%% case 6
+text { "a": { "b": 1 } }
+spans 0+1:Punctuation 2+3:Key 5+1:Punctuation 7+1:Punctuation 9+3:Key 12+1:Punctuation 14+1:Number 16+1:Punctuation 18+1:Punctuation

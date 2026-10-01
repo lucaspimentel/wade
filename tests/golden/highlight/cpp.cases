@@ -1,0 +1,80 @@
+# Highlight parity cases extracted from tests/Wade.Tests/CppLanguageTests.cs
+# plus hand-written cases. Each %%%% block is tokenized from state 0.
+file: sample.cpp
+%%%%
+class
+%%%%
+namespace
+%%%%
+template
+%%%%
+virtual
+%%%%
+override
+%%%%
+constexpr
+%%%%
+noexcept
+%%%%
+decltype
+%%%%
+concept
+%%%%
+requires
+%%%%
+co_await
+%%%%
+if
+%%%%
+for
+%%%%
+while
+%%%%
+struct
+%%%%
+nullptr
+%%%%
+NULL
+%%%%
+true
+%%%%
+false
+%%%%
+vector
+%%%%
+string
+%%%%
+shared_ptr
+%%%%
+unique_ptr
+%%%%
+optional
+%%%%
+string_view
+%%%%
+unordered_map
+%%%%
+cout
+%%%%
+int
+%%%%
+void
+%%%%
+size_t
+%%%%
+#include <iostream>
+%%%%
+#define MAX 100
+%%%%
+#pragma once
+%%%%
+#pragma once
+template <typename T>
+class Box final : public Base {
+public:
+    explicit Box(T v) noexcept : value_(std::move(v)) {}
+    constexpr auto get() const -> const T& { return value_; }
+private:
+    std::unique_ptr<std::vector<std::string>> items_ = nullptr;
+};
+std::cout << "x" << std::endl;

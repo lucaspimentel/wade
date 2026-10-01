@@ -1,0 +1,70 @@
+%%%% case 0
+text fn
+spans 0+2:Keyword
+%%%% case 1
+text let
+spans 0+3:Keyword
+%%%% case 2
+text mut
+spans 0+3:Keyword
+%%%% case 3
+text impl
+spans 0+4:Keyword
+%%%% case 4
+text trait
+spans 0+5:Keyword
+%%%% case 5
+text struct
+spans 0+6:Keyword
+%%%% case 6
+text #[derive(Debug)]
+spans 0+16:Attribute
+%%%% case 7
+text fn foo<'a>(x: &'a str)
+spans 0+2:Keyword 6+1:Operator 9+1:Operator 10+1:Punctuation 12+1:Punctuation 14+1:Operator 18+3:BuiltinFunc 21+1:Punctuation
+%%%% case 8
+text 'x'
+spans 0+3:String
+%%%% case 9
+text '\\n'
+spans 0+4:String
+%%%% case 10
+text #![allow(dead_code)]
+spans 0+20:Attribute
+text use std::collections::HashMap;
+spans 0+3:Keyword 7+1:Punctuation 8+1:Punctuation 20+1:Punctuation 21+1:Punctuation 22+7:BuiltinFunc 29+1:Punctuation
+text 
+text #[derive(Debug, Clone)]
+spans 0+23:Attribute
+text pub struct Wrapper<'a> {
+spans 0+3:Keyword 4+6:Keyword 11+7:Type 18+1:Operator 21+1:Operator 23+1:Punctuation
+text     name: &'a str,
+spans 8+1:Punctuation 10+1:Operator 14+3:BuiltinFunc 17+1:Punctuation
+text     map: HashMap<String, Vec<u8>>,
+spans 7+1:Punctuation 9+7:BuiltinFunc 16+1:Operator 17+6:BuiltinFunc 23+1:Punctuation 25+3:BuiltinFunc 28+1:Operator 29+2:BuiltinFunc 31+2:Operator 33+1:Punctuation
+text }
+spans 0+1:Punctuation
+text 
+text impl<'a> Wrapper<'a> {
+spans 0+4:Keyword 4+1:Operator 7+1:Operator 9+7:Type 16+1:Operator 19+1:Operator 21+1:Punctuation
+text     pub fn new(name: &'a str) -> Self {
+spans 4+3:Keyword 8+2:Keyword 14+1:Punctuation 19+1:Punctuation 21+1:Operator 25+3:BuiltinFunc 28+1:Punctuation 30+2:Operator 33+4:Keyword 38+1:Punctuation
+text         let c = 'x';
+spans 8+3:Keyword 14+1:Operator 16+3:String 19+1:Punctuation
+text         let e = '\\n';
+spans 8+3:Keyword 14+1:Operator 16+4:String 20+1:Punctuation
+text         let u = '\\u{1F600}';
+spans 8+3:Keyword 14+1:Operator 16+11:String 27+1:Punctuation
+text         println!("{} {:?}", name, Some(42_u32));
+spans 8+7:BuiltinFunc 15+1:Operator 16+1:Punctuation 17+9:String 26+1:Punctuation 32+1:Punctuation 34+4:Constant 38+1:Punctuation 39+4:Number 43+2:Number 45+1:Punctuation 46+1:Punctuation 47+1:Punctuation
+text         Self { name, map: HashMap::new() }
+spans 8+4:Keyword 13+1:Punctuation 19+1:Punctuation 24+1:Punctuation 26+7:BuiltinFunc 33+1:Punctuation 34+1:Punctuation 38+1:Punctuation 39+1:Punctuation 41+1:Punctuation
+text     }
+spans 4+1:Punctuation
+text }
+spans 0+1:Punctuation
+text /* block /* nested? */ after
+spans 0+22:Comment
+%%%% case 11
+text #[cfg(test)
+spans 0+11:Attribute

@@ -1,0 +1,21 @@
+%%%% case 0
+text [section]
+spans 0+9:Key
+%%%% case 1
+text [package]
+spans 0+9:Key
+%%%% case 2
+text key = "value"
+spans 0+3:Key 4+1:Operator 6+7:String
+%%%% case 3
+text # this is a comment
+spans 0+19:Comment
+%%%% case 4
+text count = 42
+spans 0+5:Key 6+1:Operator 8+2:Number
+%%%% case 5
+text enabled = true
+spans 0+7:Key 8+1:Operator 10+4:Constant
+%%%% case 6
+text enabled = false
+spans 0+7:Key 8+1:Operator 10+5:Constant

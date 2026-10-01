@@ -1,0 +1,40 @@
+%%%% case 0
+text +added line
+chars 0+11:80,200,80/-/-
+%%%% case 1
+text +
+chars 0+1:80,200,80/-/-
+%%%% case 2
+text -removed line
+chars 0+13:220,80,80/-/-
+%%%% case 3
+text -
+chars 0+1:220,80,80/-/-
+%%%% case 4
+text @@ -1,3 +1,4 @@ some context
+chars 0+28:80,180,220/-/d
+%%%% case 5
+text @@
+chars 0+2:80,180,220/-/d
+%%%% case 6
+text diff --git a/file.txt b/file.txt
+chars 0+32:140,140,140/-/d
+%%%% case 7
+text index abc123..def456 100644
+chars 0+27:140,140,140/-/d
+%%%% case 8
+text --- a/file.txt
+chars 0+14:140,140,140/-/d
+%%%% case 9
+text +++ b/file.txt
+chars 0+14:140,140,140/-/d
+%%%% case 10
+text  context line
+%%%% case 11
+text some other text
+%%%% case 12
+text +hello world
+chars 0+12:80,200,80/-/-
+%%%% case 13
+text -removed content here
+chars 0+21:220,80,80/-/-

@@ -1,0 +1,138 @@
+%%%% case 0
+text """
+spans 0+3:String
+text content
+spans 0+7:String
+text """
+spans 0+3:String
+%%%% case 1
+text namespace
+spans 0+9:Keyword
+%%%% case 2
+text using
+spans 0+5:Keyword
+%%%% case 3
+text var
+spans 0+3:Keyword
+%%%% case 4
+text async
+spans 0+5:Keyword
+%%%% case 5
+text await
+spans 0+5:Keyword
+%%%% case 6
+text record
+spans 0+6:Keyword
+%%%% case 7
+text required
+spans 0+8:Keyword
+%%%% case 8
+text [Obsolete]
+spans 0+10:Attribute
+%%%% case 9
+text [Test("x")]
+spans 0+11:Attribute
+%%%% case 10
+text [SerializeField]
+spans 0+16:Attribute
+%%%% case 11
+text #if DEBUG
+spans 0+9:Directive
+%%%% case 12
+text #pragma warning disable
+spans 0+23:Directive
+%%%% case 13
+text #nullable enable
+spans 0+16:Directive
+%%%% case 14
+text """triple"""
+spans 0+12:String
+%%%% case 15
+text @"path\\to"
+spans 0+10:String
+%%%% case 16
+text $"hello {name}"
+spans 0+15:String
+%%%% case 17
+text bool
+spans 0+4:BuiltinFunc
+%%%% case 18
+text int
+spans 0+3:BuiltinFunc
+%%%% case 19
+text string
+spans 0+6:BuiltinFunc
+%%%% case 20
+text void
+spans 0+4:BuiltinFunc
+%%%% case 21
+text using System.Collections.Generic;
+spans 0+5:Keyword 6+6:Type 12+1:Punctuation 13+11:Type 24+1:Punctuation 25+7:Type 32+1:Punctuation
+text 
+text namespace Wade.Demo;
+spans 0+9:Keyword 10+4:Type 14+1:Punctuation 15+4:Type 19+1:Punctuation
+text 
+text /// <summary>Doc comment</summary>
+spans 0+34:Comment
+text [Serializable, Obsolete("old")]
+spans 0+31:Attribute
+text public sealed partial record Person(string Name, int Age) : IComparable<Person>
+spans 0+6:Keyword 7+6:Keyword 14+7:Keyword 22+6:Keyword 29+6:Type 35+1:Punctuation 36+6:BuiltinFunc 43+4:Type 47+1:Punctuation 49+3:BuiltinFunc 53+3:Type 56+1:Punctuation 58+1:Punctuation 60+11:Type 71+1:Operator 72+6:Type 78+1:Operator
+text {
+spans 0+1:Punctuation
+text     private const double Ratio = 1.5e3; // trailing comment
+spans 4+7:Keyword 12+5:Keyword 18+6:BuiltinFunc 25+5:Type 31+1:Operator 33+4:Number 37+1:Number 38+1:Punctuation 40+19:Comment
+text     private static readonly int Hex = 0xFF_FF, Bin = 0b1010, Big = 1_000_000L;
+spans 4+7:Keyword 12+6:Keyword 19+8:Keyword 28+3:BuiltinFunc 32+3:Type 36+1:Operator 38+7:Number 45+1:Punctuation 47+3:Type 51+1:Operator 53+2:Number 55+4:Number 59+1:Punctuation 61+3:Type 65+1:Operator 67+10:Number 77+1:Punctuation
+text 
+text     public int CompareTo(Person? other) => other is null ? 1 : Age.CompareTo(other.Age);
+spans 4+6:Keyword 11+3:BuiltinFunc 15+9:Type 24+1:Punctuation 25+6:Type 31+1:Operator 38+1:Punctuation 40+2:Operator 49+2:Keyword 52+4:Constant 57+1:Operator 59+1:Number 61+1:Punctuation 63+3:Type 66+1:Punctuation 67+9:Type 76+1:Punctuation 82+1:Punctuation 83+3:Type 86+1:Punctuation 87+1:Punctuation
+text 
+text     /* block
+spans 4+8:Comment
+text        comment spanning
+spans 0+23:Comment
+text        lines */ public string Greet() => $"Hello {Name}!";
+spans 0+15:Comment 16+6:Keyword 23+6:BuiltinFunc 30+5:Type 35+1:Punctuation 36+1:Punctuation 38+2:Operator 41+16:String 57+1:Punctuation
+text 
+text     public string Path => @"C:\\temp\\""quoted""";
+spans 4+6:Keyword 11+6:BuiltinFunc 18+4:Type 23+2:Operator 26+21:String 47+1:Punctuation
+text     public string Raw = """
+spans 4+6:Keyword 11+6:BuiltinFunc 18+3:Type 22+1:Operator 24+3:String
+text         raw "text" here
+spans 0+23:String
+text         """;
+spans 0+11:String 11+1:Punctuation
+text     char c = '\\'';
+spans 4+4:BuiltinFunc 11+1:Operator 13+4:String 17+1:Punctuation
+text     string esc = "tab\\tnew\\nquote\\"";
+spans 4+6:BuiltinFunc 15+1:Operator 17+19:String 36+1:Punctuation
+text     bool ok = x >= 1 && y != 2 || !z;
+spans 4+4:BuiltinFunc 12+1:Operator 16+2:Operator 19+1:Number 21+2:Operator 26+2:Operator 29+1:Number 31+2:Operator 34+1:Operator 36+1:Punctuation
+text #region Helpers
+spans 0+15:Directive
+text     int[] arr = new int[] { 1, 2, 3 };
+spans 4+3:BuiltinFunc 7+2:Attribute 14+1:Operator 16+3:Keyword 20+3:BuiltinFunc 23+2:Attribute 26+1:Punctuation 28+1:Number 29+1:Punctuation 31+1:Number 32+1:Punctuation 34+1:Number 36+1:Punctuation 37+1:Punctuation
+text #endregion
+spans 0+10:Directive
+text }
+spans 0+1:Punctuation
+%%%% case 22
+text var s = "unterminated
+spans 0+3:Keyword 6+1:Operator 8+13:String
+%%%% case 23
+text /* unterminated block
+spans 0+21:Comment
+text still comment
+spans 0+13:Comment
+%%%% case 24
+text x /* a */ y /* b */ z
+spans 2+7:Comment 12+7:Comment
+%%%% case 25
+text int x = 42; // ünïcödé comment
+spans 0+3:BuiltinFunc 6+1:Operator 8+2:Number 10+1:Punctuation 12+18:Comment
+%%%% case 26
+text \u0009tab\u0009indented\u0009line
+%%%% case 27
+text     #pragma warning disable CS1234
+spans 0+34:Directive

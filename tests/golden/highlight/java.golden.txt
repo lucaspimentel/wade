@@ -1,0 +1,63 @@
+%%%% case 0
+text """
+spans 0+3:String
+text     content
+spans 0+11:String
+text     """
+spans 0+7:String
+%%%% case 1
+text @Override
+spans 0+9:Attribute
+%%%% case 2
+text @SuppressWarnings
+spans 0+17:Attribute
+%%%% case 3
+text @Inject
+spans 0+7:Attribute
+%%%% case 4
+text abstract
+spans 0+8:Keyword
+%%%% case 5
+text synchronized
+spans 0+12:Keyword
+%%%% case 6
+text implements
+spans 0+10:Keyword
+%%%% case 7
+text extends
+spans 0+7:Keyword
+%%%% case 8
+text """text"""
+spans 0+10:String
+%%%% case 9
+text package com.example;
+spans 0+7:Keyword 11+1:Punctuation 19+1:Punctuation
+text 
+text import java.util.List;
+spans 0+6:Keyword 11+1:Punctuation 16+1:Punctuation 17+4:BuiltinFunc 21+1:Punctuation
+text 
+text @Deprecated
+spans 0+11:Attribute
+text public final class Main extends Base implements Runnable {
+spans 0+6:Keyword 7+5:Keyword 13+5:Keyword 19+4:Type 24+7:Keyword 32+4:Type 37+10:Keyword 48+8:Type 57+1:Punctuation
+text     @Override
+spans 4+9:Attribute
+text     public void run() {
+spans 4+6:Keyword 11+4:BuiltinFunc 19+1:Punctuation 20+1:Punctuation 22+1:Punctuation
+text         String text = """
+spans 8+6:BuiltinFunc 20+1:Operator 22+3:String
+text             Hello, "World"
+spans 0+26:String
+text             """;
+spans 0+15:String 15+1:Punctuation
+text         List<Integer> xs = new ArrayList<>();
+spans 8+4:BuiltinFunc 12+1:Operator 13+7:BuiltinFunc 20+1:Operator 25+1:Operator 27+3:Keyword 31+9:BuiltinFunc 40+1:Operator 41+1:Operator 42+1:Punctuation 43+1:Punctuation 44+1:Punctuation
+text         System.out.println(text + xs.size() + 3.0f);
+spans 8+6:BuiltinFunc 14+1:Punctuation 18+1:Punctuation 26+1:Punctuation 32+1:Operator 36+1:Punctuation 41+1:Punctuation 42+1:Punctuation 44+1:Operator 46+4:Number 50+1:Punctuation 51+1:Punctuation
+text     }
+spans 4+1:Punctuation
+text }
+spans 0+1:Punctuation
+%%%% case 10
+text @ alone and @1 and @_x
+spans 0+1:Operator 12+2:Attribute 19+3:Attribute

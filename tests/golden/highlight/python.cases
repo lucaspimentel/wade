@@ -1,0 +1,67 @@
+# Highlight parity cases extracted from tests/Wade.Tests/PythonLanguageTests.cs
+# plus hand-written cases. Each %%%% block is tokenized from state 0.
+file: sample.py
+%%%%
+"""
+content
+"""
+%%%%
+# this is a comment
+%%%%
+"""docstring"""
+%%%%
+'''docstring'''
+%%%%
+@decorator
+%%%%
+def
+%%%%
+class
+%%%%
+lambda
+%%%%
+import
+%%%%
+from
+%%%%
+True
+%%%%
+False
+%%%%
+None
+%%%%
+print
+%%%%
+len
+%%%%
+range
+%%%%
+isinstance
+%%%%
+f"text {var}"
+%%%%
+import os
+from typing import Optional
+
+@dataclass(frozen=True)
+class Item:
+    """Docstring on
+    several lines."""
+    name: str = 'x'
+
+    @property
+    def path(self) -> Optional[str]:
+        raw = r"C:\temp"
+        fmt = f"{self.name!r}"
+        data = b'\x00\xff'
+        return os.path.join(raw, fmt) if self.name is not None else None
+
+# comment with "quotes"
+x = 0x1F + 3.5e-2 + 1_000
+s = '''single triple
+still string'''
+u = u"unicode" + R"raw" + F"fmt" + B"bytes"
+%%%%
+@app.route("/")
+%%%%
+call(f'{x}', rb"mixed")

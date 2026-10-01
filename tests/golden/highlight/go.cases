@@ -1,0 +1,44 @@
+# Highlight parity cases extracted from tests/Wade.Tests/GoLanguageTests.cs
+# plus hand-written cases. Each %%%% block is tokenized from state 0.
+file: sample.go
+%%%%
+`raw string`
+%%%%
+func
+%%%%
+defer
+%%%%
+go
+%%%%
+chan
+%%%%
+goroutine
+%%%%
+nil
+%%%%
+iota
+%%%%
+true
+%%%%
+false
+%%%%
+make
+%%%%
+append
+%%%%
+len
+%%%%
+package main
+
+import "fmt"
+
+type Point struct{ X, Y float64 }
+
+func main() {
+	p := Point{X: 1.5, Y: 2}
+	raw := `C:\no\escapes`
+	unterminated := `open
+	for i := range make([]int, 3) {
+		fmt.Println(i, p, raw, nil, iota)
+	}
+}

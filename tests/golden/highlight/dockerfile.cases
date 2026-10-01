@@ -1,0 +1,57 @@
+# Highlight parity cases extracted from tests/Wade.Tests/DockerfileLanguageTests.cs
+# plus hand-written cases. Each %%%% block is tokenized from state 0.
+file: Dockerfile
+%%%%
+FROM
+%%%%
+RUN
+%%%%
+CMD
+%%%%
+COPY
+%%%%
+ADD
+%%%%
+ENTRYPOINT
+%%%%
+WORKDIR
+%%%%
+ENV
+%%%%
+ARG
+%%%%
+EXPOSE
+%%%%
+VOLUME
+%%%%
+USER
+%%%%
+LABEL
+%%%%
+HEALTHCHECK
+%%%%
+STOPSIGNAL
+%%%%
+SHELL
+%%%%
+ONBUILD
+%%%%
+MAINTAINER
+%%%%
+{instruction} something
+%%%%
+# this is a comment
+%%%%
+RUN echo "hello world"
+%%%%
+RUN echo 'hello world'
+%%%%
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+%%%%
+WORKDIR $APP_DIR
+%%%%
+ENV PATH=${APP_DIR}/bin:$PATH
+%%%%
+COPY --from=builder /app /app
+%%%%
+from ubuntu:22.04

@@ -1,0 +1,119 @@
+%%%% case 0
+text /* comment
+spans 0+10:Comment
+text    continues
+spans 0+12:Comment
+text    end */
+spans 0+9:Comment
+%%%% case 1
+text if
+spans 0+2:Keyword
+%%%% case 2
+text else
+spans 0+4:Keyword
+%%%% case 3
+text for
+spans 0+3:Keyword
+%%%% case 4
+text while
+spans 0+5:Keyword
+%%%% case 5
+text struct
+spans 0+6:Keyword
+%%%% case 6
+text typedef
+spans 0+7:Keyword
+%%%% case 7
+text union
+spans 0+5:Keyword
+%%%% case 8
+text extern
+spans 0+6:Keyword
+%%%% case 9
+text register
+spans 0+8:Keyword
+%%%% case 10
+text volatile
+spans 0+8:Keyword
+%%%% case 11
+text NULL
+spans 0+4:Constant
+%%%% case 12
+text true
+spans 0+4:Constant
+%%%% case 13
+text false
+spans 0+5:Constant
+%%%% case 14
+text nullptr
+spans 0+7:Constant
+%%%% case 15
+text int
+spans 0+3:BuiltinFunc
+%%%% case 16
+text void
+spans 0+4:BuiltinFunc
+%%%% case 17
+text char
+spans 0+4:BuiltinFunc
+%%%% case 18
+text unsigned
+spans 0+8:BuiltinFunc
+%%%% case 19
+text size_t
+spans 0+6:BuiltinFunc
+%%%% case 20
+text uint32_t
+spans 0+8:BuiltinFunc
+%%%% case 21
+text FILE
+spans 0+4:BuiltinFunc
+%%%% case 22
+text #include <stdio.h>
+spans 0+18:Directive
+%%%% case 23
+text #define MAX 100
+spans 0+15:Directive
+%%%% case 24
+text #ifdef DEBUG
+spans 0+12:Directive
+%%%% case 25
+text #endif
+spans 0+6:Directive
+%%%% case 26
+text   #pragma once
+spans 0+14:Directive
+%%%% case 27
+text // this is a comment
+spans 0+20:Comment
+%%%% case 28
+text "hello world"
+spans 0+13:String
+%%%% case 29
+text #include <stdio.h>
+spans 0+18:Directive
+text #define MAX(a, b) ((a) > (b) ? (a) : (b))
+spans 0+41:Directive
+text 
+text /* multi-line
+spans 0+13:Comment
+text  * comment */
+spans 0+13:Comment
+text static inline int add(int a, int b) { return a + b; }
+spans 0+6:Keyword 7+6:Keyword 14+3:BuiltinFunc 21+1:Punctuation 22+3:BuiltinFunc 27+1:Punctuation 29+3:BuiltinFunc 34+1:Punctuation 36+1:Punctuation 38+6:Keyword 47+1:Operator 50+1:Punctuation 52+1:Punctuation
+text 
+text int main(void) {
+spans 0+3:BuiltinFunc 8+1:Punctuation 9+4:BuiltinFunc 13+1:Punctuation 15+1:Punctuation
+text     char *s = "hi\\n";
+spans 4+4:BuiltinFunc 9+1:Operator 12+1:Operator 14+6:String 20+1:Punctuation
+text     size_t n = sizeof(s);
+spans 4+6:BuiltinFunc 13+1:Operator 15+6:Keyword 21+1:Punctuation 23+1:Punctuation 24+1:Punctuation
+text     for (unsigned i = 0u; i < 10; i++) printf("%d\\n", i);
+spans 4+3:Keyword 8+1:Punctuation 9+8:BuiltinFunc 20+1:Operator 22+2:Number 24+1:Punctuation 28+1:Operator 30+2:Number 32+1:Punctuation 35+2:Operator 37+1:Punctuation 45+1:Punctuation 46+6:String 52+1:Punctuation 55+1:Punctuation 56+1:Punctuation
+text     return NULL == s ? 1 : 0;
+spans 4+6:Keyword 11+4:Constant 16+2:Operator 21+1:Operator 23+1:Number 25+1:Punctuation 27+1:Number 28+1:Punctuation
+text }
+spans 0+1:Punctuation
+%%%% case 30
+text    #  ifdef DEBUG
+spans 0+17:Directive

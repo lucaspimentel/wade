@@ -1,0 +1,41 @@
+# Highlight parity cases extracted from tests/Wade.Tests/CssLanguageTests.cs
+# plus hand-written cases. Each %%%% block is tokenized from state 0.
+file: sample.css
+%%%%
+/* start
+middle
+end */
+%%%%
+color: red;
+%%%%
+/* comment */
+%%%%
+content: "text";
+%%%%
+{ color: red; }
+%%%%
+color: #e4e4e4;
+%%%%
+color: #f00;
+%%%%
+color: #ff000080;
+%%%%
+color: #f008;
+%%%%
+background: linear-gradient(#abc, #def);
+%%%%
+#main { color: red; }
+%%%%
+/* #ff0000 */
+%%%%
+content: "#ff0000";
+%%%%
+color: #gg0000;
+%%%%
+color: #12345;
+%%%%
+color: #1234567;
+%%%%
+color: #12;
+%%%%
+color: #f00000;

@@ -1,0 +1,41 @@
+# Highlight parity cases extracted from tests/Wade.Tests/JavaLanguageTests.cs
+# plus hand-written cases. Each %%%% block is tokenized from state 0.
+file: sample.java
+%%%%
+"""
+    content
+    """
+%%%%
+@Override
+%%%%
+@SuppressWarnings
+%%%%
+@Inject
+%%%%
+abstract
+%%%%
+synchronized
+%%%%
+implements
+%%%%
+extends
+%%%%
+"""text"""
+%%%%
+package com.example;
+
+import java.util.List;
+
+@Deprecated
+public final class Main extends Base implements Runnable {
+    @Override
+    public void run() {
+        String text = """
+            Hello, "World"
+            """;
+        List<Integer> xs = new ArrayList<>();
+        System.out.println(text + xs.size() + 3.0f);
+    }
+}
+%%%%
+@ alone and @1 and @_x

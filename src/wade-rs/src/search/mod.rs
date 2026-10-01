@@ -25,7 +25,7 @@ pub struct SearchResult {
 /// `Path.DirectorySeparatorChar` / `AltDirectorySeparatorChar` set used by
 /// `FuzzyScorer`, `PathSegmenter` and `SearchIndex`.
 #[must_use]
-pub(crate) fn is_separator(c: char) -> bool {
+pub fn is_separator(c: char) -> bool {
     c == std::path::MAIN_SEPARATOR || (cfg!(windows) && c == '/')
 }
 

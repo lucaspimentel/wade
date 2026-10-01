@@ -1,0 +1,33 @@
+%%%% case 0
+text ```
+spans 0+3:CodeSpan
+text code here
+spans 0+9:CodeSpan
+text ```
+spans 0+3:CodeSpan
+%%%% case 1
+text # Heading
+spans 0+9:Heading
+%%%% case 2
+text ## Sub heading
+spans 0+14:Heading
+%%%% case 3
+text ### Third level
+spans 0+15:Heading
+%%%% case 4
+text **bold text**
+spans 0+1:Punctuation 0+13:Bold
+%%%% case 5
+text *italic text*
+spans 0+1:Punctuation 0+13:Italic
+%%%% case 6
+text `code span`
+spans 0+11:CodeSpan
+%%%% case 7
+text [text](url)
+spans 0+11:Link
+%%%% case 8
+text - list item
+spans 0+1:Punctuation
+%%%% case 9
+text just plain text here
