@@ -23,10 +23,6 @@ this file to be empty or fully accepted.
   Properties overlay uses `Permissions::readonly()` (no write bit for
   anyone); .NET reports ReadOnly when the current user lacks write
   permission. Revisit with the Phase 9 unix work.
-- **Later-phase preview and metadata providers are absent (Phase 7a).**
-  The registries hold only the ported providers, in C# order. Missing until
-  their phases: the MSI preview and MSI metadata (Phase 9). Files of those types fall through to the next applicable
-  provider (usually None, Text or Hex).
 - **Unix terminals report default capabilities (Phase 8a).** Windows
   detects Sixel via `WT_SESSION` like C#; the Unix DA1/cell-size query
   needs the raw tty setup of the Phase 9 Unix input work, so Unix runs
@@ -42,6 +38,15 @@ this file to be empty or fully accepted.
   a fixture later.
 
 ## Accepted (deliberate, permanent)
+- **MSI files are read with the `msi` crate on every OS (Phase 9e).** C#
+  queries msi.dll, so "Installer files" and "MSI metadata" exist only on
+  Windows there (on Linux/macOS C# lists the metadata provider but it
+  returns nothing). Rust parses the database itself and shows both
+  everywhere. The summary Template ("Platform") is rebuilt from the
+  crate's architecture and language list as `arch;lang,lang`, files with
+  equal names keep table order when sorted, and there is no C# golden
+  (msi.dll cannot run here); `src/preview/msi.rs` tests pin the output on
+  installers built with the crate's writer.
 - **Office/NuGet XML is read with roxmltree (Phase 9d).** Element values
   follow `XDocument.Load` (whitespace-only text segments dropped unless
   `xml:space="preserve"`, CDATA kept), pinned by

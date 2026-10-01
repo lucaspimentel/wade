@@ -5,6 +5,7 @@
 use super::document_metadata::{NuGetMetadataProvider, OfficeMetadataProvider};
 use super::executable_metadata::ExecutableMetadataProvider;
 use super::media_metadata::MediaMetadataProvider;
+use super::msi::{MsiMetadataProvider, MsiPreviewProvider};
 use super::image_metadata::ImageMetadataProvider;
 use super::metadata_providers::{
     ArchiveMetadataProvider, FileMetadataProvider, PdfMetadataProvider, ShortcutMetadataProvider,
@@ -16,12 +17,12 @@ use super::providers::{
 use super::{MetadataProvider, PreviewContext, PreviewProvider};
 
 /// C# order: Image, PDF, Markdown, Zip, MSI, Tar, Text, Diff, None, Hex.
-/// Slots for providers of later phases are absent.
-static PREVIEW_PROVIDERS: [&dyn PreviewProvider; 9] = [
+static PREVIEW_PROVIDERS: [&dyn PreviewProvider; 10] = [
     &ImagePreviewProvider,
     &PdfPreviewProvider,
     &MarkdigMarkdownPreviewProvider,
     &ZipContentsPreviewProvider,
+    &MsiPreviewProvider,
     &TarContentsPreviewProvider,
     &TextPreviewProvider,
     &DiffPreviewProvider,
@@ -30,14 +31,15 @@ static PREVIEW_PROVIDERS: [&dyn PreviewProvider; 9] = [
 ];
 
 /// C# order: File, Image, Executable, Office, Media, NuGet, MSI, Shortcut,
-/// Archive, PDF. Slots for providers of later phases are absent.
-static METADATA_PROVIDERS: [&dyn MetadataProvider; 9] = [
+/// Archive, PDF.
+static METADATA_PROVIDERS: [&dyn MetadataProvider; 10] = [
     &FileMetadataProvider,
     &ImageMetadataProvider,
     &ExecutableMetadataProvider,
     &OfficeMetadataProvider,
     &MediaMetadataProvider,
     &NuGetMetadataProvider,
+    &MsiMetadataProvider,
     &ShortcutMetadataProvider,
     &ArchiveMetadataProvider,
     &PdfMetadataProvider,

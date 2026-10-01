@@ -12,6 +12,7 @@ pub mod image_metadata;
 pub mod markdown;
 pub mod media_metadata;
 pub mod metadata_providers;
+pub mod msi;
 pub mod pe;
 pub mod providers;
 pub mod registry;

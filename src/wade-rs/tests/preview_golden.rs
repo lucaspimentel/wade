@@ -21,14 +21,6 @@ use wade::ui::metadata_renderer;
 const HEX_HEAD_ROWS: usize = 40;
 const HEX_TAIL_ROWS: usize = 3;
 
-/// Providers of later phases: C# lists them, Rust's registries do not yet.
-const PENDING_LABELS: &[&str] = &[
-    // Preview providers
-    "Installer files",
-    // Metadata providers
-    "MSI metadata",
-];
-
 fn golden_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/golden/preview")
 }
@@ -198,19 +190,6 @@ fn contexts(repo_root: &str) -> Vec<(&'static str, PreviewContext)> {
     ]
 }
 
-/// C#'s provider list with not-yet-ported labels removed.
-fn without_pending(line: &str) -> String {
-    let Some((prefix, list)) = line.split_once("] ") else {
-        return line.to_string();
-    };
-
-    let kept: Vec<&str> = list
-        .split(" | ")
-        .filter(|label| !label.is_empty() && !PENDING_LABELS.contains(label))
-        .collect();
-    format!("{prefix}] {}", kept.join(" | "))
-}
-
 fn assert_matches(expected: &str, actual: &str, golden: &str) {
     for (number, (expected_line, actual_line)) in expected.lines().zip(actual.lines()).enumerate() {
         assert_eq!(actual_line, expected_line, "{golden} line {}", number + 1);
@@ -292,13 +271,7 @@ fn preview_fixtures_match_csharp_golden() {
     let golden_path = dir.join("preview.golden.txt");
     let expected: String = read(&golden_path)
         .lines()
-        .map(|line| {
-            if line.starts_with("preview-providers[") || line.starts_with("metadata-providers[") {
-                without_pending(line)
-            } else {
-                line.to_string()
-            }
-        })
+        .map(str::to_string)
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -436,13 +409,7 @@ fn archive_fixtures_match_csharp_golden() {
     let golden_path = dir.join("archives.golden.txt");
     let expected: String = read(&golden_path)
         .lines()
-        .map(|line| {
-            if line.starts_with("preview-providers[") || line.starts_with("metadata-providers[") {
-                without_pending(line)
-            } else {
-                line.to_string()
-            }
-        })
+        .map(str::to_string)
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -493,10 +460,7 @@ fn shortcut_fixtures_match_csharp_golden() {
     let golden_path = dir.join("shortcuts.golden.txt");
     let expected: String = read(&golden_path)
         .lines()
-        .map(|line| match line.strip_prefix("metadata-providers ") {
-            Some(list) => without_pending(&format!("metadata-providers[x] {list}")).replacen("metadata-providers[x] ", "metadata-providers ", 1),
-            None => line.to_string(),
-        })
+        .map(str::to_string)
         .collect::<Vec<_>>()
         .join("\n");
 
