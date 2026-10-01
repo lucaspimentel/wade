@@ -1116,11 +1116,12 @@ mod tests {
         app.show_file_finder();
         pump_until(&mut app, scan_done);
         type_text(&mut app, "App");
-        pump_until(&mut app, |app| app.file_finder.as_ref().unwrap().results.as_ref().is_some_and(|r| r.len() >= 2));
+        // Applications, Applications/Config.cs and App.cs all match; results
+        // stream in walk order, so wait for all three before ranking
+        pump_until(&mut app, |app| app.file_finder.as_ref().unwrap().results.as_ref().is_some_and(|r| r.len() == 3));
 
         let names = display_names(&mut app);
-        assert_eq!(names[0], "App.cs");
-        assert!(names.contains(&"Config.cs".to_string()) || names.contains(&"Applications".to_string()));
+        assert_eq!(names, ["App.cs", "Applications", "Config.cs"]);
 
         let state = app.file_finder.as_mut().unwrap();
         let display = state.display();
