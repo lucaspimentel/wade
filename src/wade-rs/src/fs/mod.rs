@@ -12,6 +12,7 @@ pub mod hex_preview;
 pub mod lnk;
 pub mod path_completion;
 pub mod reparse;
+pub mod system_clipboard;
 pub mod tar_preview;
 pub mod zip_preview;
 pub use directory_contents::{DirectoryContents, FileSystemEntry, GitFileStatus, SortMode, DRIVES_PATH};

@@ -38,8 +38,8 @@ fn has_status_in_selection(ctx: &GitMenuContext, mask: GitFileStatus) -> bool {
         .is_some_and(|path| statuses_get(statuses, path).is_some_and(|status| status.intersects(mask)))
 }
 
-/// Port of the palette's git block (App.cs:2958-3018). "Git: Copy relative
-/// path" is omitted: it needs the OS clipboard, deferred to Phase 9.
+/// Port of the palette's git block (App.cs:2958-3018). Like C#, it has no
+/// "Git: Copy relative path" entry (the Y key covers it).
 #[must_use]
 pub fn build_git_menu_items(ctx: &GitMenuContext) -> Vec<ActionMenuItem> {
     let Some(_repo_root) = ctx.repo_root else {

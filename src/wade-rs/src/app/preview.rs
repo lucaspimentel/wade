@@ -423,8 +423,7 @@ impl App {
             .map(|lines| lines.len().saturating_sub(height))
     }
 
-    /// Port of `HandleExpandedPreviewKey`. The y/Y clipboard copies land
-    /// with the clipboard in Phase 9.
+    /// Port of `HandleExpandedPreviewKey`.
     pub(crate) fn handle_expanded_preview_key(&mut self, key: &KeyEvent) {
         use crate::console_key::ConsoleKey;
 
@@ -456,6 +455,17 @@ impl App {
             ConsoleKey::End => {
                 if let Some(max_scroll) = self.expanded_max_scroll() {
                     self.preview.expanded_scroll_offset = max_scroll;
+                }
+            }
+            _ if key.key_char == u16::from(b'y') || key.key_char == u16::from(b'Y') => {
+                let preview_path = self.preview.cached_path.clone().or_else(|| self.preview.cached_image_path.clone());
+
+                if let Some(path) = preview_path {
+                    if key.key_char == u16::from(b'y') {
+                        self.copy_text_to_clipboard(&path, "Copied path to clipboard");
+                    } else {
+                        self.copy_git_relative_path(&path);
+                    }
                 }
             }
             _ => {}

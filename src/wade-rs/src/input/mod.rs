@@ -94,6 +94,14 @@ pub enum InputEvent {
     CombinedPreviewReady(CombinedPreviewReadyEvent),
     MetadataReady(MetadataReadyEvent),
     PreviewLoadingComplete(PreviewLoadingCompleteEvent),
+    /// The background open of a cloud placeholder finished (C# shows the
+    /// notification from the download task itself).
+    CloudDownloadComplete(CloudDownloadCompleteEvent),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CloudDownloadCompleteEvent {
+    pub error: Option<String>,
 }
 
 /// Port of the `DirectorySizeReadyEvent` record

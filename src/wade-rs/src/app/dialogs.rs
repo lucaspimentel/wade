@@ -25,6 +25,8 @@ use crate::ui::notification::NotificationKind;
 pub enum ConfirmAction {
     Dispatch(AppAction),
     DeleteFiles { targets: Vec<String>, permanent: bool },
+    /// `() => ExecutePaste(overwrite: true)`.
+    Paste { overwrite: bool },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -304,17 +306,24 @@ impl App {
         self.scroll_offset = 0;
     }
 
-    /// Port of `BuildContextMenuItems` (App.cs:3894). Git stage/unstage
-    /// entries are omitted until git lands in Phase 4; Paste/Copy/Cut only
-    /// appear once clipboard support exists, so they are omitted too.
+    /// Port of `BuildContextMenuItems` (App.cs:3866).
     pub fn build_context_menu_items(&mut self) -> Vec<ActionMenuItem> {
         let mut items = vec![
             ActionMenuItem::new("Open with default app", "o", AppAction::OpenExternal),
             ActionMenuItem::new("Rename", "F2", AppAction::Rename),
             ActionMenuItem::new("Delete", "Del", AppAction::Delete),
+            ActionMenuItem::new("Copy", "c", AppAction::Copy),
+            ActionMenuItem::new("Cut", "x", AppAction::Cut),
+        ];
+
+        if !self.clipboard_paths.is_empty() {
+            items.push(ActionMenuItem::new("Paste", "v", AppAction::Paste));
+        }
+
+        items.extend([
             ActionMenuItem::new("Copy path", "y", AppAction::CopyAbsolutePath),
             ActionMenuItem::new("Properties", "i", AppAction::ShowProperties),
-        ];
+        ]);
 
         // Git stage/unstage when applicable (App.cs:3916-3927)
         let entries = self.get_visible_entries();
@@ -721,6 +730,7 @@ impl App {
                 self.modal.confirm_message = None;
                 match yes_action {
                     Some(ConfirmAction::Dispatch(action)) => self.dispatch(action),
+                    Some(ConfirmAction::Paste { overwrite }) => self.execute_paste(overwrite),
                     Some(ConfirmAction::DeleteFiles { targets, permanent }) => {
                         self.execute_delete(targets, permanent);
                     }
@@ -1065,18 +1075,34 @@ impl App {
             .push(ActionMenuLevel::new("Action Palette", items));
     }
 
-    fn build_action_palette_items(&mut self) -> Vec<ActionMenuItem> {
-        // C# order; Copy/Cut/Paste/Copy absolute path and "Download cloud
-        // file" need the clipboard and cloud APIs (Phase 9)
+    pub(crate) fn build_action_palette_items(&mut self) -> Vec<ActionMenuItem> {
+        // Port of BuildActionPaletteItems (App.cs:2935), C# order
         let mut items = vec![
             ActionMenuItem::new("Open with default app", "o", AppAction::OpenExternal),
             ActionMenuItem::new("Rename", "F2", AppAction::Rename),
             ActionMenuItem::new("Delete", "Del", AppAction::Delete),
+            ActionMenuItem::new("Copy", "c", AppAction::Copy),
+            ActionMenuItem::new("Cut", "x", AppAction::Cut),
+        ];
+
+        if !self.clipboard_paths.is_empty() {
+            items.push(ActionMenuItem::new("Paste", "v", AppAction::Paste));
+        }
+
+        items.extend([
+            ActionMenuItem::new("Copy absolute path", "y", AppAction::CopyAbsolutePath),
             ActionMenuItem::new("New file", "n", AppAction::NewFile),
             ActionMenuItem::new("New directory", "Shift+N", AppAction::NewDirectory),
             ActionMenuItem::new("Create symlink", "Ctrl+L", AppAction::CreateSymlink),
             ActionMenuItem::new("Properties", "i", AppAction::ShowProperties),
-        ];
+        ]);
+
+        // Cloud file download, only for cloud placeholders (Windows)
+        if cfg!(windows)
+            && self.get_visible_entries().get(self.selected_index).is_some_and(|entry| entry.is_cloud_placeholder)
+        {
+            items.push(ActionMenuItem::new("Download cloud file", "", AppAction::DownloadCloudFile));
+        }
 
         // Preview provider submenu, when multiple providers are available
         if let Some(preview_items) = self.build_preview_menu_items() {

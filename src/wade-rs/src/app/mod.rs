@@ -133,6 +133,11 @@ pub struct App {
     /// Accumulated inline directory sizes for the current listing.
     inline_dir_sizes: Option<HashMap<String, i64>>,
     current_drive_media_type: crate::fs::DriveMediaType,
+    /// Port of `_clipboardPaths` / `_clipboardIsCut`: wade's own clipboard.
+    pub(crate) clipboard_paths: Vec<String>,
+    pub(crate) clipboard_is_cut: bool,
+    /// The OS clipboard; tests swap in a recording fake.
+    pub(crate) os_clipboard: OsClipboard,
     /// Set by HandleFileSystemChanged: the next frame forces a full redraw
     /// (port of C# buffer.ForceFullRedraw()).
     request_full_redraw: bool,
@@ -214,6 +219,9 @@ impl App {
             properties_content_height: 0,
             inline_dir_sizes: None,
             current_drive_media_type: crate::fs::DriveMediaType::Unknown,
+            clipboard_paths: Vec::new(),
+            clipboard_is_cut: false,
+            os_clipboard: if cfg!(test) { OsClipboard::Fake(FakeClipboard::default()) } else { OsClipboard::System },
             request_full_redraw: false,
             file_finder: None,
             file_op_label: String::new(),
@@ -338,6 +346,7 @@ impl App {
                     InputEvent::CombinedPreviewReady(event) => self.handle_combined_preview_ready(event),
                     InputEvent::MetadataReady(event) => self.handle_metadata_ready(event),
                     InputEvent::PreviewLoadingComplete(event) => self.handle_preview_loading_complete(event),
+                    InputEvent::CloudDownloadComplete(event) => self.handle_cloud_download_complete(event),
                 }
             }
 
@@ -364,6 +373,7 @@ impl App {
                 InputEvent::CombinedPreviewReady(event) => self.handle_combined_preview_ready(event),
                 InputEvent::MetadataReady(event) => self.handle_metadata_ready(event),
                 InputEvent::PreviewLoadingComplete(event) => self.handle_preview_loading_complete(event),
+                InputEvent::CloudDownloadComplete(event) => self.handle_cloud_download_complete(event),
             }
 
             // Clamp selection and adjust scroll
@@ -653,6 +663,11 @@ impl App {
             | A::Rename
             | A::Delete
             | A::DeletePermanently
+            | A::Copy
+            | A::Cut
+            | A::Paste
+            | A::CopyAbsolutePath
+            | A::CopyGitRelativePath
             | A::NewFile
             | A::NewDirectory
             | A::CreateSymlink => self.dispatch_file_action(action),
@@ -660,11 +675,17 @@ impl App {
             A::ShowProperties => self.show_properties(),
             A::ShowFileFinder => self.show_file_finder(),
             A::ShowPreviewMenu => self.show_preview_menu(),
-            other => {
-                // Unported in 3a: navigation to the subsystem lands in later phases.
-                self.show_notification("Not yet ported", NotificationKind::Info);
-                let _ = other;
+            A::DownloadCloudFile => {
+                let entries = self.get_visible_entries();
+
+                if let Some(entry) = entries.get(self.selected_index)
+                    && entry.is_cloud_placeholder
+                {
+                    let path = entry.full_path.clone();
+                    self.download_cloud_file(path);
+                }
             }
+            _ => {}
         }
     }
 
@@ -1130,8 +1151,114 @@ impl App {
         self.file_op_label = "Deleting".to_string();
     }
 
-    /// Port of `ExecutePaste` mechanics (App.cs:1014-1023): the Clipboard
-    /// dispatch arm stays Phase 9; only the operation mechanics are ported.
+    /// Port of `ExecutePaste` (App.cs:1012-1023).
+    pub fn execute_paste(&mut self, overwrite: bool) {
+        self.execute_paste_internal(self.clipboard_paths.clone(), self.clipboard_is_cut, overwrite);
+    }
+
+    /// Port of `DownloadCloudFile` (App.cs:3813-3835): opening the file
+    /// triggers the Cloud Files recall; the listing refreshes afterwards.
+    fn download_cloud_file(&mut self, path: String) {
+        self.show_notification("Downloading\u{2026}", NotificationKind::Info);
+        let sender = self.pipeline.sender();
+
+        std::thread::spawn(move || {
+            let error = std::fs::File::open(&path).err().map(|err| err.to_string());
+            let _ = sender.send(InputEvent::CloudDownloadComplete(crate::input::CloudDownloadCompleteEvent { error }));
+        });
+    }
+
+    pub fn handle_cloud_download_complete(&mut self, event: crate::input::CloudDownloadCompleteEvent) {
+        self.directory_contents.invalidate_all();
+
+        match event.error {
+            None => self.show_notification("Download complete", NotificationKind::Success),
+            Some(error) => self.show_notification(&format!("Download failed: {error}"), NotificationKind::Error),
+        }
+    }
+
+    /// Copies text to the OS clipboard, with C#'s success/failure
+    /// notifications.
+    pub(crate) fn copy_text_to_clipboard(&mut self, text: &str, success: &str) {
+        if self.os_clipboard.set_text(text) {
+            self.show_notification(success, NotificationKind::Success);
+        } else {
+            self.show_notification("Clipboard not available", NotificationKind::Error);
+        }
+    }
+
+    /// Port of the `CopyGitRelativePath` body: `path` relative to the repo
+    /// root of the current directory, with forward slashes.
+    pub(crate) fn copy_git_relative_path(&mut self, path: &str) {
+        match crate::fs::git_utils::find_repo_root(&self.current_path) {
+            None => self.show_notification("Not inside a git repository", NotificationKind::Error),
+            Some(repo_root) => {
+                let mut relative = crate::fs::git_utils::relative_path(&repo_root, path);
+
+                if relative.is_empty() {
+                    relative = ".".to_string();
+                }
+
+                self.copy_text_to_clipboard(&relative, "Copied git-relative path to clipboard");
+            }
+        }
+    }
+
+    /// Ports of the Copy/Cut arms: marked paths or the selected entry go to
+    /// wade's clipboard and to the OS clipboard.
+    fn set_clipboard(&mut self, entries: &[FileSystemEntry], is_cut: bool) {
+        let verb = if is_cut { "Cut" } else { "Copied" };
+
+        if !self.marked_paths.is_empty() {
+            self.clipboard_paths = self.marked_paths.iter().cloned().collect();
+            self.clipboard_is_cut = is_cut;
+            self.show_notification(&format!("{verb} {} item(s)", self.marked_paths.len()), NotificationKind::Success);
+        } else if let Some(entry) = entries.get(self.selected_index) {
+            self.clipboard_paths = vec![entry.full_path.clone()];
+            self.clipboard_is_cut = is_cut;
+            self.show_notification(&format!("{verb} '{}'", entry.name), NotificationKind::Success);
+        }
+
+        let _ = self.os_clipboard.set_files(&self.clipboard_paths, self.clipboard_is_cut);
+    }
+
+    /// Port of the Paste arm: OS clipboard files win over wade's own, then
+    /// conflicts ask before overwriting.
+    fn paste_from_clipboard(&mut self) {
+        if let Some((paths, is_cut)) = self.os_clipboard.get_files()
+            && !paths.is_empty()
+        {
+            self.clipboard_paths = paths;
+            self.clipboard_is_cut = is_cut;
+        }
+
+        if self.clipboard_paths.is_empty() {
+            self.show_notification("Clipboard is empty", NotificationKind::Error);
+            return;
+        }
+
+        let conflicts = self
+            .clipboard_paths
+            .iter()
+            .filter(|path| {
+                Path::new(path.as_str())
+                    .file_name()
+                    .is_some_and(|name| Path::new(&self.current_path).join(name).exists())
+            })
+            .count();
+
+        if conflicts > 0 {
+            self.show_confirm_dialog(
+                "Overwrite",
+                &format!("{conflicts} item(s) already exist. Overwrite?"),
+                dialogs::ConfirmAction::Paste { overwrite: true },
+            );
+        } else {
+            self.execute_paste(false);
+        }
+    }
+
+    /// Mechanics of `ExecutePaste` for explicit sources.
     pub fn execute_paste_internal(&mut self, sources: Vec<String>, is_cut: bool, overwrite: bool) {
         let sender = self.pipeline.sender();
         self.file_operation_runner.begin(
@@ -1154,13 +1281,16 @@ impl App {
         self.file_op_progress = Some(event);
     }
 
-    /// Port of `HandleFileOperationComplete` (App.cs:2677). The clipboard
-    /// clear (WasCut) lands in Phase 9.
+    /// Port of `HandleFileOperationComplete` (App.cs:2704).
     pub fn handle_file_operation_complete(&mut self, event: crate::input::FileOperationCompleteEvent) {
         self.input_mode = InputMode::Normal;
         self.file_op_progress = None;
         self.directory_contents.invalidate(&self.current_path);
         self.invalidate_filtered_entries();
+
+        if event.was_cut && event.error_count == 0 {
+            self.clipboard_paths.clear();
+        }
 
         self.marked_paths.clear();
         self.refresh_git_status();
@@ -1184,13 +1314,27 @@ impl App {
         self.filtered_entries = None;
     }
 
-    /// Port of `DispatchFileAction` (App.cs:3132-3530), minus the clipboard
-    /// actions (Copy/Cut/Paste/CopyAbsolutePath/CopyGitRelativePath: Phase 9).
+    /// Port of `DispatchFileAction` (App.cs:3132-3530).
     pub fn dispatch_file_action(&mut self, action: AppAction) {
         use AppAction as A;
         let entries = self.get_visible_entries();
 
         match action {
+            A::Copy => self.set_clipboard(&entries, false),
+            A::Cut => self.set_clipboard(&entries, true),
+            A::Paste => self.paste_from_clipboard(),
+            A::CopyAbsolutePath => {
+                if let Some(entry) = entries.get(self.selected_index) {
+                    let path = entry.full_path.clone();
+                    self.copy_text_to_clipboard(&path, "Copied path to clipboard");
+                }
+            }
+            A::CopyGitRelativePath => {
+                if let Some(entry) = entries.get(self.selected_index) {
+                    let path = entry.full_path.clone();
+                    self.copy_git_relative_path(&path);
+                }
+            }
             A::OpenExternal => {
                 if !entries.is_empty() && self.selected_index < entries.len() {
                     let entry = entries[self.selected_index].clone();
@@ -1552,8 +1696,8 @@ impl App {
             self.marked_paths.len(),
             self.config.sort_mode,
             self.config.sort_ascending,
-            0,
-            false,
+            self.clipboard_paths.len(),
+            self.clipboard_is_cut,
             self.current_branch_name.as_deref(),
             self.ahead_behind_text.as_deref(),
         );
@@ -1687,8 +1831,8 @@ impl App {
             self.marked_paths.len(),
             self.config.sort_mode,
             self.config.sort_ascending,
-            0,
-            false,
+            self.clipboard_paths.len(),
+            self.clipboard_is_cut,
             self.current_branch_name.as_deref(),
             self.ahead_behind_text.as_deref(),
         );
@@ -1863,7 +2007,7 @@ fn flush_buffer(buffer: &mut ScreenBuffer) {
 
 #[cfg(test)]
 mod tests {
-    use super::{App, AppConfig};
+    use super::{App, AppAction, AppConfig, InputMode};
     use crate::fs::DriveMediaType;
     use crate::input::FileSystemChangedEvent;
 
@@ -2015,5 +2159,197 @@ mod tests {
 
         assert!(app.request_full_redraw);
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    fn notification_text(app: &App) -> String {
+        app.notification.as_ref().map(|n| n.message.clone()).unwrap_or_default()
+    }
+
+    fn fake_clipboard(app: &mut App) -> &mut super::FakeClipboard {
+        match &mut app.os_clipboard {
+            super::OsClipboard::Fake(fake) => fake,
+            super::OsClipboard::System => panic!("tests use the fake clipboard"),
+        }
+    }
+
+    fn palette_labels(app: &mut App) -> Vec<String> {
+        app.build_action_palette_items().into_iter().map(|item| item.label).collect()
+    }
+
+    #[test]
+    fn copy_selected_fills_both_clipboards_and_offers_paste() {
+        let root = test_root("clip-copy");
+        let mut app = app_at(&root, &["a.txt", "b.txt"]);
+        assert!(!palette_labels(&mut app).contains(&"Paste".to_string()));
+
+        app.dispatch(AppAction::Copy);
+
+        let a = root.join("a.txt").to_string_lossy().into_owned();
+        assert_eq!(app.clipboard_paths, vec![a.clone()]);
+        assert!(!app.clipboard_is_cut);
+        assert_eq!(notification_text(&app), "Copied 'a.txt'");
+        assert_eq!(fake_clipboard(&mut app).files, Some((vec![a], false)));
+
+        let labels = palette_labels(&mut app);
+        let copy = labels.iter().position(|l| l == "Copy").unwrap();
+        assert_eq!(&labels[copy..copy + 4], ["Copy", "Cut", "Paste", "Copy absolute path"]);
+        let context: Vec<String> = app.build_context_menu_items().into_iter().map(|item| item.label).collect();
+        assert_eq!(&context[3..7], ["Copy", "Cut", "Paste", "Copy path"]);
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn cut_marked_paths_sets_cut_flag() {
+        let root = test_root("clip-cut");
+        let mut app = app_at(&root, &["a.txt", "b.txt"]);
+        app.marked_paths.insert(root.join("a.txt").to_string_lossy().into_owned());
+        app.marked_paths.insert(root.join("b.txt").to_string_lossy().into_owned());
+
+        app.dispatch(AppAction::Cut);
+
+        assert_eq!(app.clipboard_paths.len(), 2);
+        assert!(app.clipboard_is_cut);
+        assert_eq!(notification_text(&app), "Cut 2 item(s)");
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn paste_with_empty_clipboard_notifies() {
+        let root = test_root("clip-empty");
+        let mut app = app_at(&root, &["a.txt"]);
+        app.dispatch(AppAction::Paste);
+        assert_eq!(notification_text(&app), "Clipboard is empty");
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn paste_onto_existing_names_asks_to_overwrite() {
+        let root = test_root("clip-conflict");
+        let mut app = app_at(&root, &["a.txt"]);
+        app.dispatch(AppAction::Copy);
+        app.dispatch(AppAction::Paste);
+
+        assert_eq!(app.input_mode, InputMode::Confirm);
+        assert_eq!(app.modal.confirm_title.as_deref(), Some("Overwrite"));
+        assert_eq!(app.modal.confirm_message.as_deref(), Some("1 item(s) already exist. Overwrite?"));
+        assert!(matches!(app.modal.confirm_yes_action, Some(super::dialogs::ConfirmAction::Paste { overwrite: true })));
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn paste_prefers_os_clipboard_files() {
+        let root = test_root("clip-os");
+        let source = test_root("clip-os-src");
+        std::fs::write(source.join("from-os.txt"), "x").unwrap();
+        let mut app = app_at(&root, &["a.txt"]);
+        app.clipboard_paths = vec![root.join("a.txt").to_string_lossy().into_owned()];
+        fake_clipboard(&mut app).files = Some((vec![source.join("from-os.txt").to_string_lossy().into_owned()], true));
+
+        app.dispatch(AppAction::Paste);
+
+        assert!(app.clipboard_is_cut);
+        assert_eq!(app.input_mode, InputMode::FileOperation);
+        assert_eq!(app.file_op_label, "Moving");
+        app.file_operation_runner.cancel();
+        std::fs::remove_dir_all(&root).unwrap();
+        let _ = std::fs::remove_dir_all(&source);
+    }
+
+    #[test]
+    fn completed_cut_clears_clipboard() {
+        let root = test_root("clip-done");
+        let mut app = app_at(&root, &["a.txt"]);
+        app.clipboard_paths = vec!["x".to_string()];
+        app.handle_file_operation_complete(crate::input::FileOperationCompleteEvent {
+            success_count: 1,
+            error_count: 1,
+            was_cut: true,
+        });
+        assert_eq!(app.clipboard_paths.len(), 1, "errors keep the clipboard");
+        app.handle_file_operation_complete(crate::input::FileOperationCompleteEvent {
+            success_count: 1,
+            error_count: 0,
+            was_cut: true,
+        });
+        assert!(app.clipboard_paths.is_empty());
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn copy_absolute_path_writes_text() {
+        let root = test_root("clip-path");
+        let mut app = app_at(&root, &["a.txt"]);
+        app.dispatch(AppAction::CopyAbsolutePath);
+        assert_eq!(fake_clipboard(&mut app).text.as_deref(), Some(root.join("a.txt").to_string_lossy().as_ref()));
+        assert_eq!(notification_text(&app), "Copied path to clipboard");
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn copy_git_relative_path_outside_repo_notifies() {
+        let root = test_root("clip-norepo");
+        let mut app = app_at(&root, &["a.txt"]);
+
+        if crate::fs::git_utils::find_repo_root(&app.current_path).is_some() {
+            return; // temp dir inside a repository: nothing to assert
+        }
+
+        app.dispatch(AppAction::CopyGitRelativePath);
+        assert_eq!(notification_text(&app), "Not inside a git repository");
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn cloud_download_complete_notifies() {
+        let root = test_root("cloud");
+        let mut app = app_at(&root, &["a.txt"]);
+        app.handle_cloud_download_complete(crate::input::CloudDownloadCompleteEvent { error: None });
+        assert_eq!(notification_text(&app), "Download complete");
+        app.handle_cloud_download_complete(crate::input::CloudDownloadCompleteEvent { error: Some("boom".into()) });
+        assert_eq!(notification_text(&app), "Download failed: boom");
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+}
+
+/// The OS clipboard behind wade's copy/cut/paste and path copies.
+pub(crate) enum OsClipboard {
+    System,
+    /// Records writes and serves canned files (tests).
+    Fake(FakeClipboard),
+}
+
+#[derive(Default)]
+pub(crate) struct FakeClipboard {
+    pub text: Option<String>,
+    pub files: Option<(Vec<String>, bool)>,
+}
+
+impl OsClipboard {
+    fn set_text(&mut self, text: &str) -> bool {
+        match self {
+            Self::System => crate::fs::system_clipboard::set_text(text),
+            Self::Fake(fake) => {
+                fake.text = Some(text.to_string());
+                true
+            }
+        }
+    }
+
+    fn set_files(&mut self, paths: &[String], is_cut: bool) -> bool {
+        match self {
+            Self::System => crate::fs::system_clipboard::set_files(paths, is_cut),
+            Self::Fake(fake) => {
+                fake.files = (!paths.is_empty()).then(|| (paths.to_vec(), is_cut));
+                fake.files.is_some()
+            }
+        }
+    }
+
+    fn get_files(&mut self) -> Option<(Vec<String>, bool)> {
+        match self {
+            Self::System => crate::fs::system_clipboard::get_files(),
+            Self::Fake(fake) => fake.files.clone(),
+        }
     }
 }

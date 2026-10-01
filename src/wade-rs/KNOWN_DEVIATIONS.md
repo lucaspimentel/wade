@@ -33,8 +33,6 @@ this file to be empty or fully accepted.
   needs the raw tty setup of the Phase 9 Unix input work, so Unix runs
   with no Sixel and 8x16 px cells until then (the response parser is
   already ported).
-- **Expanded preview y/Y copy nothing (Phase 7a).** The copy-path and
-  copy-git-relative-path keys need the OS clipboard (Phase 9).
 - **No golden fixture covers the Properties overlay (Phase 4d).** Its rows
   come from live filesystem metadata (created/accessed dates, attributes),
   so no fixture renders identically from both runners without a test seam
@@ -44,21 +42,20 @@ this file to be empty or fully accepted.
   `App.RenderFileFinderView`), so a seam that injects the facts could add
   a fixture later.
 
-- **Unported actions are stubbed with a notification (Phase 3a).** Actions
-  whose subsystems land in later phases (clipboard, cloud download: Phase
-  9) show a status-bar notification ("Not yet ported") instead of
-  performing the action. The action palette omits Copy, Cut, Paste, "Copy
-  absolute path" and "Download cloud file" until Phase 9; every other C#
-  entry, including the "Change preview" submenu, is listed in C# order.
-  Git actions are ported (Phase 4b), except "Git: Copy relative path" (Y),
-  which needs the OS clipboard and is omitted until Phase 9 alongside the
-  context menu Paste/Copy/Cut entries.
 - **Config toggles for unported subsystems are inert (Phase 3c).** The
   config dialog ports all 27 settings and persists them, but toggles
   gating providers that land in later phases (media metadata) have no
   runtime effect until Phase 9.
 
 ## Accepted (deliberate, permanent)
+- **Unix has an OS file clipboard (Phase 9b).** C# `SystemClipboard`
+  publishes and reads files only on Windows, so on Linux/macOS its Copy,
+  Cut and Paste stay inside wade. Rust also writes Linux
+  `x-special/gnome-copied-files` (copy/cut + `file://` URIs) through
+  wl-copy or xclip and reads it back, falling back to `text/uri-list`;
+  macOS goes through NSPasteboard file URLs (`osascript -l JavaScript`),
+  always as a copy. Paste reads the OS clipboard first, as C# does on
+  Windows.
 - **Linux drive types use a reduced file-system table (Phase 9a).** .NET
   maps the root mount's file-system type to a `DriveType` through a long
   table; Rust recognises network (nfs, cifs, sshfs, 9p, ...), RAM/virtual

@@ -179,6 +179,7 @@ fn format_events(events: &[InputEvent]) -> String {
             InputEvent::FileFinderPartialResult(_) => {}
             InputEvent::FileFinderScanComplete(_) => {}
             InputEvent::FileFinderSearchResult(_) => {}
+            InputEvent::CloudDownloadComplete(_) => {}
         }
     }
     result
