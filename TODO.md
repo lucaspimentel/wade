@@ -63,6 +63,12 @@ Windows file clipboard interop is implemented in both versions. The Rust port al
 
 ## Backlog
 
+### Help overlay — show the settings hotkey
+
+The help dialog (`?`) does not list `,` for opening the configuration dialog ("Configuration" in the
+action palette). Add a row to `HelpOverlay` (C#) / `help_overlay` (Rust) and update the
+`012-help-overlay` renderer golden.
+
 ### File finder — deduplicate ScoreWithFileNamePriority paths
 
 `FuzzyScorer.ExactScoreWithFileNamePriority` is a near-verbatim copy of `ScoreWithFileNamePriority` (only the inner scoring call differs). Acceptable at two modes; fix when adding a third `QueryMode` (the `^`/`$`/`!` work below will force this). Extracting a shared helper is non-trivial because `ReadOnlySpan<char>` cannot cross delegate boundaries, so the cleanest fix is likely an enum-dispatched private helper, or `Score`/`ExactScore` becoming overloads of a common generic over a strategy struct.
