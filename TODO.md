@@ -15,14 +15,11 @@ backlog.
 - [ ] Phase 10b: switch `install-local.ps1` and `release.yml`/`install-remote.ps1`
   to the Rust binary (meanwhile `install-local-rust.ps1` installs the Rust
   build for the trial)
-- [ ] Run the test suites natively on Windows (the port was developed on
-  Linux with Wine):
-  - `cargo test` in `src/wade-rs`, `dotnet test Wade.slnx`
-  - confirm the three Wine-only failures pass: `copy_symlink_preserves_link`,
-    `delete_symlink_removes_link_not_target`, `real_git_status_round_trip`
-    (symlink tests need Developer Mode or an elevated shell)
-  - confirm the Windows-only config-dialog goldens (renderer 015, 016) pass
-    in Rust
+- [x] Run the test suites natively on Windows (the port was developed on
+  Linux with Wine): `cargo test` (398 unit tests plus all integration tests)
+  and `dotnet test Wade.slnx` (1634 + 85) pass, including the three
+  Wine-only symlink/git tests; `renderer_frames` (incl. config-dialog
+  goldens 015, 016) passes
 - [ ] Manual Windows Terminal checks (never run on real Windows):
   - junction, app alias and OneDrive entries
   - SSD/HDD detection and SSD inline directory sizes
