@@ -74,7 +74,8 @@ done (syntax highlighting), Phase 7 done (7a preview core and text family,
 and capabilities, 8b Sixel image previews, 8c image metadata, 8d PDF),
 Phase 9 done (9a file-system facts, 9b clipboard, 9c executable metadata,
 9d Office/NuGet/media metadata, 9e MSI, 9f unix watcher/terminal/input,
-9g CLI parity and close-out). Next: Phase 10 parity + cutover.
+9g CLI parity and close-out), Phase 10a done (golden sweep). Next: Phase 10b
+(install scripts switched to the Rust binary), then the cutover.
 
 ### Phase 0 — Scaffold + golden-frame harness
 
@@ -187,6 +188,13 @@ Phase 9 done (9a file-system facts, 9b clipboard, 9c executable metadata,
 - Full golden-frame sweep across both binaries; `KNOWN_DEVIATIONS.md` empty or accepted.
 - Switch `install-local.ps1`/`install-remote.ps1` to the Rust binary; daily-drive for 2 weeks.
 - **Cutover**: delete `src/Wade*`, remove dual-build CI, update README/CLAUDE.md/CHANGELOG.
+- **10a done as**: every golden was deleted and regenerated from the C# tests with no diff
+  (the two Windows-only config-dialog fixtures are checked by Windows CI). The renderer
+  fixture DSL gained entry flags (`link=`, `broken`, `junction`, `appexec=`, `cloud`), `mark`,
+  `dirsize`/`dirsizes` and `borders`. New scenarios 041-045 cover symlink, junction,
+  app-exec-link, cloud and marked rows, inline directory sizes and pane borders; Rust
+  matched all of them unchanged. `--version` now prints `1.14.0+<commit sha>` like C#
+  (`build.rs`), and a test keeps `Cargo.toml` in sync with `Directory.Build.props`.
 
 ## Retirement trigger
 

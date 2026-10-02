@@ -19,7 +19,7 @@ fn main() -> ExitCode {
     }
 
     if config.show_version {
-        println!("wade {}", env!("CARGO_PKG_VERSION"));
+        println!("wade {}", version_string());
         return ExitCode::SUCCESS;
     }
 
@@ -59,6 +59,14 @@ fn main() -> ExitCode {
     ExitCode::SUCCESS
 }
 
+/// Port of `PrintVersion`: the informational version, `1.14.0+<commit sha>`.
+fn version_string() -> String {
+    match option_env!("WADE_COMMIT") {
+        Some(sha) => format!("{}+{sha}", env!("CARGO_PKG_VERSION")),
+        None => env!("CARGO_PKG_VERSION").to_string(),
+    }
+}
+
 /// Port of `PrintHelp`.
 fn print_help() {
     println!(
@@ -86,4 +94,17 @@ Config file: ~/.config/wade/config.toml
   preview_pane_enabled = true
   detail_columns_enabled = true"
     );
+}
+
+#[cfg(test)]
+mod tests {
+    /// The C# assembly version comes from Directory.Build.props; both
+    /// binaries must report the same number until the C# code is retired.
+    #[test]
+    fn cargo_version_matches_directory_build_props() {
+        let props = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../Directory.Build.props")).expect("read Directory.Build.props");
+        let start = props.find("<Version>").expect("<Version> element") + "<Version>".len();
+        let end = start + props[start..].find("</Version>").expect("</Version>");
+        assert_eq!(&props[start..end], env!("CARGO_PKG_VERSION"));
+    }
 }

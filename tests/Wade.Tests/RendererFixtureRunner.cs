@@ -44,6 +44,8 @@ internal static class RendererFixtureRunner
         string finderState = "";
         List<App.FinderDisplayEntry>? finderEntries = null;
         var metadataSections = new List<MetadataSection>();
+        var markedPaths = new HashSet<string>(StringComparer.Ordinal);
+        Dictionary<string, long>? dirSizes = null;
         var flushes = new List<string>();
         var sb = new StringBuilder();
 
@@ -81,10 +83,31 @@ internal static class RendererFixtureRunner
                     lists[tokens[1]] = currentList;
                     break;
                 case "dir":
-                    currentList!.Add(MakeEntry(tokens[1], isDirectory: true, size: 0, tokens.Length > 2 ? ParseDate(tokens[2]) : default));
+                {
+                    // dir NAME [DATE] [FLAGS...]; FLAGS: link=T broken junction appexec=T cloud
+                    string[] pos = PositionalTokens(tokens);
+                    currentList!.Add(ApplyEntryFlags(MakeEntry(pos[1], isDirectory: true, size: 0, pos.Length > 2 ? ParseDate(pos[2]) : default), tokens));
                     break;
+                }
                 case "file":
-                    currentList!.Add(MakeEntry(tokens[1], isDirectory: false, size: ParseLong(tokens[2]), tokens.Length > 3 ? ParseDate(tokens[3]) : default));
+                {
+                    string[] pos = PositionalTokens(tokens);
+                    currentList!.Add(ApplyEntryFlags(MakeEntry(pos[1], isDirectory: false, size: ParseLong(pos[2]), pos.Length > 3 ? ParseDate(pos[3]) : default), tokens));
+                    break;
+                }
+                case "mark":
+                    // mark NAME: adds the fixture entry's full path to markedPaths
+                    markedPaths.Add(@"C:\fixture\" + tokens[1]);
+                    break;
+                case "dirsize":
+                    // dirsize NAME BYTES: inline directory size (creates the map;
+                    // directories without a size then render as loading)
+                    dirSizes ??= new Dictionary<string, long>(StringComparer.Ordinal);
+                    dirSizes[@"C:\fixture\" + tokens[1]] = ParseLong(tokens[2]);
+                    break;
+                case "dirsizes":
+                    // dirsizes: an empty inline-size map (every directory loading)
+                    dirSizes ??= new Dictionary<string, long>(StringComparer.Ordinal);
                     break;
                 case "drive":
                     currentList!.Add(MakeDriveEntry(tokens[1], tokens[2], Unquote(tokens[3]), ParseLong(tokens[4]), ParseLong(tokens[5])));
@@ -94,6 +117,12 @@ internal static class RendererFixtureRunner
                     break;
                 case "layout":
                     layout.Calculate(width, height,
+                        previewPaneEnabled: tokens[1] is "3pane" or "preview",
+                        parentPaneEnabled: tokens[1] is "3pane" or "parent");
+                    break;
+                case "borders":
+                    // borders MODE: pane separators for the 3pane/preview/parent/1pane layout
+                    PaneRenderer.RenderBorders(buffer, layout, height,
                         previewPaneEnabled: tokens[1] is "3pane" or "preview",
                         parentPaneEnabled: tokens[1] is "3pane" or "parent");
                     break;
@@ -122,9 +151,9 @@ internal static class RendererFixtureRunner
                         showIcons: flags.Contains("icons"),
                         showSize: flags.Contains("size"),
                         showDate: flags.Contains("date"),
-                        markedPaths: [],
+                        markedPaths: markedPaths,
                         gitStatuses: gitStatuses,
-                        dirSizes: null,
+                        dirSizes: dirSizes,
                         isDriveView: flags.Contains("drive"));
                     break;
                 }
@@ -590,6 +619,40 @@ internal static class RendererFixtureRunner
     private static FileSystemEntry MakeEntry(string name, bool isDirectory, long size, DateTime modified) => new(
         name, @"C:\fixture\" + name, IsDirectory: isDirectory, Size: size, LastModified: modified,
         LinkTarget: null, IsBrokenSymlink: false, IsDrive: false);
+
+    private static bool IsEntryFlag(string token) =>
+        token is "broken" or "junction" or "cloud" || token.StartsWith("link=", StringComparison.Ordinal) || token.StartsWith("appexec=", StringComparison.Ordinal);
+
+    private static string[] PositionalTokens(string[] tokens) => tokens.Where(t => !IsEntryFlag(t)).ToArray();
+
+    private static FileSystemEntry ApplyEntryFlags(FileSystemEntry entry, string[] tokens)
+    {
+        foreach (string token in tokens.Skip(1).Where(IsEntryFlag))
+        {
+            if (token.StartsWith("link=", StringComparison.Ordinal))
+            {
+                entry = entry with { LinkTarget = token["link=".Length..] };
+            }
+            else if (token.StartsWith("appexec=", StringComparison.Ordinal))
+            {
+                entry = entry with { IsAppExecLink = true, AppExecLinkTarget = token["appexec=".Length..] };
+            }
+            else if (token == "broken")
+            {
+                entry = entry with { IsBrokenSymlink = true };
+            }
+            else if (token == "junction")
+            {
+                entry = entry with { IsJunctionPoint = true };
+            }
+            else if (token == "cloud")
+            {
+                entry = entry with { IsCloudPlaceholder = true };
+            }
+        }
+
+        return entry;
+    }
 
     private static FileSystemEntry MakeDriveEntry(string name, string format, string label, long free, long total) => new(
         name, name + @"\", IsDirectory: true, 0, default,

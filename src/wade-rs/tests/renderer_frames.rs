@@ -111,6 +111,33 @@ fn make_entry(name: &str, is_directory: bool, size: i64, modified: DateParts) ->
     }
 }
 
+fn is_entry_flag(token: &str) -> bool {
+    matches!(token, "broken" | "junction" | "cloud") || token.starts_with("link=") || token.starts_with("appexec=")
+}
+
+fn positional_tokens<'a>(tokens: &[&'a str]) -> Vec<&'a str> {
+    tokens.iter().copied().filter(|t| !is_entry_flag(t)).collect()
+}
+
+fn apply_entry_flags(mut entry: FileSystemEntry, tokens: &[&str]) -> FileSystemEntry {
+    for token in tokens.iter().skip(1).copied().filter(|t| is_entry_flag(t)) {
+        if let Some(target) = token.strip_prefix("link=") {
+            entry.link_target = Some(target.to_string());
+        } else if let Some(target) = token.strip_prefix("appexec=") {
+            entry.is_app_exec_link = true;
+            entry.app_exec_link_target = Some(target.to_string());
+        } else if token == "broken" {
+            entry.is_broken_symlink = true;
+        } else if token == "junction" {
+            entry.is_junction_point = true;
+        } else if token == "cloud" {
+            entry.is_cloud_placeholder = true;
+        }
+    }
+
+    entry
+}
+
 fn make_drive_entry(name: &str, format: &str, label: &str, free: i64, total: i64) -> FileSystemEntry {
     FileSystemEntry {
         name: name.to_string(),
@@ -188,6 +215,8 @@ fn run_scenario(path: &Path) -> String {
     let mut git_statuses: Option<std::collections::HashMap<String, GitFileStatus>> = None;
     let mut current_git_statuses: std::collections::HashMap<String, GitFileStatus> = std::collections::HashMap::new();
     let mut repo_root: Option<String> = None;
+    let mut marked_paths: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut dir_sizes: Option<HashMap<String, i64>> = None;
     let mut flushes: Vec<String> = Vec::new();
     let mut out = String::new();
     let mut finder_query = String::new();
@@ -224,17 +253,29 @@ fn run_scenario(path: &Path) -> String {
                 current_list = Some(tokens[1].to_string());
             }
             "dir" => {
-                let modified = if tokens.len() > 2 { parse_date(tokens[2]) } else { DateParts::default() };
+                // dir NAME [DATE] [FLAGS...]; FLAGS: link=T broken junction appexec=T cloud
+                let pos = positional_tokens(&tokens);
+                let modified = if pos.len() > 2 { parse_date(pos[2]) } else { DateParts::default() };
                 lists.get_mut(current_list.as_ref().expect("list op first"))
                     .expect("current list")
-                    .push(make_entry(tokens[1], true, 0, modified));
+                    .push(apply_entry_flags(make_entry(pos[1], true, 0, modified), &tokens));
             }
             "file" => {
-                let size = parse_i64(tokens[2]);
-                let modified = if tokens.len() > 3 { parse_date(tokens[3]) } else { DateParts::default() };
+                let pos = positional_tokens(&tokens);
+                let size = parse_i64(pos[2]);
+                let modified = if pos.len() > 3 { parse_date(pos[3]) } else { DateParts::default() };
                 lists.get_mut(current_list.as_ref().expect("list op first"))
                     .expect("current list")
-                    .push(make_entry(tokens[1], false, size, modified));
+                    .push(apply_entry_flags(make_entry(pos[1], false, size, modified), &tokens));
+            }
+            "mark" => {
+                marked_paths.insert(format!("C:\\fixture\\{}", tokens[1]));
+            }
+            "dirsize" => {
+                dir_sizes.get_or_insert_with(HashMap::new).insert(format!("C:\\fixture\\{}", tokens[1]), parse_i64(tokens[2]));
+            }
+            "dirsizes" => {
+                dir_sizes.get_or_insert_with(HashMap::new);
             }
             "drive" => {
                 lists.get_mut(current_list.as_ref().expect("list op first"))
@@ -245,6 +286,16 @@ fn run_scenario(path: &Path) -> String {
             "layout" => {
                 layout.calculate(
                     width,
+                    height,
+                    matches!(tokens[1], "3pane" | "preview"),
+                    matches!(tokens[1], "3pane" | "parent"),
+                );
+            }
+            "borders" => {
+                let buffer = buffer.as_mut().expect("size op first");
+                PaneRenderer::render_borders(
+                    buffer,
+                    &layout,
                     height,
                     matches!(tokens[1], "3pane" | "preview"),
                     matches!(tokens[1], "3pane" | "parent"),
@@ -282,9 +333,9 @@ fn run_scenario(path: &Path) -> String {
                     flags.contains(&"icons"),
                     flags.contains(&"size"),
                     flags.contains(&"date"),
-                    &std::collections::HashSet::new(),
+                    &marked_paths,
                     git_statuses.as_ref(),
-                    None,
+                    dir_sizes.as_ref(),
                     flags.contains(&"drive"),
                 );
             }

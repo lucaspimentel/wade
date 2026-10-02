@@ -5,9 +5,9 @@
 The C# TUI is being ported to Rust in `src/wade-rs`, following
 `docs/rust-port-plan.md` (progress tracked there). Phases 0-9 are done:
 every C# feature is ported, and `src/wade-rs/KNOWN_DEVIATIONS.md` lists
-only accepted differences. Next: Phase 10 (full golden sweep, install
-scripts switched to the Rust binary, two weeks of daily use, then the C#
-tree is deleted). The C# tree is feature-frozen during the port; the items
+only accepted differences. Phase 10a (full golden sweep) is done. Next:
+Phase 10b (install scripts switched to the Rust binary), two weeks of daily
+use, then the C# tree is deleted. The C# tree is feature-frozen during the port; the items
 below are the C# backlog.
 
 ## Features

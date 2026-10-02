@@ -9,11 +9,6 @@ this file to be empty or fully accepted.
 None. Phase 9 closed the last temporary entries.
 
 ## Accepted (deliberate, permanent)
-- **`--version` prints the crate version (Phase 9g).** C# prints the
-  assembly informational version (`wade 1.x.y+commit`); Rust prints
-  `wade` plus the Cargo package version until the Phase 10 cutover aligns
-  the version numbers. `--help`, `--show-config`, `--cwd-file` and the
-  start-path checks match C# output byte for byte.
 - **The file-operation progress overlay is enhanced (Phase 4c).** C# shows
   only the operation label; the Rust overlay also shows the item count and
   current file name. No golden fixture covers this overlay.

@@ -1,0 +1,22 @@
+# Cloud placeholders: status-column cloud icon and dim styling, alone and
+# alongside git statuses, selected and unselected.
+size 100 20
+list main
+dir Documents 2024-01-02T03:04:00
+file report.pdf 1048576 2024-02-03T14:30:00 cloud
+file photo.jpg 2048000 2023-12-31T23:59:00 cloud
+file local.txt 42 2024-05-06T07:08:00
+endlist
+layout 3pane
+filelist center main 0 0 active icons size date
+flush
+filelist center main 1 0 active icons size date
+flush
+filelist center main 2 0 inactive icons size date
+flush
+gitstatuses
+gs "C:\fixture\local.txt" modified
+gs "C:\fixture\report.pdf" untracked
+endgitstatuses
+filelist center main 3 0 active icons size date
+flush

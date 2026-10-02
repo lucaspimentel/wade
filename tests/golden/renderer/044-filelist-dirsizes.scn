@@ -1,0 +1,24 @@
+# Inline directory sizes: computed sizes, directories still loading, and an
+# empty map where every directory is loading; selected and unselected rows.
+size 100 20
+list main
+dir alpha 2024-01-02T03:04:00
+dir beta 2024-01-02T03:04:00
+dir gamma 2024-01-02T03:04:00
+dir linked 2024-01-02T03:04:00 link=C:\target
+file readme.md 1234 2024-02-03T14:30:00
+endlist
+layout 3pane
+dirsizes
+filelist center main 0 0 active icons size date
+flush
+dirsize alpha 0
+dirsize beta 123456789
+filelist center main 1 0 active icons size date
+flush
+dirsize gamma 1099511627776
+dirsize linked 4096
+filelist center main 2 0 active icons size date
+flush
+filelist center main 4 0 inactive icons size
+flush

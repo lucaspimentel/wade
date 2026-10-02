@@ -1,0 +1,36 @@
+# Symlink, broken symlink, junction and app-exec-link entries: target
+# suffixes and styles, unselected, selected and in an inactive pane.
+size 100 20
+list main
+dir src 2024-01-02T03:04:00
+dir linked 2024-01-02T03:04:00 link=C:\target\dir
+dir Junction 2024-03-04T05:06:00 link=D:\data junction
+file notes.txt 120 2024-02-03T14:30:00 link=..\real\notes.txt
+file dead.txt 0 2024-02-03T14:30:00 link=missing.txt broken
+file wt.exe 0 2024-05-06T07:08:00 appexec=C:\Program_Files\WindowsApps\wt.exe
+file plain.md 2048 2024-05-06T07:08:00
+endlist
+# Without icons directories get a platform separator prefix, so the
+# icon-less flush uses file entries only
+list flat
+file notes.txt 120 2024-02-03T14:30:00 link=..\real\notes.txt
+file dead.txt 0 2024-02-03T14:30:00 link=missing.txt broken
+file wt.exe 0 2024-05-06T07:08:00 appexec=C:\Program_Files\WindowsApps\wt.exe
+endlist
+layout 3pane
+filelist center main 0 0 active icons size date
+flush
+filelist center main 1 0 active icons size date
+flush
+filelist center main 2 0 active icons size date
+flush
+filelist center main 3 0 active icons size date
+flush
+filelist center main 4 0 active icons size date
+flush
+filelist center main 5 0 active icons size date
+flush
+filelist left main 4 0 inactive icons
+flush
+filelist center flat 1 0 active
+flush

@@ -1,0 +1,26 @@
+# Pane border columns for each layout mode, with the file lists they separate.
+size 60 12
+list main
+dir src 2024-01-02T03:04:00
+file a.txt 1 2024-01-02T03:04:00
+endlist
+layout 3pane
+borders 3pane
+filelist left main 0 0 inactive icons
+filelist center main 1 0 active icons
+flush
+size 60 12
+layout preview
+borders preview
+filelist center main 0 0 active icons
+flush
+size 60 12
+layout parent
+borders parent
+filelist center main 0 0 active icons
+flush
+size 60 12
+layout 1pane
+borders 1pane
+filelist center main 0 0 active icons
+flush

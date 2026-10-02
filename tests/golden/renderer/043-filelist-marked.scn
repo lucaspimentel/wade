@@ -1,0 +1,28 @@
+# Marked entries alone and combined with symlink, broken symlink, cloud,
+# junction and app-exec-link kinds; selection on and off a marked row.
+size 100 20
+list main
+dir src 2024-01-02T03:04:00
+dir Junction 2024-03-04T05:06:00 link=D:\data junction
+file notes.txt 120 2024-02-03T14:30:00 link=..\real\notes.txt
+file dead.txt 0 2024-02-03T14:30:00 link=missing.txt broken
+file report.pdf 1048576 2024-02-03T14:30:00 cloud
+file wt.exe 0 2024-05-06T07:08:00 appexec=C:\Apps\wt.exe
+file plain.md 2048 2024-05-06T07:08:00
+endlist
+mark src
+mark Junction
+mark notes.txt
+mark dead.txt
+mark report.pdf
+mark wt.exe
+mark plain.md
+layout 3pane
+filelist center main 6 0 active icons size date
+flush
+filelist center main 2 0 active icons size date
+flush
+filelist center main 4 0 inactive icons size date
+flush
+filelist center main 0 0 inactive icons
+flush

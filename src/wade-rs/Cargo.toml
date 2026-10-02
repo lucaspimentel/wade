@@ -1,6 +1,6 @@
 [package]
 name = "wade"
-version = "0.1.0"
+version = "1.14.0"
 edition = "2024"
 description = "TUI file browser (Rust port of the C# Native AOT tool)"
 
