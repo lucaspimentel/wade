@@ -57,6 +57,31 @@ public class CloudPlaceholderTests
         Assert.Equal(expected, result);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void HydrateFile_ReadsExistingFile_ThrowsForMissing(bool exists)
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"wade-hydrate-{Guid.NewGuid():N}.bin");
+
+        try
+        {
+            if (exists)
+            {
+                File.WriteAllBytes(path, new byte[100_000]);
+                App.HydrateFile(path);
+            }
+            else
+            {
+                Assert.Throws<FileNotFoundException>(() => App.HydrateFile(path));
+            }
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     [Fact]
     public void IsCloudPlaceholder_DefaultsFalse()
     {

@@ -3818,10 +3818,7 @@ return items.ToArray();
         {
             try
             {
-                // Opening the file triggers Windows Cloud Files recall (download)
-                using (File.OpenRead(path))
-                {
-                }
+                HydrateFile(path);
 
                 // Refresh directory to update the cloud placeholder status
                 _directoryContents.InvalidateAll();
@@ -3832,6 +3829,16 @@ return items.ToArray();
                 ShowNotification($"Download failed: {ex.Message}", NotificationKind.Error);
             }
         });
+    }
+
+    /// <summary>
+    /// Reads the whole file so Windows Cloud Files recalls (downloads) it. OneDrive placeholders
+    /// are marked recall-on-data-access, so opening the file without reading it does not hydrate it.
+    /// </summary>
+    internal static void HydrateFile(string path)
+    {
+        using FileStream stream = File.OpenRead(path);
+        stream.CopyTo(Stream.Null);
     }
 
     private List<string> GetSelectedOrMarkedPaths(List<FileSystemEntry> entries)

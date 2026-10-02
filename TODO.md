@@ -40,13 +40,6 @@ backlog.
 - [ ] Cutover: delete `src/Wade*`, remove dual-build CI, update
   README/CLAUDE.md/CHANGELOG
 
-## Bugs
-
-### "Download cloud file" command is not working
-
-The "Download cloud file" action (action palette, shown for cloud placeholder files) does not
-download the file.
-
 ## Features
 
 ### ~~File action progress indicator~~ (Done)

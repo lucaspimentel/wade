@@ -1177,14 +1177,14 @@ impl App {
         self.execute_paste_internal(self.clipboard_paths.clone(), self.clipboard_is_cut, overwrite);
     }
 
-    /// Port of `DownloadCloudFile` (App.cs:3813-3835): opening the file
-    /// triggers the Cloud Files recall; the listing refreshes afterwards.
+    /// Port of `DownloadCloudFile` (App.cs): reading the file triggers the
+    /// Cloud Files recall; the listing refreshes afterwards.
     fn download_cloud_file(&mut self, path: String) {
         self.show_notification("Downloading\u{2026}", NotificationKind::Info);
         let sender = self.pipeline.sender();
 
         std::thread::spawn(move || {
-            let error = std::fs::File::open(&path).err().map(|err| err.to_string());
+            let error = hydrate_file(&path).err().map(|err| err.to_string());
             let _ = sender.send(InputEvent::CloudDownloadComplete(crate::input::CloudDownloadCompleteEvent { error }));
         });
     }
@@ -2041,6 +2041,15 @@ pub fn calculate_scroll(selected_index: usize, visible_height: i32, total_count:
     scroll.clamp(0, i32::try_from(total_count).unwrap_or(i32::MAX) - visible)
 }
 
+/// Reads the whole file so Windows Cloud Files recalls (downloads) it.
+/// OneDrive placeholders are recall-on-data-access: opening the file
+/// without reading it does not hydrate it.
+pub(crate) fn hydrate_file(path: &str) -> std::io::Result<()> {
+    let mut file = std::fs::File::open(path)?;
+    std::io::copy(&mut file, &mut std::io::sink())?;
+    Ok(())
+}
+
 fn file_name_of(path: &str) -> String {
     Path::new(path)
         .file_name()
@@ -2421,6 +2430,17 @@ mod tests {
         assert_eq!(notification_text(&app), "Download complete");
         app.handle_cloud_download_complete(crate::input::CloudDownloadCompleteEvent { error: Some("boom".into()) });
         assert_eq!(notification_text(&app), "Download failed: boom");
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn hydrate_file_reads_existing_and_fails_for_missing() {
+        let root = test_root("hydrate");
+        let file = root.join("data.bin");
+        std::fs::write(&file, vec![7u8; 100_000]).unwrap();
+
+        assert!(super::hydrate_file(&file.to_string_lossy()).is_ok());
+        assert!(super::hydrate_file(&root.join("missing.bin").to_string_lossy()).is_err());
         std::fs::remove_dir_all(&root).unwrap();
     }
 
