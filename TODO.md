@@ -15,13 +15,30 @@ backlog.
 - [ ] Phase 10b: switch `install-local.ps1` and `release.yml`/`install-remote.ps1`
   to the Rust binary (meanwhile `install-local-rust.ps1` installs the Rust
   build for the trial)
-- [ ] Manual Windows Terminal checks:
+- [ ] Run the test suites natively on Windows (the port was developed on
+  Linux with Wine):
+  - `cargo test` in `src/wade-rs`, `dotnet test Wade.slnx`
+  - confirm the three Wine-only failures pass: `copy_symlink_preserves_link`,
+    `delete_symlink_removes_link_not_target`, `real_git_status_round_trip`
+    (symlink tests need Developer Mode or an elevated shell)
+  - confirm the Windows-only config-dialog goldens (renderer 015, 016) pass
+    in Rust
+- [ ] Manual Windows Terminal checks (never run on real Windows):
   - junction, app alias and OneDrive entries
-  - SSD inline directory sizes
-  - copy/paste with Explorer
+  - SSD/HDD detection and SSD inline directory sizes
+  - copy/paste with Explorer (`CF_HDROP`, including cut)
   - open with default app (ShellExecuteEx)
-  - exe/docx/nupkg/msi/mp4 metadata
+  - delete to the Recycle Bin
+  - exe (version info)/docx/nupkg/msi/mp4 metadata
   - the `wd` wrapper (`--cwd-file`)
+  - keyboard, mouse, window resize and bracketed paste
+  - Sixel image previews and terminal capability detection
+  - filesystem auto-refresh (create/delete/rename in the open folder)
+- [ ] macOS is untested (CI covers only Linux and Windows): clipboard via
+  `osascript`, open via `open`, `notify` file watcher, drive detection
+- [ ] Delete the merged remote branches (`phase-9a` to `phase-9g`, `phase-10a`,
+  `install-local-rust`, `todo-*`, `palette-settings-label`, and older
+  phase branches); the session proxy could not delete them
 - [ ] Two weeks of daily use on the Rust binary
 - [ ] Cutover: delete `src/Wade*`, remove dual-build CI, update
   README/CLAUDE.md/CHANGELOG
