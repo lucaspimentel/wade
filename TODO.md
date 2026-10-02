@@ -81,6 +81,13 @@ action palette). Add a row to `HelpOverlay` (C#) / `help_overlay` (Rust) and upd
 - `ScoreWithFileNamePriority` score-only overload is now truly zero-alloc (was delegating to the out overload, silently allocating and discarding).
 - Added `FuzzyScorerBenchmarks` to `Wade.Benchmarks` confirming the reduction.
 
+### File finder — remember search terms
+
+The Ctrl+F file finder starts with an empty query each time it opens. Remember previous search
+terms: restore the last query when the finder reopens and/or keep a navigable history (details to
+decide: per session vs persisted across runs, history size, and the history key binding, since
+Up/Down already move the result selection).
+
 ### File finder — fzf-style query syntax
 
 Extend `SearchQuery.Parse` (in `src/Wade.Search/SearchQuery.cs`) with the rest of fzf's query operators. The `'foo` exact-substring prefix is already implemented; the parser type is the seam for the rest.
