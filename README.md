@@ -92,7 +92,13 @@ Requires [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 ./install-local.ps1
 ```
 
-Both scripts install to `~/.local/bin/wade`. Ensure that directory is in your `PATH`.
+To try the Rust port (`src/wade-rs`) instead, which requires the [Rust toolchain](https://rustup.rs):
+
+```powershell
+./install-local-rust.ps1
+```
+
+All scripts install to `~/.local/bin/wade`. Ensure that directory is in your `PATH`.
 
 ## Usage
 

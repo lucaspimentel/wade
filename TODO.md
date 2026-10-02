@@ -13,7 +13,8 @@ backlog.
   renderer scenarios 041-045 for link/junction/app-alias/cloud/marked rows,
   inline directory sizes and pane borders; `--version` matches C#)
 - [ ] Phase 10b: switch `install-local.ps1` and `release.yml`/`install-remote.ps1`
-  to the Rust binary
+  to the Rust binary (meanwhile `install-local-rust.ps1` installs the Rust
+  build for the trial)
 - [ ] Manual Windows Terminal checks:
   - junction, app alias and OneDrive entries
   - SSD inline directory sizes

@@ -1,0 +1,193 @@
+#!/usr/bin/env -S pwsh -NoProfile -File
+#Requires -Version 7.0
+
+<#
+.SYNOPSIS
+    Builds and installs the Rust port of wade from source.
+
+.DESCRIPTION
+    This script builds the Rust port of the wade TUI file browser
+    (src/wade-rs) and installs it to ~/.local/bin/wade (or
+    ~/.local/bin/wade.exe on Windows), replacing any existing install.
+    Run ./install-local.ps1 to switch back to the C# build.
+
+    Requirements:
+    - PowerShell 7.0+
+    - Rust toolchain (cargo)
+
+.PARAMETER Force
+    Skip confirmation prompts and overwrite existing installation.
+
+.PARAMETER Update
+    Pull the latest changes from the remote before building.
+
+.EXAMPLE
+    ./install-local-rust.ps1
+
+    Builds and installs wade to ~/.local/bin
+
+.EXAMPLE
+    ./install-local-rust.ps1 -Force
+
+    Builds and installs, overwriting any existing installation.
+
+.EXAMPLE
+    ./install-local-rust.ps1 -Update -Force
+
+    Pull latest changes, then build and install.
+#>
+
+[CmdletBinding()]
+param(
+    [switch]$Force,
+
+    [switch]$Update
+)
+
+$ErrorActionPreference = 'Stop'
+
+$ProjectName = 'wade'
+$ManifestFile = 'src/wade-rs/Cargo.toml'
+
+# Check if the local clone is up-to-date with remote
+Write-Host "Checking if repository is up-to-date..." -ForegroundColor Cyan
+try {
+    Push-Location $PSScriptRoot
+    $branch = & git rev-parse --abbrev-ref HEAD 2>&1
+    & git fetch origin $branch --quiet 2>&1
+    $local = & git rev-parse HEAD 2>&1
+    $remote = & git rev-parse "origin/$branch" 2>&1
+
+    if ($local -ne $remote) {
+        $behind = & git rev-list --count "HEAD..origin/$branch" 2>&1
+        $ahead = & git rev-list --count "origin/$branch..HEAD" 2>&1
+        $status = @()
+        if ([int]$behind -gt 0) { $status += "$behind commit(s) behind" }
+        if ([int]$ahead -gt 0) { $status += "$ahead commit(s) ahead of" }
+        Write-Host "Warning: Local branch '$branch' is $($status -join ' and ') origin/$branch." -ForegroundColor Yellow
+
+        if ($Update) {
+            Write-Host "Pulling latest changes..." -ForegroundColor Cyan
+            & git pull --quiet 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "Error: git pull failed. Resolve conflicts and try again." -ForegroundColor Red
+                exit 1
+            }
+            Write-Host "Repository updated successfully." -ForegroundColor Cyan
+        } elseif (-not $Force) {
+            $response = Read-Host "Continue anyway? (y/N)"
+            if ($response -notmatch '^[Yy]') {
+                Write-Host "Installation cancelled. Run 'git pull' or use -Update to update." -ForegroundColor Cyan
+                exit 0
+            }
+        }
+    } else {
+        Write-Host "Repository is up-to-date with origin/$branch." -ForegroundColor Cyan
+    }
+} catch {
+    Write-Host "Warning: Could not check remote status: $_" -ForegroundColor Yellow
+    Write-Host "Continuing with installation..." -ForegroundColor Yellow
+} finally {
+    Pop-Location
+}
+
+$exeName = if ($IsWindows) { "$ProjectName.exe" } else { $ProjectName }
+$installDir = Join-Path $HOME '.local/bin'
+$installPath = Join-Path $installDir $exeName
+
+# Check for existing installation before building
+$AlreadyInstalled = Test-Path $installPath
+if ($AlreadyInstalled -and -not $Force) {
+    Write-Host "$ProjectName is already installed at: $installPath" -ForegroundColor Yellow
+    $response = Read-Host "Overwrite existing installation? (y/N)"
+    if ($response -notmatch '^[Yy]') {
+        Write-Host "Installation cancelled." -ForegroundColor Cyan
+        exit 0
+    }
+}
+
+# Check for the Rust toolchain
+try {
+    $cargoVersion = & cargo --version 2>&1
+    Write-Host "Cargo version: $cargoVersion" -ForegroundColor Cyan
+} catch {
+    Write-Host "Error: cargo not found. Please install the Rust toolchain." -ForegroundColor Red
+    Write-Host "Download from: https://rustup.rs" -ForegroundColor Cyan
+    exit 1
+}
+
+# Build the project
+Write-Host "Building $ProjectName..." -ForegroundColor Cyan
+$manifestPath = Join-Path $PSScriptRoot $ManifestFile
+$releasePath = Join-Path $PSScriptRoot 'src/wade-rs/target/release'
+
+try {
+    cargo build --release --locked --manifest-path $manifestPath
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Build failed with exit code $LASTEXITCODE"
+    }
+} catch {
+    Write-Host "Error: Failed to build project: $_" -ForegroundColor Red
+    exit 1
+}
+
+# Verify executable exists
+$exePath = Join-Path $releasePath $exeName
+
+if (-not (Test-Path $exePath)) {
+    Write-Host "Error: Build succeeded but executable not found at: $exePath" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "Build successful!" -ForegroundColor Green
+
+# Remove old installation if present
+if ($AlreadyInstalled) {
+    Write-Host "Removing existing installation..." -ForegroundColor Yellow
+    Remove-Item $installPath -Force
+}
+
+# Create installation directory if it doesn't exist
+if (-not (Test-Path $installDir)) {
+    Write-Host "Creating installation directory: $installDir" -ForegroundColor Cyan
+    New-Item -ItemType Directory -Path $installDir -Force | Out-Null
+}
+
+# Copy executable to installation directory
+Write-Host "Installing to: $installPath" -ForegroundColor Cyan
+Copy-Item $exePath $installPath -Force
+
+# Set executable permissions on Unix systems
+if (-not $IsWindows) {
+    chmod +x $installPath
+}
+
+Write-Host "`nInstallation complete!" -ForegroundColor Green
+& $installPath --version
+Write-Host "`nTo use $ProjectName, ensure ~/.local/bin is in your PATH:" -ForegroundColor Cyan
+
+if ($IsWindows) {
+    Write-Host @"
+
+Add to your PowerShell profile ($PROFILE):
+    `$env:PATH = "`$HOME\.local\bin;`$env:PATH"
+
+Then restart your shell or run:
+    . `$PROFILE
+
+"@ -ForegroundColor White
+} else {
+    Write-Host @"
+
+Add to your shell's rc file (~/.bashrc, ~/.zshrc, etc.):
+    export PATH="`$HOME/.local/bin:`$PATH"
+
+Then restart your shell or source the file.
+
+"@ -ForegroundColor White
+}
+
+Write-Host "Usage:" -ForegroundColor Cyan
+Write-Host "    wade              # open in current directory" -ForegroundColor White
+Write-Host "    wade C:\Users     # open in a specific directory" -ForegroundColor White
