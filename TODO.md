@@ -3,12 +3,27 @@
 ## Rust port (src/wade-rs)
 
 The C# TUI is being ported to Rust in `src/wade-rs`, following
-`docs/rust-port-plan.md` (progress tracked there). Phases 0-9 are done:
-every C# feature is ported, and `src/wade-rs/KNOWN_DEVIATIONS.md` lists
-only accepted differences. Phase 10a (full golden sweep) is done. Next:
-Phase 10b (install scripts switched to the Rust binary), two weeks of daily
-use, then the C# tree is deleted. The C# tree is feature-frozen during the port; the items
-below are the C# backlog.
+`docs/rust-port-plan.md` (progress tracked there). The C# tree is
+feature-frozen during the port; the items below the port checklist are the
+backlog.
+
+- [x] Phases 0-9: every C# feature ported; `src/wade-rs/KNOWN_DEVIATIONS.md`
+  lists only accepted differences
+- [x] Phase 10a: golden sweep (all goldens regenerated from C# with no diff;
+  renderer scenarios 041-045 for link/junction/app-alias/cloud/marked rows,
+  inline directory sizes and pane borders; `--version` matches C#)
+- [ ] Phase 10b: switch `install-local.ps1` and `release.yml`/`install-remote.ps1`
+  to the Rust binary
+- [ ] Manual Windows Terminal checks:
+  - junction, app alias and OneDrive entries
+  - SSD inline directory sizes
+  - copy/paste with Explorer
+  - open with default app (ShellExecuteEx)
+  - exe/docx/nupkg/msi/mp4 metadata
+  - the `wd` wrapper (`--cwd-file`)
+- [ ] Two weeks of daily use on the Rust binary
+- [ ] Cutover: delete `src/Wade*`, remove dual-build CI, update
+  README/CLAUDE.md/CHANGELOG
 
 ## Features
 
@@ -16,7 +31,7 @@ below are the C# backlog.
 
 Progress dialog with file count, progress bar, current filename, and Esc to cancel. Copy, move, and delete operations run in background via `FileOperationRunner`.
 
-### System clipboard — Unix/macOS file interop
+### ~~System clipboard — Unix/macOS file interop~~ (Done in Rust)
 
 Windows file clipboard interop is implemented in both versions. The Rust port also implements Linux (`x-special/gnome-copied-files` / `text/uri-list` via `wl-copy`/`xclip`) and macOS (NSPasteboard via `osascript`); C# remains Windows-only.
 
@@ -25,8 +40,8 @@ Windows file clipboard interop is implemented in both versions. The Rust port al
 #### Backlog
 
 - **Font files** (`.ttf`, `.otf`, `.woff2`) — font family, style, weight, glyph count. Parse OpenType/TrueType `name` and `head` tables.
-- **OpenDocument** (`.odt`, `.ods`, `.odp`) — title, author, dates, page/sheet count. Extract from `meta.xml` inside the ODF zip archive (similar to Office OOXML approach). These are zip-based; **benefits from** "Support multiple metadata providers per file" to show document metadata alongside archive metadata.
-- **EPUB** (`.epub`) — title, author, publisher, language, identifier. Extract from `content.opf` metadata inside the zip archive. Also zip-based; **benefits from** "Support multiple metadata providers per file" for the same reason.
+- **OpenDocument** (`.odt`, `.ods`, `.odp`) — title, author, dates, page/sheet count. Extract from `meta.xml` inside the ODF zip archive (similar to Office OOXML approach).
+- **EPUB** (`.epub`) — title, author, publisher, language, identifier. Extract from `content.opf` metadata inside the zip archive.
 - ~~**Windows shortcuts** (`.lnk`)~~ (Done) — parser source copied from [lucaspimentel/windows-shortcut-parser](https://github.com/lucaspimentel/windows-shortcut-parser) into `src/Wade/LnkParser/`. `ShortcutMetadataProvider` extracts target path, working dir, arguments, description, icon, hotkey, and volume label, surfaced in the metadata header above the preview pane and in the properties overlay.
 
 ### ~~Zip — other archive formats~~ (Done)
@@ -99,7 +114,7 @@ Research and implement image previews for Office Open XML formats (`.docx`, `.xl
   - Dedicated icon (`nf-md-application_outline`). Target shown with " → " suffix in file list.
   - Windows-only.
 
-### Text input improvements
+### ~~Text input improvements~~ (Done)
 
 - [x] Support paste in text input fields (file finder, filter, go-to-path, rename dialog). Unix: bracketed paste mode (`ESC[200~` ... `ESC[201~`). Windows: heuristic batch detection from `ReadConsoleInput`.
 - [x] Support word-navigation shortcuts in text input fields: `Ctrl+Left`/`Ctrl+Right` to skip words, `Ctrl+Backspace` to delete previous word.
