@@ -214,7 +214,7 @@ Then use `wd` instead of `wade` to browse. Press `q` to quit and cd to the last 
 | Ctrl+L | Create symlink to selected item |
 | p | Change preview (when multiple preview modes available) |
 | i | Properties |
-| , | Configuration |
+| , | Settings (Configuration) |
 | Ctrl+F | Search / Find file |
 | Ctrl+P / Ctrl+K | Action palette |
 | ? | Show help |

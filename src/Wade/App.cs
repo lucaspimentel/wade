@@ -2978,7 +2978,7 @@ internal sealed class App
         items.Add(new ActionMenuItem { Label = "Search / Find file", Shortcut = "Ctrl+F", Action = AppAction.ShowFileFinder });
         items.Add(new ActionMenuItem { Label = "Filter", Shortcut = "/", Action = AppAction.Search });
         items.Add(new ActionMenuItem { Label = "Open terminal here", Shortcut = "Ctrl+T", Action = AppAction.OpenTerminal });
-        items.Add(new ActionMenuItem { Label = "Configuration", Shortcut = ",", Action = AppAction.ShowConfig });
+        items.Add(new ActionMenuItem { Label = "Settings (Configuration)", Shortcut = ",", Action = AppAction.ShowConfig });
         items.Add(new ActionMenuItem { Label = "Help", Shortcut = "?", Action = AppAction.ShowHelp });
         items.Add(new ActionMenuItem { Label = "Refresh", Shortcut = "Ctrl+R", Action = AppAction.Refresh });
 

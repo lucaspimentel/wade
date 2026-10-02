@@ -1125,7 +1125,7 @@ impl App {
             ActionMenuItem::new("Search / Find file", "Ctrl+F", AppAction::ShowFileFinder),
             ActionMenuItem::new("Filter", "/", AppAction::Search),
             ActionMenuItem::new("Open terminal here", "Ctrl+T", AppAction::OpenTerminal),
-            ActionMenuItem::new("Configuration", ",", AppAction::ShowConfig),
+            ActionMenuItem::new("Settings (Configuration)", ",", AppAction::ShowConfig),
             ActionMenuItem::new("Help", "?", AppAction::ShowHelp),
             ActionMenuItem::new("Refresh", "Ctrl+R", AppAction::Refresh),
         ]);
