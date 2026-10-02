@@ -219,7 +219,7 @@ internal sealed class DirectoryContents
     internal static bool IsCloudPlaceholderAttributes(int attributeBits)
     {
         const int RecallOnDataAccess = 0x00400000;
-        const int RecallOnOpen = 0x00004000;
+        const int RecallOnOpen = 0x00040000;
         return (attributeBits & (RecallOnDataAccess | RecallOnOpen)) != 0;
     }
 

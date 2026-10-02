@@ -473,7 +473,7 @@ fn utf16_until_nul(buf: &[u16]) -> String {
 #[must_use]
 pub const fn is_cloud_placeholder_attributes(attribute_bits: u32) -> bool {
     const RECALL_ON_DATA_ACCESS: u32 = 0x0040_0000;
-    const RECALL_ON_OPEN: u32 = 0x0000_4000;
+    const RECALL_ON_OPEN: u32 = 0x0004_0000;
     attribute_bits & (RECALL_ON_DATA_ACCESS | RECALL_ON_OPEN) != 0
 }
 
@@ -505,8 +505,9 @@ mod tests {
     fn is_cloud_placeholder_attributes_detects_recall_flags() {
         for (bits, expected) in [
             (0x0040_0000, true),
-            (0x0000_4000, true),
-            (0x0040_4000, true),
+            (0x0004_0000, true),
+            (0x0044_0000, true),
+            (0x0000_4000, false), // FILE_ATTRIBUTE_ENCRYPTED, not a placeholder
             (0x0000_0020, false),
             (0x0000_0000, false),
         ] {

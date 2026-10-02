@@ -47,8 +47,9 @@ public class CloudPlaceholderTests
 
     [Theory]
     [InlineData(0x00400000, true)] // FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS
-    [InlineData(0x00004000, true)] // FILE_ATTRIBUTE_RECALL_ON_OPEN
-    [InlineData(0x00404000, true)] // both flags
+    [InlineData(0x00040000, true)] // FILE_ATTRIBUTE_RECALL_ON_OPEN
+    [InlineData(0x00440000, true)] // both flags
+    [InlineData(0x00004000, false)] // FILE_ATTRIBUTE_ENCRYPTED, not a placeholder
     [InlineData(0x00000020, false)] // FILE_ATTRIBUTE_ARCHIVE only
     [InlineData(0x00000000, false)] // no flags
     public void CheckIsCloudPlaceholder_DetectsCorrectly(int attributeBits, bool expected)
