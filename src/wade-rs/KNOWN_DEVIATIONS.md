@@ -136,3 +136,14 @@ None. Phase 9 closed the last temporary entries.
 - **The finder renders below 78 columns (Phase 5).** C#
   `Math.Clamp(width * 3 / 4, 70, width - 8)` throws when `width - 8 < 70`,
   so Ctrl+F crashes on narrow terminals; Rust lets the upper bound win.
+- **Sort ties and extension case folding differ (Phase 10).** Sorting by
+  size or modified time keeps entries with an equal key in name order (a
+  stable sort); C# uses an unstable introsort, so its order among exact ties
+  is arbitrary. Sorting by extension compares ASCII-lowercased extensions;
+  C# compares them ordinal-ignore-case (uppercased), so extensions that
+  differ at a character between `Z` and `a` (such as `_`) order differently.
+  Found by diffing both implementations over about 3,000 real Windows
+  directories: every other ordering matched.
+- **`--show-config` ends with a bare line feed (Phase 10).** C# writes the
+  JSON with `Console.WriteLine`, which ends with CRLF on Windows; Rust ends
+  with LF on every platform. The JSON itself is identical.

@@ -20,17 +20,28 @@ backlog.
   and `dotnet test Wade.slnx` (1634 + 85) pass, including the three
   Wine-only symlink/git tests; `renderer_frames` (incl. config-dialog
   goldens 015, 016) passes
-- [ ] Manual Windows Terminal checks (never run on real Windows):
-  - junction, app alias and OneDrive entries
-  - SSD/HDD detection and SSD inline directory sizes
-  - copy/paste with Explorer (`CF_HDROP`, including cut)
-  - open with default app (ShellExecuteEx)
-  - delete to the Recycle Bin
-  - exe (version info)/docx/nupkg/msi/mp4 metadata
+- [x] Native Windows verification of the library code (no TUI): junction, app
+  alias and OneDrive detection, SSD detection, exe/msi/docx/nupkg/mp4
+  metadata, clipboard round trip with PowerShell/WinForms (copy and cut),
+  Recycle Bin delete, ShellExecuteEx, the file watcher, symlinks, junctions,
+  system/hidden filtering on `C:\`, git status with CRLF, long and UNC
+  paths, `install-local-rust.ps1`, config parity (`--show-config` on 8 config
+  files), and a C# vs Rust diff of listings and sort orders over about 3,000
+  real directories. Fixed: directory-symlink delete, relative symlinks shown
+  as broken, copying directory links with links not preserved, sort by
+  modified time ignoring seconds, and the cloud download and
+  `RECALL_ON_OPEN` bugs
+- [ ] Manual Windows Terminal checks (need a real console; none are
+  automated):
   - the `wd` wrapper (`--cwd-file`)
   - keyboard, mouse, window resize and bracketed paste
   - Sixel image previews and terminal capability detection
-  - filesystem auto-refresh (create/delete/rename in the open folder)
+  - "Download cloud file" from the action palette on a OneDrive placeholder
+  - paste into Explorer after copy/cut in wade, and copy/cut from Explorer
+  - SSD inline directory sizes and the drive list on screen
+  - filesystem auto-refresh on screen
+- [ ] Optional: a ConPTY smoke harness (launch wade, send keys, read the
+  screen) to automate the checks above
 - [ ] macOS is untested (CI covers only Linux and Windows): clipboard via
   `osascript`, open via `open`, `notify` file watcher, drive detection
 - [ ] Delete the merged remote branches (`phase-9a` to `phase-9g`, `phase-10a`,
