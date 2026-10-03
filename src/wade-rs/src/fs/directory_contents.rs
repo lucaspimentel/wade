@@ -144,7 +144,10 @@ impl DirectoryContents {
             return cached.clone();
         }
 
-        let entries = load_entries(path, self.show_hidden_files, self.show_system_files, self.dir_sizes.as_ref());
+        let mut entries = load_entries(path, self.show_hidden_files, self.show_system_files, self.dir_sizes.as_ref());
+        // C# LoadEntries sorts with the instance's SortMode/SortAscending;
+        // load_entries sorts by name, so ties keep name order (stable sort)
+        sort_entries(&mut entries, self.sort_mode, self.sort_ascending);
         self.cache.insert(path.to_string(), entries.clone());
         entries
     }
@@ -578,6 +581,32 @@ mod tests {
         sort_entries(&mut list, SortMode::Modified, true);
         let names: Vec<&str> = list.iter().map(|e| e.name.as_str()).collect();
         assert_eq!(names, ["c", "b", "a"]);
+    }
+
+    #[test]
+    fn get_entries_applies_sort_mode_and_direction() {
+        let root = std::env::temp_dir().join(format!("wade-getsort-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("dir")).unwrap();
+        std::fs::write(root.join("a.txt"), vec![0u8; 10]).unwrap();
+        std::fs::write(root.join("b.md"), vec![0u8; 1000]).unwrap();
+        std::fs::write(root.join("c.rs"), vec![0u8; 100]).unwrap();
+        let path = root.to_string_lossy().into_owned();
+        let mut contents = DirectoryContents::new();
+        let mut names = |mode: SortMode, ascending: bool| -> Vec<String> {
+            contents.sort_mode = mode;
+            contents.sort_ascending = ascending;
+            contents.invalidate_all();
+            contents.get_entries(&path).into_iter().map(|e| e.name).collect()
+        };
+
+        // Directories stay first in every mode and direction
+        assert_eq!(names(SortMode::Name, true), ["dir", "a.txt", "b.md", "c.rs"]);
+        assert_eq!(names(SortMode::Name, false), ["dir", "c.rs", "b.md", "a.txt"]);
+        assert_eq!(names(SortMode::Size, true), ["dir", "a.txt", "c.rs", "b.md"]);
+        assert_eq!(names(SortMode::Size, false), ["dir", "b.md", "c.rs", "a.txt"]);
+        assert_eq!(names(SortMode::Extension, true), ["dir", "b.md", "c.rs", "a.txt"]);
+        std::fs::remove_dir_all(&root).unwrap();
     }
 
     #[test]

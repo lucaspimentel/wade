@@ -592,7 +592,7 @@ impl App {
                     SortMode::Name => SortMode::Modified,
                     SortMode::Modified => SortMode::Size,
                     SortMode::Size => SortMode::Extension,
-                    other => other,
+                    SortMode::Extension => SortMode::Name,
                 };
                 self.directory_contents.sort_mode = self.config.sort_mode;
                 self.directory_contents.invalidate_all();
@@ -2183,6 +2183,22 @@ mod tests {
         });
         app.current_path = root.to_string_lossy().into_owned();
         app
+    }
+
+    #[test]
+    fn cycle_sort_mode_wraps_back_to_name() {
+        use crate::fs::directory_contents::SortMode;
+
+        let mut app = App::new(AppConfig { git_status_enabled: false, ..AppConfig::default() });
+        let mut seen = Vec::new();
+        for _ in 0..4 {
+            app.dispatch(AppAction::CycleSortMode);
+            seen.push(app.directory_contents.sort_mode);
+        }
+
+        assert_eq!(seen, [SortMode::Modified, SortMode::Size, SortMode::Extension, SortMode::Name]);
+        app.dispatch(AppAction::ToggleSortDirection);
+        assert!(!app.directory_contents.sort_ascending);
     }
 
     fn changed(app: &App, full_refresh: bool) -> FileSystemChangedEvent {
