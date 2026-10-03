@@ -398,7 +398,9 @@ internal static class GitUtils
             var psi = new ProcessStartInfo
             {
                 FileName = "git",
-                Arguments = "-c core.quotepath=false status --porcelain=v1",
+                // --no-optional-locks: a background status must not take
+                // .git/index.lock, or a stage/commit started meanwhile fails
+                Arguments = "--no-optional-locks -c core.quotepath=false status --porcelain=v1",
                 WorkingDirectory = repoRoot,
                 RedirectStandardOutput = true,
                 StandardOutputEncoding = Encoding.UTF8,

@@ -228,7 +228,9 @@ pub fn query_status(repo_root: &str, cancel: &CancelToken) -> Option<HashMap<Str
 
     match run_git_capturing(
         repo_root,
-        &["-c", "core.quotepath=false", "status", "--porcelain=v1"],
+        // --no-optional-locks: a background status must not take
+        // .git/index.lock, or a stage/commit started meanwhile fails
+        &["--no-optional-locks", "-c", "core.quotepath=false", "status", "--porcelain=v1"],
         cancel,
         LOCAL_TIMEOUT_MS,
     ) {
