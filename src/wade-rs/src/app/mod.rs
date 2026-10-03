@@ -609,6 +609,8 @@ impl App {
                 self.parent_pane_enabled = !self.parent_pane_enabled;
                 self.layout.calculate(self.last_width, self.last_height, self.preview_pane_enabled, self.parent_pane_enabled);
                 clear_screen();
+                // C# ForceFullRedraw: the cleared screen must be repainted fully
+                self.request_full_redraw = true;
             }
             A::TogglePreviewPane => {
                 self.preview_pane_enabled = !self.preview_pane_enabled;
@@ -2353,6 +2355,13 @@ mod tests {
         app.handle_event(InputEvent::Mouse(MouseEvent { button: MouseButton::Left, row: clicked_row, col: app.layout.center_pane.left + 2, is_release: false }));
         assert_eq!(app.get_visible_entries()[app.selected_index()].name, drawn);
         std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn toggling_the_parent_pane_requests_a_full_redraw() {
+        let mut app = App::new(AppConfig { git_status_enabled: false, ..AppConfig::default() });
+        app.dispatch(AppAction::ToggleParentPane);
+        assert!(app.request_full_redraw);
     }
 
     fn changed(app: &App, full_refresh: bool) -> FileSystemChangedEvent {
