@@ -292,6 +292,7 @@ mod tests {
         assert_eq!(map_key(&keyc(ConsoleKey::K, 'k', false, true)), AppAction::ShowActionPalette);
         assert_eq!(map_key(&keyc(ConsoleKey::G, 'g', false, true)), AppAction::GoToPath);
         assert_eq!(map_key(&keyc(ConsoleKey::R, 'r', false, true)), AppAction::Refresh);
+        assert_eq!(map_key(&make_key(ConsoleKey::F5, 0, false, false, false)), AppAction::Refresh);
         assert_eq!(map_key(&keyc(ConsoleKey::T, 't', false, true)), AppAction::OpenTerminal);
         assert_eq!(map_key(&keyc(ConsoleKey::L, 'l', false, true)), AppAction::CreateSymlink);
         assert_eq!(map_key(&keyc(ConsoleKey::F, 'f', false, true)), AppAction::ShowFileFinder);

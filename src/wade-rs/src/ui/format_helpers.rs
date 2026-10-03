@@ -192,5 +192,78 @@ mod tests {
         assert_eq!(format_size(&mut buf, 1_572_864), 6);
         assert_eq!(&buf[..6], &['1', '.', '5', ' ', 'M', 'B']);
     }
-}
 
+    // Port of the rest of FormatHelpersTests.cs
+
+    #[test]
+    fn format_size_string_covers_bytes_to_gigabytes() {
+        for (bytes, expected) in [
+            (0, "0 B"),
+            (512, "512 B"),
+            (1023, "1023 B"),
+            (1024, "1.0 KB"),
+            (1536, "1.5 KB"),
+            (1_048_576, "1.0 MB"),
+            (1_572_864, "1.5 MB"),
+            (1_073_741_824, "1.0 GB"),
+            (1_610_612_736, "1.5 GB"),
+        ] {
+            assert_eq!(format_size_string(bytes), expected, "{bytes}");
+        }
+    }
+
+    fn date_text(max_width: usize) -> String {
+        let parts = DateParts { year: 2025, month: 3, day: 6, hour: 14, minute: 30, ..DateParts::default() };
+        let mut buf = ['\0'; 32];
+        let len = format_date(&mut buf, parts, max_width);
+        buf[..len].iter().collect()
+    }
+
+    #[test]
+    fn format_date_picks_the_form_that_fits() {
+        assert_eq!(date_text(19), "2025-03-06 02:30 PM");
+        assert_eq!(date_text(10), "2025-03-06");
+        assert_eq!(date_text(6), "Mar 06");
+        assert_eq!(date_text(5), "", "too narrow");
+    }
+
+    fn bar(fraction: f64, width: usize) -> (PercentBarResult, String) {
+        let mut buf = ['\0'; 32];
+        let result = format_percent_bar(&mut buf, fraction, width);
+        let text = buf[..result.length].iter().collect();
+        (result, text)
+    }
+
+    #[test]
+    fn format_percent_bar_fills_and_centers_the_label() {
+        let full = '\u{2588}';
+        let empty = '\u{2591}';
+        let cells = |n: usize, c: char| -> String { std::iter::repeat_n(c, n).collect() };
+        for (fraction, width, filled, expected) in [
+            (0.0, 10, 0, format!("{}0%{}", cells(4, empty), cells(4, empty))),
+            (1.0, 10, 10, format!("{}100%{}", cells(3, full), cells(3, full))),
+            (0.75, 20, 15, format!("{}75%{}{}", cells(8, full), cells(4, full), cells(5, empty))),
+            (0.5, 10, 5, format!("{}50%{}", cells(3, full), cells(4, empty))),
+            (0.3, 10, 3, format!("{}30%{}", cells(3, full), cells(4, empty))),
+        ] {
+            let (result, text) = bar(fraction, width);
+            assert_eq!((result.length, result.filled_count, text.as_str()), (width, filled, expected.as_str()), "{fraction}");
+        }
+
+        let (result, _) = bar(0.5, 10);
+        assert_eq!((result.label_start, result.label_length), (3, 3), "\"50%\" centered");
+    }
+
+    #[test]
+    fn format_percent_bar_clamps_and_rejects_a_small_buffer() {
+        let (over, over_text) = bar(1.5, 5);
+        assert_eq!((over.length, over.filled_count), (5, 5));
+        assert!(over_text.contains("100%"), "{over_text}");
+        let (under, under_text) = bar(-0.5, 5);
+        assert_eq!((under.length, under.filled_count), (5, 0));
+        assert!(under_text.contains("0%") && !under_text.contains('-'), "{under_text}");
+
+        let mut small = ['\0'; 3];
+        assert_eq!(format_percent_bar(&mut small, 0.5, 5).length, 0);
+    }
+}

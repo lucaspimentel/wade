@@ -135,3 +135,66 @@ pub fn run(file_name: &str, args: &[&str], timeout_ms: u64, cancel: &crate::inpu
     status.filter(std::process::ExitStatus::success)?;
     Some(String::from_utf8_lossy(&output).into_owned())
 }
+
+#[cfg(test)]
+mod tests {
+    //! Ports of CliToolHintsTests.cs and CliToolTests.cs.
+
+    use super::{get_hint, is_available, run};
+    use crate::input::CancelToken;
+
+    #[test]
+    fn files_without_tool_needs_get_no_hint() {
+        for name in ["document.txt", "Program.cs", "file.xyz123", "README.md"] {
+            assert_eq!(get_hint(name), None, "{name}");
+        }
+    }
+
+    #[test]
+    fn pdf_and_media_hints_follow_tool_availability() {
+        let pdf_tools = is_available("pdftopng", None, false) && is_available("pdfinfo", Some("-v"), false);
+        assert_eq!(get_hint("document.pdf").is_none(), pdf_tools);
+
+        let media_tools = is_available("ffprobe", Some("-version"), true) || is_available("mediainfo", Some("--version"), false);
+        assert_eq!(get_hint("video.mp4").is_none(), media_tools);
+        assert_eq!(get_hint("VIDEO.MP4").is_none(), media_tools, "extension case is ignored");
+    }
+
+    #[test]
+    fn availability_is_cached_and_missing_tools_are_unavailable() {
+        assert_eq!(is_available("git", Some("--version"), true), is_available("git", Some("--version"), true));
+        assert!(!is_available("wade_nonexistent_tool_xyz", None, false));
+    }
+
+    #[test]
+    fn run_returns_output_or_none() {
+        let cancel = CancelToken::new();
+        assert_eq!(run("wade_nonexistent_tool_xyz", &["--version"], 5000, &cancel), None);
+
+        if is_available("git", Some("--version"), true) {
+            let output = run("git", &["--version"], 5000, &cancel).expect("git output");
+            assert!(output.contains("git version"));
+
+            let cancelled = CancelToken::new();
+            cancelled.cancel();
+            assert_eq!(run("git", &["--version"], 5000, &cancelled), None, "already cancelled");
+        }
+    }
+
+    #[test]
+    fn cancelling_a_running_tool_returns_quickly() {
+        let (file_name, args): (&str, &[&str]) = if cfg!(windows) { ("ping", &["-n", "100", "localhost"]) } else { ("sleep", &["60"]) };
+        let cancel = CancelToken::new();
+        let canceller = cancel.clone();
+        let timer = std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(500));
+            canceller.cancel();
+        });
+
+        let started = std::time::Instant::now();
+        let result = run(file_name, args, 60_000, &cancel);
+        timer.join().unwrap();
+        assert_eq!(result, None);
+        assert!(started.elapsed() < std::time::Duration::from_secs(5), "took {:?}", started.elapsed());
+    }
+}

@@ -231,4 +231,64 @@ mod tests {
         let rect = get_menu_rect(80, 25, &state);
         assert_eq!(rect.width, 10 + 4);
     }
+
+    // Port of the rest of ContextMenuTests.cs
+
+    fn abc() -> Vec<ActionMenuItem> {
+        vec![
+            ActionMenuItem::new("A", "", AppAction::Copy),
+            ActionMenuItem::new("B", "", AppAction::Cut),
+            ActionMenuItem::new("C", "", AppAction::Paste),
+        ]
+    }
+
+    #[test]
+    fn moves_advance_and_wrap_at_both_ends() {
+        let mut state = ContextMenuState::new(abc(), 0, 0);
+        state.move_down();
+        assert_eq!(state.selected_index, 1);
+        state.move_up();
+        assert_eq!(state.selected_index, 0);
+        state.move_up();
+        assert_eq!(state.selected_index, 2, "up from the first wraps to the last");
+        state.move_down();
+        assert_eq!(state.selected_index, 0, "down from the last wraps to the first");
+    }
+
+    #[test]
+    fn moves_on_an_empty_menu_do_nothing() {
+        let mut state = ContextMenuState::new(Vec::new(), 0, 0);
+        state.move_down();
+        state.move_up();
+        assert_eq!(state.selected_index, 0);
+    }
+
+    fn copy_paste(row: i32, col: i32) -> Rect {
+        let state = ContextMenuState::new(
+            vec![ActionMenuItem::new("Copy", "c", AppAction::Copy), ActionMenuItem::new("Paste", "v", AppAction::Paste)],
+            row,
+            col,
+        );
+        get_menu_rect(80, 24, &state)
+    }
+
+    #[test]
+    fn menu_rect_sits_at_the_anchor_and_clamps_to_the_screen() {
+        let rect = copy_paste(5, 10);
+        assert_eq!((rect.left, rect.top), (10, 5));
+
+        assert!(copy_paste(5, 75).left + copy_paste(5, 75).width <= 80, "right edge");
+        assert!(copy_paste(22, 10).top + copy_paste(22, 10).height <= 24, "bottom edge");
+        let corner = copy_paste(23, 79);
+        assert!(corner.left >= 0 && corner.top >= 0);
+        assert!(corner.left + corner.width <= 80 && corner.top + corner.height <= 24);
+    }
+
+    #[test]
+    fn menu_rect_height_is_items_plus_borders() {
+        for (row, col) in [(0, 0), (10, 10)] {
+            let state = ContextMenuState::new(abc(), row, col);
+            assert_eq!(get_menu_rect(80, 24, &state).height, 5);
+        }
+    }
 }

@@ -169,3 +169,102 @@ pub fn get_extension(name: &str) -> &str {
 fn icon(code_point: u32) -> char {
     char::from_u32(code_point).unwrap_or('\u{FFFD}')
 }
+
+#[cfg(test)]
+mod tests {
+    //! Port of FileIconsTests.cs, plus the link, junction and app-alias icons.
+
+    use super::get_icon;
+    use crate::fs::FileSystemEntry;
+
+    fn entry(name: &str, is_directory: bool) -> FileSystemEntry {
+        FileSystemEntry {
+            name: name.to_string(),
+            full_path: name.to_string(),
+            is_directory,
+            size: 0,
+            last_modified: crate::ui::format_helpers::DateParts::default(),
+            link_target: None,
+            is_broken_symlink: false,
+            is_drive: false,
+            is_cloud_placeholder: false,
+            is_junction_point: false,
+            is_app_exec_link: false,
+            app_exec_link_target: None,
+            drive_media_type: crate::fs::DriveMediaType::default(),
+            drive_format: None,
+            drive_label: None,
+            drive_free_space: 0,
+            drive_total_size: 0,
+        }
+    }
+
+    fn code(name: &str) -> u32 {
+        u32::from(get_icon(&entry(name, false)))
+    }
+
+    #[test]
+    fn directories_drives_and_links() {
+        assert_eq!(u32::from(get_icon(&entry("src", true))), 0xF114);
+        assert_eq!(u32::from(get_icon(&FileSystemEntry { is_drive: true, ..entry("C:", true) })), 0xF0A0);
+        assert_eq!(u32::from(get_icon(&FileSystemEntry { link_target: Some("t".into()), ..entry("l", true) })), 0xF482);
+        assert_eq!(u32::from(get_icon(&FileSystemEntry { link_target: Some("t".into()), ..entry("l", false) })), 0xF481);
+        let junction = FileSystemEntry { link_target: Some("t".into()), is_junction_point: true, ..entry("j", true) };
+        assert_eq!(u32::from(get_icon(&junction)), 0xF19EE, "junction wins over symlink");
+        assert_eq!(u32::from(get_icon(&FileSystemEntry { is_app_exec_link: true, ..entry("wt.exe", false) })), 0xF0614);
+    }
+
+    #[test]
+    fn known_extensions() {
+        for (name, expected) in [
+            ("Program.cs", 0xF031B),
+            ("app.js", 0xF031E),
+            ("app.ts", 0xF06E6),
+            ("main.py", 0xF0320),
+            ("main.go", 0xF07D3),
+            ("lib.rs", 0xF1617),
+            ("Main.java", 0xF0B37),
+            ("Main.kt", 0xF1219),
+            ("index.html", 0xF13B),
+            ("styles.css", 0xF031C),
+            ("data.json", 0xF1C9),
+            ("config.toml", 0xF1C9),
+            ("pipeline.yml", 0xF1C9),
+            ("README.md", 0xF48A),
+            ("notes.txt", 0xF15C),
+            ("report.pdf", 0xF1C1),
+            ("deploy.sh", 0xF489),
+            ("build.ps1", 0xF489),
+            ("setup.bat", 0xF17A),
+            ("App.sln", 0xF0610),
+            ("Wade.csproj", 0xF0610),
+            ("photo.png", 0xF1C5),
+            ("image.jpg", 0xF1C5),
+            ("archive.zip", 0xF1C6),
+            ("release.tar", 0xF1C6),
+            ("app.exe", 0xF17A),
+            ("library.dll", 0xF17A),
+        ] {
+            assert_eq!(code(name), expected, "{name}");
+        }
+    }
+
+    #[test]
+    fn extensions_are_case_insensitive() {
+        assert_eq!(code("file.CS"), 0xF031B);
+        assert_eq!(code("file.JSON"), 0xF1C9);
+    }
+
+    #[test]
+    fn unknown_extensions_and_special_names() {
+        for name in ["file.xyz", "file.abc", "noextension"] {
+            assert_eq!(code(name), 0xF15B, "{name}");
+        }
+        for name in ["Dockerfile", "dockerfile"] {
+            assert_eq!(code(name), 0xF308, "{name}");
+        }
+        for name in [".gitignore", ".gitattributes"] {
+            assert_eq!(code(name), 0xF1D3, "{name}");
+        }
+    }
+}

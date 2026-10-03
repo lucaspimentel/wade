@@ -612,3 +612,188 @@ fn git_commit_dialog_commits_the_index() {
     assert_eq!(log.trim(), "First commit");
     let _ = std::fs::remove_dir_all(&parent);
 }
+
+// --- Ports of SearchFilterTests.cs and ModalInputTests.cs ------------------------
+
+fn char_only(c: char) -> crate::input::KeyEvent {
+    crate::input::KeyEvent { key: K::None, key_char: c as u16, shift: false, alt: false, control: false }
+}
+
+#[test]
+fn filter_is_case_insensitive_navigates_and_shows_all_when_emptied() {
+    let (mut app, parent, _) = app();
+    press(&mut app, ch('/'));
+    assert!(app.modal.search_input.is_some());
+    for c in "TXT".chars() {
+        press(&mut app, char_only(c));
+    }
+    assert_eq!(visible_names(&mut app), ["a.txt", "b.txt"], "case-insensitive");
+
+    press(&mut app, key(K::DownArrow));
+    assert_eq!(selected_name(&mut app), "b.txt");
+    press(&mut app, key(K::UpArrow));
+    assert_eq!(selected_name(&mut app), "a.txt");
+
+    for _ in 0..3 {
+        press(&mut app, key(K::Backspace));
+    }
+    assert!(visible_names(&mut app).contains(&"readme.md".to_string()), "empty filter shows everything");
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn vim_and_quit_keys_are_typed_into_the_filter() {
+    for c in ['j', 'k', 'q'] {
+        let (mut app, parent, _) = app();
+        press(&mut app, ch('/'));
+        press(&mut app, ch(c));
+        assert_eq!(app.input_mode, InputMode::Search, "{c}");
+        assert!(!app.quit, "{c}");
+        assert_eq!(app.search_filter, c.to_string(), "{c}");
+        let _ = std::fs::remove_dir_all(&parent);
+    }
+}
+
+#[test]
+fn the_search_bar_shows_the_slash_and_the_filter() {
+    let (mut app, parent, _) = app();
+    press(&mut app, ch('/'));
+    type_text(&mut app, "read");
+    assert!(frame_has(&mut app, "/read"));
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+fn confirm_toggle_hidden(app: &mut App) {
+    app.show_confirm_dialog("Test", "Test?", super::dialogs::ConfirmAction::Dispatch(super::AppAction::ToggleHiddenFiles));
+}
+
+#[test]
+fn confirm_dialog_keys() {
+    for yes in [ch('y'), key(K::Enter)] {
+        let (mut app, parent, _) = app();
+        confirm_toggle_hidden(&mut app);
+        press(&mut app, yes);
+        assert_eq!(app.input_mode, InputMode::Normal);
+        assert!(app.config.show_hidden_files, "the action ran");
+        let _ = std::fs::remove_dir_all(&parent);
+    }
+
+    for no in [ch('n'), key(K::Escape)] {
+        let (mut app, parent, _) = app();
+        confirm_toggle_hidden(&mut app);
+        press(&mut app, no);
+        assert_eq!(app.input_mode, InputMode::Normal);
+        assert!(!app.config.show_hidden_files, "dismissed without the action");
+        let _ = std::fs::remove_dir_all(&parent);
+    }
+
+    // Other keys, including navigation and quit, are consumed
+    for other in [ch('a'), ch('j'), ch('k'), ch('q'), key(K::UpArrow), key(K::DownArrow)] {
+        let (mut app, parent, _) = app();
+        confirm_toggle_hidden(&mut app);
+        press(&mut app, other);
+        assert_eq!(app.input_mode, InputMode::Confirm, "{other:?}");
+        assert_eq!(selected_name(&mut app), "sub", "{other:?}");
+        assert!(!app.quit, "{other:?}");
+        let _ = std::fs::remove_dir_all(&parent);
+    }
+}
+
+#[test]
+fn text_input_dialog_editing_keys() {
+    let (mut app, parent, _) = app();
+    press(&mut app, ch('n'));
+    let value = |app: &App| app.modal.active_text_input.as_ref().map(|i| (i.value().to_string(), i.cursor_position())).unwrap();
+
+    type_text(&mut app, "abc");
+    assert_eq!(value(&app), ("abc".to_string(), 3));
+    press(&mut app, key(K::Backspace));
+    assert_eq!(value(&app), ("ab".to_string(), 2));
+    press(&mut app, key(K::LeftArrow));
+    assert_eq!(value(&app).1, 1);
+    press(&mut app, key(K::Delete));
+    assert_eq!(value(&app), ("a".to_string(), 1));
+    press(&mut app, key(K::Home));
+    assert_eq!(value(&app).1, 0);
+    press(&mut app, key(K::RightArrow));
+    assert_eq!(value(&app).1, 1);
+    press(&mut app, key(K::End));
+    assert_eq!(value(&app).1, 1);
+
+    press(&mut app, key(K::Escape));
+    assert_eq!(app.input_mode, InputMode::Normal);
+    assert!(!app.quit, "Escape in a dialog does not quit");
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn help_and_properties_stay_open_for_modifier_keys() {
+    for open in [ch('?'), ch('i')] {
+        for vk in [16u16, 17, 18] {
+            let (mut app, parent, _) = app();
+            press(&mut app, open);
+            let mode = app.input_mode;
+            press(&mut app, crate::input::KeyEvent { key: K(vk), key_char: 0, shift: false, alt: false, control: false });
+            assert_eq!(app.input_mode, mode, "modifier {vk} keeps {mode:?} open");
+            press(&mut app, ch('x'));
+            assert_eq!(app.input_mode, InputMode::Normal, "a real key closes {mode:?}");
+            let _ = std::fs::remove_dir_all(&parent);
+        }
+    }
+
+    for vk in [16u16, 17, 18] {
+        assert!(crate::input::KeyEvent { key: K(vk), key_char: 0, shift: false, alt: false, control: false }.is_modifier_only());
+    }
+    for k in [K::A, K::Escape, K::Enter, K::Spacebar] {
+        assert!(!key(k).is_modifier_only(), "{k:?}");
+    }
+}
+
+#[test]
+fn mouse_clicks_are_ignored_while_a_modal_dialog_is_open() {
+    type Open = fn(&mut App);
+    let modes: [(&str, Open); 4] = [
+        ("go to path", |app| press(app, ctrl(K::G))),
+        ("text input", |app| press(app, ch('n'))),
+        ("confirm", confirm_toggle_hidden),
+        ("help", |app| press(app, ch('?'))),
+    ];
+    for (name, open) in modes {
+        let (mut app, parent, _) = app();
+        let row = center_row_of(&mut app, "readme.md");
+        let col = app.layout.center_pane.left + 3;
+        open(&mut app);
+        click(&mut app, MouseButton::Left, row, col);
+        assert_eq!(selected_name(&mut app), "sub", "{name}");
+        let _ = std::fs::remove_dir_all(&parent);
+    }
+
+    // The filter bar does not block the mouse
+    let (mut app, parent, _) = app();
+    let row = center_row_of(&mut app, "readme.md");
+    let col = app.layout.center_pane.left + 3;
+    press(&mut app, ch('/'));
+    click(&mut app, MouseButton::Left, row, col);
+    assert_ne!(selected_name(&mut app), "sub", "search mode handles clicks");
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn sixel_output_is_suppressed_in_modal_modes() {
+    for (mode, expected) in [
+        (InputMode::Normal, true),
+        (InputMode::Search, true),
+        (InputMode::ExpandedPreview, true),
+        (InputMode::GoToPath, false),
+        (InputMode::TextInput, false),
+        (InputMode::Confirm, false),
+        (InputMode::Help, false),
+    ] {
+        let (mut app, parent, _) = app();
+        app.preview.sixel_pending = true;
+        app.preview.cached_sixel_data = Some("sixel".to_string());
+        app.input_mode = mode;
+        assert_eq!(app.take_pending_sixel().is_some(), expected, "{mode:?}");
+        let _ = std::fs::remove_dir_all(&parent);
+    }
+}
