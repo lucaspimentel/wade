@@ -44,6 +44,26 @@ backlog.
   center pane now receives the inline directory sizes (`App::render` passed
   `None`), and finishing the size scan no longer empties the App's copy
   (C# shares one dictionary between `_inlineDirSizes` and `DirSizes`)
+- [x] Test coverage review: every `AppConfig` setting is tested for its
+  effect at startup and from the config dialog (`app/settings_tests.rs`);
+  keys, mouse, paste and dialogs are driven through `App::handle_event`
+  (`app/key_tests.rs`, including git stage/unstage/commit in a temp repo);
+  `tests/cli.rs` runs the binary for `--version`/`--help`/`--show-config`
+  and the missing-path error; `config_io` ports `WadeConfigTests`; and the
+  TextInput, FormatHelpers, ContextMenu, FileIcons, CliTool(Hints),
+  SearchFilter and ModalInput C# tests are ported. Fixed along the way:
+  center-pane headers ignoring the status column, the center pane drawn
+  with a different scroll than mouse clicks used, no full redraw after `[`,
+  the start path not normalized (`~`, trailing separators), and background
+  `git status` holding `index.lock` so a stage/commit could fail (both
+  versions; now `--no-optional-locks`)
+- [ ] Still untested after the review: terminal setup and raw input on both
+  OSes, the real launchers (open with default app, open terminal, cloud
+  download), the combined text+image preview event, macOS paths, and the
+  thinner ports of DirectoryContents, FilePreview, FileActions, GitUtils,
+  PathCompletion, ConfigDialogState and BookmarkStore tests
+- [ ] Unstage fails before the first commit ("could not resolve HEAD") in both
+  versions: `git restore --staged` needs a HEAD; `git rm --cached` would work
 - [ ] Manual Windows Terminal checks (need a real console; none are
   automated):
   - the `wd` wrapper (`--cwd-file`)
