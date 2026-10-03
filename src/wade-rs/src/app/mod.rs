@@ -258,6 +258,51 @@ impl App {
         app
     }
 
+    /// One main-loop step for every event but resize (which needs the
+    /// screen buffer): dispatch to its handler, then clamp the selection
+    /// and scroll like the C# loop. Tests drive the App through this.
+    pub fn handle_event(&mut self, event: InputEvent) {
+        match event {
+            InputEvent::Resize(_) => {}
+            InputEvent::Key(key) => self.handle_key(key),
+            InputEvent::Mouse(mouse) => self.handle_mouse(mouse),
+            InputEvent::Paste(text) => self.handle_paste_event(&text),
+            InputEvent::GitStatusReady(event) => self.handle_git_status_ready(event),
+            InputEvent::GitActionComplete(event) => self.handle_git_action_complete(event),
+            InputEvent::FileOperationComplete(event) => self.handle_file_operation_complete(event),
+            InputEvent::FileOperationProgress(event) => self.handle_file_operation_progress(event),
+            // Like the C# main loop: loader events are handled whether they
+            // arrive first or queued behind another event
+            InputEvent::DirectorySizeReady(event) => self.handle_directory_size_ready(event),
+            InputEvent::InlineDirSizeReady(event) => self.handle_inline_dir_size_ready(event),
+            InputEvent::InlineDirSizeComplete(event) => self.handle_inline_dir_size_complete(event),
+            InputEvent::FileSystemChanged(event) => self.handle_file_system_changed(event),
+            InputEvent::FileFinderPartialResult(event) => self.handle_file_finder_partial_result(event),
+            InputEvent::FileFinderScanComplete(event) => self.handle_file_finder_scan_complete(event),
+            InputEvent::FileFinderSearchResult(event) => self.handle_file_finder_search_result(event),
+            InputEvent::PreviewReady(event) => self.handle_preview_ready(event),
+            InputEvent::ImagePreviewReady(event) => self.handle_image_preview_ready(event),
+            InputEvent::CombinedPreviewReady(event) => self.handle_combined_preview_ready(event),
+            InputEvent::MetadataReady(event) => self.handle_metadata_ready(event),
+            InputEvent::PreviewLoadingComplete(event) => self.handle_preview_loading_complete(event),
+            InputEvent::CloudDownloadComplete(event) => self.handle_cloud_download_complete(event),
+        }
+
+        self.clamp_selection_and_scroll();
+    }
+
+    /// The end of each C# main-loop iteration: clamp the selection to the
+    /// visible entries and keep it on screen (`AdjustScroll`).
+    fn clamp_selection_and_scroll(&mut self) {
+        let entries = self.get_visible_entries();
+        if !entries.is_empty() {
+            self.selected_index = self.selected_index.min(entries.len() - 1);
+        } else {
+            self.selected_index = 0;
+        }
+        self.adjust_scroll(self.visible_file_list_height(&entries));
+    }
+
     /// The settings half of `App.Run`'s setup: resolves the start path and
     /// copies the config into the listing and pane state. Split out of
     /// `run` so tests apply settings exactly as startup does.
@@ -383,39 +428,12 @@ impl App {
             }
 
             match current {
-                InputEvent::Resize(resize) => self.handle_resize(resize, &mut buffer, &mut width, &mut height),
-                InputEvent::Key(key) => self.handle_key(key),
-                InputEvent::Mouse(mouse) => self.handle_mouse(mouse),
-                InputEvent::Paste(text) => self.handle_paste_event(&text),
-                InputEvent::GitStatusReady(event) => self.handle_git_status_ready(event),
-                InputEvent::GitActionComplete(event) => self.handle_git_action_complete(event),
-                InputEvent::FileOperationComplete(event) => self.handle_file_operation_complete(event),
-                InputEvent::FileOperationProgress(event) => self.handle_file_operation_progress(event),
-                // Like the C# main loop: loader events are handled whether they
-                // arrive first or queued behind another event
-                InputEvent::DirectorySizeReady(event) => self.handle_directory_size_ready(event),
-                InputEvent::InlineDirSizeReady(event) => self.handle_inline_dir_size_ready(event),
-                InputEvent::InlineDirSizeComplete(event) => self.handle_inline_dir_size_complete(event),
-                InputEvent::FileSystemChanged(event) => self.handle_file_system_changed(event),
-                InputEvent::FileFinderPartialResult(event) => self.handle_file_finder_partial_result(event),
-                InputEvent::FileFinderScanComplete(event) => self.handle_file_finder_scan_complete(event),
-                InputEvent::FileFinderSearchResult(event) => self.handle_file_finder_search_result(event),
-                InputEvent::PreviewReady(event) => self.handle_preview_ready(event),
-                InputEvent::ImagePreviewReady(event) => self.handle_image_preview_ready(event),
-                InputEvent::CombinedPreviewReady(event) => self.handle_combined_preview_ready(event),
-                InputEvent::MetadataReady(event) => self.handle_metadata_ready(event),
-                InputEvent::PreviewLoadingComplete(event) => self.handle_preview_loading_complete(event),
-                InputEvent::CloudDownloadComplete(event) => self.handle_cloud_download_complete(event),
+                InputEvent::Resize(resize) => {
+                    self.handle_resize(resize, &mut buffer, &mut width, &mut height);
+                    self.clamp_selection_and_scroll();
+                }
+                other => self.handle_event(other),
             }
-
-            // Clamp selection and adjust scroll
-            let entries = self.get_visible_entries();
-            if !entries.is_empty() {
-                self.selected_index = self.selected_index.min(entries.len() - 1);
-            } else {
-                self.selected_index = 0;
-            }
-            self.adjust_scroll(self.visible_file_list_height(&entries));
         }
 
         pump_cancel.cancel();
@@ -1694,7 +1712,9 @@ impl App {
             file_list_pane.height -= 2;
         }
 
-        let scroll = calculate_scroll(self.selected_index, file_list_pane.height, entries.len());
+        // C# passes _scrollOffset (kept by AdjustScroll); mouse hit-testing
+        // uses the same offset
+        let scroll = i32::try_from(self.scroll_offset).unwrap_or(0);
         PaneRenderer::render_file_list(
             buffer,
             file_list_pane,
@@ -2262,6 +2282,16 @@ mod tests {
         app
     }
 
+    fn frame_rows(app: &mut App) -> Vec<String> {
+        let mut buffer = crate::screen::ScreenBuffer::new(100, 30);
+        app.render(&mut buffer);
+        (0..30).map(|row| buffer.row_text(row)).collect()
+    }
+
+    fn key(key: crate::console_key::ConsoleKey) -> crate::input::InputEvent {
+        crate::input::InputEvent::Key(crate::input::KeyEvent { key, key_char: 0, shift: false, alt: false, control: false })
+    }
+
     #[test]
     fn column_headers_reserve_the_status_column_when_git_statuses_are_shown() {
         // The status column only narrows the "Name" header, so use a center
@@ -2289,6 +2319,39 @@ mod tests {
 
         assert_ne!(expected(true), expected(false), "pane width must make the flag visible");
         assert_eq!(header_of(&buffer), expected(true));
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn center_pane_scrolls_minimally_and_clicks_hit_the_drawn_row() {
+        use crate::console_key::ConsoleKey;
+        use crate::input::{InputEvent, MouseButton, MouseEvent};
+
+        let root = test_root("scroll");
+        for i in 0..100 {
+            std::fs::write(root.join(format!("f{i:03}.txt")), "x").unwrap();
+        }
+        let mut app = plain_app(&root);
+        for _ in 0..40 {
+            app.handle_event(key(ConsoleKey::DownArrow));
+        }
+        assert_eq!(app.selected_index(), 40);
+
+        // C# AdjustScroll: just enough to keep the selection on the last row
+        let visible = app.visible_file_list_height(&[]);
+        assert_eq!(app.scroll_offset(), 40 + 1 - visible);
+
+        let rows = frame_rows(&mut app);
+        let first_row = app.layout.center_pane.top + 2;
+        let first_name = format!("f{:03}.txt", app.scroll_offset());
+        assert!(rows[first_row as usize].contains(&first_name), "first visible row shows {first_name}");
+
+        // Clicking the sixth visible row selects the entry drawn there
+        let clicked_row = first_row + 5;
+        let drawn = format!("f{:03}.txt", app.scroll_offset() + 5);
+        assert!(rows[clicked_row as usize].contains(&drawn));
+        app.handle_event(InputEvent::Mouse(MouseEvent { button: MouseButton::Left, row: clicked_row, col: app.layout.center_pane.left + 2, is_release: false }));
+        assert_eq!(app.get_visible_entries()[app.selected_index()].name, drawn);
         std::fs::remove_dir_all(&root).unwrap();
     }
 
