@@ -16,9 +16,9 @@ backlog.
   to the Rust binary (meanwhile `install-local-rust.ps1` installs the Rust
   build for the trial)
 - [x] Run the test suites natively on Windows (the port was developed on
-  Linux with Wine): `cargo test` (398 unit tests plus all integration tests)
-  and `dotnet test Wade.slnx` (1634 + 85) pass, including the three
-  Wine-only symlink/git tests; `renderer_frames` (incl. config-dialog
+  Linux with Wine): `cargo test` and
+  `dotnet test Wade.slnx` pass, including the three Wine-only symlink/git
+  tests; `renderer_frames` (incl. config-dialog
   goldens 015, 016) passes
 - [x] Native Windows verification of the library code (no TUI): junction, app
   alias and OneDrive detection, SSD detection, exe/msi/docx/nupkg/mp4
@@ -49,6 +49,18 @@ backlog.
   - run `install-local-rust.ps1` for real (it overwrites `~/.local/bin/wade.exe`)
   - opening a file with an unknown extension reports success while Windows
     shows the "Open with" dialog; check whether C# behaves the same
+- [ ] More native Windows checks that need no TUI (none run yet):
+  - Windows file names: case-only rename, reserved names (`CON`, `NUL`),
+    trailing dots and spaces, invalid characters
+  - locked or in-use files, read-only attribute and access denied: delete,
+    rename and read
+  - paste conflicts: overwrite a read-only file, paste into itself, directory
+    over a file
+  - hardlinks and alternate data streams (listing and sizes)
+  - C# vs Rust diff of inline and full directory sizes, the drive list and the
+    properties overlay on real data
+  - PDF and Sixel previews end to end (`pdftopng`, `pdfinfo`, `ffprobe` and
+    `mediainfo` are installed on this machine)
 - [ ] Optional: a ConPTY smoke harness (launch wade, send keys, read the
   screen) to automate the checks above
 - [ ] macOS is untested (CI covers only Linux and Windows): clipboard via
