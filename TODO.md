@@ -25,7 +25,8 @@ backlog.
   metadata, clipboard round trip with PowerShell/WinForms (copy and cut),
   Recycle Bin delete, ShellExecuteEx, the file watcher, symlinks, junctions,
   system/hidden filtering on `C:\`, git status with CRLF, long and UNC
-  paths, `install-local-rust.ps1`, config parity (`--show-config` on 8 config
+  paths, `install-local-rust.ps1` (built and installed under a temporary
+  home, so your real `~/.local/bin` was not touched), config parity (`--show-config` on 8 config
   files), and a C# vs Rust diff of listings and sort orders over about 3,000
   real directories. Fixed: directory-symlink delete, relative symlinks shown
   as broken, copying directory links with links not preserved, sort by
@@ -40,6 +41,12 @@ backlog.
   - paste into Explorer after copy/cut in wade, and copy/cut from Explorer
   - SSD inline directory sizes and the drive list on screen
   - filesystem auto-refresh on screen
+- [ ] Windows follow-ups from the verification pass:
+  - run `install-local-rust.ps1` for real (it overwrites `~/.local/bin/wade.exe`)
+  - test recycling a directory symlink and a junction through the Recycle Bin
+    (permanent delete is verified; recycle was verified for file symlinks only)
+  - opening a file with an unknown extension reports success while Windows
+    shows the "Open with" dialog; check whether C# behaves the same
 - [ ] Optional: a ConPTY smoke harness (launch wade, send keys, read the
   screen) to automate the checks above
 - [ ] macOS is untested (CI covers only Linux and Windows): clipboard via
