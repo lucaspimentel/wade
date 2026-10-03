@@ -36,6 +36,27 @@ backlog.
   (now "[invalid archive]" like .NET 10), git status for file names with
   non-ASCII characters (both versions), and the cloud download and
   `RECALL_ON_OPEN` bugs
+- [ ] Bug: sorting stuck on Name/ascending in the Rust port regardless of
+  config or `s`/`S` keys (found during the trial)
+  - `get_entries` (`src/wade-rs/src/fs/directory_contents.rs:138`) never applies
+    `DirectoryContents.sort_mode`/`sort_ascending`: cached entries are returned
+    as-is, and `load_entries` hardcodes `sort_entries(&mut list,
+    SortMode::default(), true)` (`directory_contents.rs:315`). `sort_entries`
+    itself looks correct; `App::CycleSortMode`/`ToggleSortDirection` do update
+    `directory_contents.sort_mode`/`sort_ascending` (`src/wade-rs/src/app/mod.rs:590-604`) but nothing reads them back.
+  - Compare with C# `DirectoryContents` (sort applied when building entries, not
+    only in tests) and mirror that; add a regression test (sort a temp dir via
+    `get_entries` with `sort_mode = Modified`, descending).
+- [ ] Bug: size column not populated (found during the trial)
+  - File sizes come from `metadata.len()` and directory sizes from the
+    `dir_sizes` map keyed by full path string (`src/wade-rs/src/fs/directory_contents.rs:290-299`),
+    so this smells like a path-key mismatch between `App` (which feeds
+    `InlineDirSizeLoader` results into `directory_contents.dir_sizes`) and
+    `load_entries`, and/or the `App::ShouldComputeInlineDirSizes` gate
+    disabling computation. Root cause unverified.
+  - Compare with C# `InlineDirSizeLoader` + `DirectoryContents.DirSizes` keying
+    and the size-column rendering path; add a regression test once the seam is
+    identified.
 - [ ] Manual Windows Terminal checks (need a real console; none are
   automated):
   - the `wd` wrapper (`--cwd-file`)
