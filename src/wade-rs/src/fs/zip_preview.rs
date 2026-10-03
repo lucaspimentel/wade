@@ -12,7 +12,6 @@ const MAX_ENTRIES: usize = 100;
 
 const EOCD_SIGNATURE: [u8; 4] = [0x50, 0x4b, 0x05, 0x06];
 const EOCD_SIZE: u64 = 22;
-const EOCD_SIZE_WITHOUT_SIGNATURE: u64 = 18;
 const MAX_COMMENT_LENGTH: u64 = 65535;
 const ZIP64_LOCATOR_SIGNATURE: u32 = 0x0706_4b50;
 const ZIP64_LOCATOR_SIZE: u64 = 20;
@@ -96,14 +95,8 @@ fn read_up_to(reader: &mut impl Read, buf: &mut [u8]) -> io::Result<usize> {
 /// signature that starts within the comment window before the minimal
 /// EOCD position.
 fn find_eocd(file: &mut (impl Read + Seek), length: u64) -> Result<u64, ZipError> {
-    if length < EOCD_SIZE_WITHOUT_SIGNATURE {
-        // .NET seeks to -18 from the end: before the start is an IOException
-        return Err(ZipError::Io(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "An attempt was made to move the position before the beginning of the stream.",
-        )));
-    }
-
+    // .NET 10 reports a file shorter than an EOCD record as invalid data
+    // (earlier versions threw an IOException for a seek before the start).
     if length < EOCD_SIZE {
         return Err(ZipError::InvalidData);
     }
@@ -436,11 +429,16 @@ mod tests {
     }
 
     #[test]
-    fn missing_or_tiny_files_are_io_errors() {
+    fn missing_files_are_io_errors_and_tiny_files_are_invalid() {
         assert_eq!(get_preview_lines("/no/such/file.zip", &CancelToken::new()), None);
 
         let tiny = crate::preview::test_path("tiny.zip");
-        std::fs::write(&tiny, b"PK").unwrap();
-        assert_eq!(get_preview_lines(&tiny.to_string_lossy(), &CancelToken::new()), None);
+        for content in [&b""[..], b"PK", b"this is not a zip"] {
+            std::fs::write(&tiny, content).unwrap();
+            assert_eq!(
+                get_preview_lines(&tiny.to_string_lossy(), &CancelToken::new()),
+                Some(vec!["[invalid archive]".to_string()])
+            );
+        }
     }
 }
