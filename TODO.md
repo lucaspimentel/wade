@@ -43,8 +43,6 @@ backlog.
   - filesystem auto-refresh on screen
 - [ ] Windows follow-ups from the verification pass:
   - run `install-local-rust.ps1` for real (it overwrites `~/.local/bin/wade.exe`)
-  - test recycling a directory symlink and a junction through the Recycle Bin
-    (permanent delete is verified; recycle was verified for file symlinks only)
   - opening a file with an unknown extension reports success while Windows
     shows the "Open with" dialog; check whether C# behaves the same
 - [ ] Optional: a ConPTY smoke harness (launch wade, send keys, read the
