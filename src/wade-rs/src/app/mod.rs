@@ -1677,6 +1677,9 @@ impl App {
 
         // Column headers + separator line
         if self.config.column_headers_enabled && file_list_pane.height > 2 {
+            // C#: the rows add a status column for git statuses or cloud
+            // placeholders, so the headers must leave room for it too
+            let has_status_col = self.git_statuses.is_some() || entries.iter().any(|e| e.is_cloud_placeholder);
             let header_rect = Rect2::new(file_list_pane.left, file_list_pane.top, file_list_pane.width, 2);
             PaneRenderer::render_column_headers(
                 buffer,
@@ -1685,7 +1688,7 @@ impl App {
                 self.config.size_column_enabled,
                 self.config.date_column_enabled,
                 is_drive_view,
-                false,
+                has_status_col,
             );
             file_list_pane.top += 2;
             file_list_pane.height -= 2;
@@ -2246,6 +2249,46 @@ mod tests {
         app.handle_inline_dir_size_complete(InlineDirSizeCompleteEvent { parent_path: app.current_path.clone() });
         assert!(row_of(&mut app).contains("117.7 MB"), "size still shown after completion");
         assert_eq!(app.directory_contents.dir_sizes.as_ref().and_then(|sizes| sizes.get(&sub)), Some(&123_456_789));
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    /// An App over `root` with icons off (so screen columns equal string
+    /// indices), laid out at 100x30.
+    fn plain_app(root: &std::path::Path) -> App {
+        let mut app = App::new(AppConfig { git_status_enabled: false, show_icons_enabled: false, ..AppConfig::default() });
+        app.current_path = root.to_string_lossy().into_owned();
+        app.set_screen_size(100, 30);
+        app.layout.calculate(100, 30, true, true);
+        app
+    }
+
+    #[test]
+    fn column_headers_reserve_the_status_column_when_git_statuses_are_shown() {
+        // The status column only narrows the "Name" header, so use a center
+        // pane narrow enough that it changes the header text
+        let root = test_root("header-status");
+        std::fs::write(root.join("a.txt"), "x").unwrap();
+        let mut app = plain_app(&root);
+        app.set_screen_size(17, 30);
+        app.layout.calculate(17, 30, true, true);
+        let path = root.join("a.txt").to_string_lossy().into_owned();
+        app.git_statuses = Some(std::collections::HashMap::from([(path, crate::fs::GitFileStatus::MODIFIED)]));
+
+        let mut buffer = crate::screen::ScreenBuffer::new(17, 30);
+        app.render(&mut buffer);
+        let pane = app.layout.center_pane;
+        let header_of = |buffer: &crate::screen::ScreenBuffer| -> String {
+            buffer.row_text(pane.top).chars().skip(pane.left as usize).take(pane.width as usize).collect()
+        };
+        let expected = |has_status_col: bool| -> String {
+            let mut direct = crate::screen::ScreenBuffer::new(17, 30);
+            let rect = crate::ui::layout::Rect::new(pane.left, pane.top, pane.width, 2);
+            crate::ui::pane_renderer::PaneRenderer::render_column_headers(&mut direct, rect, false, true, true, false, has_status_col);
+            header_of(&direct)
+        };
+
+        assert_ne!(expected(true), expected(false), "pane width must make the flag visible");
+        assert_eq!(header_of(&buffer), expected(true));
         std::fs::remove_dir_all(&root).unwrap();
     }
 
