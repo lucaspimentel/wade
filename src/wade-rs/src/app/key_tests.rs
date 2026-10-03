@@ -570,7 +570,12 @@ fn git_status_shows_branch_and_untracked_files() {
     let Some((mut app, parent, root)) = git_app() else { return };
     assert_eq!(app.current_repo_root.as_deref(), Some(root.to_string_lossy().as_ref()));
     assert_eq!(app.current_branch_name.as_deref(), Some("main"));
-    assert!(status_bar(&mut app).contains("main"));
+    // Wide enough that a long temp path (Windows CI) leaves room for the branch
+    app.set_screen_size(400, 30);
+    app.layout.calculate(400, 30, true, true);
+    let mut buffer = crate::screen::ScreenBuffer::new(400, 30);
+    app.render(&mut buffer);
+    assert!(buffer.row_text(29).contains("main"), "branch in the status bar");
     let status = app.git_statuses.as_ref().unwrap().get(&path_of(&root, "a.txt")).copied();
     assert_eq!(status, Some(crate::fs::GitFileStatus::UNTRACKED));
     let _ = std::fs::remove_dir_all(&parent);
