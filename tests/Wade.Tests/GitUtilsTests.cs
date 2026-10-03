@@ -181,6 +181,19 @@ public class GitUtilsTests
         Assert.True(statuses.ContainsKey(expectedPath), $"Expected key '{expectedPath}' in statuses");
     }
 
+    [Theory]
+    [InlineData("?? \"\\303\\274n\\303\\257code.txt\"", "\u00fcn\u00efcode.txt")]
+    [InlineData("?? \"with \\\"quote\\\" and \\\\ and \\ttab.txt\"", "with \"quote\" and \\ and \ttab.txt")]
+    [InlineData("?? \"caf\u00e9 dir/x.txt\"", "caf\u00e9 dir/x.txt")]
+    public void ParsePorcelainOutput_QuotedPath_DecodesEscapes(string line, string expectedRelativePath)
+    {
+        string repoRoot = OperatingSystem.IsWindows() ? @"C:\repo" : "/repo";
+        Dictionary<string, GitFileStatus> statuses = GitUtils.ParsePorcelainOutput(line + "\n", repoRoot);
+
+        string expectedPath = Path.GetFullPath(Path.Combine(repoRoot, expectedRelativePath.Replace('/', Path.DirectorySeparatorChar)));
+        Assert.True(statuses.ContainsKey(expectedPath), $"Expected key '{expectedPath}' in statuses");
+    }
+
     [Fact]
     public void ParsePorcelainOutput_AggregatesDirectoryStatuses()
     {

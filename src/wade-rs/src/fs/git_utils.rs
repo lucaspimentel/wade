@@ -152,9 +152,11 @@ fn spawn_git(repo_root: &str, args: &[&str]) -> std::io::Result<std::process::Ch
 fn read_stream<S: std::io::Read>(stream: Option<S>) -> String {
     match stream {
         Some(mut stream) => {
-            let mut text = String::new();
-            let _ = std::io::Read::read_to_string(&mut stream, &mut text);
-            text
+            // Lossy: a file name that is not valid UTF-8 must not blank the
+            // whole output
+            let mut bytes = Vec::new();
+            let _ = std::io::Read::read_to_end(&mut stream, &mut bytes);
+            String::from_utf8_lossy(&bytes).into_owned()
         }
         None => String::new(),
     }
@@ -224,7 +226,12 @@ pub fn query_status(repo_root: &str, cancel: &CancelToken) -> Option<HashMap<Str
         return None;
     }
 
-    match run_git_capturing(repo_root, &["status", "--porcelain=v1"], cancel, LOCAL_TIMEOUT_MS) {
+    match run_git_capturing(
+        repo_root,
+        &["-c", "core.quotepath=false", "status", "--porcelain=v1"],
+        cancel,
+        LOCAL_TIMEOUT_MS,
+    ) {
         Ok(stdout) => Some(parse_porcelain_output(&stdout, repo_root)),
         Err(_) => None,
     }
@@ -386,13 +393,13 @@ pub fn parse_porcelain_output(output: &str, repo_root: &str) -> HashMap<String, 
             relative_path = relative_path[arrow_idx + 4..].to_string();
         }
 
-        // Strip surrounding quotes if present (git quotes paths with special
-        // chars)
+        // Strip surrounding quotes if present (git quotes paths with spaces
+        // and special chars) and decode the C-style escapes inside
         if relative_path.chars().count() >= 2
             && relative_path.starts_with('"')
             && relative_path.ends_with('"')
         {
-            relative_path = relative_path[1..relative_path.len() - 1].to_string();
+            relative_path = unquote_git_path(&relative_path[1..relative_path.len() - 1]);
         }
 
         let mut status = GitFileStatus::NONE;
@@ -449,6 +456,53 @@ pub fn parse_porcelain_output(output: &str, repo_root: &str) -> HashMap<String, 
     aggregate_directory_statuses(&mut statuses, repo_root);
 
     statuses
+}
+
+/// Decodes the C-style escapes git puts inside a quoted path: backslash,
+/// double quote, `\n`, `\t` and the like, and octal `\NNN` bytes (UTF-8
+/// sequences when `core.quotepath` is on).
+fn unquote_git_path(inner: &str) -> String {
+    let bytes = inner.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+
+    while i < bytes.len() {
+        let b = bytes[i];
+        i += 1;
+
+        if b != b'\\' || i >= bytes.len() {
+            out.push(b);
+            continue;
+        }
+
+        let escaped = bytes[i];
+        i += 1;
+
+        match escaped {
+            b'0'..=b'7' => {
+                let mut value = u32::from(escaped - b'0');
+                let mut digits = 1;
+
+                while digits < 3 && i < bytes.len() && matches!(bytes[i], b'0'..=b'7') {
+                    value = value * 8 + u32::from(bytes[i] - b'0');
+                    i += 1;
+                    digits += 1;
+                }
+
+                out.push(value as u8);
+            }
+            b'a' => out.push(0x07),
+            b'b' => out.push(0x08),
+            b'f' => out.push(0x0c),
+            b'n' => out.push(b'\n'),
+            b'r' => out.push(b'\r'),
+            b't' => out.push(b'\t'),
+            b'v' => out.push(0x0b),
+            other => out.push(other),
+        }
+    }
+
+    String::from_utf8_lossy(&out).into_owned()
 }
 
 /// Path.GetFullPath normalizes separators and collapses `.`/`..` segments;
@@ -639,6 +693,21 @@ mod tests {
         assert_eq!(get("quoted path.txt"), Some(GitFileStatus::UNTRACKED));
         // Short line skipped; 10 files + 1 repo-root aggregate
         assert_eq!(statuses.len(), 11);
+    }
+
+    #[test]
+    fn porcelain_parse_decodes_quoted_path_escapes() {
+        let root = test_root();
+        let output = concat!(
+            "?? \"\\303\\274n\\303\\257code.txt\"\n",
+            "?? \"with \\\"quote\\\" and \\\\ and \\ttab.txt\"\n",
+            "?? \"caf\u{e9} dir/x.txt\"\n",
+        );
+        let statuses = parse_porcelain_output(output, &root);
+
+        assert!(statuses.contains_key(&test_key(&root, "\u{fc}n\u{ef}code.txt")), "{statuses:?}");
+        assert!(statuses.contains_key(&test_key(&root, "with \"quote\" and \\ and \ttab.txt")), "{statuses:?}");
+        assert!(statuses.contains_key(&test_key(&root, "caf\u{e9} dir/x.txt")), "{statuses:?}");
     }
 
     #[test]

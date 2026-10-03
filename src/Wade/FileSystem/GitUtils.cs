@@ -398,9 +398,10 @@ internal static class GitUtils
             var psi = new ProcessStartInfo
             {
                 FileName = "git",
-                Arguments = "status --porcelain=v1",
+                Arguments = "-c core.quotepath=false status --porcelain=v1",
                 WorkingDirectory = repoRoot,
                 RedirectStandardOutput = true,
+                StandardOutputEncoding = Encoding.UTF8,
                 UseShellExecute = false,
                 CreateNoWindow = true,
             };
@@ -464,10 +465,11 @@ internal static class GitUtils
                 relativePath = relativePath[(arrowIdx + 4)..];
             }
 
-            // Strip surrounding quotes if present (git quotes paths with special chars)
+            // Strip surrounding quotes if present (git quotes paths with spaces and special
+            // chars) and decode the C-style escapes inside
             if (relativePath.Length >= 2 && relativePath[0] == '"' && relativePath[^1] == '"')
             {
-                relativePath = relativePath[1..^1];
+                relativePath = UnquoteGitPath(relativePath[1..^1]);
             }
 
             GitFileStatus status = GitFileStatus.None;
@@ -530,6 +532,70 @@ internal static class GitUtils
         AggregateDirectoryStatuses(statuses, repoRoot);
 
         return statuses;
+    }
+
+    /// <summary>
+    /// Decodes the C-style escapes git puts inside a quoted path: backslash, double quote, \n, \t
+    /// and the like, and octal \NNN bytes (UTF-8 sequences when core.quotepath is on).
+    /// </summary>
+    internal static string UnquoteGitPath(ReadOnlySpan<char> inner)
+    {
+        var sb = new StringBuilder(inner.Length);
+        var bytes = new List<byte>();
+
+        void FlushBytes()
+        {
+            if (bytes.Count > 0)
+            {
+                sb.Append(Encoding.UTF8.GetString([.. bytes]));
+                bytes.Clear();
+            }
+        }
+
+        for (int i = 0; i < inner.Length; i++)
+        {
+            char c = inner[i];
+
+            if (c != '\\' || i + 1 >= inner.Length)
+            {
+                FlushBytes();
+                sb.Append(c);
+                continue;
+            }
+
+            char escaped = inner[++i];
+
+            if (escaped is >= '0' and <= '7')
+            {
+                int value = escaped - '0';
+                int digits = 1;
+
+                while (digits < 3 && i + 1 < inner.Length && inner[i + 1] is >= '0' and <= '7')
+                {
+                    value = (value * 8) + (inner[++i] - '0');
+                    digits++;
+                }
+
+                bytes.Add((byte)value);
+                continue;
+            }
+
+            FlushBytes();
+            sb.Append(escaped switch
+            {
+                'a' => '\a',
+                'b' => '\b',
+                'f' => '\f',
+                'n' => '\n',
+                'r' => '\r',
+                't' => '\t',
+                'v' => '\v',
+                _ => escaped,
+            });
+        }
+
+        FlushBytes();
+        return sb.ToString();
     }
 
     private static void AggregateDirectoryStatuses(Dictionary<string, GitFileStatus> statuses, string repoRoot)
