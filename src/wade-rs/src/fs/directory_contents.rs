@@ -264,10 +264,9 @@ pub fn load_entries(
             None
         };
 
-        let is_broken_symlink = match &link_target {
-            None => false,
-            Some(target) => std::fs::metadata(target).is_err(),
-        };
+        // Resolve through the entry itself: a relative target is relative
+        // to the link's directory, not the process's working directory.
+        let is_broken_symlink = link_target.is_some() && std::fs::metadata(item.path()).is_err();
 
         let full_path = item.path().to_string_lossy().to_string();
 
@@ -533,6 +532,31 @@ mod tests {
         assert_eq!(kind("broken"), Some((false, true)));
         assert_eq!(kind("file.txt"), Some((false, false)));
         assert!(entries.iter().all(|e| !e.is_cloud_placeholder && !e.is_junction_point && !e.is_app_exec_link));
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn relative_symlink_is_resolved_against_its_own_directory() {
+        let root = std::env::temp_dir().join(format!("wade-rellink-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::write(root.join("real.txt"), "x").unwrap();
+
+        #[cfg(unix)]
+        let linked = std::os::unix::fs::symlink("real.txt", root.join("good")).and(std::os::unix::fs::symlink("gone.txt", root.join("bad")));
+        #[cfg(windows)]
+        let linked = std::os::windows::fs::symlink_file("real.txt", root.join("good"))
+            .and(std::os::windows::fs::symlink_file("gone.txt", root.join("bad")));
+
+        // Windows without Developer Mode cannot create symlinks.
+        if linked.is_ok() {
+            let entries = load_entries(&root.to_string_lossy(), true, true, None);
+            let broken = |name: &str| entries.iter().find(|e| e.name == name).map(|e| e.is_broken_symlink);
+
+            assert_eq!(broken("good"), Some(false));
+            assert_eq!(broken("bad"), Some(true));
+        }
+
         std::fs::remove_dir_all(&root).unwrap();
     }
 
