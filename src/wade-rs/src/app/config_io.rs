@@ -148,7 +148,26 @@ pub fn apply_cli_args(config: &mut AppConfig, args: &[String]) {
     }
 
     if let Some(start) = args.iter().find(|arg| !arg.starts_with('-')) {
-        config.start_path = start.clone();
+        config.start_path = normalize_start_path(start);
+    }
+}
+
+/// The start-path half of `WadeConfig.Load`: expands a leading `~` to the
+/// home directory, then strips trailing separators (both kinds, on every
+/// OS) while keeping a root (`/`, `C:\`).
+#[must_use]
+pub fn normalize_start_path(path: &str) -> String {
+    let expanded = if path.starts_with('~') { crate::fs::path_completion::expand_tilde(path) } else { path.to_string() };
+    let trimmed = expanded.trim_end_matches(['/', '\\']);
+
+    if trimmed.is_empty() {
+        // "/" or "\" -> keep the root
+        expanded.chars().next().map(String::from).unwrap_or_default()
+    } else if trimmed.len() == 2 && trimmed.as_bytes()[1] == b':' && trimmed.len() < expanded.len() {
+        // "C:\" was trimmed to "C:": restore the root separator
+        format!("{trimmed}\\")
+    } else {
+        trimmed.to_string()
     }
 }
 
@@ -406,5 +425,228 @@ mediainfo_enabled = true
         assert!(json.starts_with("{\"show_icons_enabled\":true,"));
         assert!(json.contains("\"sort_mode\":\"name\","));
         assert!(json.ends_with("\"start_path\":\"C:\\\\a \"b\"\"}"));
+    }
+
+    /// Loads `text` as a config file (port of the WadeConfigTests helper).
+    fn load_text(name: &str, text: &str) -> AppConfig {
+        let path = config_with_path(name).config_file_path.unwrap();
+        std::fs::write(&path, text).unwrap();
+        let loaded = load_config(&[format!("--config-file={path}")]);
+        let _ = std::fs::remove_file(&path);
+        loaded
+    }
+
+    type Field = fn(&AppConfig) -> bool;
+
+    /// Every boolean key, with its field and default.
+    fn bool_keys() -> Vec<(&'static str, Field, bool)> {
+        vec![
+            ("show_icons_enabled", |c| c.show_icons_enabled, true),
+            ("image_previews_enabled", |c| c.image_previews_enabled, true),
+            ("show_hidden_files", |c| c.show_hidden_files, false),
+            ("show_system_files", |c| c.show_system_files, false),
+            ("sort_ascending", |c| c.sort_ascending, true),
+            ("confirm_delete_enabled", |c| c.confirm_delete_enabled, true),
+            ("parent_pane_enabled", |c| c.parent_pane_enabled, true),
+            ("preview_pane_enabled", |c| c.preview_pane_enabled, true),
+            ("size_column_enabled", |c| c.size_column_enabled, true),
+            ("date_column_enabled", |c| c.date_column_enabled, true),
+            ("column_headers_enabled", |c| c.column_headers_enabled, true),
+            ("copy_symlinks_as_links_enabled", |c| c.copy_symlinks_as_links_enabled, true),
+            ("zip_preview_enabled", |c| c.zip_preview_enabled, true),
+            ("terminal_title_enabled", |c| c.terminal_title_enabled, true),
+            ("git_status_enabled", |c| c.git_status_enabled, true),
+            ("file_metadata_enabled", |c| c.file_metadata_enabled, true),
+            ("file_previews_enabled", |c| c.file_previews_enabled, true),
+            ("archive_metadata_enabled", |c| c.archive_metadata_enabled, true),
+            ("dir_size_ssd_enabled", |c| c.dir_size_ssd_enabled, true),
+            ("dir_size_hdd_enabled", |c| c.dir_size_hdd_enabled, false),
+            ("dir_size_network_enabled", |c| c.dir_size_network_enabled, false),
+            ("pdf_preview_enabled", |c| c.pdf_preview_enabled, true),
+            ("pdf_metadata_enabled", |c| c.pdf_metadata_enabled, true),
+            ("markdown_preview_enabled", |c| c.markdown_preview_enabled, true),
+            ("ffprobe_enabled", |c| c.ffprobe_enabled, true),
+            ("mediainfo_enabled", |c| c.mediainfo_enabled, true),
+        ]
+    }
+
+    #[test]
+    fn defaults_when_nothing_provided() {
+        let config = load_config(&["--config-file=/nonexistent/wade/config.toml".to_string()]);
+        for (key, field, default) in bool_keys() {
+            assert_eq!(field(&config), default, "{key} default");
+        }
+        assert_eq!(config.sort_mode, SortMode::Name);
+        assert!(config.cwd_file_path.is_none());
+        assert!(!config.show_config && !config.show_help && !config.show_version);
+    }
+
+    #[test]
+    fn every_bool_key_parses_both_values() {
+        for (key, field, default) in bool_keys() {
+            for value in [!default, default] {
+                let loaded = load_text(&format!("bool-{key}-{value}"), &format!("{key} = {value}\n"));
+                assert_eq!(field(&loaded), value, "{key} = {value}");
+            }
+        }
+    }
+
+    #[test]
+    fn parse_bool_accepts_yes_no_and_digits_case_insensitively_and_keeps_the_default_otherwise() {
+        for (text, expected) in [("true", true), ("TRUE", true), ("1", true), ("yes", true), ("Yes", true)] {
+            assert_eq!(parse_bool(text, false), expected, "{text}");
+        }
+        for (text, expected) in [("false", false), ("False", false), ("0", false), ("no", false), ("NO", false)] {
+            assert_eq!(parse_bool(text, true), expected, "{text}");
+        }
+        for text in ["", "maybe", "2", "on"] {
+            assert!(parse_bool(text, true), "{text} keeps the default");
+            assert!(!parse_bool(text, false), "{text} keeps the default");
+        }
+    }
+
+    #[test]
+    fn sort_mode_parses_names_and_numbers_case_insensitively() {
+        for (text, expected) in [
+            ("name", SortMode::Name),
+            ("modified", SortMode::Modified),
+            ("size", SortMode::Size),
+            ("extension", SortMode::Extension),
+            ("Modified", SortMode::Modified),
+            ("EXTENSION", SortMode::Extension),
+            ("0", SortMode::Name),
+            ("1", SortMode::Modified),
+            ("2", SortMode::Size),
+            ("3", SortMode::Extension),
+        ] {
+            assert_eq!(load_text("sort", &format!("sort_mode = {text}\n")).sort_mode, expected, "{text}");
+        }
+        assert_eq!(load_text("sort-bad", "sort_mode = size\nsort_mode = bogus\n").sort_mode, SortMode::Size, "invalid keeps the value");
+    }
+
+    #[test]
+    fn comments_blank_malformed_and_unknown_lines_are_ignored() {
+        let loaded = load_text(
+            "lines",
+            "# a comment\n\n   \nshow_hidden_files\n= true\nunknown_key = true\n  show_icons_enabled = false   # inline comment\n  # show_hidden_files = true\n",
+        );
+        assert!(!loaded.show_icons_enabled, "inline comment stripped");
+        assert!(!loaded.show_hidden_files, "comment and malformed lines ignored");
+    }
+
+    #[test]
+    fn missing_config_file_uses_defaults() {
+        let loaded = load_config(&["--config-file=/nonexistent/wade/nope.toml".to_string()]);
+        assert!(loaded.show_icons_enabled);
+        assert_eq!(loaded.config_file_path.as_deref(), Some("/nonexistent/wade/nope.toml"));
+    }
+
+    #[test]
+    fn only_the_first_config_file_flag_counts() {
+        let path = config_with_path("first.toml").config_file_path.unwrap();
+        std::fs::write(&path, "show_hidden_files = true\n").unwrap();
+        let loaded = load_config(&[format!("--config-file={path}"), "--config-file=/nonexistent/second.toml".to_string()]);
+        assert!(loaded.show_hidden_files);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn disabled_tools_names_and_detail_columns_values() {
+        let loaded = load_text("tools", "disabled_tools = pdfinfo, ffprobe, unknown,, \n");
+        assert!(!loaded.pdf_metadata_enabled && !loaded.ffprobe_enabled);
+        assert!(loaded.pdf_preview_enabled && loaded.markdown_preview_enabled && loaded.mediainfo_enabled);
+
+        let enabled = load_text("detail-true", "size_column_enabled = false\ndetail_columns_enabled = true\n");
+        assert!(enabled.size_column_enabled && enabled.date_column_enabled);
+        let invalid = load_text("detail-bad", "size_column_enabled = false\ndetail_columns_enabled = bogus\n");
+        assert!(invalid.size_column_enabled && invalid.date_column_enabled, "invalid falls back to true");
+    }
+
+    #[test]
+    fn save_creates_the_directory_and_round_trips_every_non_default_value() {
+        // Flip every value through the file format first
+        let mut text: String = bool_keys().iter().map(|(key, _, default)| format!("{key} = {}\n", !default)).collect();
+        text.push_str("sort_mode = extension\n");
+        let flipped = load_text("flipped", &text);
+
+        let dir = std::env::temp_dir().join(format!("wade-config-dir-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let path = dir.join("nested").join("config.toml");
+        save_config(&AppConfig { config_file_path: Some(path.to_string_lossy().into_owned()), ..flipped }).unwrap();
+        assert!(path.exists(), "save creates the missing directory");
+
+        let reloaded = load_config(&[format!("--config-file={}", path.display())]);
+        for (key, field, default) in bool_keys() {
+            assert_eq!(field(&reloaded), !default, "{key} round trip");
+        }
+        assert_eq!(reloaded.sort_mode, SortMode::Extension);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn to_json_lists_every_key_in_order() {
+        let config = AppConfig { sort_mode: SortMode::Modified, show_hidden_files: true, start_path: "/x".to_string(), ..AppConfig::default() };
+        let json = to_json(&config);
+        let mut keys: Vec<&str> = bool_keys().iter().map(|(key, _, _)| *key).collect();
+        keys.insert(4, "sort_mode");
+        keys.push("start_path");
+        let expected_keys: Vec<String> = keys.iter().map(|key| format!("\"{key}\":")).collect();
+        let mut position = 0;
+        for key in &expected_keys {
+            let found = json[position..].find(key.as_str()).unwrap_or_else(|| panic!("{key} missing or out of order in {json}"));
+            position += found + key.len();
+        }
+        assert!(json.contains("\"show_hidden_files\":true,"));
+        assert!(json.contains("\"sort_mode\":\"modified\","));
+        assert!(json.ends_with("\"start_path\":\"/x\"}"));
+        assert_eq!(json.matches(':').count(), expected_keys.len());
+    }
+
+    fn cli(args: &[&str]) -> AppConfig {
+        let mut config = AppConfig::default();
+        apply_cli_args(&mut config, &args.iter().map(|arg| (*arg).to_string()).collect::<Vec<_>>());
+        config
+    }
+
+    #[test]
+    fn cli_flags_and_positional_start_path() {
+        assert!(cli(&["--help"]).show_help);
+        assert!(cli(&["-h"]).show_help);
+        assert!(cli(&["-h"]).start_path.is_empty(), "-h is not a start path");
+        assert!(cli(&["--show-config"]).show_config);
+        assert!(cli(&["--version"]).show_version);
+        assert_eq!(cli(&["--cwd-file=/tmp/cwd"]).cwd_file_path.as_deref(), Some("/tmp/cwd"));
+        assert_eq!(cli(&["/some/path"]).start_path, "/some/path");
+        assert_eq!(cli(&["--show-config", "/some/path"]).start_path, "/some/path");
+        assert_eq!(cli(&["/first", "/second"]).start_path, "/first");
+        assert!(cli(&["--show-config"]).start_path.is_empty(), "main defaults it to the current directory");
+    }
+
+    #[test]
+    fn start_path_trailing_separators_are_stripped_but_roots_kept() {
+        for (input, expected) in [
+            ("C:\\foo\\bar\\", "C:\\foo\\bar"),
+            ("C:\\foo\\bar/", "C:\\foo\\bar"),
+            ("C:\\foo\\bar\\\\", "C:\\foo\\bar"),
+            ("C:\\foo\\bar", "C:\\foo\\bar"),
+            ("C:\\", "C:\\"),
+            ("C:/", "C:\\"),
+            ("/", "/"),
+            ("C:", "C:"),
+        ] {
+            assert_eq!(normalize_start_path(input), expected, "{input}");
+        }
+    }
+
+    #[test]
+    fn start_path_tilde_expands_to_home() {
+        let Some(home) = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")) else { return };
+        let home = home.to_string_lossy().into_owned();
+        for input in ["~", "~/Downloads", "~\\Downloads"] {
+            let expanded = normalize_start_path(input);
+            assert!(expanded.starts_with(home.trim_end_matches(['/', '\\'])), "{input} -> {expanded}");
+            assert!(!expanded.contains('~'), "{input} -> {expanded}");
+        }
+        assert!(normalize_start_path("~/Downloads").ends_with("Downloads"));
     }
 }
