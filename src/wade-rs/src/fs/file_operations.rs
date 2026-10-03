@@ -77,25 +77,31 @@ fn delete_one(path: &str) -> bool {
 pub fn copy_path(source: &str, dest: &str, preserve_symlinks: bool) -> Result<(), std::io::Error> {
     if preserve_symlinks && is_symlink(source) {
         let Some(target) = std::fs::read_link(source).ok().map(|p| p.to_string_lossy().to_string()) else {
-            return copy_by_content(source, dest);
+            return copy_by_content(source, dest, preserve_symlinks);
         };
 
         return match create_symlink(dest, &target, Path::new(source).is_dir()) {
             Ok(()) => Ok(()),
             // C# catches UnauthorizedAccessException and falls through to a
             // content copy
-            Err(err) if is_permission_denied(&err) => copy_by_content(source, dest),
+            Err(err) if is_permission_denied(&err) => copy_by_content(source, dest, preserve_symlinks),
             Err(err) => Err(err),
         };
     }
 
-    copy_by_content(source, dest)
+    copy_by_content(source, dest, preserve_symlinks)
 }
 
-fn copy_by_content(source: &str, dest: &str) -> Result<(), std::io::Error> {
-    let meta = std::fs::symlink_metadata(source)?;
-    if meta.is_dir() {
-        copy_directory(source, dest, true)?;
+/// True for a directory or a link to one. `Directory.Exists` follows links,
+/// so a directory link is copied by content when links are not preserved.
+fn is_directory_following_links(path: &str) -> bool {
+    std::fs::metadata(path).is_ok_and(|meta| meta.is_dir())
+}
+
+fn copy_by_content(source: &str, dest: &str, preserve_symlinks: bool) -> Result<(), std::io::Error> {
+    std::fs::symlink_metadata(source)?;
+    if is_directory_following_links(source) {
+        copy_directory(source, dest, preserve_symlinks)?;
         Ok(())
     } else {
         std::fs::copy(source, dest)?;
@@ -128,8 +134,8 @@ pub fn copy_directory(source: &str, destination: &str, preserve_symlinks: bool) 
             }
         }
 
-        let meta = std::fs::symlink_metadata(&source_path)?;
-        if meta.is_dir() {
+        std::fs::symlink_metadata(&source_path)?;
+        if is_directory_following_links(&source_path) {
             copy_directory(&source_path, &dest_path, preserve_symlinks)?;
         } else {
             std::fs::copy(&source_path, &dest_path)?;
@@ -314,6 +320,32 @@ mod tests {
         delete_existing(&p(&link)).expect("delete_existing");
         assert!(std::fs::symlink_metadata(&link).is_err());
         assert!(target.join("inner.txt").exists());
+    }
+
+    #[test]
+    fn copy_directory_link_without_preserve_copies_contents() {
+        let dir = temp_dir("copydirlink");
+        let target = dir.join("target");
+        std::fs::create_dir_all(target.join("sub")).expect("mkdir");
+        std::fs::write(target.join("sub").join("b.txt"), b"B").expect("write");
+        let link = dir.join("link");
+
+        if create_symlink(&p(&link), &p(&target), true).is_err() {
+            return;
+        }
+
+        let dest = dir.join("dest");
+        copy_path(&p(&link), &p(&dest), false).expect("copy link");
+        assert!(!is_symlink(&p(&dest)));
+        assert_eq!(std::fs::read(dest.join("sub").join("b.txt")).expect("read"), b"B");
+
+        let tree = dir.join("tree");
+        std::fs::create_dir_all(&tree).expect("mkdir");
+        create_symlink(&p(&tree.join("inner")), &p(&target), true).expect("link");
+        let tree_dest = dir.join("tree-dest");
+        copy_path(&p(&tree), &p(&tree_dest), false).expect("copy tree");
+        assert!(!is_symlink(&p(&tree_dest.join("inner"))));
+        assert!(tree_dest.join("inner").join("sub").join("b.txt").is_file());
     }
 
     #[test]
