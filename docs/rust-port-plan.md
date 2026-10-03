@@ -201,9 +201,12 @@ Phase 9 done (9a file-system facts, 9b clipboard, 9c executable metadata,
   clipboard, Recycle Bin, ShellExecuteEx, the watcher, symlinks and junctions, system
   and hidden filtering, git status, long and UNC paths, the installer script, config
   parity, and a C# vs Rust diff of listings and every sort order over about 3,000
-  directories. It found and fixed seven bugs (cloud download and `RECALL_ON_OPEN`,
-  directory-symlink delete, relative symlinks shown broken, copying directory links,
-  modified-time sort precision). Remaining differences are recorded in
+  directories, previews and metadata for 470 files, the file finder over three large
+  trees and git status over 35 repos. It found and fixed nine bugs (cloud download and
+  `RECALL_ON_OPEN`, directory-symlink delete, relative symlinks shown broken, copying
+  directory links, modified-time sort precision, archive preview of tiny zip files, and
+  git status for non-ASCII file names, which was broken in C# as well). Remaining
+  differences are recorded in
   `KNOWN_DEVIATIONS.md`. Checks that need a real console (input, resize, Sixel, the
   `wd` wrapper) stay open in `TODO.md`.
 

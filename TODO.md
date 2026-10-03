@@ -28,9 +28,13 @@ backlog.
   paths, `install-local-rust.ps1` (built and installed under a temporary
   home, so your real `~/.local/bin` was not touched), config parity (`--show-config` on 8 config
   files), and a C# vs Rust diff of listings and sort orders over about 3,000
-  real directories. Fixed: directory-symlink delete, relative symlinks shown
+  real directories, previews and metadata for 470 real and generated files,
+  the file finder over three large trees (identical entries and ranking for
+  42 queries), and git status over 35 repos. Fixed: directory-symlink delete, relative symlinks shown
   as broken, copying directory links with links not preserved, sort by
-  modified time ignoring seconds, and the cloud download and
+  modified time ignoring seconds, archive preview of tiny or empty zip files
+  (now "[invalid archive]" like .NET 10), git status for file names with
+  non-ASCII characters (both versions), and the cloud download and
   `RECALL_ON_OPEN` bugs
 - [ ] Manual Windows Terminal checks (need a real console; none are
   automated):

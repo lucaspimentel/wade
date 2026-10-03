@@ -142,8 +142,18 @@ None. Phase 9 closed the last temporary entries.
   is arbitrary. Sorting by extension compares ASCII-lowercased extensions;
   C# compares them ordinal-ignore-case (uppercased), so extensions that
   differ at a character between `Z` and `a` (such as `_`) order differently.
-  Found by diffing both implementations over about 3,000 real Windows
-  directories: every other ordering matched.
+  The same applies to the MSI file listing (sorted by name, equal names in
+  table order). Found by diffing both implementations over about 3,000 real
+  Windows directories: every other ordering matched.
+- **Files open for writing elsewhere are readable (Phase 10).** Rust opens
+  files with full sharing, so an in-use log (for example Steam's) still
+  previews as text. C# opens with `FileShare.Read`, fails with a sharing
+  violation and shows such a file as binary.
+- **Image color depth and span offsets use different units (Phase 10).**
+  Beyond the image-crate bit depths above, highlighter span offsets count
+  Unicode scalar values in Rust and UTF-16 code units in C#; each renderer is
+  consistent with its own units, so output is the same. Only the internal
+  numbers differ for text with characters outside the BMP.
 - **`--show-config` ends with a bare line feed (Phase 10).** C# writes the
   JSON with `Console.WriteLine`, which ends with CRLF on Windows; Rust ends
   with LF on every platform. The JSON itself is identical.
