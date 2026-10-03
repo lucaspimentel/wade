@@ -59,9 +59,8 @@ pub fn delete_paths(paths: &[String], permanent: bool, cancel: &CancelToken) -> 
 fn delete_one(path: &str) -> bool {
     if is_symlink(path) {
         // Symlinks: remove the link itself. C# uses Directory.Delete(path,
-        // false) for dir-links and File.Delete otherwise; remove_file handles
-        // both link kinds.
-        return std::fs::remove_file(path).is_ok();
+        // false) for dir-links and File.Delete otherwise.
+        return remove_symlink(path).is_ok();
     }
 
     match std::fs::symlink_metadata(path) {
@@ -146,11 +145,24 @@ pub fn move_path(source: &str, dest: &str) -> Result<(), std::io::Error> {
     std::fs::rename(source, dest)
 }
 
+/// Removes a symlink without touching its target. On Windows a directory
+/// symlink needs `remove_dir`; `remove_file` fails with access denied.
+fn remove_symlink(path: &str) -> Result<(), std::io::Error> {
+    let result = std::fs::remove_file(path);
+
+    #[cfg(windows)]
+    if result.is_err() && std::fs::remove_dir(path).is_ok() {
+        return Ok(());
+    }
+
+    result
+}
+
 /// Port of the runner's `DeleteExisting`: removes an existing destination
 /// before an overwrite; symlinks are removed as links, dirs recursively.
 pub fn delete_existing(path: &str) -> Result<(), std::io::Error> {
     if is_symlink(path) {
-        return std::fs::remove_file(path);
+        return remove_symlink(path);
     }
 
     let meta = std::fs::symlink_metadata(path)?;
@@ -279,6 +291,29 @@ mod tests {
         assert!(!link.exists());
         // Target untouched
         assert!(target.exists());
+    }
+
+    #[test]
+    fn delete_directory_symlink_removes_link_not_target() {
+        let dir = temp_dir("dirsymlink");
+        let target = dir.join("target");
+        std::fs::create_dir_all(&target).expect("mkdir");
+        std::fs::write(target.join("inner.txt"), b"data").expect("write");
+        let link = dir.join("link");
+
+        if create_symlink(&p(&link), &p(&target), true).is_err() {
+            return;
+        }
+
+        let cancel = CancelToken::new();
+        assert_eq!(delete_paths(&[p(&link)], true, &cancel), (1, 0));
+        assert!(std::fs::symlink_metadata(&link).is_err());
+        assert!(target.join("inner.txt").exists());
+
+        create_symlink(&p(&link), &p(&target), true).expect("link");
+        delete_existing(&p(&link)).expect("delete_existing");
+        assert!(std::fs::symlink_metadata(&link).is_err());
+        assert!(target.join("inner.txt").exists());
     }
 
     #[test]
