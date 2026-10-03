@@ -1542,7 +1542,7 @@ impl App {
     }
 
     /// Port of `ApplyConfigChanges` (App.cs:4196).
-    fn apply_config_changes(&mut self) {
+    pub(crate) fn apply_config_changes(&mut self) {
         let Some(mut state) = self.modal.config_state.take() else {
             return;
         };

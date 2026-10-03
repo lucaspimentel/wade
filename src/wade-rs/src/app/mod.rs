@@ -16,6 +16,8 @@ pub mod dialogs;
 pub mod input_reader;
 pub mod preview;
 pub mod preview_loader;
+#[cfg(test)]
+mod settings_tests;
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -145,6 +147,8 @@ pub struct App {
     /// Accumulated inline directory sizes for the current listing.
     inline_dir_sizes: Option<HashMap<String, i64>>,
     current_drive_media_type: crate::fs::DriveMediaType,
+    /// `drive_media_type::detect`; tests substitute a fixed drive type.
+    detect_drive_media_type: fn(&str) -> crate::fs::DriveMediaType,
     /// Port of `_clipboardPaths` / `_clipboardIsCut`: wade's own clipboard.
     pub(crate) clipboard_paths: Vec<String>,
     pub(crate) clipboard_is_cut: bool,
@@ -231,6 +235,7 @@ impl App {
             properties_content_height: 0,
             inline_dir_sizes: None,
             current_drive_media_type: crate::fs::DriveMediaType::Unknown,
+            detect_drive_media_type: crate::fs::drive_media_type::detect,
             clipboard_paths: Vec::new(),
             clipboard_is_cut: false,
             os_clipboard: if cfg!(test) { OsClipboard::Fake(FakeClipboard::default()) } else { OsClipboard::System },
@@ -253,6 +258,28 @@ impl App {
         app
     }
 
+    /// The settings half of `App.Run`'s setup: resolves the start path and
+    /// copies the config into the listing and pane state. Split out of
+    /// `run` so tests apply settings exactly as startup does.
+    pub fn apply_startup_config(&mut self) {
+        let start = if self.config.start_path.is_empty() { App::default_start_path() } else { self.config.start_path.clone() };
+        self.current_path = capitalize_drive_letter(&dialogs::get_full_path(&start));
+        self.directory_contents.show_hidden_files = self.config.show_hidden_files;
+        self.directory_contents.show_system_files = self.config.show_system_files;
+        self.directory_contents.sort_mode = self.config.sort_mode;
+        self.directory_contents.sort_ascending = self.config.sort_ascending;
+        self.parent_pane_enabled = self.config.parent_pane_enabled;
+        self.preview_pane_enabled = self.config.preview_pane_enabled;
+
+        if let Some(start_file_name) = self.config.start_file_name.clone() {
+            let entries = self.directory_contents.get_entries(&self.current_path);
+
+            if let Some(index) = entries.iter().position(|e| e.name.eq_ignore_ascii_case(&start_file_name)) {
+                self.selected_index = index;
+            }
+        }
+    }
+
     #[must_use]
     pub fn current_path(&self) -> &str {
         &self.current_path
@@ -272,23 +299,8 @@ impl App {
     /// app-owned pipeline (console pump + async loaders), mirroring the C#
     /// `InputPipeline`.
     pub fn run(&mut self, cancel: &crate::input::CancelToken) -> Option<String> {
-        let start = if self.config.start_path.is_empty() { App::default_start_path() } else { self.config.start_path.clone() };
-        self.current_path = capitalize_drive_letter(&dialogs::get_full_path(&start));
-        self.directory_contents.show_hidden_files = self.config.show_hidden_files;
-        self.directory_contents.show_system_files = self.config.show_system_files;
-        self.directory_contents.sort_mode = self.config.sort_mode;
-        self.directory_contents.sort_ascending = self.config.sort_ascending;
-        self.parent_pane_enabled = self.config.parent_pane_enabled;
-        self.preview_pane_enabled = self.config.preview_pane_enabled;
+        self.apply_startup_config();
         self.bookmark_store.load();
-
-        if let Some(start_file_name) = self.config.start_file_name.clone() {
-            let entries = self.directory_contents.get_entries(&self.current_path);
-
-            if let Some(index) = entries.iter().position(|e| e.name.eq_ignore_ascii_case(&start_file_name)) {
-                self.selected_index = index;
-            }
-        }
 
         // C# `using var terminal = new TerminalSetup()`: console modes and
         // the alternate screen for the lifetime of the loop
@@ -804,19 +816,24 @@ impl App {
     }
 
 
+    /// The OSC 0 sequence `update_terminal_title` writes: the current path
+    /// when the title setting is on, an empty title otherwise.
+    #[must_use]
+    pub fn terminal_title_sequence(&self) -> String {
+        if self.config.terminal_title_enabled {
+            crate::ansi::set_title(&format!("wade - {}", self.current_path))
+        } else {
+            crate::ansi::set_title("")
+        }
+    }
+
     /// Port of `UpdateTerminalTitle` (App.cs): OSC 0 title set/clear.
     pub fn update_terminal_title(&self) {
         use std::io::Write;
 
-        let sequence = if self.config.terminal_title_enabled {
-            crate::ansi::set_title(&format!("wade - {}", self.current_path))
-        } else {
-            crate::ansi::set_title("")
-        };
-
-        let mut out = std::io::stdout();
-        let _ = out.write_all(sequence.as_bytes());
-        let _ = out.flush();
+        // print! (not a raw stdout write) so test runs capture it
+        print!("{}", self.terminal_title_sequence());
+        let _ = std::io::stdout().flush();
     }
 
     /// Port of the mouse-event dispatch (App.cs:541-573) and
@@ -965,7 +982,7 @@ impl App {
         }
 
         self.current_drive_media_type = crate::fs::directory_contents::drive_root(&self.current_path)
-            .map_or(crate::fs::DriveMediaType::Unknown, |root| crate::fs::drive_media_type::detect(&root));
+            .map_or(crate::fs::DriveMediaType::Unknown, |root| (self.detect_drive_media_type)(&root));
 
         if !Self::should_compute_inline_dir_sizes_impl(self.current_drive_media_type, &self.config) {
             self.inline_dir_size_loader.cancel();
