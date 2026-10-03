@@ -40,16 +40,10 @@ backlog.
   config or `s`/`S` keys (found during the trial). Fixed: `get_entries` now
   sorts with `sort_mode`/`sort_ascending` like C# `LoadEntries`, and cycling
   with `s` wraps from Extension back to Name (it stuck on Extension)
-- [ ] Bug: size column not populated (found during the trial)
-  - File sizes come from `metadata.len()` and directory sizes from the
-    `dir_sizes` map keyed by full path string (`src/wade-rs/src/fs/directory_contents.rs:290-299`),
-    so this smells like a path-key mismatch between `App` (which feeds
-    `InlineDirSizeLoader` results into `directory_contents.dir_sizes`) and
-    `load_entries`, and/or the `App::ShouldComputeInlineDirSizes` gate
-    disabling computation. Root cause unverified.
-  - Compare with C# `InlineDirSizeLoader` + `DirectoryContents.DirSizes` keying
-    and the size-column rendering path; add a regression test once the seam is
-    identified.
+- [x] Bug: size column not populated (found during the trial). Fixed: the
+  center pane now receives the inline directory sizes (`App::render` passed
+  `None`), and finishing the size scan no longer empties the App's copy
+  (C# shares one dictionary between `_inlineDirSizes` and `DirSizes`)
 - [ ] Manual Windows Terminal checks (need a real console; none are
   automated):
   - the `wd` wrapper (`--cwd-file`)

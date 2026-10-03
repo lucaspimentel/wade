@@ -1031,7 +1031,8 @@ impl App {
             return;
         }
 
-        self.directory_contents.dir_sizes = self.inline_dir_sizes.take();
+        // C# shares one dictionary between the two; keep the App's copy for rendering
+        self.directory_contents.dir_sizes.clone_from(&self.inline_dir_sizes);
 
         if self.directory_contents.sort_mode == crate::fs::directory_contents::SortMode::Size {
             self.directory_contents.invalidate(&self.current_path);
@@ -1686,7 +1687,7 @@ impl App {
             self.config.date_column_enabled,
             &self.marked_paths,
             self.git_statuses.as_ref(),
-            None,
+            self.inline_dir_sizes.as_ref(),
             is_drive_view,
         );
 
@@ -2199,6 +2200,36 @@ mod tests {
         assert_eq!(seen, [SortMode::Modified, SortMode::Size, SortMode::Extension, SortMode::Name]);
         app.dispatch(AppAction::ToggleSortDirection);
         assert!(!app.directory_contents.sort_ascending);
+    }
+
+    #[test]
+    fn inline_dir_sizes_render_in_center_pane_and_survive_completion() {
+        use crate::input::{InlineDirSizeCompleteEvent, InlineDirSizeReadyEvent};
+
+        let root = test_root("inline-sizes");
+        std::fs::create_dir_all(root.join("sub")).unwrap();
+        let mut app = app_at(&root, &[]);
+        app.set_screen_size(100, 30);
+        app.layout.calculate(100, 30, true, true);
+        let sub = root.join("sub").to_string_lossy().into_owned();
+        let row_of = |app: &mut App| -> String {
+            let mut buffer = crate::screen::ScreenBuffer::new(100, 30);
+            app.render(&mut buffer);
+            (0..30).map(|row| buffer.row_text(row)).find(|text| text.contains("sub")).unwrap_or_default()
+        };
+
+        app.inline_dir_sizes = Some(std::collections::HashMap::new());
+        app.handle_inline_dir_size_ready(InlineDirSizeReadyEvent {
+            parent_path: app.current_path.clone(),
+            directory_path: sub.clone(),
+            total_bytes: 123_456_789,
+        });
+        assert!(row_of(&mut app).contains("117.7 MB"), "size shown while streaming");
+
+        app.handle_inline_dir_size_complete(InlineDirSizeCompleteEvent { parent_path: app.current_path.clone() });
+        assert!(row_of(&mut app).contains("117.7 MB"), "size still shown after completion");
+        assert_eq!(app.directory_contents.dir_sizes.as_ref().and_then(|sizes| sizes.get(&sub)), Some(&123_456_789));
+        std::fs::remove_dir_all(&root).unwrap();
     }
 
     fn changed(app: &App, full_refresh: bool) -> FileSystemChangedEvent {

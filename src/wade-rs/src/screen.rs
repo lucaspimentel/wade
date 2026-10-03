@@ -109,6 +109,22 @@ impl ScreenBuffer {
         self.dirty_rows = vec![0; ((self.height + 63) / 64) as usize];
     }
 
+    /// Text of one row of the pending (back) frame, without wide-character
+    /// continuation cells. For tests and diagnostics.
+    #[must_use]
+    pub fn row_text(&self, row: i32) -> String {
+        if row < 0 || row >= self.height {
+            return String::new();
+        }
+
+        let start = (row * self.width) as usize;
+        self.back[start..start + self.width as usize]
+            .iter()
+            .filter(|cell| !cell.is_wide_continuation())
+            .map(|cell| cell.ch)
+            .collect()
+    }
+
     pub fn resize(&mut self, width: i32, height: i32) {
         self.width = width;
         self.height = height;
