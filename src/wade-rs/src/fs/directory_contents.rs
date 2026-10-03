@@ -352,7 +352,8 @@ pub fn sort_entries(list: &mut [FileSystemEntry], sort_mode: SortMode, sort_asce
 }
 
 fn compare_date_parts(a: &super::super::ui::format_helpers::DateParts, b: &super::super::ui::format_helpers::DateParts) -> std::cmp::Ordering {
-    (a.year, a.month, a.day, a.hour, a.minute).cmp(&(b.year, b.month, b.day, b.hour, b.minute))
+    (a.year, a.month, a.day, a.hour, a.minute, a.second, a.nanosecond)
+        .cmp(&(b.year, b.month, b.day, b.hour, b.minute, b.second, b.nanosecond))
 }
 
 /// Converts a `SystemTime` into local wall-clock fields (C#
@@ -368,6 +369,8 @@ pub fn system_time_to_date_parts(t: SystemTime) -> super::super::ui::format_help
         day: local.day(),
         hour: local.hour(),
         minute: local.minute(),
+        second: local.second(),
+        nanosecond: local.nanosecond(),
     }
 }
 
@@ -533,6 +536,48 @@ mod tests {
         assert_eq!(kind("file.txt"), Some((false, false)));
         assert!(entries.iter().all(|e| !e.is_cloud_placeholder && !e.is_junction_point && !e.is_app_exec_link));
         std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    fn sort_probe_entry(name: &str, second: u32, nanosecond: u32) -> FileSystemEntry {
+        FileSystemEntry {
+            name: name.to_string(),
+            full_path: name.to_string(),
+            is_directory: false,
+            size: 0,
+            last_modified: crate::ui::format_helpers::DateParts {
+                year: 2024,
+                month: 1,
+                day: 2,
+                hour: 3,
+                minute: 4,
+                second,
+                nanosecond,
+            },
+            link_target: None,
+            is_broken_symlink: false,
+            is_drive: false,
+            is_cloud_placeholder: false,
+            is_junction_point: false,
+            is_app_exec_link: false,
+            app_exec_link_target: None,
+            drive_media_type: crate::fs::DriveMediaType::default(),
+            drive_format: None,
+            drive_label: None,
+            drive_free_space: 0,
+            drive_total_size: 0,
+        }
+    }
+
+    #[test]
+    fn sort_by_modified_uses_sub_minute_precision() {
+        let mut list = vec![
+            sort_probe_entry("a", 30, 0),
+            sort_probe_entry("b", 10, 500),
+            sort_probe_entry("c", 10, 100),
+        ];
+        sort_entries(&mut list, SortMode::Modified, true);
+        let names: Vec<&str> = list.iter().map(|e| e.name.as_str()).collect();
+        assert_eq!(names, ["c", "b", "a"]);
     }
 
     #[test]

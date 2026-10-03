@@ -646,7 +646,7 @@ mod tests {
             full_path: full_path.to_string(),
             is_directory,
             size,
-            last_modified: DateParts { year: 2024, month: 1, day: 2, hour: 15, minute: 4 },
+            last_modified: DateParts { year: 2024, month: 1, day: 2, hour: 15, minute: 4, second: 0, nanosecond: 0 },
             link_target: None,
             is_broken_symlink: false,
             is_drive: false,

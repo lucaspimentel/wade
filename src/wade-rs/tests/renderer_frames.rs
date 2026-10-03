@@ -58,6 +58,8 @@ fn parse_date(token: &str) -> DateParts {
         day: num(8, 10) as u32,
         hour: num(11, 13) as u32,
         minute: num(14, 16) as u32,
+        second: num(17, 19) as u32,
+        nanosecond: 0,
     }
 }
 

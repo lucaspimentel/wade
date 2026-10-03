@@ -17,6 +17,10 @@ pub struct DateParts {
     pub day: u32,
     pub hour: u32,
     pub minute: u32,
+    /// Sub-minute precision, kept so "sort by modified" breaks ties like
+    /// C# (which compares the full `DateTime`).
+    pub second: u32,
+    pub nanosecond: u32,
 }
 
 /// Port of `FormatHelpers.FormatSize`: formats a byte count as "N B" or
