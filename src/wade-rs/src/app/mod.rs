@@ -17,7 +17,11 @@ pub mod input_reader;
 pub mod preview;
 pub mod preview_loader;
 #[cfg(test)]
+mod key_tests;
+#[cfg(test)]
 mod settings_tests;
+#[cfg(test)]
+mod test_support;
 
 use std::collections::HashMap;
 use std::path::Path;

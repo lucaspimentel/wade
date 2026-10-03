@@ -4,78 +4,14 @@
 //! dialog applies it (`apply_config_changes`), and toggles that have a key are
 //! dispatched too. Probes observe the rendered frame or App state.
 
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::path::Path;
 
+use super::test_support::{app_at, fixture, frame, frame_has, row_with, select, visible_names, CURRENT_DIR};
 use super::{App, AppAction, AppConfig};
 use crate::fs::directory_contents::SortMode;
 use crate::fs::DriveMediaType;
 use crate::input::InputMode;
-use crate::screen::ScreenBuffer;
 use crate::ui::config_dialog::ConfigDialogState;
-
-const WIDTH: i32 = 120;
-const HEIGHT: i32 = 30;
-/// The listed directory's name: unique enough that finding it on screen
-/// means the parent pane is drawn.
-const CURRENT_DIR: &str = "ZQXcurrent";
-
-static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
-
-/// A fresh fixture tree; returns (parent, listed directory).
-fn fixture() -> (PathBuf, PathBuf) {
-    let id = NEXT_ID.fetch_add(1, Ordering::SeqCst);
-    let parent = std::env::temp_dir().join(format!("wade-settings-{}-{id}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&parent);
-    let root = parent.join(CURRENT_DIR);
-    std::fs::create_dir_all(root.join("sub")).unwrap();
-    std::fs::write(root.join("sub").join("inner.txt"), "inner").unwrap();
-    std::fs::write(root.join("a.txt"), vec![b'a'; 1234]).unwrap();
-    std::fs::write(root.join("b.txt"), "b").unwrap();
-    std::fs::write(root.join(".hidden"), "h").unwrap();
-    std::fs::write(root.join("readme.md"), "# Title\n").unwrap();
-    // An empty zip archive: just the end-of-central-directory record
-    let mut zip = b"PK\x05\x06".to_vec();
-    zip.extend_from_slice(&[0; 18]);
-    std::fs::write(root.join("empty.zip"), zip).unwrap();
-    (parent, root)
-}
-
-/// An App at `root` with `config` applied as startup applies it, laid out
-/// as `run` does. The config file lives in the fixture.
-fn app_at(mut config: AppConfig, root: &Path) -> App {
-    config.start_path = root.to_string_lossy().into_owned();
-    config.config_file_path = Some(root.join("config.toml").to_string_lossy().into_owned());
-    let mut app = App::new(config);
-    app.apply_startup_config();
-    app.set_screen_size(WIDTH, HEIGHT);
-    app.layout.calculate(WIDTH, HEIGHT, app.preview_pane_enabled, app.parent_pane_enabled);
-    app
-}
-
-/// Rendered rows, without the status bar (it shows the current path).
-fn frame(app: &mut App) -> Vec<String> {
-    let mut buffer = ScreenBuffer::new(WIDTH, HEIGHT);
-    app.render(&mut buffer);
-    (0..HEIGHT - 1).map(|row| buffer.row_text(row)).collect()
-}
-
-fn frame_has(app: &mut App, text: &str) -> bool {
-    frame(app).iter().any(|row| row.contains(text))
-}
-
-fn row_with(app: &mut App, text: &str) -> String {
-    frame(app).into_iter().find(|row| row.contains(text)).unwrap_or_default()
-}
-
-fn select(app: &mut App, name: &str) {
-    let entries = app.get_visible_entries();
-    app.selected_index = entries.iter().position(|e| e.name == name).unwrap_or_else(|| panic!("{name} not listed"));
-}
-
-fn visible_names(app: &mut App) -> Vec<String> {
-    app.get_visible_entries().into_iter().map(|e| e.name).collect()
-}
 
 /// Labels of the preview (`false`) or metadata (`true`) providers for the
 /// selected file, after a render picked them.
