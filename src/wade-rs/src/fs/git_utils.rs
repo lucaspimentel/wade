@@ -803,6 +803,79 @@ mod tests {
     }
 
     #[test]
+    fn porcelain_single_file_cases() {
+        let root = test_root();
+        for (line, name, expected) in [
+            ("MM file.txt", "file.txt", GitFileStatus::STAGED | GitFileStatus::MODIFIED),
+            ("A  file.txt", "file.txt", GitFileStatus::STAGED),
+            ("D  file.txt", "file.txt", GitFileStatus::STAGED),
+            (" D file.txt", "file.txt", GitFileStatus::MODIFIED),
+            (" M file.txt", "file.txt", GitFileStatus::MODIFIED),
+            ("R  old.txt -> new.txt", "new.txt", GitFileStatus::STAGED),
+        ] {
+            let statuses = parse_porcelain_output(line, &root);
+            let files: Vec<_> = statuses.keys().filter(|k| **k != root).collect();
+            assert_eq!(files, [&test_key(&root, name)], "{line:?}");
+            assert_eq!(statuses.get(&test_key(&root, name)).copied(), Some(expected), "{line:?}");
+        }
+    }
+
+    #[test]
+    fn porcelain_empty_output_is_empty() {
+        assert!(parse_porcelain_output("", &test_root()).is_empty());
+    }
+
+    #[test]
+    fn porcelain_quoted_path_in_a_subdirectory() {
+        let root = test_root();
+        let statuses = parse_porcelain_output(" M \"src/special file.txt\"\n", &root);
+        assert_eq!(statuses.get(&test_key(&root, "src/special file.txt")).copied(), Some(GitFileStatus::MODIFIED));
+        assert_eq!(statuses.get(&test_key(&root, "src")).copied(), Some(GitFileStatus::MODIFIED));
+    }
+
+    #[test]
+    fn aggregation_merges_staged_and_modified() {
+        let root = test_root();
+        let statuses = parse_porcelain_output(" M src/foo/bar.cs\nA  src/baz.cs\n", &root);
+        let src = statuses.get(&test_key(&root, "src")).copied().expect("src aggregate");
+        assert!(src.contains(GitFileStatus::MODIFIED) && src.contains(GitFileStatus::STAGED), "{src:?}");
+    }
+
+    #[test]
+    fn ignored_files_create_no_directory_entries() {
+        let root = test_root();
+        let statuses = parse_porcelain_output("!! build/output.dll\n", &root);
+        assert_eq!(statuses.get(&test_key(&root, "build/output.dll")).copied(), Some(GitFileStatus::IGNORED));
+        assert!(!statuses.contains_key(&test_key(&root, "build")), "{statuses:?}");
+    }
+
+    #[test]
+    fn find_repo_root_of_an_empty_path_is_none() {
+        assert!(find_repo_root("").is_none());
+    }
+
+    #[test]
+    fn branch_name_with_a_slash() {
+        let root = temp_dir("feature");
+        std::fs::create_dir_all(root.join(".git")).expect("git dir");
+        std::fs::write(root.join(".git").join("HEAD"), "ref: refs/heads/feature/my-branch\n").expect("head");
+        assert_eq!(read_branch_name(&root.to_string_lossy()).as_deref(), Some("feature/my-branch"));
+    }
+
+    #[test]
+    fn cancelled_token_stops_before_running_git() {
+        // A directory that is not a repo: only the up-front cancel check can
+        // produce these results without spawning git
+        let dir = temp_dir("cancelled");
+        let root = dir.to_string_lossy().to_string();
+        let cancel = CancelToken::new();
+        cancel.cancel();
+        assert!(query_status(&root, &cancel).is_none());
+        assert_eq!(stage(&root, &[format!("{root}{}a.txt", std::path::MAIN_SEPARATOR)], &cancel), (false, Some("Cancelled".to_string())));
+        assert_eq!(run_git_result(&root, &["status"], &cancel, LOCAL_TIMEOUT_MS), (false, Some("Cancelled".to_string())));
+    }
+
+    #[test]
     fn statuses_get_case_insensitive_on_windows() {
         let mut map = HashMap::new();
         map.insert(r"C:\Repo\File.txt".to_string(), GitFileStatus::MODIFIED);
@@ -841,24 +914,124 @@ mod integration {
         );
     }
 
-    #[test]
-fn real_git_status_round_trip() {
-        // Hermetic git for every spawned child (production spawn_git
-        // inherits this process env): ignore the user global/system
-        // config, whose commit signing (1Password SSH agent) breaks
-        // non-interactive runs
-        unsafe {
-            std::env::set_var("GIT_CONFIG_GLOBAL", "/dev/null");
-            std::env::set_var("GIT_CONFIG_SYSTEM", "/dev/null");
-            std::env::set_var("GIT_AUTHOR_NAME", "wade-test");
-            std::env::set_var("GIT_COMMITTER_NAME", "wade-test");
-            std::env::set_var("GIT_AUTHOR_EMAIL", "[EMAIL]");
-            std::env::set_var("GIT_COMMITTER_EMAIL", "[EMAIL]");
+    fn git_installed() -> bool {
+        Command::new("git").arg("--version").output().is_ok()
+    }
+
+    /// A fresh repo on branch "main", or None when git is not installed.
+    /// Production code (spawn_git) runs git with this process's environment,
+    /// so the identity and signing settings go in the repo's local config:
+    /// the user's global commit signing would break non-interactive commits.
+    fn init_repo(name: &str) -> Option<std::path::PathBuf> {
+        if !git_installed() {
+            return None;
         }
+        let repo = temp_dir(name);
+        run_git(&repo, &["init", "-q", "-b", "main"]);
+        run_git(&repo, &["config", "user.name", "wade-test"]);
+        run_git(&repo, &["config", "user.email", "wade@example.invalid"]);
+        run_git(&repo, &["config", "commit.gpgsign", "false"]);
+        Some(repo)
+    }
 
+    fn git_stdout(repo: &Path, args: &[&str]) -> String {
+        let output = Command::new("git").args(args).current_dir(repo).output().expect("git");
+        String::from_utf8_lossy(&output.stdout).into_owned()
+    }
 
-        let repo = temp_dir("realgit");
-        run_git(&repo, &["init", "-b", "main"]);
+    fn p(path: &Path) -> String {
+        path.to_string_lossy().to_string()
+    }
+
+    /// A repo with `test.txt` ("line1\nline2\n") committed.
+    fn committed_repo(name: &str) -> Option<std::path::PathBuf> {
+        let repo = init_repo(name)?;
+        std::fs::write(repo.join("test.txt"), "line1\nline2\n").expect("write");
+        run_git(&repo, &["add", "test.txt"]);
+        run_git(&repo, &["commit", "-q", "-m", "initial"]);
+        Some(repo)
+    }
+
+    #[test]
+    fn get_diff_for_modified_staged_and_clean_files() {
+        let Some(repo) = committed_repo("diff") else { return };
+        let root = p(&repo);
+        let file = p(&repo.join("test.txt"));
+        let cancel = CancelToken::new();
+        assert!(get_diff(&root, &file, false, &cancel).is_none(), "clean file has no diff");
+
+        std::fs::write(repo.join("test.txt"), "line1\nchanged\n").expect("write");
+        let diff = get_diff(&root, &file, false, &cancel).expect("worktree diff");
+        assert!(diff.iter().any(|l| l == "-line2") && diff.iter().any(|l| l == "+changed"), "{diff:?}");
+        assert!(get_diff(&root, &file, true, &cancel).is_none(), "nothing staged yet");
+
+        run_git(&repo, &["add", "test.txt"]);
+        let staged = get_diff(&root, &file, true, &cancel).expect("staged diff");
+        assert!(staged.iter().any(|l| l == "+changed"), "{staged:?}");
+
+        let cancelled = CancelToken::new();
+        cancelled.cancel();
+        assert!(get_diff(&root, &file, true, &cancelled).is_none());
+        let _ = std::fs::remove_dir_all(&repo);
+    }
+
+    #[test]
+    fn stage_several_paths_and_unstage_all_after_a_commit() {
+        let Some(repo) = committed_repo("multi") else { return };
+        let root = p(&repo);
+        let cancel = CancelToken::new();
+        std::fs::write(repo.join("test.txt"), "changed\n").expect("write");
+        std::fs::write(repo.join("new.txt"), "new\n").expect("write");
+        std::fs::write(repo.join("other.txt"), "other\n").expect("write");
+
+        let (ok, err) = stage(&root, &[p(&repo.join("test.txt")), p(&repo.join("new.txt"))], &cancel);
+        assert!(ok, "stage failed: {err:?}");
+        assert_eq!(git_stdout(&repo, &["diff", "--cached", "--name-only"]), "new.txt\ntest.txt\n");
+
+        let (ok, err) = unstage_all(&root, &cancel);
+        assert!(ok, "unstage_all failed: {err:?}");
+        let statuses = query_status(&root, &cancel).expect("statuses");
+        let status = |name: &str| statuses_get(&statuses, &p(&repo.join(name))).unwrap_or_default();
+        assert_eq!(status("test.txt"), GitFileStatus::MODIFIED);
+        assert_eq!(status("new.txt"), GitFileStatus::UNTRACKED);
+        let _ = std::fs::remove_dir_all(&repo);
+    }
+
+    #[test]
+    fn commit_keeps_quotes_and_fails_with_nothing_staged() {
+        let Some(repo) = init_repo("commitmsg") else { return };
+        let root = p(&repo);
+        let cancel = CancelToken::new();
+        std::fs::write(repo.join("test.txt"), "content\n").expect("write");
+        run_git(&repo, &["add", "test.txt"]);
+
+        let message = "Fix \"broken\" thing and it's 'quoted'";
+        let (ok, err) = commit(&root, message, &cancel);
+        assert!(ok, "commit failed: {err:?}");
+        assert_eq!(git_stdout(&repo, &["log", "-1", "--format=%B"]).trim_end(), message);
+
+        let (ok, err) = commit(&root, "nothing", &cancel);
+        assert!(!ok);
+        assert!(err.is_some());
+        let _ = std::fs::remove_dir_all(&repo);
+    }
+
+    #[test]
+    fn run_git_result_reports_success_and_failure() {
+        let Some(repo) = init_repo("rungit") else { return };
+        let root = p(&repo);
+        let cancel = CancelToken::new();
+        assert_eq!(run_git_result(&root, &["status"], &cancel, LOCAL_TIMEOUT_MS), (true, None));
+
+        let (ok, err) = run_git_result(&root, &["not-a-command"], &cancel, LOCAL_TIMEOUT_MS);
+        assert!(!ok);
+        assert!(err.is_some_and(|e| e.contains("not-a-command")));
+        let _ = std::fs::remove_dir_all(&repo);
+    }
+
+    #[test]
+    fn real_git_status_round_trip() {
+        let Some(repo) = init_repo("realgit") else { return };
 
         std::fs::write(repo.join("tracked.txt"), "hello").expect("write");
         run_git(&repo, &["add", "tracked.txt"]);
@@ -939,11 +1112,7 @@ fn real_git_status_round_trip() {
 
     #[test]
     fn unstage_works_before_the_first_commit() {
-        if Command::new("git").arg("--version").output().is_err() {
-            return; // git not installed
-        }
-        let repo = temp_dir("unborn");
-        run_git(&repo, &["init", "-q"]);
+        let Some(repo) = init_repo("unborn") else { return };
         std::fs::write(repo.join("one.txt"), "1").expect("write");
         std::fs::write(repo.join("two.txt"), "2").expect("write");
         run_git(&repo, &["add", "-A"]);
