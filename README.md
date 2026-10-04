@@ -215,7 +215,7 @@ Then use `wd` instead of `wade` to browse. Press `q` to quit and cd to the last 
 | p | Change preview (when multiple preview modes available) |
 | i | Properties |
 | , | Settings (Configuration) |
-| Ctrl+F | Search / Find file |
+| Ctrl+F | Find files (Search) |
 | Ctrl+P / Ctrl+K | Action palette |
 | ? | Show help |
 | q / Escape | Quit |

@@ -11,7 +11,7 @@ internal static class HelpOverlay
     public static void Render(ScreenBuffer buffer, int screenWidth, int screenHeight)
     {
         const int ContentWidth = 46;
-        const int contentHeight = 10;
+        const int contentHeight = 14;
 
         Rect content = DialogBox.Render(
             buffer, screenWidth, screenHeight,
@@ -51,9 +51,16 @@ internal static class HelpOverlay
         buffer.WriteString(y++, left + 16, "Filter", descStyle, ContentWidth - 16);
 
         buffer.WriteString(y, left, "Ctrl+F", keyStyle, 16);
-        buffer.WriteString(y++, left + 16, "Find files", descStyle, ContentWidth - 16);
+        buffer.WriteString(y++, left + 16, "Find files (Search)", descStyle, ContentWidth - 16);
 
-        buffer.WriteString(y, left, "Esc", keyStyle, 16);
-        buffer.WriteString(y, left + 16, "Clear filter / cancel", descStyle, ContentWidth - 16);
+        y++; // blank line
+
+        buffer.WriteString(y++, left, "Other", sectionStyle, ContentWidth);
+
+        buffer.WriteString(y, left, ",", keyStyle, 16);
+        buffer.WriteString(y++, left + 16, "Settings (Configuration)", descStyle, ContentWidth - 16);
+
+        buffer.WriteString(y, left, "?", keyStyle, 16);
+        buffer.WriteString(y, left + 16, "Help", descStyle, ContentWidth - 16);
     }
 }

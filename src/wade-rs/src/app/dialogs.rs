@@ -1122,7 +1122,7 @@ impl App {
             ActionMenuItem::new("Bookmarks", "b", AppAction::ShowBookmarks),
             ActionMenuItem::new("Toggle bookmark", "B", AppAction::ToggleBookmark),
             ActionMenuItem::new("Go to path", "Ctrl+G", AppAction::GoToPath),
-            ActionMenuItem::new("Search / Find file", "Ctrl+F", AppAction::ShowFileFinder),
+            ActionMenuItem::new("Find files (Search)", "Ctrl+F", AppAction::ShowFileFinder),
             ActionMenuItem::new("Filter", "/", AppAction::Search),
             ActionMenuItem::new("Open terminal here", "Ctrl+T", AppAction::OpenTerminal),
             ActionMenuItem::new("Settings (Configuration)", ",", AppAction::ShowConfig),

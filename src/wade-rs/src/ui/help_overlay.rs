@@ -22,7 +22,7 @@ const SECTION_COLOR: Color = Color {
 
 pub fn render(buffer: &mut ScreenBuffer, screen_width: i32, screen_height: i32) {
     const CONTENT_WIDTH: i32 = 46;
-    const CONTENT_HEIGHT: i32 = 10;
+    const CONTENT_HEIGHT: i32 = 14;
 
     let content: Rect = dialog_box::render(
         buffer,
@@ -78,7 +78,14 @@ pub fn render(buffer: &mut ScreenBuffer, screen_width: i32, screen_height: i32) 
 
     put(buffer, y, "/", "Filter");
     y += 1;
-    put(buffer, y, "Ctrl+F", "Find files");
+    put(buffer, y, "Ctrl+F", "Find files (Search)");
     y += 1;
-    put(buffer, y, "Esc", "Clear filter / cancel");
+    y += 1; // blank line
+
+    buffer.write_string(y, left, "Other", section_style, i64::from(CONTENT_WIDTH));
+    y += 1;
+
+    put(buffer, y, ",", "Settings (Configuration)");
+    y += 1;
+    put(buffer, y, "?", "Help");
 }
