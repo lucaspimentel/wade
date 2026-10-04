@@ -220,6 +220,57 @@ mod tests {
         assert!(get_suggestion(&input, true, false).is_some());
     }
 
+    fn home() -> String {
+        std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")).expect("home").to_string_lossy().into_owned()
+    }
+
+    #[test]
+    fn nonexistent_parent_yields_none() {
+        let missing = std::env::temp_dir().join(format!("wade-pathcomp-missing-{}", std::process::id())).join("abc");
+        assert!(get_suggestion(&missing.to_string_lossy(), true, false).is_none());
+    }
+
+    #[test]
+    fn matching_ignores_case() {
+        let dir = temp_dir("case");
+        std::fs::create_dir(dir.join("Alpha")).expect("mkdir");
+        let input = dir.join("alp");
+        let suggestion = get_suggestion(&input.to_string_lossy(), true, false).expect("suggestion");
+        assert!(suggestion.ends_with("Alpha"), "{suggestion}");
+    }
+
+    #[test]
+    fn empty_directory_with_trailing_separator_yields_none() {
+        let dir = temp_dir("empty");
+        let input = format!("{}{}", dir.to_string_lossy(), std::path::MAIN_SEPARATOR);
+        assert!(get_suggestion(&input, true, false).is_none());
+    }
+
+    #[test]
+    fn forward_slashes_still_match() {
+        let dir = temp_dir("slashes");
+        std::fs::create_dir(dir.join("alpha")).expect("mkdir");
+        let input = format!("{}/alp", dir.to_string_lossy().replace('\\', "/"));
+        let suggestion = get_suggestion(&input, true, false).expect("suggestion");
+        assert!(suggestion.ends_with("alpha"), "{suggestion}");
+    }
+
+    #[test]
+    fn expand_tilde_uses_the_home_directory() {
+        let home = home();
+        assert_eq!(expand_tilde("~"), home);
+        let expanded = expand_tilde("~/Downloads");
+        assert!(expanded.starts_with(&home) && expanded.ends_with("Downloads"), "{expanded}");
+        assert_eq!(expand_tilde("/some/path"), "/some/path");
+    }
+
+    #[test]
+    fn normalize_separators_cases() {
+        assert_eq!(normalize_separators("foo"), "foo");
+        let expected = if std::path::MAIN_SEPARATOR == '\\' { r"C:\Users\foo" } else { "C:/Users/foo" };
+        assert_eq!(normalize_separators("C:/Users/foo"), expected);
+    }
+
     #[test]
     fn expand_tilde_noop_for_absolute() {
         assert_eq!(expand_tilde("C:\\foo"), "C:\\foo");
