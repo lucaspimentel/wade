@@ -62,8 +62,6 @@ backlog.
   download), the combined text+image preview event, macOS paths, and the
   thinner ports of DirectoryContents, FilePreview, FileActions, GitUtils,
   PathCompletion, ConfigDialogState and BookmarkStore tests
-- [ ] Unstage fails before the first commit ("could not resolve HEAD") in both
-  versions: `git restore --staged` needs a HEAD; `git rm --cached` would work
 - [ ] Manual Windows Terminal checks (need a real console; none are
   automated):
   - the `wd` wrapper (`--cwd-file`)

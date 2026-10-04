@@ -298,7 +298,7 @@ pub fn relative_path(repo_root: &str, path: &str) -> String {
 /// passing argv words directly is equivalent).
 #[must_use]
 pub fn build_path_args(command: &str, repo_root: &str, paths: &[String]) -> Vec<String> {
-    // The C# command may be multi-word ("restore --staged"); the argv model
+    // The C# command may be multi-word ("reset -q"); the argv model
     // splits it
     let mut args: Vec<String> = command.split(' ').map(str::to_string).collect();
     args.push("--".to_string());
@@ -314,9 +314,10 @@ pub fn stage(repo_root: &str, paths: &[String], cancel: &CancelToken) -> (bool, 
     run_git_args_owned(repo_root, &build_path_args("add", repo_root, paths), cancel, LOCAL_TIMEOUT_MS)
 }
 
-/// Port of `GitUtils.Unstage`: `git restore --staged -- <paths>`.
+/// Port of `GitUtils.Unstage`: `git reset -q -- <paths>` (unlike
+/// `git restore --staged`, it also works before the first commit).
 pub fn unstage(repo_root: &str, paths: &[String], cancel: &CancelToken) -> (bool, Option<String>) {
-    run_git_args_owned(repo_root, &build_path_args("restore --staged", repo_root, paths), cancel, LOCAL_TIMEOUT_MS)
+    run_git_args_owned(repo_root, &build_path_args("reset -q", repo_root, paths), cancel, LOCAL_TIMEOUT_MS)
 }
 
 /// Port of `GitUtils.StageAll`: `git add -A`.
@@ -324,9 +325,10 @@ pub fn stage_all(repo_root: &str, cancel: &CancelToken) -> (bool, Option<String>
     run_git_args_owned(repo_root, &["add".to_string(), "-A".to_string()], cancel, LOCAL_TIMEOUT_MS)
 }
 
-/// Port of `GitUtils.UnstageAll`: `git reset HEAD`.
+/// Port of `GitUtils.UnstageAll`: `git reset -q` (no `HEAD` argument, so it
+/// also works before the first commit).
 pub fn unstage_all(repo_root: &str, cancel: &CancelToken) -> (bool, Option<String>) {
-    run_git_args_owned(repo_root, &["reset".to_string(), "HEAD".to_string()], cancel, LOCAL_TIMEOUT_MS)
+    run_git_args_owned(repo_root, &["reset".to_string(), "-q".to_string()], cancel, LOCAL_TIMEOUT_MS)
 }
 
 /// Port of `GitUtils.Commit`: `git commit -m <message>`. The C# version
@@ -933,5 +935,35 @@ fn real_git_status_round_trip() {
 
         // Clean up temp pollution
         let _ = std::fs::remove_dir_all(Path::new(&root));
+    }
+
+    #[test]
+    fn unstage_works_before_the_first_commit() {
+        if Command::new("git").arg("--version").output().is_err() {
+            return; // git not installed
+        }
+        let repo = temp_dir("unborn");
+        run_git(&repo, &["init", "-q"]);
+        std::fs::write(repo.join("one.txt"), "1").expect("write");
+        std::fs::write(repo.join("two.txt"), "2").expect("write");
+        run_git(&repo, &["add", "-A"]);
+
+        let root = repo.to_string_lossy().to_string();
+        let cancel = CancelToken::new();
+        let staged = || {
+            let output = Command::new("git").args(["diff", "--cached", "--name-only"]).current_dir(&repo).output().expect("git");
+            String::from_utf8_lossy(&output.stdout).lines().map(str::to_string).collect::<Vec<_>>()
+        };
+        assert_eq!(staged(), ["one.txt", "two.txt"]);
+
+        let (ok, err) = unstage(&root, &[repo.join("one.txt").to_string_lossy().to_string()], &cancel);
+        assert!(ok, "unstage failed: {err:?}");
+        assert_eq!(staged(), ["two.txt"]);
+
+        let (ok, err) = unstage_all(&root, &cancel);
+        assert!(ok, "unstage_all failed: {err:?}");
+        assert!(staged().is_empty());
+
+        let _ = std::fs::remove_dir_all(&repo);
     }
 }

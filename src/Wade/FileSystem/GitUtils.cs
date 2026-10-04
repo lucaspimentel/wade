@@ -177,11 +177,12 @@ internal static class GitUtils
     }
 
     /// <summary>
-    /// Unstages the specified file paths via <c>git restore --staged</c>.
+    /// Unstages the specified file paths via <c>git reset -q</c>, which, unlike
+    /// <c>git restore --staged</c>, also works before the first commit.
     /// </summary>
     public static (bool Success, string? Error) Unstage(string repoRoot, IReadOnlyList<string> paths, CancellationToken ct)
     {
-        string args = BuildPathArgs("restore --staged", repoRoot, paths);
+        string args = BuildPathArgs("reset -q", repoRoot, paths);
         return RunGitCommand(repoRoot, args, ct);
     }
 
@@ -192,10 +193,11 @@ internal static class GitUtils
         RunGitCommand(repoRoot, "add -A", ct);
 
     /// <summary>
-    /// Unstages all staged changes via <c>git reset HEAD</c>.
+    /// Unstages all staged changes via <c>git reset -q</c> (no <c>HEAD</c>
+    /// argument, so it also works before the first commit).
     /// </summary>
     public static (bool Success, string? Error) UnstageAll(string repoRoot, CancellationToken ct) =>
-        RunGitCommand(repoRoot, "reset HEAD", ct);
+        RunGitCommand(repoRoot, "reset -q", ct);
 
     /// <summary>
     /// Commits staged changes with the given message via <c>git commit -m</c>.

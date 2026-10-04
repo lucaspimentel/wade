@@ -696,6 +696,64 @@ public class GitUtilsTests
     }
 
     [Fact]
+    public void Unstage_BeforeFirstCommit_SetsStatusToUntracked()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            RunGit(tempDir, "init");
+
+            string filePath = Path.Combine(tempDir, "new-file.txt");
+            File.WriteAllText(filePath, "new content\n");
+            RunGit(tempDir, "add new-file.txt");
+
+            (bool Success, string? Error) result = GitUtils.Unstage(tempDir, [filePath], CancellationToken.None);
+            Assert.True(result.Success, result.Error);
+
+            Dictionary<string, GitFileStatus>? statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Assert.True(statuses[filePath].HasFlag(GitFileStatus.Untracked));
+            Assert.False(statuses[filePath].HasFlag(GitFileStatus.Staged));
+        }
+        finally
+        {
+            ForceDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void UnstageAll_BeforeFirstCommit_UnstagesAll()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            RunGit(tempDir, "init");
+
+            string file1 = Path.Combine(tempDir, "file1.txt");
+            string file2 = Path.Combine(tempDir, "file2.txt");
+            File.WriteAllText(file1, "one\n");
+            File.WriteAllText(file2, "two\n");
+            RunGit(tempDir, "add .");
+
+            (bool Success, string? Error) result = GitUtils.UnstageAll(tempDir, CancellationToken.None);
+            Assert.True(result.Success, result.Error);
+
+            Dictionary<string, GitFileStatus>? statuses = GitUtils.QueryStatus(tempDir, CancellationToken.None)!;
+            Assert.True(statuses[file1].HasFlag(GitFileStatus.Untracked));
+            Assert.False(statuses[file1].HasFlag(GitFileStatus.Staged));
+            Assert.True(statuses[file2].HasFlag(GitFileStatus.Untracked));
+            Assert.False(statuses[file2].HasFlag(GitFileStatus.Staged));
+        }
+        finally
+        {
+            ForceDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
     public void Commit_WithStagedChanges_Succeeds()
     {
         string tempDir = Path.Combine(Path.GetTempPath(), "wade-test-" + Guid.NewGuid().ToString("N"));

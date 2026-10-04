@@ -583,10 +583,8 @@ fn git_status_shows_branch_and_untracked_files() {
 
 #[test]
 fn stage_unstage_and_stage_all_change_the_index() {
+    // A fresh repo with no commits: unstaging must not need a HEAD
     let Some((mut app, parent, root)) = git_app() else { return };
-    // `git restore --staged` needs a HEAD (in C# too), so start from a commit
-    git(&root, &["add", "readme.md"]).unwrap();
-    git(&root, &["commit", "-q", "-m", "base"]).unwrap();
     select(&mut app, "a.txt");
     app.dispatch(super::AppAction::StageFile);
     wait_for_git_action(&mut app);
@@ -599,6 +597,10 @@ fn stage_unstage_and_stage_all_change_the_index() {
     app.dispatch(super::AppAction::StageAll);
     wait_for_git_action(&mut app);
     assert!(staged_files(&root).contains(&"b.txt".to_string()));
+
+    app.dispatch(super::AppAction::UnstageAll);
+    wait_for_git_action(&mut app);
+    assert!(staged_files(&root).is_empty());
     let _ = std::fs::remove_dir_all(&parent);
 }
 
