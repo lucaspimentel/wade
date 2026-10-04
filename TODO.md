@@ -57,11 +57,16 @@ backlog.
   the start path not normalized (`~`, trailing separators), and background
   `git status` holding `index.lock` so a stage/commit could fail (both
   versions; now `--no-optional-locks`)
-- [ ] Still untested after the review: terminal setup and raw input on both
-  OSes, the real launchers (open with default app, open terminal, cloud
-  download), the combined text+image preview event, macOS paths, and the
-  thinner ports of DirectoryContents, FilePreview, FileActions, GitUtils,
-  PathCompletion, ConfigDialogState and BookmarkStore tests
+- [x] Ported the remaining DirectoryContents, FileActions, GitUtils,
+  PathCompletion, ConfigDialogState and BookmarkStore C# tests (FilePreview
+  was already covered by unit tests and the preview goldens). Symlink and
+  real-git tests now skip where links or git are unavailable, so the Wine
+  run no longer has known failures
+- [ ] Still untested: terminal setup and raw input on both OSes, the real
+  launchers (open with default app, open terminal, cloud download), the
+  combined text+image preview event, macOS paths, the git network actions
+  (push, pull, fetch, ahead/behind against an upstream) and Windows
+  System+Hidden listing
 - [ ] Manual Windows Terminal checks (need a real console; none are
   automated):
   - the `wd` wrapper (`--cwd-file`)

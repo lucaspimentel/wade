@@ -617,13 +617,11 @@ mod tests {
         std::fs::write(root.join("real.txt"), "x").unwrap();
 
         #[cfg(unix)]
-        let linked = std::os::unix::fs::symlink("real.txt", root.join("good")).and(std::os::unix::fs::symlink("gone.txt", root.join("bad")));
+        let bad = std::os::unix::fs::symlink("gone.txt", root.join("bad"));
         #[cfg(windows)]
-        let linked = std::os::windows::fs::symlink_file("real.txt", root.join("good"))
-            .and(std::os::windows::fs::symlink_file("gone.txt", root.join("bad")));
+        let bad = std::os::windows::fs::symlink_file("gone.txt", root.join("bad"));
 
-        // Windows without Developer Mode cannot create symlinks.
-        if linked.is_ok() {
+        if link_file(Path::new("real.txt"), &root.join("good")) && bad.is_ok() {
             let entries = load_entries(&root.to_string_lossy(), true, true, None);
             let broken = |name: &str| entries.iter().find(|e| e.name == name).map(|e| e.is_broken_symlink);
 
@@ -632,6 +630,18 @@ mod tests {
         }
 
         std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    /// Links a file and reads it back: false on Windows without Developer
+    /// Mode (no link) and under Wine (links that cannot be followed).
+    fn link_file(target: &Path, link: &Path) -> bool {
+        #[cfg(unix)]
+        let linked = std::os::unix::fs::symlink(target, link);
+        #[cfg(windows)]
+        let linked = std::os::windows::fs::symlink_file(target, link);
+
+        let base = link.parent().unwrap_or(link);
+        linked.is_ok() && std::fs::read(base.join(target)).is_ok() && std::fs::read(link).is_ok()
     }
 
     fn test_dir(name: &str) -> PathBuf {
@@ -740,13 +750,7 @@ mod tests {
         let root = test_dir("filelink");
         std::fs::write(root.join("target.txt"), "x").unwrap();
 
-        #[cfg(unix)]
-        let linked = std::os::unix::fs::symlink(root.join("target.txt"), root.join("link.txt"));
-        #[cfg(windows)]
-        let linked = std::os::windows::fs::symlink_file(root.join("target.txt"), root.join("link.txt"));
-
-        // Windows without Developer Mode cannot create symlinks.
-        if linked.is_ok() {
+        if link_file(&root.join("target.txt"), &root.join("link.txt")) {
             let entries = load_entries(&root.to_string_lossy(), true, true, None);
             let link = entries.iter().find(|e| e.name == "link.txt").expect("link listed");
             assert!(link.is_symlink() && !link.is_directory && !link.is_broken_symlink);
