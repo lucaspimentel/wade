@@ -634,6 +634,129 @@ mod tests {
         std::fs::remove_dir_all(&root).unwrap();
     }
 
+    fn test_dir(name: &str) -> PathBuf {
+        let root = std::env::temp_dir().join(format!("wade-dc-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        root
+    }
+
+    fn names(entries: &[FileSystemEntry]) -> Vec<&str> {
+        entries.iter().map(|e| e.name.as_str()).collect()
+    }
+
+    #[test]
+    fn load_entries_of_a_missing_path_is_empty() {
+        let missing = std::env::temp_dir().join(format!("wade-dc-missing-{}", std::process::id()));
+        assert!(load_entries(&missing.to_string_lossy(), true, true, None).is_empty());
+    }
+
+    #[test]
+    fn get_entries_is_cached_until_invalidated() {
+        let root = test_dir("cache");
+        std::fs::write(root.join("first.txt"), "1").unwrap();
+        let path = root.to_string_lossy().into_owned();
+        let mut contents = DirectoryContents::new();
+        assert_eq!(names(&contents.get_entries(&path)), ["first.txt"]);
+
+        std::fs::write(root.join("second.txt"), "2").unwrap();
+        assert_eq!(names(&contents.get_entries(&path)), ["first.txt"], "served from the cache");
+
+        contents.invalidate(&path);
+        assert_eq!(names(&contents.get_entries(&path)), ["first.txt", "second.txt"]);
+
+        std::fs::write(root.join("third.txt"), "3").unwrap();
+        contents.invalidate_all();
+        assert_eq!(names(&contents.get_entries(&path)), ["first.txt", "second.txt", "third.txt"]);
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn sort_by_size_uses_inline_dir_sizes_for_directories() {
+        let root = test_dir("dirsizes");
+        std::fs::create_dir(root.join("big_dir")).unwrap();
+        std::fs::create_dir(root.join("small_dir")).unwrap();
+        let path = root.to_string_lossy().into_owned();
+        let mut contents = DirectoryContents {
+            sort_mode: SortMode::Size,
+            dir_sizes: Some(HashMap::from([
+                (root.join("small_dir").to_string_lossy().into_owned(), 100),
+                (root.join("big_dir").to_string_lossy().into_owned(), 5000),
+            ])),
+            ..DirectoryContents::default()
+        };
+        // Name order is big_dir, small_dir: only the sizes put small_dir first
+        assert_eq!(names(&contents.get_entries(&path)), ["small_dir", "big_dir"]);
+
+        contents.sort_ascending = false;
+        contents.invalidate_all();
+        assert_eq!(names(&contents.get_entries(&path)), ["big_dir", "small_dir"]);
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn sort_by_extension_breaks_ties_by_name() {
+        let mut list = vec![sort_probe_entry("c.txt", 0, 0), sort_probe_entry("a.txt", 0, 0), sort_probe_entry("b.md", 0, 0)];
+        sort_entries(&mut list, SortMode::Extension, true);
+        assert_eq!(names(&list), ["b.md", "a.txt", "c.txt"]);
+    }
+
+    #[test]
+    fn sort_by_modified_orders_real_files_by_write_time() {
+        let root = test_dir("mtime");
+        let base = SystemTime::now() - std::time::Duration::from_secs(3600);
+        for (name, offset) in [("old.txt", 0), ("new.txt", 120), ("mid.txt", 60)] {
+            let file = std::fs::File::create(root.join(name)).unwrap();
+            file.set_modified(base + std::time::Duration::from_secs(offset)).unwrap();
+        }
+        let path = root.to_string_lossy().into_owned();
+        let mut contents = DirectoryContents { sort_mode: SortMode::Modified, ..DirectoryContents::default() };
+        assert_eq!(names(&contents.get_entries(&path)), ["old.txt", "mid.txt", "new.txt"]);
+
+        contents.sort_ascending = false;
+        contents.invalidate_all();
+        assert_eq!(names(&contents.get_entries(&path)), ["new.txt", "mid.txt", "old.txt"]);
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn capitalize_drive_letter_matches_csharp_cases() {
+        for (input, expected) in [
+            (r"c:\Users\foo", r"C:\Users\foo"),
+            (r"d:\", r"D:\"),
+            (r"C:\Users\foo", r"C:\Users\foo"),
+            (r"D:\", r"D:\"),
+            ("/usr/local/bin", "/usr/local/bin"),
+            ("relative/path", "relative/path"),
+            ("", ""),
+            ("x", "x"),
+        ] {
+            assert_eq!(capitalize_drive_letter(input), expected, "{input:?}");
+        }
+    }
+
+    #[test]
+    fn file_symlinks_are_detected() {
+        let root = test_dir("filelink");
+        std::fs::write(root.join("target.txt"), "x").unwrap();
+
+        #[cfg(unix)]
+        let linked = std::os::unix::fs::symlink(root.join("target.txt"), root.join("link.txt"));
+        #[cfg(windows)]
+        let linked = std::os::windows::fs::symlink_file(root.join("target.txt"), root.join("link.txt"));
+
+        // Windows without Developer Mode cannot create symlinks.
+        if linked.is_ok() {
+            let entries = load_entries(&root.to_string_lossy(), true, true, None);
+            let link = entries.iter().find(|e| e.name == "link.txt").expect("link listed");
+            assert!(link.is_symlink() && !link.is_directory && !link.is_broken_symlink);
+            assert_eq!(link.link_target.as_deref(), Some(root.join("target.txt").to_string_lossy().as_ref()));
+            let target = entries.iter().find(|e| e.name == "target.txt").expect("target listed");
+            assert!(!target.is_symlink());
+        }
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
     #[test]
     fn system_time_to_date_parts_matches_chrono_local() {
         use chrono::{Datelike, Timelike};
