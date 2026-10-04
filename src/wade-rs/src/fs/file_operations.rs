@@ -249,11 +249,16 @@ mod tests {
         path.to_string_lossy().to_string()
     }
 
+    /// True when a file link can be created and read back: Windows without
+    /// Developer Mode refuses to create one, and Wine creates links that
+    /// cannot be followed.
     fn supports_symlinks(dir: &Path) -> bool {
         let link = dir.join("_probe_link");
         let target = dir.join("_probe_target");
         std::fs::write(&target, b"x").expect("probe target");
-        let ok = create_symlink(&p(&link), &p(&target), false).is_ok();
+        let ok = create_symlink(&p(&link), &p(&target), false).is_ok()
+            && is_symlink(&p(&link))
+            && std::fs::read(&link).is_ok_and(|data| data == b"x");
         let _ = std::fs::remove_file(&link);
         let _ = std::fs::remove_file(&target);
         ok
@@ -302,6 +307,9 @@ mod tests {
     #[test]
     fn delete_directory_symlink_removes_link_not_target() {
         let dir = temp_dir("dirsymlink");
+        if !supports_symlinks(&dir) {
+            return;
+        }
         let target = dir.join("target");
         std::fs::create_dir_all(&target).expect("mkdir");
         std::fs::write(target.join("inner.txt"), b"data").expect("write");
@@ -325,6 +333,9 @@ mod tests {
     #[test]
     fn copy_directory_link_without_preserve_copies_contents() {
         let dir = temp_dir("copydirlink");
+        if !supports_symlinks(&dir) {
+            return;
+        }
         let target = dir.join("target");
         std::fs::create_dir_all(target.join("sub")).expect("mkdir");
         std::fs::write(target.join("sub").join("b.txt"), b"B").expect("write");
@@ -445,6 +456,88 @@ mod tests {
         let dest_dir = dir.join("d2");
         move_path(&p(&subdir), &p(&dest_dir)).expect("move dir");
         assert!(dest_dir.join("g.txt").is_file());
+    }
+
+    fn link_target(path: &Path) -> Option<String> {
+        std::fs::read_link(path).ok().map(|t| p(&t))
+    }
+
+    #[test]
+    fn copy_directory_preserves_links_inside_the_tree() {
+        let dir = temp_dir("treelinks");
+        if !supports_symlinks(&dir) {
+            return;
+        }
+        let src = dir.join("src");
+        std::fs::create_dir_all(src.join("real_dir")).expect("mkdir");
+        std::fs::write(src.join("real.txt"), b"R").expect("write");
+        std::fs::write(src.join("real_dir").join("inner.txt"), b"I").expect("write");
+        let file_link = create_symlink(&p(&src.join("file_link")), &p(&src.join("real.txt")), false);
+        let dir_link = create_symlink(&p(&src.join("dir_link")), &p(&src.join("real_dir")), true);
+        let broken = create_symlink(&p(&src.join("broken")), &p(&dir.join("missing.txt")), false);
+        if file_link.is_err() || dir_link.is_err() || broken.is_err() {
+            return;
+        }
+
+        let dest = dir.join("dest");
+        copy_directory(&p(&src), &p(&dest), true).expect("copy");
+
+        for name in ["file_link", "dir_link", "broken"] {
+            assert!(is_symlink(&p(&dest.join(name))), "{name} copied as a link");
+            assert_eq!(link_target(&dest.join(name)), link_target(&src.join(name)), "{name} target");
+        }
+        assert_eq!(std::fs::read(dest.join("real.txt")).expect("read"), b"R");
+        assert!(dest.join("real_dir").join("inner.txt").is_file());
+        // The source tree is left as it was
+        assert!(src.join("real.txt").is_file() && is_symlink(&p(&src.join("file_link"))));
+    }
+
+    #[test]
+    fn copy_directory_without_preserve_copies_file_link_contents() {
+        let dir = temp_dir("treefilelink");
+        if !supports_symlinks(&dir) {
+            return;
+        }
+        let src = dir.join("src");
+        std::fs::create_dir_all(&src).expect("mkdir");
+        let target = dir.join("target.txt");
+        std::fs::write(&target, b"payload").expect("write");
+        if create_symlink(&p(&src.join("link.txt")), &p(&target), false).is_err() {
+            return;
+        }
+
+        let dest = dir.join("dest");
+        copy_directory(&p(&src), &p(&dest), false).expect("copy");
+        assert!(!is_symlink(&p(&dest.join("link.txt"))));
+        assert_eq!(std::fs::read(dest.join("link.txt")).expect("read"), b"payload");
+    }
+
+    #[test]
+    fn overwrite_replaces_an_existing_directory_and_file() {
+        let dir = temp_dir("overwritetree");
+        let src = dir.join("src");
+        std::fs::create_dir_all(&src).expect("mkdir");
+        std::fs::write(src.join("new.txt"), b"new").expect("write");
+        let dest = dir.join("dest");
+        std::fs::create_dir_all(&dest).expect("mkdir");
+        std::fs::write(dest.join("old.txt"), b"old").expect("write");
+
+        // The runner's overwrite: delete the destination, then copy
+        delete_existing(&p(&dest)).expect("delete existing");
+        copy_path(&p(&src), &p(&dest), true).expect("copy");
+        assert!(dest.join("new.txt").is_file());
+        assert!(!dest.join("old.txt").exists(), "old contents removed, not merged");
+        assert!(src.join("new.txt").is_file(), "copy keeps the source");
+
+        // And for a move onto an existing file
+        let moving = dir.join("moving.txt");
+        std::fs::write(&moving, b"moved").expect("write");
+        let target = dir.join("target.txt");
+        std::fs::write(&target, b"stale").expect("write");
+        delete_existing(&p(&target)).expect("delete existing");
+        move_path(&p(&moving), &p(&target)).expect("move");
+        assert_eq!(std::fs::read(&target).expect("read"), b"moved");
+        assert!(!moving.exists());
     }
 
     #[test]
