@@ -612,6 +612,101 @@ mod tests {
         assert!(config.show_system_files);
     }
 
+    fn index_of(state: &ConfigDialogState, label: &str) -> usize {
+        state.items.iter().position(|item| item.label == label).unwrap_or_else(|| panic!("{label}"))
+    }
+
+    #[test]
+    fn move_up_skips_disabled_items() {
+        let mut state = default_state();
+        state.size_column = false;
+        state.selected_index = index_of(&state, "Show Date Column");
+        state.move_up();
+        assert_eq!(state.selected_index, index_of(&state, "Show Size Column"));
+    }
+
+    #[test]
+    fn toggling_a_tool_item_flips_it() {
+        let mut state = default_state();
+        state.selected_index = index_of(&state, "Show PDF Details (pdfinfo)");
+        let before = state.pdf_metadata;
+        state.toggle_selected();
+        assert_eq!(state.pdf_metadata, !before);
+        assert_eq!(state.format_value(state.selected_index), format_bool(!before));
+    }
+
+    #[test]
+    fn sort_mode_cycles_through_every_mode() {
+        let mut state = default_state();
+        state.selected_index = index_of(&state, "Sort Mode");
+        let mut seen = Vec::new();
+        for _ in 0..4 {
+            state.cycle_next_selected();
+            seen.push(state.sort_mode);
+        }
+        assert_eq!(seen, [SortMode::Modified, SortMode::Size, SortMode::Extension, SortMode::Name]);
+
+        seen.clear();
+        for _ in 0..4 {
+            state.cycle_prev_selected();
+            seen.push(state.sort_mode);
+        }
+        assert_eq!(seen, [SortMode::Extension, SortMode::Size, SortMode::Modified, SortMode::Name]);
+    }
+
+    #[test]
+    fn detail_and_preview_sub_items_follow_their_parents() {
+        let mut state = default_state();
+        let details = ["Show Archive Details", "Show PDF Details (pdfinfo)", "Show Media Details (ffprobe)", "Show Media Details (mediainfo)"];
+        let previews = ["Show Image Previews", "Show PDF Previews (pdftopng)", "Show Archive Contents", "Show Markdown Preview (built-in)"];
+        let enabled = |state: &ConfigDialogState, labels: &[&str]| labels.iter().map(|l| state.is_enabled(index_of(state, l))).collect::<Vec<_>>();
+
+        assert_eq!(enabled(&state, &details), [true; 4]);
+        state.file_metadata = false;
+        assert_eq!(enabled(&state, &details), [false; 4]);
+        state.file_metadata = true;
+        state.preview_pane = false;
+        assert_eq!(enabled(&state, &details), [false; 4]);
+
+        assert_eq!(enabled(&state, &previews), [true; 4], "previews do not depend on the right pane");
+        state.file_previews = false;
+        assert_eq!(enabled(&state, &previews), [false; 4]);
+        state.file_previews = true;
+        assert_eq!(enabled(&state, &previews), [true; 4]);
+    }
+
+    #[test]
+    fn every_item_round_trips_through_the_config() {
+        // Toggle every item away from its default, save, and reopen: each
+        // item shows the toggled value, so from_app_config and apply_to
+        // cover every field
+        let mut state = default_state();
+        for index in 0..state.items.len() {
+            state.toggle(index);
+        }
+        let mut config = crate::app::AppConfig::default();
+        state.apply_to(&mut config);
+        let reopened = ConfigDialogState::from_app_config(&config);
+
+        let defaults = default_state();
+        for index in 0..state.items.len() {
+            let label = state.items[index].label;
+            assert_eq!(reopened.format_value(index), state.format_value(index), "{label}");
+            assert_ne!(reopened.format_value(index), defaults.format_value(index), "{label} changed from its default");
+        }
+    }
+
+    #[test]
+    fn items_have_the_csharp_indentation() {
+        let state = default_state();
+        let indent = |label: &str| state.items[index_of(&state, label)].indent;
+        assert_eq!(indent("Show Icons"), 0);
+        assert_eq!(indent("Show File Details"), 1);
+        assert_eq!(indent("Show Archive Details"), 2);
+        assert_eq!(indent("Directory Sizes on SSD"), 1);
+        assert_eq!(indent("Show Image Previews"), 1);
+    }
+
     #[test]
     fn format_bool_and_sort_value() {
         assert_eq!(format_bool(true), "[X]");

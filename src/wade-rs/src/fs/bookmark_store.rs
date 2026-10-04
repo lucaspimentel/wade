@@ -141,6 +141,32 @@ mod tests {
     }
 
     #[test]
+    fn load_of_an_empty_or_missing_file_is_empty() {
+        let mut empty = store("empty.txt");
+        std::fs::write(&empty.file_path, "").expect("write");
+        empty.load();
+        assert!(empty.bookmarks().is_empty());
+
+        let mut missing = BookmarkStore::new(Some(std::env::temp_dir().join(format!("wade-bookmarks-missing-{}", std::process::id())).join("none")));
+        missing.load();
+        assert!(missing.bookmarks().is_empty());
+    }
+
+    #[test]
+    fn remove_drops_one_entry_and_persists() {
+        let mut s = store("remove.txt");
+        s.add(r"C:\a");
+        s.add(r"C:\b");
+        s.remove(r"C:\a");
+        assert_eq!(s.bookmarks(), &[r"C:\b".to_string()]);
+        assert!(!s.contains(r"C:\a"));
+
+        let mut reloaded = BookmarkStore::new(Some(s.file_path.clone()));
+        reloaded.load();
+        assert_eq!(reloaded.bookmarks(), &[r"C:\b".to_string()]);
+    }
+
+    #[test]
     fn toggle_removes_then_adds() {
         let mut s = store("toggle.txt");
         s.toggle(r"C:\x");
