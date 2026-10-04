@@ -368,6 +368,40 @@ fn f2_renames_the_selected_entry() {
 }
 
 #[test]
+fn f2_onto_an_existing_name_keeps_both_files() {
+    let (mut app, parent, root) = app();
+    select(&mut app, "b.txt");
+    press(&mut app, key(K::F2));
+    for _ in 0.."b.txt".len() {
+        press(&mut app, key(K::Backspace));
+    }
+    type_text(&mut app, "a.txt");
+    press(&mut app, key(K::Enter));
+    let message = app.notification.as_ref().map(|n| n.message.clone()).unwrap_or_default();
+    assert!(message.starts_with("Rename failed"), "{message}");
+    assert_eq!(std::fs::read(root.join("b.txt")).unwrap(), b"b");
+    assert_eq!(std::fs::read(root.join("a.txt")).unwrap().len(), 1234);
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn n_and_shift_n_with_an_existing_name_change_nothing() {
+    let (mut app, parent, root) = app();
+    press(&mut app, ch('n'));
+    type_text(&mut app, "b.txt");
+    press(&mut app, key(K::Enter));
+    assert_eq!(app.notification.as_ref().map(|n| n.message.as_str()), Some("'b.txt' already exists"));
+    assert_eq!(std::fs::read(root.join("b.txt")).unwrap(), b"b");
+
+    press(&mut app, ch('N'));
+    type_text(&mut app, "sub");
+    press(&mut app, key(K::Enter));
+    assert_eq!(app.notification.as_ref().map(|n| n.message.as_str()), Some("'sub' already exists"));
+    assert!(root.join("sub").join("inner.txt").is_file());
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
 fn escape_cancels_a_text_input_dialog() {
     let (mut app, parent, root) = app();
     press(&mut app, ch('n'));
@@ -400,6 +434,22 @@ fn ctrl_l_creates_a_symlink_to_the_selected_entry() {
     let link = root.join("a.txt_link");
     assert!(std::fs::symlink_metadata(&link).unwrap().file_type().is_symlink());
     assert_eq!(std::fs::read_link(&link).unwrap(), root.join("a.txt"));
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[cfg(unix)]
+#[test]
+fn ctrl_l_on_a_directory_creates_a_directory_link() {
+    let (mut app, parent, root) = app();
+    select(&mut app, "sub");
+    press(&mut app, ctrl(K::L));
+    assert_eq!(app.modal.active_text_input.as_ref().map(|i| i.value().to_string()).as_deref(), Some("sub_link"));
+    press(&mut app, key(K::Enter));
+    let link = root.join("sub_link");
+    assert!(std::fs::symlink_metadata(&link).unwrap().file_type().is_symlink());
+    assert!(link.join("inner.txt").is_file(), "the link resolves to the directory");
+    let entry = app.get_visible_entries().into_iter().find(|e| e.name == "sub_link").expect("link listed");
+    assert!(entry.is_directory && entry.is_symlink());
     let _ = std::fs::remove_dir_all(&parent);
 }
 
