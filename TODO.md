@@ -67,8 +67,7 @@ backlog.
   ahead count
 - [ ] Still untested: terminal setup and raw input on both OSes, the real
   launchers (open with default app, open terminal, cloud download), the
-  combined text+image preview event, macOS paths and Windows System+Hidden
-  listing
+  combined text+image preview event and macOS paths
 - [ ] Manual Windows Terminal checks (need a real console; none are
   automated):
   - the `wd` wrapper (`--cwd-file`)

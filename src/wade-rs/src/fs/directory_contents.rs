@@ -655,6 +655,52 @@ mod tests {
         entries.iter().map(|e| e.name.as_str()).collect()
     }
 
+    #[cfg(windows)]
+    fn set_attributes(path: &Path, attributes: u32) {
+        use std::os::windows::ffi::OsStrExt;
+        let wide: Vec<u16> = path.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
+        assert_ne!(unsafe { windows_sys::Win32::Storage::FileSystem::SetFileAttributesW(wide.as_ptr(), attributes) }, 0);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn system_hidden_entries_need_both_settings() {
+        use windows_sys::Win32::Storage::FileSystem::{
+            FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_HIDDEN, FILE_ATTRIBUTE_NORMAL, FILE_ATTRIBUTE_SYSTEM,
+        };
+        const BOTH: u32 = FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM;
+
+        let root = test_dir("syshidden");
+        std::fs::create_dir(root.join("SystemHiddenDir")).unwrap();
+        for name in ["systemhidden.txt", "systemonly.txt", "hiddenonly.txt", "normal.txt"] {
+            std::fs::write(root.join(name), "x").unwrap();
+        }
+        set_attributes(&root.join("SystemHiddenDir"), FILE_ATTRIBUTE_DIRECTORY | BOTH);
+        set_attributes(&root.join("systemhidden.txt"), BOTH);
+        set_attributes(&root.join("systemonly.txt"), FILE_ATTRIBUTE_SYSTEM);
+        set_attributes(&root.join("hiddenonly.txt"), FILE_ATTRIBUTE_HIDDEN);
+
+        let path = root.to_string_lossy().into_owned();
+        let listed = |hidden: bool, system: bool| {
+            let mut names: Vec<String> = load_entries(&path, hidden, system, None).into_iter().map(|e| e.name).collect();
+            names.sort();
+            names
+        };
+        assert_eq!(listed(false, false), ["normal.txt"]);
+        assert_eq!(listed(true, false), ["hiddenonly.txt", "normal.txt"]);
+        assert_eq!(listed(false, true), ["normal.txt", "systemonly.txt"]);
+        assert_eq!(
+            listed(true, true),
+            ["SystemHiddenDir", "hiddenonly.txt", "normal.txt", "systemhidden.txt", "systemonly.txt"]
+        );
+
+        set_attributes(&root.join("SystemHiddenDir"), FILE_ATTRIBUTE_DIRECTORY);
+        for name in ["systemhidden.txt", "systemonly.txt", "hiddenonly.txt"] {
+            set_attributes(&root.join(name), FILE_ATTRIBUTE_NORMAL);
+        }
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
     #[test]
     fn load_entries_of_a_missing_path_is_empty() {
         let missing = std::env::temp_dir().join(format!("wade-dc-missing-{}", std::process::id()));
