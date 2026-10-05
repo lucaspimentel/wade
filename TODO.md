@@ -134,7 +134,10 @@ Windows file clipboard interop is implemented in both versions. The Rust port al
 
 ## Backlog
 
-### File finder — deduplicate ScoreWithFileNamePriority paths
+### File finder — deduplicate ScoreWithFileNamePriority paths (Done in Rust)
+
+Rust: `scorer::term_score` dispatches on the query mode and shares one filename-priority helper; the C# copy
+below is unchanged.
 
 `FuzzyScorer.ExactScoreWithFileNamePriority` is a near-verbatim copy of `ScoreWithFileNamePriority` (only the inner scoring call differs). Acceptable at two modes; fix when adding a third `QueryMode` (the `^`/`$`/`!` work below will force this). Extracting a shared helper is non-trivial because `ReadOnlySpan<char>` cannot cross delegate boundaries, so the cleanest fix is likely an enum-dispatched private helper, or `Score`/`ExactScore` becoming overloads of a common generic over a strategy struct.
 
@@ -152,20 +155,11 @@ Ctrl+F reopens with the last query of the session (cursor at the end, typing app
 at once. Not persisted across runs; a navigable history was left out. C# still opens empty
 (`KNOWN_DEVIATIONS.md`).
 
-### File finder — fzf-style query syntax
+### ~~File finder — fzf-style query syntax~~ (Done in Rust)
 
-Extend `SearchQuery.Parse` (in `src/Wade.Search/SearchQuery.cs`) with the rest of fzf's query operators. The `'foo` exact-substring prefix is already implemented; the parser type is the seam for the rest.
-
-- `^foo` — prefix-anchored match (matches only when the substring starts at the target's beginning, or just after a path separator/boundary)
-- `foo$` — suffix-anchored match (anchor at end of filename or end of full path)
-- `!foo` — negation; combine with the above (`!^foo`, `!'foo`, `!foo$`)
-- Multi-term AND: space-separated terms are ANDed together (e.g. `'src .cs$` → contains `src` AND ends in `.cs`); a path passes only if every term matches
-- Smart-case (case-insensitive unless query has any uppercase) should apply per-term, matching fzf's behavior
-
-Implementation notes:
-- `SearchQuery` will need to grow from a single mode/text into a list of `SearchTerm` records (each with mode, text, negated, case-sensitive)
-- `ActiveQuery.TryMatch` will need to AND the per-term scores; combined score should be the sum (or some weighted combination) so multi-term matches still rank well
-- Match-position highlighting needs to merge positions across terms (union, deduplicated, sorted)
+Space-separated AND terms, `'exact`, `^prefix` (at any path segment start), `suffix$`, `^whole$`, and `!`
+negation (exact, prefix or suffix), with `\ ` for a literal space and per-term smart case (fuzzy included).
+No OR (`|`). C# keeps the single-term `'` syntax (`KNOWN_DEVIATIONS.md`).
 
 ### Preview for Office/document formats (DOCX, XLSX, PPTX, etc.)
 

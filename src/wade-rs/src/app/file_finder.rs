@@ -1161,6 +1161,24 @@ mod tests {
     }
 
     #[test]
+    fn multi_term_query_with_negation_filters_the_display() {
+        let root = test_root("app-terms");
+        touch(&root.join("foo.txt"));
+        touch(&root.join("foo_bar.txt"));
+        touch(&root.join("baz.txt"));
+
+        let mut app = app_at(&root);
+        app.show_file_finder();
+        pump_until(&mut app, scan_done);
+        type_text(&mut app, "foo !bar");
+        pump_until(&mut app, |app| app.file_finder.as_ref().unwrap().results.is_some());
+
+        assert_eq!(display_names(&mut app), ["foo.txt"]);
+        app.close_file_finder();
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
     fn reopening_restores_the_last_query() {
         let root = test_root("app-restore");
         touch(&root.join("foo.txt"));

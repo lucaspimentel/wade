@@ -101,10 +101,11 @@ impl SearchIndex {
     /// Port of `Search`: replaces (and completes) any active query and
     /// returns a receiver of results. The channel closes when the query is
     /// cancelled or replaced; an empty query returns an already-closed one.
+    /// A non-empty query without terms (lone operators) matches everything.
     pub fn search(&self, raw_query: &str, options: SearchOptions) -> Receiver<SearchResult> {
         let parsed = SearchQuery::parse(raw_query);
 
-        if parsed.is_empty() {
+        if raw_query.is_empty() {
             self.cancel_search();
             let (_, receiver) = std::sync::mpsc::channel();
             return receiver;
@@ -203,12 +204,18 @@ struct EmitState {
     emitted: HashSet<Arc<str>>,
 }
 
-/// Port of `ActiveQuery`: one query's channel, cancellation, dedup set and
-/// matching. `try_match` is safe to call from several threads at once.
-struct ActiveQuery {
+/// One parsed term with its text as code points.
+struct Term {
     mode: QueryMode,
     text: Vec<char>,
     case_sensitive: bool,
+    negated: bool,
+}
+
+/// Port of `ActiveQuery`: one query's channel, cancellation, dedup set and
+/// matching. `try_match` is safe to call from several threads at once.
+struct ActiveQuery {
+    terms: Vec<Term>,
     max_results: usize,
     cancel: CancelToken,
     result_count: AtomicUsize,
@@ -219,9 +226,16 @@ struct ActiveQuery {
 impl ActiveQuery {
     fn new(query: SearchQuery, options: SearchOptions, sender: Sender<SearchResult>) -> Self {
         Self {
-            mode: query.mode,
-            text: query.text.chars().collect(),
-            case_sensitive: query.case_sensitive,
+            terms: query
+                .terms
+                .into_iter()
+                .map(|term| Term {
+                    mode: term.mode,
+                    text: term.text.chars().collect(),
+                    case_sensitive: term.case_sensitive,
+                    negated: term.negated,
+                })
+                .collect(),
             max_results: options.max_results,
             cancel: CancelToken::new(),
             result_count: AtomicUsize::new(0),
@@ -244,21 +258,9 @@ impl ActiveQuery {
             return false;
         }
 
-        let (score, match_positions) = match self.mode {
-            QueryMode::ExactSubstring => scorer::exact_score_with_file_name_priority_positions(
-                &self.text,
-                &entry.relative,
-                entry.file_name_start,
-                self.case_sensitive,
-            ),
-            QueryMode::Fuzzy => {
-                scorer::score_with_file_name_priority_positions(&self.text, &entry.relative, entry.file_name_start)
-            }
-        };
-
-        if score == NO_MATCH {
+        let Some((score, match_positions)) = self.score(entry) else {
             return false;
-        }
+        };
 
         let mut emit = self.emit.lock().unwrap();
 
@@ -281,6 +283,46 @@ impl ActiveQuery {
         }
 
         true
+    }
+
+    /// Every positive term must match and no negated one may (Rust-only
+    /// multi-term syntax). The score is the sum of the positive terms'
+    /// scores plus one depth penalty; positions are their sorted union. With
+    /// no positive term, every non-excluded entry matches with score 0.
+    fn score(&self, entry: &PathEntry) -> Option<(i32, Vec<usize>)> {
+        let mut total = 0;
+        let mut positions = Vec::new();
+        let mut has_positive = false;
+
+        for term in &self.terms {
+            let (score, term_positions) = scorer::term_score(
+                term.mode,
+                &term.text,
+                term.case_sensitive,
+                &entry.relative,
+                entry.file_name_start,
+            );
+
+            if term.negated {
+                if score != NO_MATCH {
+                    return None;
+                }
+            } else if score == NO_MATCH {
+                return None;
+            } else {
+                total += score;
+                positions.extend(term_positions);
+                has_positive = true;
+            }
+        }
+
+        if !has_positive {
+            return Some((0, Vec::new()));
+        }
+
+        positions.sort_unstable();
+        positions.dedup();
+        Some((total + scorer::depth_penalty(&entry.relative), positions))
     }
 
     /// Port of `MarkSnapshotComplete`: the initial scan finished; the channel
@@ -312,7 +354,7 @@ mod tests {
     use std::time::Duration;
 
     use super::{relative_path, SearchIndex, SearchOptions};
-    use crate::search::SearchResult;
+    use crate::search::{scorer, SearchResult};
 
     const SEP: char = std::path::MAIN_SEPARATOR;
 
@@ -582,13 +624,128 @@ mod tests {
         assert_eq!(results[0].path, abs(&["src", "App.cs"]));
     }
 
+    /// C# returns no results for a lone `'`; Rust treats a query of lone
+    /// operators as termless and matches everything (KNOWN_DEVIATIONS.md).
     #[test]
-    fn search_quote_only_no_results() {
+    fn search_lone_operators_match_everything() {
         let index = SearchIndex::new(&base_path());
         index.add(&abs(&["src", "App.cs"]));
+        index.add(&abs(&["b.txt"]));
 
-        let receiver = search(&index, "'");
-        assert!(drain_after_snapshot(&index, &receiver).is_empty());
+        for query in ["'", "!", "^", "$", "! '"] {
+            let receiver = search(&index, query);
+            let results = drain_after_snapshot(&index, &receiver);
+            assert_eq!(results.len(), 2, "{query:?}");
+            assert!(results.iter().all(|r| r.score == 0 && r.match_positions.is_empty()));
+        }
+    }
+
+    /// Searches and returns the matching relative paths, sorted.
+    fn matches(paths: &[&[&str]], query: &str) -> Vec<String> {
+        let index = SearchIndex::new(&base_path());
+
+        for parts in paths {
+            index.add(&abs(parts));
+        }
+
+        let receiver = search(&index, query);
+        let mut found: Vec<String> = drain_after_snapshot(&index, &receiver)
+            .into_iter()
+            .map(|r| relative_path(&base_path(), &r.path).replace(SEP, "/"))
+            .collect();
+        found.sort();
+        found
+    }
+
+    #[test]
+    fn terms_are_anded() {
+        let paths: &[&[&str]] = &[&["src", "app.rs"], &["src", "lib.rs"], &["tests", "app.rs"]];
+        assert_eq!(matches(paths, "src app"), ["src/app.rs"]);
+        assert_eq!(matches(paths, "app .rs$"), ["src/app.rs", "tests/app.rs"]);
+        assert!(matches(paths, "src zzz").is_empty());
+    }
+
+    #[test]
+    fn negated_terms_exclude_exact_matches() {
+        let paths: &[&[&str]] = &[&["src", "app.rs"], &["tests", "app_test.rs"], &["src", "a_e_s_t.rs"]];
+        assert_eq!(matches(paths, "app !test"), ["src/app.rs"]);
+        // Negation is exact: "a_e_s_t" contains t,e,s,t only as a subsequence
+        assert_eq!(matches(paths, "!test"), ["src/a_e_s_t.rs", "src/app.rs"]);
+        assert_eq!(matches(paths, "!^tests"), ["src/a_e_s_t.rs", "src/app.rs"]);
+        assert_eq!(matches(paths, "!.rs$"), Vec::<String>::new());
+    }
+
+    #[test]
+    fn prefix_anchors_at_a_segment_start() {
+        let paths: &[&[&str]] = &[&["src", "main.rs"], &["lib", "src", "x.rs"], &["mysrc", "y.rs"], &["srcfile.rs"]];
+        assert_eq!(matches(paths, "^src"), ["lib/src/x.rs", "src/main.rs", "srcfile.rs"]);
+        assert_eq!(matches(paths, "^src/"), ["lib/src/x.rs", "src/main.rs"]);
+        assert_eq!(matches(paths, "^ain"), Vec::<String>::new());
+    }
+
+    #[test]
+    fn suffix_anchors_at_the_path_end() {
+        let paths: &[&[&str]] = &[&["a.rs"], &["a.rs.bak"], &["dir.rs", "b.md"]];
+        assert_eq!(matches(paths, ".rs$"), ["a.rs"]);
+        assert_eq!(matches(paths, "^a.rs$"), ["a.rs"]);
+        assert_eq!(matches(paths, "^b.md$"), ["dir.rs/b.md"]);
+        assert_eq!(matches(paths, "^dir.rs/b.md$"), ["dir.rs/b.md"]);
+        // ^…$ must cover whole segments
+        assert_eq!(matches(paths, "^.md$"), Vec::<String>::new());
+    }
+
+    #[test]
+    fn every_term_uses_smart_case() {
+        let paths: &[&[&str]] = &[&["App.cs"], &["app.rs"]];
+        assert_eq!(matches(paths, "app"), ["App.cs", "app.rs"]);
+        assert_eq!(matches(paths, "App"), ["App.cs"]);
+        assert_eq!(matches(paths, "^App"), ["App.cs"]);
+        assert_eq!(matches(paths, ".RS$"), Vec::<String>::new());
+        assert_eq!(matches(paths, "!App"), ["app.rs"]);
+    }
+
+    #[test]
+    fn backslash_space_matches_a_literal_space() {
+        let paths: &[&[&str]] = &[&["Program Files", "a.exe"], &["Program", "Files.txt"]];
+        assert_eq!(matches(paths, "'Program\\ Files"), ["Program Files/a.exe"]);
+        assert_eq!(matches(paths, "'Program 'Files"), ["Program Files/a.exe", "Program/Files.txt"]);
+    }
+
+    #[test]
+    fn multi_term_positions_are_a_sorted_union_and_scores_sum() {
+        let index = SearchIndex::new(&base_path());
+        index.add(&abs(&["src", "app.rs"]));
+
+        let receiver = search(&index, ".rs$ src 'app");
+        let results = drain_after_snapshot(&index, &receiver);
+        assert_eq!(results.len(), 1);
+        // "src/app.rs": src = 0..3, app = 4..7, .rs = 7..10
+        assert_eq!(results[0].match_positions, (0..10).filter(|&p| p != 3).collect::<Vec<_>>());
+
+        let single = |query: &str| {
+            let receiver = search(&index, query);
+            drain_after_snapshot(&index, &receiver)[0].score
+        };
+        let penalty = scorer::PENALTY_DEPTH;
+        assert_eq!(results[0].score, single(".rs$") + single("src") + single("'app") - 2 * penalty);
+    }
+
+    #[test]
+    fn single_lowercase_terms_score_as_before() {
+        let rel: Vec<char> = format!("src{SEP}Wade{SEP}app.cs").chars().collect();
+        let start = rel.len() - "app.cs".len();
+        let text: Vec<char> = "app".chars().collect();
+
+        for (query, expected) in [
+            ("app", scorer::score_with_file_name_priority_positions(&text, &rel, start)),
+            ("'app", scorer::exact_score_with_file_name_priority_positions(&text, &rel, start, false)),
+        ] {
+            let index = SearchIndex::new(&base_path());
+            index.add(&abs(&["src", "Wade", "app.cs"]));
+            let receiver = search(&index, query);
+            let result = drain_after_snapshot(&index, &receiver).remove(0);
+            assert_eq!((result.score, result.match_positions), expected, "{query:?}");
+        }
     }
 
     #[test]

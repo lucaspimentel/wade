@@ -8,6 +8,7 @@
 //! (exact for ASCII; see KNOWN_DEVIATIONS.md).
 
 use super::is_separator;
+use super::query::QueryMode;
 use crate::text::{is_digit, is_letter_or_digit, is_lower, is_upper, to_lower, to_upper};
 
 // Scoring constants (fzf-inspired, proven to produce good rankings)
@@ -32,20 +33,30 @@ pub const NO_MATCH: i32 = i32::MIN;
 /// Returns `NO_MATCH` when the query is not a subsequence of the target.
 #[must_use]
 pub fn score(query: &[char], target: &[char]) -> i32 {
+    score_cs(query, target, false)
+}
+
+/// `score` with a case mode (`case_sensitive` = smart case found an
+/// uppercase letter in the query).
+fn score_cs(query: &[char], target: &[char], case_sensitive: bool) -> i32 {
     let mut positions = vec![0usize; query.len()];
-    score_core(query, target, &mut positions)
+    score_core(query, target, &mut positions, case_sensitive)
 }
 
 /// `score` that also returns the tightened match positions (empty when the
 /// query is empty or does not match).
 #[must_use]
 pub fn score_with_positions(query: &[char], target: &[char]) -> (i32, Vec<usize>) {
+    score_with_positions_cs(query, target, false)
+}
+
+fn score_with_positions_cs(query: &[char], target: &[char], case_sensitive: bool) -> (i32, Vec<usize>) {
     if query.is_empty() {
         return (0, Vec::new());
     }
 
     let mut positions = vec![0usize; query.len()];
-    let score = score_core(query, target, &mut positions);
+    let score = score_core(query, target, &mut positions, case_sensitive);
 
     if score == NO_MATCH {
         (NO_MATCH, Vec::new())
@@ -56,7 +67,7 @@ pub fn score_with_positions(query: &[char], target: &[char]) -> (i32, Vec<usize>
 
 /// Core scoring logic: writes tightened match positions into `positions`
 /// (at least `query.len()` long) and returns the score or `NO_MATCH`.
-fn score_core(query: &[char], target: &[char], positions: &mut [usize]) -> i32 {
+fn score_core(query: &[char], target: &[char], positions: &mut [usize], case_sensitive: bool) -> i32 {
     let query_len = query.len();
     let target_len = target.len();
 
@@ -68,17 +79,10 @@ fn score_core(query: &[char], target: &[char], positions: &mut [usize]) -> i32 {
         return NO_MATCH;
     }
 
-    // Pre-lowercase the query once, normalizing path separators.
-    let query_lower: Vec<char> = query
-        .iter()
-        .map(|&c| {
-            if c == '/' || c == '\\' {
-                to_lower(std::path::MAIN_SEPARATOR)
-            } else {
-                to_lower(c)
-            }
-        })
-        .collect();
+    // Pre-lowercase the query once (unless case-sensitive), normalizing
+    // path separators.
+    let fold = |c: char| if case_sensitive { c } else { to_lower(c) };
+    let query_lower: Vec<char> = normalize_separators(query).into_iter().map(fold).collect();
 
     // Forward scan: greedily find the first subsequence match.
     let mut forward_positions = vec![0usize; query_len];
@@ -89,7 +93,7 @@ fn score_core(query: &[char], target: &[char], positions: &mut [usize]) -> i32 {
             break;
         }
 
-        if to_lower(tc) == query_lower[qi] {
+        if fold(tc) == query_lower[qi] {
             forward_positions[qi] = ti;
             qi += 1;
         }
@@ -110,7 +114,7 @@ fn score_core(query: &[char], target: &[char], positions: &mut [usize]) -> i32 {
             break;
         }
 
-        if to_lower(target[ti]) == query_lower[remaining - 1] {
+        if fold(target[ti]) == query_lower[remaining - 1] {
             positions[remaining - 1] = ti;
             remaining -= 1;
         }
@@ -141,22 +145,10 @@ pub fn score_with_file_name_priority_positions(
     relative_path: &[char],
     file_name_start: usize,
 ) -> (i32, Vec<usize>) {
-    let (best, use_file_name) =
-        best_with_file_name_priority(relative_path, file_name_start, |target| score(query, target));
-
-    if best == NO_MATCH {
-        return (NO_MATCH, Vec::new());
-    }
-
-    let positions = if use_file_name {
-        let (_, mut positions) = score_with_positions(query, &relative_path[file_name_start..]);
-        positions.iter_mut().for_each(|p| *p += file_name_start);
-        positions
-    } else {
-        score_with_positions(query, relative_path).1
-    };
-
-    (best + PENALTY_DEPTH * count_separators(relative_path), positions)
+    with_depth_penalty(
+        relative_path,
+        term_score(QueryMode::Fuzzy, query, false, relative_path, file_name_start),
+    )
 }
 
 /// Score a query as an exact contiguous substring (fzf `'` prefix).
@@ -183,10 +175,7 @@ pub fn exact_score_with_positions(query: &[char], target: &[char], case_sensitiv
 
     // Normalize path separators so `/` and `\` are interchangeable
     // (consistent with the fuzzy path).
-    let normalized: Vec<char> = query
-        .iter()
-        .map(|&c| if c == '/' || c == '\\' { std::path::MAIN_SEPARATOR } else { c })
-        .collect();
+    let normalized = normalize_separators(query);
 
     let Some(index) = index_of(target, &normalized, case_sensitive) else {
         return (NO_MATCH, Vec::new());
@@ -204,24 +193,153 @@ pub fn exact_score_with_file_name_priority_positions(
     file_name_start: usize,
     case_sensitive: bool,
 ) -> (i32, Vec<usize>) {
-    let (best, use_file_name) = best_with_file_name_priority(relative_path, file_name_start, |target| {
-        exact_score(query, target, case_sensitive)
-    });
+    with_depth_penalty(
+        relative_path,
+        term_score(QueryMode::ExactSubstring, query, case_sensitive, relative_path, file_name_start),
+    )
+}
+
+/// Rust-only: scores one query term (any mode) against a relative path with
+/// filename priority. Returns the score before the depth penalty (so terms
+/// can be summed) and positions into the full relative path.
+#[must_use]
+pub fn term_score(
+    mode: QueryMode,
+    text: &[char],
+    case_sensitive: bool,
+    relative_path: &[char],
+    file_name_start: usize,
+) -> (i32, Vec<usize>) {
+    match mode {
+        QueryMode::Fuzzy => with_file_name_priority(relative_path, file_name_start, |target, positions| {
+            if positions {
+                score_with_positions_cs(text, target, case_sensitive)
+            } else {
+                (score_cs(text, target, case_sensitive), Vec::new())
+            }
+        }),
+        QueryMode::ExactSubstring => {
+            with_file_name_priority(relative_path, file_name_start, |target, positions| {
+                if positions {
+                    exact_score_with_positions(text, target, case_sensitive)
+                } else {
+                    (exact_score(text, target, case_sensitive), Vec::new())
+                }
+            })
+        }
+        QueryMode::Prefix | QueryMode::Suffix | QueryMode::PrefixSuffix => {
+            anchored_score(mode, text, case_sensitive, relative_path, file_name_start)
+        }
+    }
+}
+
+/// `PENALTY_DEPTH` per separator in the relative path.
+#[must_use]
+pub fn depth_penalty(relative_path: &[char]) -> i32 {
+    PENALTY_DEPTH * count_separators(relative_path)
+}
+
+fn with_depth_penalty(relative_path: &[char], (score, positions): (i32, Vec<usize>)) -> (i32, Vec<usize>) {
+    if score == NO_MATCH {
+        (NO_MATCH, positions)
+    } else {
+        (score + depth_penalty(relative_path), positions)
+    }
+}
+
+/// Picks the filename or full-path candidate (score-only calls), then
+/// computes positions once for the winner. `score_fn(target, positions)`.
+fn with_file_name_priority(
+    relative_path: &[char],
+    file_name_start: usize,
+    score_fn: impl Fn(&[char], bool) -> (i32, Vec<usize>),
+) -> (i32, Vec<usize>) {
+    let (best, use_file_name) =
+        best_with_file_name_priority(relative_path, file_name_start, |target| score_fn(target, false).0);
 
     if best == NO_MATCH {
         return (NO_MATCH, Vec::new());
     }
 
     let positions = if use_file_name {
-        let (_, mut positions) =
-            exact_score_with_positions(query, &relative_path[file_name_start..], case_sensitive);
+        let (_, mut positions) = score_fn(&relative_path[file_name_start..], true);
         positions.iter_mut().for_each(|p| *p += file_name_start);
         positions
     } else {
-        exact_score_with_positions(query, relative_path, case_sensitive).1
+        score_fn(relative_path, true).1
     };
 
-    (best + PENALTY_DEPTH * count_separators(relative_path), positions)
+    (best, positions)
+}
+
+/// `^foo` / `foo$` / `^foo$`: the first contiguous occurrence satisfying the
+/// anchors. `^` anchors at the path start or after a separator. A match
+/// inside the filename is scored against the filename with
+/// `FILE_NAME_BONUS`, like the other modes.
+fn anchored_score(
+    mode: QueryMode,
+    text: &[char],
+    case_sensitive: bool,
+    relative_path: &[char],
+    file_name_start: usize,
+) -> (i32, Vec<usize>) {
+    let len = text.len();
+
+    if len == 0 {
+        return (0, Vec::new());
+    }
+
+    if len > relative_path.len() {
+        return (NO_MATCH, Vec::new());
+    }
+
+    let normalized = normalize_separators(text);
+    let last_start = relative_path.len() - len;
+    let at_segment_start = |start: usize| start == 0 || is_separator(relative_path[start - 1]);
+    let matches_at = |start: usize| {
+        relative_path[start..start + len]
+            .iter()
+            .zip(&normalized)
+            .all(|(&a, &b)| chars_equal(a, b, case_sensitive))
+    };
+
+    let start = match mode {
+        QueryMode::Prefix => (0..=last_start).find(|&start| at_segment_start(start) && matches_at(start)),
+        QueryMode::Suffix => Some(last_start).filter(|&start| matches_at(start)),
+        _ => Some(last_start).filter(|&start| at_segment_start(start) && matches_at(start)),
+    };
+
+    let Some(start) = start else {
+        return (NO_MATCH, Vec::new());
+    };
+
+    let positions: Vec<usize> = (start..start + len).collect();
+    let in_file_name = file_name_start < relative_path.len() && start >= file_name_start;
+
+    let score = if in_file_name {
+        let offset: Vec<usize> = positions.iter().map(|p| p - file_name_start).collect();
+        compute_score(&normalized, &relative_path[file_name_start..], &offset) + FILE_NAME_BONUS
+    } else {
+        compute_score(&normalized, relative_path, &positions)
+    };
+
+    (score, positions)
+}
+
+/// Maps `/` and `\` in a query to the platform separator.
+fn normalize_separators(query: &[char]) -> Vec<char> {
+    query
+        .iter()
+        .map(|&c| if c == '/' || c == '\\' { std::path::MAIN_SEPARATOR } else { c })
+        .collect()
+}
+
+fn chars_equal(a: char, b: char, case_sensitive: bool) -> bool {
+    if case_sensitive {
+        a == b
+    } else {
+        a == b || to_upper(a) == to_upper(b)
+    }
 }
 
 /// Shared candidate selection of the `*WithFileNamePriority` methods: a
@@ -262,7 +380,7 @@ fn index_of(target: &[char], needle: &[char], case_sensitive: bool) -> Option<us
         target[start..start + needle.len()]
             .iter()
             .zip(needle)
-            .all(|(&a, &b)| if case_sensitive { a == b } else { a == b || to_upper(a) == to_upper(b) })
+            .all(|(&a, &b)| chars_equal(a, b, case_sensitive))
     })
 }
 

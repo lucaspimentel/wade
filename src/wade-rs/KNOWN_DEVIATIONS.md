@@ -140,6 +140,16 @@ None. Phase 9 closed the last temporary entries.
   Ctrl+F (Esc or Enter) remembers the query for the session, and the next
   Ctrl+F starts with it, cursor at the end, and searches at once. C# always
   opens empty. Not persisted across runs; no history navigation.
+- **The finder accepts fzf-style query syntax (Rust-only addition).**
+  Space-separated terms are ANDed; `'foo` is an exact substring, `^foo` an
+  exact match at the start of any path segment (fzf anchors at the string
+  start), `foo$` an exact match at the end of the path, and `!` excludes
+  (exact, prefix or suffix; never fuzzy). `\ ` is a literal space. Every
+  term uses smart case, fuzzy terms included (C# fuzzy is always
+  case-insensitive). Multi-term scores are the sum of the term scores with
+  one depth penalty; highlighted positions are the union. A query of lone
+  operators (`'`, `!`) matches everything, where C# `'` matches nothing.
+  Single lowercase terms score exactly as in C# (the scorer golden).
 - **Sort ties and extension case folding differ (Phase 10).** Sorting by
   size or modified time keeps entries with an equal key in name order (a
   stable sort); C# uses an unstable introsort, so its order among exact ties

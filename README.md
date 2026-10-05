@@ -22,7 +22,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Sort order** — by name, date, size, or extension (`s` to cycle, `S` to reverse)
 - **Filter** — `/` to narrow entries in real-time
 - **Go-to-path** — `Ctrl+G` with Tab autocomplete
-- **File finder** — `Ctrl+F` recursive breadth-first search with fuzzy matching, exact-substring queries via a leading `'`, and highlighted results
+- **File finder** — `Ctrl+F` recursive breadth-first search with fuzzy matching, exact-substring queries via a leading `'`, and highlighted results. The Rust build also accepts fzf-style syntax: space-separated terms (all must match), `^prefix`, `suffix$` and `!exclude`, with smart case
 - **Bookmarks** — `b` to open, `B` to toggle; persists in MRU order
 - **Hidden files** — `.` to toggle; separate system files toggle on Windows
 
