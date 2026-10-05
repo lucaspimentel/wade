@@ -887,3 +887,59 @@ fn sixel_output_is_suppressed_in_modal_modes() {
         let _ = std::fs::remove_dir_all(&parent);
     }
 }
+
+// --- Ctrl+C clears search and filter boxes (Rust only) ----------------------
+
+#[test]
+fn ctrl_c_clears_the_filter_and_keeps_it_open() {
+    let (mut app, parent, _) = app();
+    press(&mut app, ch('/'));
+    type_text(&mut app, "zzz");
+    assert!(visible_names(&mut app).is_empty());
+    press(&mut app, ctrl(K::C));
+    assert_eq!(app.input_mode, InputMode::Search);
+    assert_eq!(app.search_filter, "");
+    assert!(visible_names(&mut app).contains(&"readme.md".to_string()));
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn ctrl_c_clears_the_palette_filter() {
+    let (mut app, parent, _) = app();
+    press(&mut app, ctrl(K::P));
+    type_text(&mut app, "hidden");
+    press(&mut app, ctrl(K::C));
+    assert_eq!(app.input_mode, InputMode::ActionPalette);
+    let level = app.modal.action_menu_stack.last().unwrap();
+    assert_eq!(level.filter.value(), "");
+    assert_eq!(level.get_filtered_items().len(), level.items.len());
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn ctrl_c_clears_the_bookmark_filter() {
+    let (mut app, parent, _) = app();
+    press(&mut app, ch('B'));
+    press(&mut app, ch('b'));
+    type_text(&mut app, "zzz");
+    assert!(app.get_filtered_bookmarks().is_empty());
+    press(&mut app, ctrl(K::C));
+    assert_eq!(app.input_mode, InputMode::Bookmarks);
+    assert_eq!(app.get_filtered_bookmarks().len(), 1);
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn ctrl_c_clears_the_finder_query() {
+    let (mut app, parent, _) = app();
+    press(&mut app, ctrl(K::F));
+    type_text(&mut app, "zzz");
+    press(&mut app, ctrl(K::C));
+    assert_eq!(app.input_mode, InputMode::FileFinder);
+    let state = app.file_finder.as_ref().unwrap();
+    assert_eq!(state.input.value(), "");
+    assert_eq!(state.last_query, "", "the search restarted for the empty query");
+    app.close_file_finder();
+    assert_eq!(app.last_finder_query, "");
+    let _ = std::fs::remove_dir_all(&parent);
+}

@@ -66,6 +66,8 @@ fn by_file_name(file_name: &str) -> Option<&'static dyn Language> {
             &GIT_IGNORE
         }
         "dockerfile" | "containerfile" => &DOCKERFILE,
+        // Rust only: TOML lock files (`.lock` alone is not TOML: yarn.lock, Gemfile.lock)
+        "cargo.lock" | "poetry.lock" | "uv.lock" | "pdm.lock" => &TOML,
         _ => return None,
     };
 
@@ -112,7 +114,7 @@ fn extension(name: &str) -> &str {
 
 #[cfg(test)]
 mod tests {
-    use super::{extension, file_name};
+    use super::{extension, file_name, get_language};
 
     #[test]
     fn path_helpers_match_dotnet() {
@@ -123,5 +125,17 @@ mod tests {
         assert_eq!(file_name("Makefile"), "Makefile");
         let sep = std::path::MAIN_SEPARATOR;
         assert_eq!(file_name(&format!("src{sep}lib.rs")), "lib.rs");
+    }
+
+    #[test]
+    fn toml_lock_files_are_highlighted_as_toml() {
+        let sep = std::path::MAIN_SEPARATOR;
+        for path in ["Cargo.lock", "poetry.lock", "uv.lock", "pdm.lock", &format!("src{sep}wade-rs{sep}Cargo.lock")] {
+            assert_eq!(get_language(path).map(|l| l.name()), get_language("a.toml").map(|l| l.name()), "{path}");
+        }
+
+        for path in ["yarn.lock", "Gemfile.lock", "package-lock.json.lock"] {
+            assert!(get_language(path).is_none(), "{path}");
+        }
     }
 }

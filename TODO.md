@@ -142,25 +142,14 @@ key bindings (avoid `Ctrl+Tab` and `Ctrl+Shift+<key>`, which Windows Terminal re
 shown, and what each tab keeps (path, selection, filter, sort, marks). The issue also asks for a
 README comparison with yazi.
 
-### Ctrl+C clears search and filter boxes
+### ~~Ctrl+C clears search and filter boxes~~ (Done in Rust)
 
-In the four search/filter text boxes, Ctrl+C should clear the input (and refresh the list, so every
-item shows again) instead of being ignored as it is now:
+Ctrl+C empties the input of the Ctrl+F finder, the `/` filter, the Ctrl+P palette and the `b`
+bookmarks list. Go to path and the dialog boxes are unchanged (Esc cancels them).
 
-- Ctrl+F file finder (`handle_file_finder_key`, `src/wade-rs/src/app/file_finder.rs`; restart the search)
-- `/` filter (directory listing)
-- Ctrl+P action palette filter
-- `b` bookmarks filter
+### ~~Syntax highlighting for `Cargo.lock`~~ (Done in Rust)
 
-`TextInput::clear` already exists. Not for Go to path or the dialog boxes (rename, new file/directory,
-create symlink, commit message): clearing there discards a prefilled value, and Esc already cancels.
-
-### Syntax highlighting for `Cargo.lock`
-
-`Cargo.lock` is TOML but gets no highlighting: `LanguageMap` maps by extension, and `.lock` is not
-mapped. Map the file name `Cargo.lock` to the TOML language (`ByFilename` in C#, `by_file_name` in
-`src/wade-rs/src/highlight/language_map.rs`). Other TOML lock files (`poetry.lock`, `uv.lock`) could be
-added the same way; `.lock` alone is not safe to map, since `yarn.lock` and `Gemfile.lock` are not TOML.
+`Cargo.lock`, `poetry.lock`, `uv.lock` and `pdm.lock` map to the TOML highlighter by file name.
 
 ### Kitty graphics protocol for image previews
 

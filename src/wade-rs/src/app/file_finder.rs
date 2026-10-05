@@ -356,6 +356,14 @@ impl App {
                     self.start_finder_search();
                     return;
                 }
+                // Rust only: Ctrl+C clears the query
+                ConsoleKey::C => {
+                    state.input.clear();
+                    state.selected_index = 0;
+                    state.scroll_offset = 0;
+                    self.start_finder_search();
+                    return;
+                }
                 _ => {}
             }
         }

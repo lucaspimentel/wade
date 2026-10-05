@@ -150,6 +150,12 @@ None. Phase 9 closed the last temporary entries.
   one depth penalty; highlighted positions are the union. A query of lone
   operators (`'`, `!`) matches everything, where C# `'` matches nothing.
   Single lowercase terms score exactly as in C# (the scorer golden).
+- **Ctrl+C clears search and filter boxes (Rust-only addition).** In the
+  Ctrl+F finder, the `/` filter, the Ctrl+P palette and the `b` bookmarks
+  list, Ctrl+C empties the input and lists everything again; C# ignores it.
+- **TOML lock files are highlighted (Rust-only addition).** `Cargo.lock`,
+  `poetry.lock`, `uv.lock` and `pdm.lock` use the TOML highlighter; C# shows
+  them as plain text.
 - **Sort ties and extension case folding differ (Phase 10).** Sorting by
   size or modified time keeps entries with an equal key in name order (a
   stable sort); C# uses an unstable introsort, so its order among exact ties

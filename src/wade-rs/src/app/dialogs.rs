@@ -224,6 +224,14 @@ impl App {
                     self.sync_search_filter();
                     return;
                 }
+                // Rust only: Ctrl+C clears the filter
+                crate::console_key::ConsoleKey::C => {
+                    if let Some(input) = &mut self.modal.search_input {
+                        input.clear();
+                    }
+                    self.sync_search_filter();
+                    return;
+                }
                 _ => {}
             }
         }
@@ -1014,6 +1022,12 @@ impl App {
                 crate::console_key::ConsoleKey::End => {
                     level.selected_index = filtered_count.saturating_sub(1);
                 }
+                // Rust only: Ctrl+C clears the filter
+                crate::console_key::ConsoleKey::C if key.control => {
+                    level.filter.clear();
+                    level.selected_index = 0;
+                    level.scroll_offset = 0;
+                }
                 crate::console_key::ConsoleKey::Backspace => {
                     level.filter.delete_backward();
                     level.selected_index = 0;
@@ -1429,6 +1443,14 @@ impl App {
             ConsoleKey::Home => self.modal.bookmark_selected_index = 0,
             ConsoleKey::End => {
                 self.modal.bookmark_selected_index = filtered.len().saturating_sub(1);
+            }
+            // Rust only: Ctrl+C clears the filter
+            ConsoleKey::C if key.control => {
+                if let Some(input) = &mut self.modal.bookmark_input {
+                    input.clear();
+                }
+                self.modal.bookmark_selected_index = 0;
+                self.modal.bookmark_scroll_offset = 0;
             }
             ConsoleKey::Backspace => {
                 if let Some(input) = &mut self.modal.bookmark_input {
