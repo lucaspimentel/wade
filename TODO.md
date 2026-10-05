@@ -142,6 +142,13 @@ key bindings (avoid `Ctrl+Tab` and `Ctrl+Shift+<key>`, which Windows Terminal re
 shown, and what each tab keeps (path, selection, filter, sort, marks). The issue also asks for a
 README comparison with yazi.
 
+### File finder — Ctrl+C clears the query
+
+In the Ctrl+F file finder, Ctrl+C should clear the input textbox (and restart the search, so every
+entry is listed again) instead of being ignored as it is now. `TextInput::clear` already exists; wire
+it into `handle_file_finder_key` (`src/wade-rs/src/app/file_finder.rs`) next to the other Ctrl+
+editing keys, and decide whether the `/` filter and other text inputs get the same binding.
+
 ### Syntax highlighting for `Cargo.lock`
 
 `Cargo.lock` is TOML but gets no highlighting: `LanguageMap` maps by extension, and `.lock` is not
