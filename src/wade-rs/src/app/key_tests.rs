@@ -615,17 +615,50 @@ fn staged_files(root: &Path) -> Vec<String> {
     git(root, &["diff", "--cached", "--name-only"]).unwrap_or_default().lines().map(str::to_string).collect()
 }
 
+/// The status bar at 400 columns, so a long temp path (Windows CI) leaves
+/// room for the branch and the ahead/behind counts.
+fn wide_status_bar(app: &mut App) -> String {
+    app.set_screen_size(400, 30);
+    app.layout.calculate(400, 30, true, true);
+    let mut buffer = crate::screen::ScreenBuffer::new(400, 30);
+    app.render(&mut buffer);
+    buffer.row_text(29)
+}
+
+#[test]
+fn push_from_the_palette_clears_the_ahead_count() {
+    let Some((mut app, parent, root)) = git_app() else { return };
+    // A bare remote next to the fixture, with the fixture pushed to it
+    let remote = parent.join("remote.git");
+    git(&parent, &["init", "-q", "--bare", "-b", "main", &remote.to_string_lossy()]).unwrap();
+    git(&root, &["remote", "add", "origin", &remote.to_string_lossy()]).unwrap();
+    git(&root, &["add", "-A"]).unwrap();
+    git(&root, &["commit", "-q", "-m", "base"]).unwrap();
+    git(&root, &["push", "-q", "-u", "origin", "main"]).unwrap();
+    std::fs::write(root.join("b.txt"), "changed").unwrap();
+    git(&root, &["commit", "-q", "-am", "local"]).unwrap();
+
+    app.refresh_git_status();
+    pump_until(&mut app, "the ahead count", |app| app.ahead_behind_text.is_some());
+    assert!(wide_status_bar(&mut app).contains("main \u{2191}1"), "{}", wide_status_bar(&mut app));
+
+    app.dispatch(super::AppAction::GitPush);
+    wait_for_git_action(&mut app);
+    pump_until(&mut app, "the refreshed counts", |app| app.ahead_behind_text.is_none());
+    // "name\u{2191}" is the sort direction; the ahead count follows the branch
+    let bar = wide_status_bar(&mut app);
+    assert!(bar.contains("main ") && !bar.contains("main \u{2191}"), "{bar}");
+    let rev = |dir: &Path, name: &str| git(dir, &["rev-parse", name]).unwrap_or_default();
+    assert_eq!(rev(&remote, "main"), rev(&root, "HEAD"), "the remote has the local commit");
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
 #[test]
 fn git_status_shows_branch_and_untracked_files() {
     let Some((mut app, parent, root)) = git_app() else { return };
     assert_eq!(app.current_repo_root.as_deref(), Some(root.to_string_lossy().as_ref()));
     assert_eq!(app.current_branch_name.as_deref(), Some("main"));
-    // Wide enough that a long temp path (Windows CI) leaves room for the branch
-    app.set_screen_size(400, 30);
-    app.layout.calculate(400, 30, true, true);
-    let mut buffer = crate::screen::ScreenBuffer::new(400, 30);
-    app.render(&mut buffer);
-    assert!(buffer.row_text(29).contains("main"), "branch in the status bar");
+    assert!(wide_status_bar(&mut app).contains("main"), "branch in the status bar");
     let status = app.git_statuses.as_ref().unwrap().get(&path_of(&root, "a.txt")).copied();
     assert_eq!(status, Some(crate::fs::GitFileStatus::UNTRACKED));
     let _ = std::fs::remove_dir_all(&parent);

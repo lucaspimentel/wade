@@ -1029,6 +1029,127 @@ mod integration {
         let _ = std::fs::remove_dir_all(&repo);
     }
 
+    /// A bare `remote.git` with one commit on main, and two clones of it
+    /// (`local`, `other`) with the test identity; all local paths, so no
+    /// network is involved.
+    fn cloned_pair(name: &str) -> Option<(std::path::PathBuf, std::path::PathBuf, std::path::PathBuf)> {
+        if !git_installed() {
+            return None;
+        }
+        let dir = temp_dir(name);
+        let remote = dir.join("remote.git");
+        run_git(&dir, &["init", "-q", "--bare", "-b", "main", "remote.git"]);
+        let clone = |name: &str| {
+            run_git(&dir, &["clone", "-q", &p(&remote), name]);
+            let repo = dir.join(name);
+            run_git(&repo, &["config", "user.name", "wade-test"]);
+            run_git(&repo, &["config", "user.email", "wade@example.invalid"]);
+            run_git(&repo, &["config", "commit.gpgsign", "false"]);
+            repo
+        };
+        let local = clone("local");
+        std::fs::write(local.join("base.txt"), "base\n").expect("write");
+        run_git(&local, &["add", "base.txt"]);
+        run_git(&local, &["commit", "-q", "-m", "base"]);
+        run_git(&local, &["push", "-q", "-u", "origin", "main"]);
+        let other = clone("other");
+        Some((remote, local, other))
+    }
+
+    fn commit_file(repo: &Path, name: &str, content: &str) {
+        std::fs::write(repo.join(name), content).expect("write");
+        run_git(repo, &["add", name]);
+        run_git(repo, &["commit", "-q", "-m", name]);
+    }
+
+    fn head(repo: &Path, rev: &str) -> String {
+        git_stdout(repo, &["rev-parse", rev]).trim().to_string()
+    }
+
+    #[test]
+    fn network_actions_without_a_remote() {
+        let Some(repo) = committed_repo("noremote") else { return };
+        let root = p(&repo);
+        let cancel = CancelToken::new();
+        for (name, action) in [
+            ("push", push as fn(&str, &CancelToken) -> (bool, Option<String>)),
+            ("push --force-with-lease", push_force_with_lease),
+            ("pull", pull),
+            ("pull --rebase", pull_rebase),
+        ] {
+            let (ok, err) = action(&root, &cancel);
+            assert!(!ok, "{name} should fail without a remote");
+            assert!(err.is_some_and(|e| !e.is_empty()), "{name} error message");
+        }
+        assert_eq!(fetch(&root, &cancel), (true, None), "fetch with no remote does nothing");
+        assert_eq!(get_ahead_behind(&root, &cancel), None, "no upstream");
+        let _ = std::fs::remove_dir_all(&repo);
+    }
+
+    #[test]
+    fn push_fetch_and_pull_against_a_bare_remote() {
+        let Some((remote, local, other)) = cloned_pair("remote") else { return };
+        let root = p(&local);
+        let cancel = CancelToken::new();
+        assert_eq!(get_ahead_behind(&root, &cancel), Some((0, 0)));
+
+        commit_file(&local, "mine.txt", "mine\n");
+        assert_eq!(get_ahead_behind(&root, &cancel), Some((1, 0)), "one commit ahead");
+
+        let (ok, err) = push(&root, &cancel);
+        assert!(ok, "push failed: {err:?}");
+        assert_eq!(get_ahead_behind(&root, &cancel), Some((0, 0)));
+        assert_eq!(head(&remote, "main"), head(&local, "HEAD"));
+
+        run_git(&other, &["pull", "-q"]);
+        commit_file(&other, "theirs.txt", "theirs\n");
+        run_git(&other, &["push", "-q"]);
+        assert_eq!(get_ahead_behind(&root, &cancel), Some((0, 0)), "not fetched yet");
+        assert_eq!(fetch(&root, &cancel), (true, None));
+        assert_eq!(get_ahead_behind(&root, &cancel), Some((0, 1)), "one commit behind");
+
+        let (ok, err) = pull(&root, &cancel);
+        assert!(ok, "pull failed: {err:?}");
+        assert_eq!(get_ahead_behind(&root, &cancel), Some((0, 0)));
+        assert!(local.join("theirs.txt").is_file());
+        let _ = std::fs::remove_dir_all(remote.parent().unwrap());
+    }
+
+    #[test]
+    fn pull_rebase_keeps_history_linear() {
+        let Some((remote, local, other)) = cloned_pair("rebase") else { return };
+        let root = p(&local);
+        let cancel = CancelToken::new();
+        commit_file(&other, "theirs.txt", "theirs\n");
+        run_git(&other, &["push", "-q"]);
+        commit_file(&local, "mine.txt", "mine\n");
+
+        let (ok, err) = pull_rebase(&root, &cancel);
+        assert!(ok, "pull --rebase failed: {err:?}");
+        assert_eq!(git_stdout(&local, &["rev-list", "--merges", "HEAD"]), "", "no merge commit");
+        assert_eq!(get_ahead_behind(&root, &cancel), Some((1, 0)), "the local commit replayed on top");
+        assert!(local.join("theirs.txt").is_file() && local.join("mine.txt").is_file());
+        let _ = std::fs::remove_dir_all(remote.parent().unwrap());
+    }
+
+    #[test]
+    fn push_force_with_lease_replaces_a_rewritten_commit() {
+        let Some((remote, local, _other)) = cloned_pair("lease") else { return };
+        let root = p(&local);
+        let cancel = CancelToken::new();
+        commit_file(&local, "mine.txt", "mine\n");
+        assert!(push(&root, &cancel).0);
+
+        run_git(&local, &["commit", "-q", "--amend", "-m", "rewritten"]);
+        let (ok, _) = push(&root, &cancel);
+        assert!(!ok, "a plain push of rewritten history is rejected");
+
+        let (ok, err) = push_force_with_lease(&root, &cancel);
+        assert!(ok, "push --force-with-lease failed: {err:?}");
+        assert_eq!(head(&remote, "main"), head(&local, "HEAD"));
+        let _ = std::fs::remove_dir_all(remote.parent().unwrap());
+    }
+
     #[test]
     fn real_git_status_round_trip() {
         let Some(repo) = init_repo("realgit") else { return };

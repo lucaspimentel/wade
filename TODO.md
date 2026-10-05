@@ -61,12 +61,14 @@ backlog.
   PathCompletion, ConfigDialogState and BookmarkStore C# tests (FilePreview
   was already covered by unit tests and the preview goldens). Symlink and
   real-git tests now skip where links or git are unavailable, so the Wine
-  run no longer has known failures
+  run no longer has known failures. The git network actions (push, pull,
+  pull --rebase, force-with-lease, fetch, ahead/behind) are tested against
+  a local bare remote, including palette push clearing the status bar's
+  ahead count
 - [ ] Still untested: terminal setup and raw input on both OSes, the real
   launchers (open with default app, open terminal, cloud download), the
-  combined text+image preview event, macOS paths, the git network actions
-  (push, pull, fetch, ahead/behind against an upstream) and Windows
-  System+Hidden listing
+  combined text+image preview event, macOS paths and Windows System+Hidden
+  listing
 - [ ] Manual Windows Terminal checks (need a real console; none are
   automated):
   - the `wd` wrapper (`--cwd-file`)
