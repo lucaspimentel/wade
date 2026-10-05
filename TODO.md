@@ -142,12 +142,18 @@ key bindings (avoid `Ctrl+Tab` and `Ctrl+Shift+<key>`, which Windows Terminal re
 shown, and what each tab keeps (path, selection, filter, sort, marks). The issue also asks for a
 README comparison with yazi.
 
-### File finder — Ctrl+C clears the query
+### Ctrl+C clears search and filter boxes
 
-In the Ctrl+F file finder, Ctrl+C should clear the input textbox (and restart the search, so every
-entry is listed again) instead of being ignored as it is now. `TextInput::clear` already exists; wire
-it into `handle_file_finder_key` (`src/wade-rs/src/app/file_finder.rs`) next to the other Ctrl+
-editing keys, and decide whether the `/` filter and other text inputs get the same binding.
+In the four search/filter text boxes, Ctrl+C should clear the input (and refresh the list, so every
+item shows again) instead of being ignored as it is now:
+
+- Ctrl+F file finder (`handle_file_finder_key`, `src/wade-rs/src/app/file_finder.rs`; restart the search)
+- `/` filter (directory listing)
+- Ctrl+P action palette filter
+- `b` bookmarks filter
+
+`TextInput::clear` already exists. Not for Go to path or the dialog boxes (rename, new file/directory,
+create symlink, commit message): clearing there discards a prefilled value, and Esc already cancels.
 
 ### Syntax highlighting for `Cargo.lock`
 
