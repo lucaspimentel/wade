@@ -146,12 +146,11 @@ Windows file clipboard interop is implemented in both versions. The Rust port al
 - `ScoreWithFileNamePriority` score-only overload is now truly zero-alloc (was delegating to the out overload, silently allocating and discarding).
 - Added `FuzzyScorerBenchmarks` to `Wade.Benchmarks` confirming the reduction.
 
-### File finder — remember search terms
+### ~~File finder — remember search terms~~ (Done in Rust)
 
-The Ctrl+F file finder starts with an empty query each time it opens. Remember previous search
-terms: restore the last query when the finder reopens and/or keep a navigable history (details to
-decide: per session vs persisted across runs, history size, and the history key binding, since
-Up/Down already move the result selection).
+Ctrl+F reopens with the last query of the session (cursor at the end, typing appends) and searches
+at once. Not persisted across runs; a navigable history was left out. C# still opens empty
+(`KNOWN_DEVIATIONS.md`).
 
 ### File finder — fzf-style query syntax
 

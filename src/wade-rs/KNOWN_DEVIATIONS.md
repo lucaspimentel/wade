@@ -136,6 +136,10 @@ None. Phase 9 closed the last temporary entries.
 - **The finder renders below 78 columns (Phase 5).** C#
   `Math.Clamp(width * 3 / 4, 70, width - 8)` throws when `width - 8 < 70`,
   so Ctrl+F crashes on narrow terminals; Rust lets the upper bound win.
+- **The finder reopens with its last query (Rust-only addition).** Closing
+  Ctrl+F (Esc or Enter) remembers the query for the session, and the next
+  Ctrl+F starts with it, cursor at the end, and searches at once. C# always
+  opens empty. Not persisted across runs; no history navigation.
 - **Sort ties and extension case folding differ (Phase 10).** Sorting by
   size or modified time keeps entries with an equal key in name order (a
   stable sort); C# uses an unstable introsort, so its order among exact ties

@@ -163,6 +163,8 @@ pub struct App {
     request_full_redraw: bool,
     /// Ctrl+F file finder state while it is open.
     pub(crate) file_finder: Option<crate::app::file_finder::FileFinderState>,
+    /// The finder's query when it last closed; it reopens with it (Rust only).
+    pub(crate) last_finder_query: String,
     file_op_label: String,
     file_op_progress: Option<crate::input::FileOperationProgressEvent>,
     /// C# closes over the entry in the TextInput completion callback; Rust
@@ -245,6 +247,7 @@ impl App {
             os_clipboard: if cfg!(test) { OsClipboard::Fake(FakeClipboard::default()) } else { OsClipboard::System },
             request_full_redraw: false,
             file_finder: None,
+            last_finder_query: String::new(),
             file_op_label: String::new(),
             file_op_progress: None,
             text_input_target: None,

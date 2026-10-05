@@ -134,7 +134,8 @@ impl App {
 
         self.input_mode = InputMode::FileFinder;
         self.file_finder = Some(FileFinderState {
-            input: TextInput::default(),
+            // Reopen with the last query, cursor at the end (C# starts empty)
+            input: TextInput::new(&self.last_finder_query),
             selected_index: 0,
             scroll_offset: 0,
             all_entries: None,
@@ -158,11 +159,15 @@ impl App {
         std::thread::spawn(move || {
             scan_files_for_finder(&base_path, show_hidden, show_system, &sender, &scan_cancel, Some(&index));
         });
+
+        // The search matches entries as the walk adds them; no-op when empty
+        self.start_finder_search();
     }
 
     /// Port of `CloseFileFinder`.
     pub fn close_file_finder(&mut self) {
         if let Some(state) = self.file_finder.take() {
+            self.last_finder_query = state.input.value().to_string();
             close_state(&state);
         }
 
@@ -1152,6 +1157,74 @@ mod tests {
         assert_eq!(Path::new(&app.current_path), root.join("deep"));
         let entries = app.get_visible_entries();
         assert_eq!(entries[app.selected_index].name, "target.txt");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn reopening_restores_the_last_query() {
+        let root = test_root("app-restore");
+        touch(&root.join("foo.txt"));
+        touch(&root.join("bar.txt"));
+
+        let mut app = app_at(&root);
+        app.show_file_finder();
+        type_text(&mut app, "foo");
+        app.handle_file_finder_key(key(ConsoleKey::Escape, '\u{1b}'));
+
+        app.show_file_finder();
+        let input = &app.file_finder.as_ref().unwrap().input;
+        assert_eq!((input.value(), input.cursor_position()), ("foo", 3));
+        pump_until(&mut app, |app| scan_done(app) && app.file_finder.as_ref().unwrap().results.is_some());
+        assert_eq!(display_names(&mut app), ["foo.txt"]);
+
+        // Typing appends to the restored query
+        type_text(&mut app, "x");
+        assert_eq!(app.file_finder.as_ref().unwrap().input.value(), "foox");
+        app.close_file_finder();
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn restored_query_is_kept_after_enter() {
+        let root = test_root("app-restore-enter");
+        touch(&root.join("deep").join("target.txt"));
+
+        let mut app = app_at(&root);
+        app.show_file_finder();
+        pump_until(&mut app, scan_done);
+        type_text(&mut app, "target");
+        pump_until(&mut app, |app| app.file_finder.as_ref().unwrap().results.is_some());
+        app.handle_file_finder_key(key(ConsoleKey::Enter, '\r'));
+        assert_eq!(Path::new(&app.current_path), root.join("deep"));
+
+        app.show_file_finder();
+        assert_eq!(app.file_finder.as_ref().unwrap().input.value(), "target");
+        app.close_file_finder();
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn clearing_the_query_before_closing_forgets_it() {
+        let root = test_root("app-restore-clear");
+        touch(&root.join("a.txt"));
+        touch(&root.join("b.txt"));
+
+        let mut app = app_at(&root);
+        app.show_file_finder();
+        type_text(&mut app, "a");
+        app.handle_file_finder_key(KeyEvent {
+            control: true,
+            ..key(ConsoleKey::Backspace, '\u{8}')
+        });
+        app.handle_file_finder_key(key(ConsoleKey::Escape, '\u{1b}'));
+
+        app.show_file_finder();
+        assert_eq!(app.file_finder.as_ref().unwrap().input.value(), "");
+        pump_until(&mut app, scan_done);
+        let mut names = display_names(&mut app);
+        names.sort();
+        assert_eq!(names, ["a.txt", "b.txt"]);
+        app.close_file_finder();
         let _ = std::fs::remove_dir_all(&root);
     }
 
