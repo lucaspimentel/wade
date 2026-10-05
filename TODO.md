@@ -142,6 +142,13 @@ key bindings (avoid `Ctrl+Tab` and `Ctrl+Shift+<key>`, which Windows Terminal re
 shown, and what each tab keeps (path, selection, filter, sort, marks). The issue also asks for a
 README comparison with yazi.
 
+### Syntax highlighting for `Cargo.lock`
+
+`Cargo.lock` is TOML but gets no highlighting: `LanguageMap` maps by extension, and `.lock` is not
+mapped. Map the file name `Cargo.lock` to the TOML language (`ByFilename` in C#, `by_file_name` in
+`src/wade-rs/src/highlight/language_map.rs`). Other TOML lock files (`poetry.lock`, `uv.lock`) could be
+added the same way; `.lock` alone is not safe to map, since `yarn.lock` and `Gemfile.lock` are not TOML.
+
 ### Kitty graphics protocol for image previews
 
 Support the kitty graphics protocol, using Unicode placeholders
