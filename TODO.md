@@ -134,6 +134,29 @@ Windows file clipboard interop is implemented in both versions. The Rust port al
 
 ## Backlog
 
+### Multiple tabs ([#17](https://github.com/lucaspimentel/wade/issues/17))
+
+Open several directories as tabs and switch between them, like yazi's tabs
+(https://yazi-rs.github.io/features/), for file operations across locations. Details to decide:
+key bindings (avoid `Ctrl+Tab` and `Ctrl+Shift+<key>`, which Windows Terminal reserves), how tabs are
+shown, and what each tab keeps (path, selection, filter, sort, marks). The issue also asks for a
+README comparison with yazi.
+
+### Kitty graphics protocol for image previews
+
+Support the kitty graphics protocol, using Unicode placeholders
+(https://sw.kovidgoyal.net/kitty/graphics-protocol/#unicode-placeholders), as an alternative to Sixel.
+Placeholders are ordinary cells, so images could go through `ScreenBuffer` and scroll and clip with
+the text instead of being written to stdout after the flush. Needs capability detection (kitty, Ghostty,
+WezTerm) and a choice between protocols when the terminal supports more than one.
+
+### iTerm2 inline image protocol for image previews
+
+Support the iTerm2 inline image protocol (`OSC 1337 ; File=`, https://iterm2.com/documentation-images.html)
+as an alternative to Sixel. It sends the encoded file (PNG) instead of a palette-quantized Sixel image.
+Needs capability detection (iTerm2, WezTerm and others) and the same protocol-selection logic as the
+kitty entry.
+
 ### File finder — deduplicate ScoreWithFileNamePriority paths (Done in Rust)
 
 Rust: `scorer::term_score` dispatches on the query mode and shares one filename-priority helper; the C# copy
