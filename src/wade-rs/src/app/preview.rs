@@ -518,9 +518,14 @@ impl App {
 
             let no_previews = self.preview.applicable_providers.as_ref().is_some_and(Vec::is_empty);
             if no_previews && self.preview.applicable_metadata_providers.as_ref().is_some_and(Vec::is_empty) {
-                // Literal C#: ClearPreviewCache also drops the context and the
-                // metadata provider list the message branch below tests
+                // Rust-only: keep the context and the (empty) metadata list the
+                // message below needs; C# ClearPreviewCache drops them and the
+                // pane stays blank
+                let context = self.preview.active_context.take();
+                let metadata_providers = self.preview.applicable_metadata_providers.take();
                 self.clear_preview_cache();
+                self.preview.active_context = context;
+                self.preview.applicable_metadata_providers = metadata_providers;
                 self.preview.applicable_providers = Some(Vec::new());
                 self.preview.cached_path = Some(path.to_string());
                 self.preview.pending_path = Some(path.to_string());
@@ -1241,10 +1246,39 @@ mod tests {
         app.render(&mut buffer);
         assert!(app.preview.applicable_providers.as_ref().is_some_and(Vec::is_empty));
         assert!(app.preview.pending_path.as_deref().is_some_and(|p| p.ends_with("broken")));
+        assert!(shows(&buffer, "[broken symlink]"), "the message is drawn");
 
         // The branch runs clear_preview_cache, which would drop this marker
         app.preview.cached_file_type_label = Some("marker".to_string());
+        let mut buffer = ScreenBuffer::new(80, 25);
         app.render(&mut buffer);
         assert_eq!(app.preview.cached_file_type_label.as_deref(), Some("marker"), "not reloaded");
+        assert!(shows(&buffer, "[broken symlink]"), "still drawn on the next frame");
+    }
+
+    #[cfg(unix)]
+    fn shows(buffer: &ScreenBuffer, text: &str) -> bool {
+        (0..buffer.height()).any(|row| buffer.row_text(row).contains(text))
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn leaving_a_broken_symlink_loads_the_next_preview() {
+        let (mut app, root) = app_with("app-leave-broken", &[("z.txt", "zulu")]);
+        std::os::unix::fs::symlink(root.join("missing"), root.join("broken")).unwrap();
+
+        let mut buffer = ScreenBuffer::new(80, 25);
+        app.render(&mut buffer);
+        assert!(shows(&buffer, "[broken symlink]"));
+
+        app.dispatch(AppAction::NavigateDown);
+        render(&mut app);
+        pump(&mut app, |app| loaded(app) && app.preview.cached_styled_lines.is_some());
+        assert_eq!(app.preview.cached_styled_lines.as_ref().unwrap()[0].text, "zulu");
+
+        let mut buffer = ScreenBuffer::new(80, 25);
+        app.render(&mut buffer);
+        assert!(!shows(&buffer, "[broken symlink]"));
+        assert!(shows(&buffer, "zulu"));
     }
 }

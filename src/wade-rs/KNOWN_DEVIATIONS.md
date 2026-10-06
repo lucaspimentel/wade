@@ -174,6 +174,10 @@ None. Phase 9 closed the last temporary entries.
   preview finishes leaves the pane loading. During that time it shows the
   other file's metadata and type label. The file is reloaded only after the
   abandoned load completes.
+- **Broken symlinks show `[broken symlink]` (Rust-only fix).** C# leaves the
+  right pane blank. Its `ClearPreviewCache` drops the preview context and
+  the empty metadata provider list that the message branch checks, and Rust
+  keeps them.
 - **Kitty graphics protocol for image previews (Rust-only addition).**
   - **Detection.** On Unix, startup also sends a kitty graphics query (`a=q`) and XTVERSION (`CSI > q`). Kitty is
     used only when the terminal answers `OK` and calls itself kitty or Ghostty. WezTerm and Konsole answer the query
