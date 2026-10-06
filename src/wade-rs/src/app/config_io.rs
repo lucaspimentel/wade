@@ -610,7 +610,8 @@ mediainfo_enabled = true
         assert_eq!(load(""), Setting::Auto);
         assert_eq!(load("image_protocol = sixel\n"), Setting::Sixel);
         assert_eq!(load("image_protocol = Kitty  # comment\n"), Setting::Kitty);
-        assert_eq!(load("image_protocol = iterm\n"), Setting::Auto, "unknown values keep the default");
+        assert_eq!(load("image_protocol = iterm\n"), Setting::Iterm);
+        assert_eq!(load("image_protocol = iterm2\n"), Setting::Auto, "unknown values keep the default");
 
         save_config(&AppConfig { image_protocol: Setting::Kitty, ..config.clone() }).unwrap();
         assert!(std::fs::read_to_string(&path).unwrap().ends_with("mediainfo_enabled = true\nimage_protocol = kitty\n"));

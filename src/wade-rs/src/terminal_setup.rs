@@ -87,6 +87,8 @@ impl TerminalSetup {
         let wt_session = std::env::var_os("WT_SESSION").is_some();
         let capabilities = TerminalCapabilities {
             sixel_supported: wt_session,
+            // Rust-only: WezTerm on Windows shows iTerm2 inline images
+            iterm_images: crate::terminal_caps::iterm_from_term_program(std::env::var("TERM_PROGRAM").ok().as_deref()),
             ..TerminalCapabilities::DEFAULT
         };
 

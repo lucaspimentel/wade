@@ -810,6 +810,7 @@ mod tests {
             cell_pixel_width: 10,
             cell_pixel_height: 20,
             kitty_graphics: false,
+            iterm_images: false,
         });
         let context = app.build_preview_context(40, 20);
         assert_eq!((context.cell_pixel_width, context.cell_pixel_height), (10, 20));
@@ -833,6 +834,7 @@ mod tests {
             cell_pixel_width: 8,
             cell_pixel_height: 16,
             kitty_graphics: false,
+            iterm_images: false,
         });
         (app, root)
     }
@@ -1098,6 +1100,7 @@ mod tests {
             cell_pixel_width: 8,
             cell_pixel_height: 16,
             kitty_graphics: true,
+            iterm_images: false,
         });
         (app, root)
     }
@@ -1280,5 +1283,55 @@ mod tests {
         app.render(&mut buffer);
         assert!(!shows(&buffer, "[broken symlink]"));
         assert!(shows(&buffer, "zulu"));
+    }
+
+    // --- iTerm2 inline images (Rust only) -----------------------------------
+
+    fn iterm_app(name: &str) -> (App, std::path::PathBuf) {
+        let (mut app, root) = sixel_app(name);
+        app.set_capabilities(crate::terminal_caps::TerminalCapabilities {
+            sixel_supported: true,
+            cell_pixel_width: 8,
+            cell_pixel_height: 16,
+            kitty_graphics: false,
+            iterm_images: true,
+        });
+        (app, root)
+    }
+
+    #[test]
+    fn iterm_image_is_written_like_sixel() {
+        let (mut app, _root) = iterm_app("app-iterm");
+        render(&mut app);
+        pump(&mut app, |app| loaded(app) && app.preview.cached_metadata_sections.is_some() && app.preview.cached_image.is_some());
+        assert!(matches!(app.preview.cached_image, Some(ImageData::Iterm(_))));
+
+        render(&mut app);
+        let output = app.take_pending_image_output().expect("image written");
+        let cursor = crate::ansi::move_cursor(app.preview.sixel_image_top, app.layout.right_pane.left);
+        // 64x32 px over 8x16 px cells: 8x2 cells
+        assert!(output.starts_with(&format!("{cursor}\x1b]1337;File=inline=1;size=")), "{}", &output[..60]);
+        assert!(output.contains(";width=8;height=2;"));
+        assert!(app.take_pending_image_output().is_none(), "written once per render");
+
+        // Hidden under modals, like Sixel
+        render(&mut app);
+        app.input_mode = InputMode::Help;
+        assert!(app.take_pending_image_output().is_none());
+    }
+
+    #[test]
+    fn expanded_iterm_image_is_centered() {
+        let (mut app, _root) = iterm_app("app-iterm-expanded");
+        render(&mut app);
+        pump(&mut app, |app| loaded(app) && app.preview.cached_metadata_sections.is_some());
+
+        app.dispatch(AppAction::Open);
+        pump(&mut app, |app| loaded(app) && app.preview.is_image_preview);
+        render(&mut app);
+
+        let expected = app.layout.expanded_pane.center_content(8, 2);
+        let output = app.take_pending_image_output().expect("image");
+        assert!(output.starts_with(&format!("{}\x1b]1337;", crate::ansi::move_cursor(expected.0, expected.1))));
     }
 }

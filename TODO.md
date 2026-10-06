@@ -165,12 +165,14 @@ Images are off inside tmux: the startup queries reach tmux, not the outer termin
 passthrough (`ESC P tmux; … ESC \`, with `allow-passthrough on`) for both the detection queries and the
 Sixel/kitty output.
 
-### iTerm2 inline image protocol for image previews
+### ~~iTerm2 inline image protocol for image previews~~ (Done in Rust)
 
-Support the iTerm2 inline image protocol (`OSC 1337 ; File=`, https://iterm2.com/documentation-images.html)
-as an alternative to Sixel. It sends the encoded file (PNG) instead of a palette-quantized Sixel image.
-Needs capability detection (iTerm2, WezTerm and others). In the Rust port, the protocol selection is
-already in place: add a variant to `ImageProtocol`, `ImageProtocolSetting` and `ImageData`.
+Uses `OSC 1337 ; File=` (https://iterm2.com/documentation-images.html).
+
+- **Detection:** the XTVERSION name (iTerm2, WezTerm), falling back to `TERM_PROGRAM`.
+- **Selection:** `image_protocol = iterm`; `auto` orders kitty, then iTerm2, then Sixel.
+- **Payload:** the fitted image as PNG, sized in cells.
+- **Untested:** not yet checked in a real iTerm2 or WezTerm.
 
 ### File finder — deduplicate ScoreWithFileNamePriority paths (Done in Rust)
 

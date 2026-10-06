@@ -12,6 +12,9 @@ pub struct TerminalCapabilities {
     /// Rust-only: the terminal supports kitty graphics with Unicode
     /// placeholders (answered the `a=q` query and is kitty or Ghostty).
     pub kitty_graphics: bool,
+    /// Rust-only: the terminal shows iTerm2 inline images (`OSC 1337`):
+    /// iTerm2 or WezTerm, by XTVERSION or `TERM_PROGRAM`.
+    pub iterm_images: bool,
 }
 
 impl TerminalCapabilities {
@@ -21,6 +24,7 @@ impl TerminalCapabilities {
         cell_pixel_width: 8,
         cell_pixel_height: 16,
         kitty_graphics: false,
+        iterm_images: false,
     };
 
     /// Port of `ParseQueryResponses`: DA1 (`ESC[?..c`, Sixel when a param is
@@ -66,6 +70,7 @@ impl TerminalCapabilities {
         }
 
         caps.kitty_graphics = kitty_graphics_ok(data) && xtversion_name(data).is_some_and(is_placeholder_terminal);
+        caps.iterm_images = xtversion_name(data).is_some_and(is_iterm_terminal);
         caps
     }
 }
@@ -75,6 +80,19 @@ impl TerminalCapabilities {
 fn is_placeholder_terminal(name: &str) -> bool {
     let name = name.to_ascii_lowercase();
     name.starts_with("kitty") || name.starts_with("ghostty")
+}
+
+/// Terminals that show iTerm2 inline images, by XTVERSION name.
+fn is_iterm_terminal(name: &str) -> bool {
+    let name = name.to_ascii_lowercase();
+    name.starts_with("iterm2") || name.starts_with("wezterm")
+}
+
+/// The `TERM_PROGRAM` fallback for iTerm2 inline images (no XTVERSION
+/// reply, or Windows where replies can't be read).
+#[must_use]
+pub fn iterm_from_term_program(value: Option<&str>) -> bool {
+    matches!(value, Some("iTerm.app" | "WezTerm"))
 }
 
 /// The payload of every `<prefix>...ESC \` string in `data`.
@@ -197,6 +215,20 @@ mod tests {
         assert!(!kitty(&with(b"", b"\x1bP>|kitty(0.39.1)\x1b\\")), "no graphics reply");
         assert!(!kitty(&with(KITTY_OK, b"")), "no XTVERSION reply");
         assert!(!kitty(b""));
+    }
+
+    #[test]
+    fn iterm_images_from_xtversion_or_term_program() {
+        let iterm = |data: &[u8]| Caps::parse_query_responses(data).iterm_images;
+        assert!(iterm(b"\x1bP>|iTerm2 3.5.4\x1b\\\x1b[?62;4c"));
+        assert!(iterm(b"\x1bP>|WezTerm 20240203-110809-5046fc22\x1b\\"));
+        assert!(!iterm(b"\x1bP>|kitty(0.39.1)\x1b\\"));
+        assert!(!iterm(b"\x1b[?62;4c"));
+
+        assert!(super::iterm_from_term_program(Some("iTerm.app")));
+        assert!(super::iterm_from_term_program(Some("WezTerm")));
+        assert!(!super::iterm_from_term_program(Some("Apple_Terminal")));
+        assert!(!super::iterm_from_term_program(None));
     }
 
     #[test]

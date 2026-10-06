@@ -133,7 +133,7 @@ pub fn cells_for(pixels: i32, cell: i32, max: i32) -> i32 {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use std::io::Read;
     use std::sync::atomic::AtomicU32;
 
@@ -176,7 +176,7 @@ mod tests {
             .collect()
     }
 
-    fn decode_base64(text: &str) -> Vec<u8> {
+    pub(crate) fn decode_base64(text: &str) -> Vec<u8> {
         const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
         let mut bits = 0u32;
         let mut count = 0;

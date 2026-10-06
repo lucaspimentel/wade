@@ -498,14 +498,15 @@ impl App {
             }
         }
 
-        if let Some(sixel) = self.take_pending_sixel() {
+        if let Some(sixel) = self.take_pending_overlay_image() {
             out.push_str(&sixel);
         }
 
         (!out.is_empty()).then_some(out)
     }
 
-    fn take_pending_sixel(&mut self) -> Option<String> {
+    /// The Sixel or iTerm2 image write: drawn over the cells after the flush.
+    fn take_pending_overlay_image(&mut self) -> Option<String> {
         let expanded = self.input_mode == InputMode::ExpandedPreview;
         if !self.preview.sixel_pending
             || !(self.preview_pane_enabled || expanded)
@@ -514,7 +515,9 @@ impl App {
             return None;
         }
 
-        let Some(crate::imaging::ImageData::Sixel(sixel)) = &self.preview.cached_image else {
+        // Rust-only: iTerm2 inline images are written exactly like Sixel
+        let Some(crate::imaging::ImageData::Sixel(sixel) | crate::imaging::ImageData::Iterm(sixel)) = &self.preview.cached_image
+        else {
             return None;
         };
         self.preview.sixel_pending = false;

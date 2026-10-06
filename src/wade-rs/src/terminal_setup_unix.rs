@@ -133,11 +133,9 @@ fn detect_capabilities(tty_fd: libc::c_int) -> TerminalCapabilities {
         total += usize::try_from(n).unwrap_or(0);
     }
 
-    if total == 0 {
-        return TerminalCapabilities::DEFAULT;
-    }
-
-    TerminalCapabilities::parse_query_responses(&buf[..total])
+    let mut caps = TerminalCapabilities::parse_query_responses(&buf[..total]);
+    caps.iterm_images |= crate::terminal_caps::iterm_from_term_program(std::env::var("TERM_PROGRAM").ok().as_deref());
+    caps
 }
 
 fn write_out(parts: &[&str]) {

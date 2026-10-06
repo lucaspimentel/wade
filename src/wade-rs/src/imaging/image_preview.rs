@@ -85,6 +85,11 @@ pub fn load(
             let transmit = super::kitty::encode_transmit(rgba.as_raw(), width, height, id, cols, rows);
             ImageData::Kitty { transmit, id, cols, rows }
         }
+        ImageProtocol::Iterm => {
+            let cols = super::kitty::cells_for(width as i32, cell_pixel_width, pane_width_cells);
+            let rows = super::kitty::cells_for(height as i32, cell_pixel_height, pane_height_cells);
+            ImageData::Iterm(super::iterm::encode(rgba.as_raw(), width, height, cols, rows))
+        }
     };
     if cancel.is_cancelled() {
         return None;
@@ -152,6 +157,14 @@ mod tests {
     }
 
     #[test]
+    fn iterm_protocol_sends_png_sized_in_cells() {
+        let result = load(&small_bmp(), 80, 24, 2, 2, ImageProtocol::Iterm, &CancelToken::new()).expect("result");
+        let ImageData::Iterm(data) = &result.image else { panic!("iterm") };
+        assert!(data.starts_with("\x1b]1337;File=inline=1;size="), "{data}");
+        assert!(data.contains(";width=2;height=2;"), "{data}");
+    }
+
+    #[test]
     fn missing_file_empty_pane_and_cancel_return_none() {
         assert!(load("/no/such/file.png", 80, 24, 8, 16, ImageProtocol::Sixel, &CancelToken::new()).is_none());
         assert!(load(&small_bmp(), 0, 24, 8, 16, ImageProtocol::Sixel, &CancelToken::new()).is_none());
@@ -177,7 +190,7 @@ mod tests {
         let result = load(&path.to_string_lossy(), 120, 40, 8, 16, ImageProtocol::Sixel, &CancelToken::new()).expect("result");
         let elapsed = start.elapsed();
 
-        eprintln!("4000x3000 JPEG -> {}x{} sixel ({} bytes) in {elapsed:?}", result.pixel_width, result.pixel_height, match &result.image { ImageData::Sixel(d) => d.len(), ImageData::Kitty { transmit, .. } => transmit.len() });
+        eprintln!("4000x3000 JPEG -> {}x{} sixel ({} bytes) in {elapsed:?}", result.pixel_width, result.pixel_height, match &result.image { ImageData::Sixel(d) => d.len(), ImageData::Kitty { transmit: d, .. } | ImageData::Iterm(d) => d.len() });
         assert!(elapsed < std::time::Duration::from_millis(1500), "{elapsed:?}");
     }
 }

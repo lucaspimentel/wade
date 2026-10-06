@@ -178,20 +178,26 @@ None. Phase 9 closed the last temporary entries.
   right pane blank. Its `ClearPreviewCache` drops the preview context and
   the empty metadata provider list that the message branch checks, and Rust
   keeps them.
-- **Kitty graphics protocol for image previews (Rust-only addition).**
+- **Kitty graphics and iTerm2 inline images for image previews (Rust-only addition).**
   - **Detection.** On Unix, startup also sends a kitty graphics query (`a=q`) and XTVERSION (`CSI > q`). Kitty is
     used only when the terminal answers `OK` and calls itself kitty or Ghostty. WezTerm and Konsole answer the query
     but have no Unicode placeholders.
-  - **Choosing a protocol.** The new `image_protocol = auto|kitty|sixel` key goes in the config file only; the dialog
-    does not show it. With `auto`, kitty wins over Sixel. A forced protocol must still be detected. PDF previews use
-    whichever protocol is chosen.
+  - **iTerm2 detection.** iTerm2 inline images (`OSC 1337 ; File=`) are used when the XTVERSION name starts with
+    `iTerm2` or `WezTerm`. If there is no reply, `TERM_PROGRAM` = `iTerm.app` or `WezTerm` is used. On Windows,
+    where replies can't be read, `TERM_PROGRAM=WezTerm` turns them on.
+  - **Choosing a protocol.** The new `image_protocol = auto|kitty|iterm|sixel` key goes in the config file only; the
+    dialog does not show it. With `auto`, the order is kitty, then iTerm2, then Sixel. A forced protocol must still
+    be detected. PDF previews use whichever protocol is chosen.
   - **The new key in output.** The key is written to the file only when it is not `auto`, so a default file keeps
     the C# layout. `--show-config` gains `image_protocol` before `start_path`.
   - **How images are drawn.** The image is sent once, compressed with zlib, with a virtual placement. The image area
     is then U+10EEEE placeholder cells in the screen buffer: the foreground color is the image id, and two diacritics
     give the cell's row and column. Replaced images are deleted.
+  - **How iTerm2 images are drawn.** The fitted image is sent as PNG (full color, unlike 256-color Sixel). Its size
+    is given in cells, so a wrong cell-size guess can't push it past the pane, and `doNotMoveCursor=1` keeps the
+    cursor in place. Like Sixel, it is written after every frame at the image position.
   - **Behaviour under dialogs.** Unlike Sixel, the uncovered part of a kitty image stays visible while a dialog is
-    open.
+    open. iTerm2 images are hidden under dialogs, like Sixel.
   - **Not supported.** Windows Terminal (no kitty support) and tmux (queries do not reach the outer terminal).
   - C# has Sixel only.
 - **TOML lock files are highlighted (Rust-only addition).** `Cargo.lock`,
