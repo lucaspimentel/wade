@@ -510,7 +510,10 @@ impl App {
     pub(crate) fn render_file_preview(&mut self, buffer: &mut ScreenBuffer, path: &str) {
         let pane = self.layout.right_pane;
 
-        if self.preview.cached_path.as_deref() != Some(path) && self.preview.pending_path.as_deref() != Some(path) {
+        // Rust-only: only the pending path counts as current. C# also skips
+        // when the path is cached, so returning to a file while another one
+        // loads waited for that abandoned load before reloading
+        if self.preview.pending_path.as_deref() != Some(path) {
             self.set_applicable_providers(path, pane.width, pane.height);
 
             let no_previews = self.preview.applicable_providers.as_ref().is_some_and(Vec::is_empty);
@@ -520,6 +523,7 @@ impl App {
                 self.clear_preview_cache();
                 self.preview.applicable_providers = Some(Vec::new());
                 self.preview.cached_path = Some(path.to_string());
+                self.preview.pending_path = Some(path.to_string());
             } else {
                 let was_image = self.preview.is_image_preview || self.preview.is_combined_preview;
                 self.reload_active_provider(path, true);
@@ -1199,5 +1203,48 @@ mod tests {
         app.config.image_protocol = crate::imaging::ImageProtocolSetting::Kitty;
         app.set_capabilities(app.capabilities);
         assert!(app.image_protocol.is_none() && !app.image_previews_effective, "kitty forced but not detected");
+    }
+
+    #[test]
+    fn returning_to_a_file_while_another_loads_reloads_it() {
+        let (mut app, _root) = app_with("app-return", &[("a.txt", "alpha"), ("b.txt", "beta")]);
+        render(&mut app);
+        pump(&mut app, |app| loaded(app) && app.preview.cached_metadata_sections.is_some());
+        assert_eq!(app.preview.cached_styled_lines.as_ref().unwrap()[0].text, "alpha");
+
+        // Move to b.txt and straight back, before b's events are handled
+        app.dispatch(AppAction::NavigateDown);
+        render(&mut app);
+        app.dispatch(AppAction::NavigateUp);
+        render(&mut app);
+        assert!(app.preview.pending_path.as_deref().is_some_and(|p| p.ends_with("a.txt")), "a.txt is reloaded");
+
+        pump(&mut app, |app| {
+            loaded(app)
+                && app.preview.cached_path.as_deref().is_some_and(|p| p.ends_with("a.txt"))
+                && app.preview.cached_styled_lines.is_some()
+                && app.preview.cached_metadata_sections.is_some()
+        });
+        assert_eq!(app.preview.cached_styled_lines.as_ref().unwrap()[0].text, "alpha");
+        assert_eq!(app.preview.cached_metadata_sections.as_ref().unwrap()[0].header.as_deref(), Some("a.txt"));
+    }
+
+    /// A broken symlink has no preview or metadata providers: the
+    /// no-providers branch must not run again on every frame.
+    #[cfg(unix)]
+    #[test]
+    fn files_without_providers_do_not_reload_every_frame() {
+        let (mut app, root) = app_with("app-no-providers", &[]);
+        std::os::unix::fs::symlink(root.join("missing"), root.join("broken")).unwrap();
+
+        let mut buffer = ScreenBuffer::new(80, 25);
+        app.render(&mut buffer);
+        assert!(app.preview.applicable_providers.as_ref().is_some_and(Vec::is_empty));
+        assert!(app.preview.pending_path.as_deref().is_some_and(|p| p.ends_with("broken")));
+
+        // The branch runs clear_preview_cache, which would drop this marker
+        app.preview.cached_file_type_label = Some("marker".to_string());
+        app.render(&mut buffer);
+        assert_eq!(app.preview.cached_file_type_label.as_deref(), Some("marker"), "not reloaded");
     }
 }

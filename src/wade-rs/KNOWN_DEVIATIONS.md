@@ -167,6 +167,13 @@ None. Phase 9 closed the last temporary entries.
   scroll, marks and `/` filter; settings and the per-directory sorts are
   shared. The bar takes row 0 only with two or more tabs, so one-tab frames
   match C#. Tabs are not persisted. C# has no tabs.
+- **Returning to a file while another preview loads reloads it at once
+  (Rust-only fix).** Rust starts a preview load whenever the selected
+  path is not the pending one. C# also skips the load when the path is the
+  last cached one, so moving off a file and back before the other file's
+  preview finishes leaves the pane loading. During that time it shows the
+  other file's metadata and type label. The file is reloaded only after the
+  abandoned load completes.
 - **Kitty graphics protocol for image previews (Rust-only addition).**
   - **Detection.** On Unix, startup also sends a kitty graphics query (`a=q`) and XTVERSION (`CSI > q`). Kitty is
     used only when the terminal answers `OK` and calls itself kitty or Ghostty. WezTerm and Konsole answer the query
