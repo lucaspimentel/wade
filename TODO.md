@@ -134,13 +134,11 @@ Windows file clipboard interop is implemented in both versions. The Rust port al
 
 ## Backlog
 
-### Multiple tabs ([#17](https://github.com/lucaspimentel/wade/issues/17))
+### ~~Multiple tabs ([#17](https://github.com/lucaspimentel/wade/issues/17))~~ (Done in Rust)
 
-Open several directories as tabs and switch between them, like yazi's tabs
-(https://yazi-rs.github.io/features/), for file operations across locations. Details to decide:
-key bindings (avoid `Ctrl+Tab` and `Ctrl+Shift+<key>`, which Windows Terminal reserves), how tabs are
-shown, and what each tab keeps (path, selection, filter, sort, marks). The issue also asks for a
-README comparison with yazi.
+`t` new tab, `{`/`}` and `1`-`9` switch, `w` close (quits on the last tab), click to switch; the bar
+shows with two or more tabs; each tab keeps its path, selection, marks and filter; not persisted.
+Still open from the issue: a README comparison with yazi.
 
 ### ~~Ctrl+C clears search and filter boxes~~ (Done in Rust)
 

@@ -160,6 +160,13 @@ None. Phase 9 closed the last temporary entries.
   `sort_mode`/`sort_ascending`, which `s`/`S` no longer change. The status bar
   adds `*` after the sort marker for a saved sort, and the palette's "Reset
   sort for this directory" forgets it. C# has one global sort.
+- **Tabs (Rust-only addition, issue #17).** `t` opens a tab at the current
+  directory after the active one (at most 9), `{`/`}` and `1`-`9` switch,
+  `w` closes it and quits like `q` on the last tab; a left click on the tab
+  bar switches. Each tab keeps its path, selection (also per directory),
+  scroll, marks and `/` filter; settings and the per-directory sorts are
+  shared. The bar takes row 0 only with two or more tabs, so one-tab frames
+  match C#. Tabs are not persisted. C# has no tabs.
 - **TOML lock files are highlighted (Rust-only addition).** `Cargo.lock`,
   `poetry.lock`, `uv.lock` and `pdm.lock` use the TOML highlighter; C# shows
   them as plain text.

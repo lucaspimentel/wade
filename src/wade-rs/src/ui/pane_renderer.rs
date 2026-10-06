@@ -693,20 +693,21 @@ impl PaneRenderer {
     }
 
     /// Port of `RenderBorders`.
-    pub fn render_borders(buffer: &mut ScreenBuffer, layout: &Layout, terminal_height: i32, preview_pane_enabled: bool, parent_pane_enabled: bool) {
+    pub fn render_borders(buffer: &mut ScreenBuffer, layout: &Layout, _terminal_height: i32, preview_pane_enabled: bool, parent_pane_enabled: bool) {
         let style = style(ui::BORDER_COLOR, None);
-        let content_height = terminal_height - 1;
+        // Rust: the pane rows (below the tab bar when it is shown)
+        let rows = layout.center_pane.top..layout.center_pane.top + layout.center_pane.height;
 
         if parent_pane_enabled {
             let border_col1 = layout.left_pane.right();
-            for row in 0..content_height {
+            for row in rows.clone() {
                 buffer.put(row, border_col1, '\u{2502}', style);
             }
         }
 
         if preview_pane_enabled {
             let border_col2 = layout.center_pane.right();
-            for row in 0..content_height {
+            for row in rows {
                 buffer.put(row, border_col2, '\u{2502}', style);
             }
         }

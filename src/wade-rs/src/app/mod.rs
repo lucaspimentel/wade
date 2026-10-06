@@ -16,6 +16,7 @@ pub mod dialogs;
 pub mod input_reader;
 pub mod preview;
 pub mod preview_loader;
+pub mod tabs;
 #[cfg(test)]
 mod key_tests;
 #[cfg(test)]
@@ -195,6 +196,10 @@ pub struct App {
     pub(crate) capabilities: crate::terminal_caps::TerminalCapabilities,
     /// C# `_imagePreviewsEffective`: the config flag and Sixel support.
     pub(crate) image_previews_effective: bool,
+    /// Rust only: every tab's saved state; the active slot is a
+    /// placeholder while its fields live inline above.
+    pub(crate) tabs: Vec<tabs::TabState>,
+    pub(crate) active_tab: usize,
 }
 
 impl App {
@@ -229,6 +234,8 @@ impl App {
             preview: preview::PreviewState::default(),
             capabilities: crate::terminal_caps::TerminalCapabilities::DEFAULT,
             image_previews_effective: false,
+            tabs: vec![tabs::TabState::default()],
+            active_tab: 0,
             bookmark_store: crate::fs::bookmark_store::BookmarkStore::new(None),
             pipeline: crate::input::input_pipeline::InputPipeline::new(),
             git_status_loader: crate::app::git_status_loader::GitStatusLoader::new(),
@@ -379,7 +386,7 @@ impl App {
         self.last_height = height;
 
         let mut buffer = ScreenBuffer::new(width, height);
-        self.layout.calculate(width, height, self.preview_pane_enabled, self.parent_pane_enabled);
+        self.recalc_layout();
 
         while !self.quit {
             // Auto-clear expired notifications
@@ -510,7 +517,7 @@ impl App {
             self.last_width = resize.width;
             self.last_height = resize.height;
             buffer.resize(resize.width, resize.height);
-            self.layout.calculate(resize.width, resize.height, self.preview_pane_enabled, self.parent_pane_enabled);
+            self.recalc_layout();
             clear_screen();
 
             // Re-render the preview at the new size
@@ -621,14 +628,14 @@ impl App {
             }
             A::ToggleParentPane => {
                 self.parent_pane_enabled = !self.parent_pane_enabled;
-                self.layout.calculate(self.last_width, self.last_height, self.preview_pane_enabled, self.parent_pane_enabled);
+                self.recalc_layout();
                 clear_screen();
                 // C# ForceFullRedraw: the cleared screen must be repainted fully
                 self.request_full_redraw = true;
             }
             A::TogglePreviewPane => {
                 self.preview_pane_enabled = !self.preview_pane_enabled;
-                self.layout.calculate(self.last_width, self.last_height, self.preview_pane_enabled, self.parent_pane_enabled);
+                self.recalc_layout();
                 clear_screen();
                 self.clear_preview_cache();
                 self.request_full_redraw = true;
@@ -655,6 +662,16 @@ impl App {
             }
             A::ShowHelp => {
                 self.input_mode = InputMode::Help;
+            }
+            A::NewTab => self.new_tab(),
+            A::NextTab => self.cycle_tab(true),
+            A::PrevTab => self.cycle_tab(false),
+            A::SwitchTab(number) => self.switch_tab(usize::from(number).saturating_sub(1)),
+            A::CloseTab => {
+                if !self.close_tab() {
+                    // The last tab: quit like q
+                    self.dispatch(A::Quit);
+                }
             }
             A::Search => {
                 self.input_mode = InputMode::Search;
@@ -923,6 +940,16 @@ impl App {
 
         // Ignore releases and non-left/right clicks
         if mouse.is_release || (mouse.button != MouseButton::Left && mouse.button != MouseButton::Right) {
+            return;
+        }
+
+        // Rust only: a click on the tab bar switches tabs
+        if self.tab_bar_visible() && mouse.row == 0 {
+            if mouse.button == MouseButton::Left
+                && let Some(index) = self.tab_at_column(mouse.col)
+            {
+                self.switch_tab(index);
+            }
             return;
         }
 
@@ -1777,6 +1804,7 @@ impl App {
 
         // Borders
         PaneRenderer::render_borders(buffer, &self.layout, self.last_height, self.preview_pane_enabled, self.parent_pane_enabled);
+        self.render_tab_bar(buffer);
 
         // Status bar
         let selected_entry = entries.get(self.selected_index);
@@ -1911,6 +1939,7 @@ impl App {
     /// the status bar, which shows the previewed file's path.
     fn render_expanded_preview(&mut self, buffer: &mut ScreenBuffer) {
         self.render_expanded_preview_pane(buffer);
+        self.render_tab_bar(buffer);
 
         let entries = self.get_visible_entries();
         let selected_entry = entries.get(self.selected_index);

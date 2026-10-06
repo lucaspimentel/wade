@@ -1131,6 +1131,18 @@ impl App {
             ActionMenuItem::new("Toggle hidden files", ".", AppAction::ToggleHiddenFiles),
             ActionMenuItem::new("Toggle left pane", "[", AppAction::ToggleParentPane),
             ActionMenuItem::new("Toggle right pane", "]", AppAction::TogglePreviewPane),
+            ActionMenuItem::new("New tab", "t", AppAction::NewTab),
+        ]);
+
+        if self.tab_count() > 1 {
+            items.extend([
+                ActionMenuItem::new("Next tab", "}", AppAction::NextTab),
+                ActionMenuItem::new("Previous tab", "{", AppAction::PrevTab),
+                ActionMenuItem::new("Close tab", "w", AppAction::CloseTab),
+            ]);
+        }
+
+        items.extend([
             ActionMenuItem::new("Cycle sort mode", "s", AppAction::CycleSortMode),
             ActionMenuItem::new("Reverse sort direction", "S", AppAction::ToggleSortDirection),
         ]);

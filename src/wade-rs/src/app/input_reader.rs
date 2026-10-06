@@ -61,6 +61,13 @@ pub enum AppAction {
     GitPullRebase,
     GitFetch,
     DownloadCloudFile,
+    // Rust only: tabs (#17)
+    NewTab,
+    NextTab,
+    PrevTab,
+    /// Tab number 1-9.
+    SwitchTab(u8),
+    CloseTab,
 }
 
 /// Port of `InputReader.MapKey`. `key_char` is the UTF-16 code unit from the
@@ -94,6 +101,16 @@ pub fn map_key(key: &KeyEvent) -> AppAction {
 
     if key_char == Some(']') {
         return A::TogglePreviewPane;
+    }
+
+    // Rust only: tabs (plain keys; Ctrl+T stays Open terminal)
+    match key_char.filter(|_| !key.control && !key.alt) {
+        Some('t') => return A::NewTab,
+        Some('}') => return A::NextTab,
+        Some('{') => return A::PrevTab,
+        Some('w') => return A::CloseTab,
+        Some(digit @ '1'..='9') => return A::SwitchTab(digit as u8 - b'0'),
+        _ => {}
     }
 
     if key_char == Some('s') {
@@ -298,6 +315,18 @@ mod tests {
         assert_eq!(map_key(&keyc(ConsoleKey::T, 't', false, true)), AppAction::OpenTerminal);
         assert_eq!(map_key(&keyc(ConsoleKey::L, 'l', false, true)), AppAction::CreateSymlink);
         assert_eq!(map_key(&keyc(ConsoleKey::F, 'f', false, true)), AppAction::ShowFileFinder);
+    }
+
+    #[test]
+    fn tab_keys_map_without_modifiers() {
+        assert_eq!(map_key(&keyc(ConsoleKey::T, 't', false, false)), AppAction::NewTab);
+        assert_eq!(map_key(&keyc(ConsoleKey::W, 'w', false, false)), AppAction::CloseTab);
+        assert_eq!(map_key(&keyc(ConsoleKey::Oem6, '}', true, false)), AppAction::NextTab);
+        assert_eq!(map_key(&keyc(ConsoleKey::Oem4, '{', true, false)), AppAction::PrevTab);
+        assert_eq!(map_key(&keyc(ConsoleKey::D1, '1', false, false)), AppAction::SwitchTab(1));
+        assert_eq!(map_key(&keyc(ConsoleKey::D9, '9', false, false)), AppAction::SwitchTab(9));
+        assert_eq!(map_key(&keyc(ConsoleKey::D0, '0', false, false)), AppAction::None);
+        assert_eq!(map_key(&keyc(ConsoleKey::W, 'w', false, true)), AppAction::None, "Ctrl+W is not bound");
     }
 
     #[test]

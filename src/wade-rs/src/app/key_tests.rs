@@ -1006,3 +1006,137 @@ fn saved_sorts_survive_a_restart() {
     assert!(status_bar(&mut restarted).contains("name\u{2193}*"));
     let _ = std::fs::remove_dir_all(&parent);
 }
+
+// --- Tabs (Rust only) ---------------------------------------------------------
+
+#[test]
+fn one_tab_shows_no_bar_and_t_adds_one() {
+    let (mut app, parent, _) = app();
+    let before = frame(&mut app);
+    assert_eq!(app.layout.center_pane.top, 0);
+    assert!(!before[0].contains(" 1 "), "{}", before[0]);
+
+    press(&mut app, ch('t'));
+    assert_eq!(app.tab_count(), 2);
+    assert_eq!(app.active_tab, 1, "the new tab follows the active one");
+    let rows = frame(&mut app);
+    assert!(rows[0].starts_with(&format!(" 1 {CURRENT} \u{2502} 2 {CURRENT} ", CURRENT = crate::app::test_support::CURRENT_DIR)), "{}", rows[0]);
+    assert_eq!(app.layout.center_pane.top, 1, "the panes start below the bar");
+    assert_eq!(rows[1], before[0], "the old first row moves down one");
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn each_tab_keeps_its_path_selection_marks_and_filter() {
+    let (mut app, parent, root) = app();
+    select(&mut app, "readme.md");
+    press(&mut app, ch('t'));
+    select(&mut app, "sub");
+    press(&mut app, key(K::Enter));
+    press(&mut app, key(K::Spacebar));
+    press(&mut app, ch('/'));
+    type_text(&mut app, "inn");
+    press(&mut app, key(K::Enter));
+    assert_eq!(app.marked_paths.len(), 1);
+
+    press(&mut app, ch('1'));
+    assert_eq!(app.active_tab, 0);
+    assert_eq!(Path::new(&app.current_path), root);
+    assert_eq!(selected_name(&mut app), "readme.md");
+    assert!(app.marked_paths.is_empty() && app.search_filter.is_empty());
+
+    press(&mut app, ch('2'));
+    assert_eq!(Path::new(&app.current_path), root.join("sub"));
+    assert_eq!(app.marked_paths.len(), 1);
+    assert_eq!(app.search_filter, "inn");
+    assert_eq!(visible_names(&mut app), ["inner.txt"]);
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn braces_wrap_digits_beyond_the_count_do_nothing_and_nine_is_the_limit() {
+    let (mut app, parent, _) = app();
+    press(&mut app, ch('t'));
+    press(&mut app, ch('t'));
+    assert_eq!(app.active_tab, 2);
+    press(&mut app, ch('}'));
+    assert_eq!(app.active_tab, 0, "}} wraps to the first tab");
+    press(&mut app, ch('{'));
+    assert_eq!(app.active_tab, 2, "{{ wraps to the last tab");
+    press(&mut app, ch('9'));
+    assert_eq!(app.active_tab, 2);
+
+    for _ in 0..10 {
+        press(&mut app, ch('t'));
+    }
+    assert_eq!(app.tab_count(), 9);
+    assert!(status_bar(&mut app).contains("At most 9 tabs"), "{}", status_bar(&mut app));
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn w_closes_the_tab_and_quits_on_the_last_one() {
+    let (mut app, parent, root) = app();
+    press(&mut app, ch('t'));
+    select(&mut app, "sub");
+    press(&mut app, key(K::Enter));
+    press(&mut app, ch('1'));
+    press(&mut app, ch('w'));
+    assert_eq!(app.tab_count(), 1);
+    assert_eq!(Path::new(&app.current_path), root.join("sub"), "the neighbour becomes active");
+    assert_eq!(app.layout.center_pane.top, 0, "the bar is gone");
+    assert!(!app.quit);
+
+    press(&mut app, ch('w'));
+    assert!(app.quit, "w on the last tab quits like q");
+    assert!(app.write_cwd);
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn clicking_a_tab_switches_to_it_and_file_rows_still_hit() {
+    let (mut app, parent, _) = app();
+    press(&mut app, ch('t'));
+    assert_eq!(app.active_tab, 1);
+    click(&mut app, MouseButton::Left, 0, 2);
+    assert_eq!(app.active_tab, 0);
+
+    // Below the bar, a click on a file row selects that file
+    let row = center_row_of(&mut app, "b.txt");
+    let col = app.layout.center_pane.left + 2;
+    click(&mut app, MouseButton::Left, row, col);
+    assert_eq!(selected_name(&mut app), "b.txt");
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn results_for_a_tab_left_behind_are_ignored() {
+    let (mut app, parent, root) = app();
+    press(&mut app, ch('t'));
+    select(&mut app, "sub");
+    press(&mut app, key(K::Enter));
+    let sub = app.current_path.clone();
+    press(&mut app, ch('1'));
+
+    app.handle_event(InputEvent::InlineDirSizeReady(crate::input::InlineDirSizeReadyEvent {
+        parent_path: sub,
+        directory_path: root.join("sub").join("x").to_string_lossy().into_owned(),
+        total_bytes: 42,
+    }));
+    assert!(app.inline_dir_sizes.as_ref().is_none_or(|sizes| sizes.values().all(|&size| size != 42)));
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn switching_tabs_from_search_mode_keeps_the_filter() {
+    let (mut app, parent, _) = app();
+    press(&mut app, ch('t'));
+    press(&mut app, ch('/'));
+    type_text(&mut app, "rea");
+    app.dispatch(AppAction::SwitchTab(1));
+    assert_eq!(app.input_mode, InputMode::Normal);
+    app.dispatch(AppAction::SwitchTab(2));
+    assert_eq!(app.search_filter, "rea");
+    assert_eq!(app.input_mode, InputMode::Normal);
+    let _ = std::fs::remove_dir_all(&parent);
+}

@@ -61,8 +61,21 @@ pub struct Layout {
 impl Layout {
     /// Port of `Layout.Calculate`.
     pub fn calculate(&mut self, terminal_width: i32, terminal_height: i32, preview_pane_enabled: bool, parent_pane_enabled: bool) {
+        self.calculate_with_top(terminal_width, terminal_height, preview_pane_enabled, parent_pane_enabled, 0);
+    }
+
+    /// `calculate` with the first `top` rows reserved (Rust only: the tab
+    /// bar).
+    pub fn calculate_with_top(
+        &mut self,
+        terminal_width: i32,
+        terminal_height: i32,
+        preview_pane_enabled: bool,
+        parent_pane_enabled: bool,
+        top: i32,
+    ) {
         // Reserve 1 row for status bar at the bottom
-        let mut content_height = terminal_height - 1;
+        let mut content_height = terminal_height - 1 - top;
         if content_height < 1 {
             content_height = 1;
         }
@@ -107,10 +120,11 @@ impl Layout {
             )
         };
 
-        self.left_pane = left;
-        self.center_pane = center;
-        self.right_pane = right;
-        self.expanded_pane = Rect::new(0, 0, terminal_width, content_height);
+        let shift = |rect: Rect| if rect.width == 0 && rect.height == 0 { rect } else { Rect::new(rect.left, rect.top + top, rect.width, rect.height) };
+        self.left_pane = shift(left);
+        self.center_pane = shift(center);
+        self.right_pane = shift(right);
+        self.expanded_pane = Rect::new(0, top, terminal_width, content_height);
         self.status_bar = Rect::new(0, terminal_height - 1, terminal_width, 1);
     }
 }
@@ -128,6 +142,20 @@ mod tests {
         assert_eq!(layout.center_pane, Rect::new(20, 0, 39, 29));
         assert_eq!(layout.right_pane, Rect::new(60, 0, 40, 29));
         assert_eq!(layout.status_bar, Rect::new(0, 29, 100, 1));
+    }
+
+    #[test]
+    fn a_top_offset_shifts_and_shortens_every_pane() {
+        let mut layout = Layout::default();
+        layout.calculate_with_top(100, 30, true, true, 1);
+        assert_eq!(layout.left_pane, Rect::new(0, 1, 19, 28));
+        assert_eq!(layout.center_pane, Rect::new(20, 1, 39, 28));
+        assert_eq!(layout.right_pane, Rect::new(60, 1, 40, 28));
+        assert_eq!(layout.expanded_pane, Rect::new(0, 1, 100, 28));
+        assert_eq!(layout.status_bar, Rect::new(0, 29, 100, 1));
+
+        layout.calculate_with_top(80, 25, false, true, 1);
+        assert_eq!(layout.right_pane, Rect::new(0, 0, 0, 0), "a hidden pane stays empty");
     }
 
     #[test]

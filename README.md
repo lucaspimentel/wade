@@ -24,6 +24,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Go-to-path** — `Ctrl+G` with Tab autocomplete
 - **File finder** — `Ctrl+F` recursive breadth-first search with fuzzy matching, exact-substring queries via a leading `'`, and highlighted results. The Rust build also accepts fzf-style syntax: space-separated terms (all must match), `^prefix`, `suffix$` and `!exclude`, with smart case
 - **Bookmarks** — `b` to open, `B` to toggle; persists in MRU order
+- **Tabs** (Rust build) — `t` opens a tab, `{`/`}` or `1`–`9` switch, `w` closes
 - **Hidden files** — `.` to toggle; separate system files toggle on Windows
 
 ### Preview & Metadata
@@ -194,8 +195,6 @@ Then use `wd` instead of `wade` to browse. Press `q` to quit and cd to the last 
 | ] | Toggle right (preview) pane |
 | s | Cycle sort (name / time / size / ext) |
 | S | Reverse sort direction |
-
-In the Rust build, `s` and `S` sort the current directory only. The sort is remembered for that directory in `~/.config/wade/sorts` and shown with a `*` after the sort marker; "Reset sort for this directory" in the action palette goes back to the configured default.
 | Ctrl+G | Go to path (Esc clears input, Up goes up a directory) |
 | b | Open bookmarks dialog |
 | B | Toggle current directory as bookmark |
@@ -222,6 +221,14 @@ In the Rust build, `s` and `S` sort the current directory only. The sort is reme
 | ? | Show help |
 | q / Escape | Quit |
 | Q | Quit without cd |
+| t | New tab (Rust build) |
+| { / } | Previous / next tab (Rust build) |
+| 1–9 | Go to tab N (Rust build) |
+| w | Close tab; quits on the last tab (Rust build) |
+
+In the Rust build, `s` and `S` sort the current directory only. The sort is remembered for that directory in `~/.config/wade/sorts` and shown with a `*` after the sort marker; "Reset sort for this directory" in the action palette goes back to the configured default.
+
+In the Rust build, tabs keep their own directory, selection, marks and filter. The tab bar appears at the top once a second tab is open; click a tab to switch. Tabs are not saved between runs.
 
 ## Building
 
