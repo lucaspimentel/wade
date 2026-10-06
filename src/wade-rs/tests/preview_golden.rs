@@ -158,7 +158,7 @@ fn contexts(repo_root: &str) -> Vec<(&'static str, PreviewContext)> {
         mediainfo_enabled: true,
         zip_preview_enabled: true,
         image_previews_enabled: false,
-        sixel_supported: false,
+        image_protocol: None,
         archive_metadata_enabled: true,
     };
 

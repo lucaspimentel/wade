@@ -29,9 +29,9 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 
 ### Preview & Metadata
 
-- **File preview** — text (with syntax highlighting), hex, git diff, archive contents (zip, tar, gzip), images (Sixel), PDF (via `pdftopng`), MSI file listing, and Markdown (built-in Markdig renderer with YAML frontmatter support); multiple modes per file switchable via `p`; CSS/SCSS/Sass previews show inline color swatches for hex literals
+- **File preview** — text (with syntax highlighting), hex, git diff, archive contents (zip, tar, gzip), images (Sixel or kitty graphics), PDF (via `pdftopng`), MSI file listing, and Markdown (built-in Markdig renderer with YAML frontmatter support); multiple modes per file switchable via `p`; CSS/SCSS/Sass previews show inline color swatches for hex literals
 - **Expanded preview** — Right/Enter expands to full width; scrollable
-- **Image preview** — Sixel graphics (Windows Terminal 1.22+, kitty, WezTerm, etc.)
+- **Image preview** — Sixel graphics (Windows Terminal 1.22+, WezTerm, etc.); the Rust build also supports the kitty graphics protocol (kitty, Ghostty), chosen with `image_protocol = auto|kitty|sixel`
 - **File metadata** — structured metadata above preview and in properties overlay (`i`); format-specific providers for images (EXIF), executables (PE/.NET), Office docs, NuGet packages, archives, PDF, media files, MSI installers, and Windows shortcuts (`.lnk`)
 - **File properties** — `i` for scrollable overlay with timestamps, attributes, git status, and extracted metadata
 
@@ -136,6 +136,7 @@ dir_size_hdd_enabled = false
 dir_size_network_enabled = false
 file_previews_enabled = true
 image_previews_enabled = true
+image_protocol = auto            # Rust build: auto, kitty, sixel
 zip_preview_enabled = true
 pdf_preview_enabled = true
 pdf_metadata_enabled = true

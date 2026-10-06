@@ -172,12 +172,12 @@ mod tests {
     #[test]
     fn pdf_providers_follow_tool_availability_and_sixel() {
         let sixel = PreviewContext {
-            sixel_supported: true,
+            image_protocol: Some(crate::imaging::ImageProtocol::Sixel),
             ..test_context()
         };
         let previews = labels("doc.pdf", &sixel);
         assert_eq!(previews.contains(&"PDF"), crate::imaging::pdf::pdftopng_available());
-        assert!(!labels("doc.pdf", &PreviewContext { sixel_supported: false, ..test_context() }).contains(&"PDF"));
+        assert!(!labels("doc.pdf", &PreviewContext { image_protocol: None, ..test_context() }).contains(&"PDF"));
 
         let metadata: Vec<&str> =
             applicable_metadata_providers("doc.pdf", &test_context()).iter().map(|p| p.label()).collect();

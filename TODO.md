@@ -149,20 +149,28 @@ bookmarks list. Go to path and the dialog boxes are unchanged (Esc cancels them)
 
 `Cargo.lock`, `poetry.lock`, `uv.lock` and `pdm.lock` map to the TOML highlighter by file name.
 
-### Kitty graphics protocol for image previews
+### ~~Kitty graphics protocol for image previews~~ (Done in Rust)
 
-Support the kitty graphics protocol, using Unicode placeholders
-(https://sw.kovidgoyal.net/kitty/graphics-protocol/#unicode-placeholders), as an alternative to Sixel.
-Placeholders are ordinary cells, so images could go through `ScreenBuffer` and scroll and clip with
-the text instead of being written to stdout after the flush. Needs capability detection (kitty, Ghostty,
-WezTerm) and a choice between protocols when the terminal supports more than one.
+Uses Unicode placeholders (https://sw.kovidgoyal.net/kitty/graphics-protocol/#unicode-placeholders) as an
+alternative to Sixel.
+
+- **Detection:** a graphics query plus XTVERSION; kitty and Ghostty only.
+- **Selection:** the `image_protocol = auto|kitty|sixel` config key.
+- **Rendering:** placeholder cells in `ScreenBuffer`.
+- **Untested:** not yet checked in a real kitty or Ghostty.
+
+### Image previews under tmux
+
+Images are off inside tmux: the startup queries reach tmux, not the outer terminal. Supporting it needs DCS
+passthrough (`ESC P tmux; … ESC \`, with `allow-passthrough on`) for both the detection queries and the
+Sixel/kitty output.
 
 ### iTerm2 inline image protocol for image previews
 
 Support the iTerm2 inline image protocol (`OSC 1337 ; File=`, https://iterm2.com/documentation-images.html)
 as an alternative to Sixel. It sends the encoded file (PNG) instead of a palette-quantized Sixel image.
-Needs capability detection (iTerm2, WezTerm and others) and the same protocol-selection logic as the
-kitty entry.
+Needs capability detection (iTerm2, WezTerm and others). In the Rust port, the protocol selection is
+already in place: add a variant to `ImageProtocol`, `ImageProtocolSetting` and `ImageData`.
 
 ### File finder — deduplicate ScoreWithFileNamePriority paths (Done in Rust)
 

@@ -148,21 +148,21 @@ fn load_with_provider(
         return;
     }
 
-    let _ = match (result.sixel_data, result.text_lines) {
-        (Some(sixel_data), Some(styled_lines)) => out.send(InputEvent::CombinedPreviewReady(CombinedPreviewReadyEvent {
+    let _ = match (result.image, result.text_lines) {
+        (Some(image), Some(styled_lines)) => out.send(InputEvent::CombinedPreviewReady(CombinedPreviewReadyEvent {
             path: path.to_string(),
             styled_lines,
-            sixel_data,
-            pixel_width: result.sixel_pixel_width,
-            pixel_height: result.sixel_pixel_height,
+            image,
+            pixel_width: result.image_pixel_width,
+            pixel_height: result.image_pixel_height,
             file_type_label: result.file_type_label,
             is_rendered: result.is_rendered,
         })),
-        (Some(sixel_data), None) => out.send(InputEvent::ImagePreviewReady(ImagePreviewReadyEvent {
+        (Some(image), None) => out.send(InputEvent::ImagePreviewReady(ImagePreviewReadyEvent {
             path: path.to_string(),
-            sixel_data,
-            pixel_width: result.sixel_pixel_width,
-            pixel_height: result.sixel_pixel_height,
+            image,
+            pixel_width: result.image_pixel_width,
+            pixel_height: result.image_pixel_height,
             file_type_label: result.file_type_label.unwrap_or_else(|| "Image".to_string()),
         })),
         (None, Some(styled_lines)) => out.send(InputEvent::PreviewReady(PreviewReadyEvent {
@@ -206,7 +206,7 @@ mod tests {
             mediainfo_enabled: true,
             zip_preview_enabled: true,
             image_previews_enabled: true,
-            sixel_supported: true,
+            image_protocol: Some(crate::imaging::ImageProtocol::Sixel),
             archive_metadata_enabled: true,
         }
     }

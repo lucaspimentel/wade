@@ -6,6 +6,7 @@
 use crate::app::input_reader::AppAction;
 use crate::app::App;
 use crate::highlight::StyledLine;
+use crate::imaging::ImageData;
 use crate::input::{
     CombinedPreviewReadyEvent, ImagePreviewReadyEvent, InputMode, KeyEvent, MetadataReadyEvent, MouseEvent,
     PreviewLoadingCompleteEvent, PreviewReadyEvent,
@@ -51,7 +52,7 @@ pub struct PreviewState {
     pub(crate) is_placeholder: bool,
     pub(crate) expanded_scroll_offset: usize,
     // Image previews (C# `_cachedSixelData`, `_cachedImagePath`, ...)
-    pub(crate) cached_sixel_data: Option<String>,
+    pub(crate) cached_image: Option<ImageData>,
     pub(crate) cached_image_path: Option<String>,
     pub(crate) cached_image_pixel_width: i32,
     pub(crate) cached_image_pixel_height: i32,
@@ -62,6 +63,11 @@ pub struct PreviewState {
     /// Row the image starts on below a text/metadata header; 0 for the
     /// pane top.
     pub(crate) sixel_image_top: i32,
+    /// Rust-only: the cached kitty image has not been transmitted yet.
+    pub(crate) kitty_transmit_pending: bool,
+    /// Rust-only: kitty delete commands for replaced images, written with
+    /// the next output.
+    pub(crate) kitty_deletes: String,
 }
 
 impl PreviewState {
@@ -75,9 +81,20 @@ impl PreviewState {
         if self.is_image_preview { self.cached_image_path.clone() } else { self.cached_path.clone() }
     }
 
+    /// Replaces the cached image; a kitty image that is replaced is queued
+    /// for deletion so the terminal frees it.
+    pub(crate) fn set_image(&mut self, image: Option<ImageData>) {
+        if let Some(ImageData::Kitty { id, .. }) = self.cached_image {
+            self.kitty_deletes.push_str(&crate::imaging::kitty::encode_delete(id));
+        }
+
+        self.kitty_transmit_pending = matches!(image, Some(ImageData::Kitty { .. }));
+        self.cached_image = image;
+    }
+
     /// Drops the image before a reload at a new size.
     fn drop_image_for_reload(&mut self) {
-        self.cached_sixel_data = None;
+        self.set_image(None);
         self.sixel_pending = false;
         self.cached_styled_lines = None;
     }
@@ -113,7 +130,7 @@ impl App {
             mediainfo_enabled: self.config.mediainfo_enabled,
             zip_preview_enabled: self.config.zip_preview_enabled,
             image_previews_enabled: self.image_previews_effective,
-            sixel_supported: self.capabilities.sixel_supported,
+            image_protocol: self.image_protocol,
             archive_metadata_enabled: self.config.archive_metadata_enabled,
         }
     }
@@ -170,7 +187,7 @@ impl App {
             state.cached_metadata_file_type_label = None;
         }
 
-        state.cached_sixel_data = None;
+        state.set_image(None);
         state.cached_image_path = None;
         state.is_image_preview = false;
         state.is_combined_preview = false;
@@ -193,9 +210,12 @@ impl App {
         }
 
         self.preview.loader.cancel();
+        self.preview.set_image(None);
         let loader = std::mem::take(&mut self.preview.loader);
+        let kitty_deletes = std::mem::take(&mut self.preview.kitty_deletes);
         self.preview = crate::app::preview::PreviewState {
             loader,
+            kitty_deletes,
             ..Default::default()
         };
     }
@@ -215,7 +235,7 @@ impl App {
         state.is_placeholder = event.is_placeholder;
         state.is_image_preview = false;
         state.is_combined_preview = false;
-        state.cached_sixel_data = None;
+        state.set_image(None);
         state.cached_image_path = None;
     }
 
@@ -228,7 +248,7 @@ impl App {
         let state = &mut self.preview;
         state.cached_image_path = Some(event.path.clone());
         state.cached_path = Some(event.path);
-        state.cached_sixel_data = Some(event.sixel_data);
+        state.set_image(Some(event.image));
         state.cached_image_pixel_width = event.pixel_width;
         state.cached_image_pixel_height = event.pixel_height;
         state.cached_file_type_label = Some(event.file_type_label);
@@ -248,7 +268,7 @@ impl App {
         state.cached_image_path = Some(event.path.clone());
         state.cached_path = Some(event.path);
         state.cached_styled_lines = Some(event.styled_lines);
-        state.cached_sixel_data = Some(event.sixel_data);
+        state.set_image(Some(event.image));
         state.cached_image_pixel_width = event.pixel_width;
         state.cached_image_pixel_height = event.pixel_height;
         state.cached_file_type_label = event.file_type_label;
@@ -535,27 +555,24 @@ impl App {
             let metadata_lines = metadata_renderer::render(sections, pane.width);
             PaneRenderer::render_preview(buffer, pane, &metadata_lines, 0, false);
         } else if let (Some(sections), true, true) =
-            (&state.cached_metadata_sections, state.is_image_preview, state.cached_sixel_data.is_some())
+            (&state.cached_metadata_sections, state.is_image_preview, state.cached_image.is_some())
         {
             // Metadata above the image
             let image_top = render_metadata_with_image(buffer, pane, sections);
-            self.preview.sixel_image_top = image_top;
-            self.preview.sixel_pending = true;
+            self.draw_image_area(buffer, pane, image_top, false);
         } else if let (Some(sections), Some(lines), false) =
             (&state.cached_metadata_sections, &state.cached_styled_lines, state.is_placeholder)
         {
             render_metadata_with_text(buffer, pane, sections, lines, state.is_rendered);
         } else if let (true, Some(lines), true) =
-            (state.is_combined_preview, &state.cached_styled_lines, state.cached_sixel_data.is_some())
+            (state.is_combined_preview, &state.cached_styled_lines, state.cached_image.is_some())
         {
             let image_top = render_combined_preview(buffer, pane, lines, state.is_rendered);
-            self.preview.sixel_image_top = image_top;
-            self.preview.sixel_pending = true;
-        } else if state.is_image_preview && state.cached_sixel_data.is_some() {
+            self.draw_image_area(buffer, pane, image_top, false);
+        } else if state.is_image_preview && state.cached_image.is_some() {
             // Claim the pane for the image (the Sixel bypasses the cells)
             fill_blank(buffer, pane, pane.top);
-            self.preview.sixel_image_top = 0;
-            self.preview.sixel_pending = true;
+            self.draw_image_area(buffer, pane, 0, false);
         } else if let Some(lines) = &state.cached_styled_lines {
             PaneRenderer::render_preview(buffer, pane, lines, 0, !state.is_rendered);
         }
@@ -570,17 +587,39 @@ impl App {
         if state.loading {
             PaneRenderer::render_message(buffer, pane, "[loading\u{2026}]");
         } else if let (true, Some(lines), true) =
-            (state.is_combined_preview, &state.cached_styled_lines, state.cached_sixel_data.is_some())
+            (state.is_combined_preview, &state.cached_styled_lines, state.cached_image.is_some())
         {
             let image_top = render_combined_preview(buffer, pane, lines, state.is_rendered);
-            self.preview.sixel_image_top = image_top;
-            self.preview.sixel_pending = true;
-        } else if state.is_image_preview && state.cached_sixel_data.is_some() {
+            self.draw_image_area(buffer, pane, image_top, false);
+        } else if state.is_image_preview && state.cached_image.is_some() {
             fill_blank(buffer, pane, pane.top);
-            self.preview.sixel_image_top = 0;
-            self.preview.sixel_pending = true;
+            self.draw_image_area(buffer, pane, 0, true);
         } else if let Some(lines) = &self.preview.cached_styled_lines {
             PaneRenderer::render_preview(buffer, pane, lines, self.preview.expanded_scroll_offset, !self.preview.is_rendered);
+        }
+    }
+
+    /// The image part of a preview, below `image_top` (0 for the pane top).
+    /// Sixel: marks the image for the write after the flush. Kitty (Rust-
+    /// only): placeholder cells, clipped to the pane, centered in the
+    /// image-only expanded preview like the Sixel.
+    fn draw_image_area(&mut self, buffer: &mut ScreenBuffer, pane: Rect, image_top: i32, center: bool) {
+        let Some(ImageData::Kitty { id, cols, rows, .. }) = self.preview.cached_image else {
+            self.preview.sixel_image_top = image_top;
+            self.preview.sixel_pending = true;
+            return;
+        };
+
+        let (top, left) = if center {
+            pane.center_content(cols, rows)
+        } else {
+            (if image_top > 0 { image_top } else { pane.top }, pane.left)
+        };
+
+        for row in 0..rows.min(pane.top + pane.height - top) {
+            for col in 0..cols.min(pane.left + pane.width - left) {
+                buffer.put_placeholder(top + row, left + col, id, row as u16, col as u16);
+            }
         }
     }
 
@@ -669,6 +708,7 @@ mod tests {
     use crate::app::input_reader::AppAction;
     use crate::app::{App, AppConfig};
     use crate::console_key::ConsoleKey;
+    use crate::imaging::{ImageData, ImageProtocol};
     use crate::input::{InputEvent, InputMode, KeyEvent, MetadataReadyEvent, PreviewReadyEvent};
     use crate::screen::ScreenBuffer;
 
@@ -754,21 +794,24 @@ mod tests {
         let (mut app, _root) = app_with("app-caps", &[("a.txt", "x")]);
         let context = app.build_preview_context(40, 20);
         assert_eq!((context.cell_pixel_width, context.cell_pixel_height), (8, 16));
-        assert!(!context.sixel_supported && !context.image_previews_enabled);
+        assert!(context.image_protocol.is_none() && !context.image_previews_enabled);
 
         app.set_capabilities(crate::terminal_caps::TerminalCapabilities {
             sixel_supported: true,
             cell_pixel_width: 10,
             cell_pixel_height: 20,
+            kitty_graphics: false,
         });
         let context = app.build_preview_context(40, 20);
         assert_eq!((context.cell_pixel_width, context.cell_pixel_height), (10, 20));
-        assert!(context.sixel_supported && context.image_previews_enabled);
+        assert!(context.image_protocol == Some(ImageProtocol::Sixel) && context.image_previews_enabled);
 
         // Image previews need both the config flag and Sixel support
         app.config.image_previews_enabled = false;
         app.set_capabilities(app.capabilities);
-        assert!(!app.build_preview_context(40, 20).image_previews_enabled);
+        let context = app.build_preview_context(40, 20);
+        assert!(!context.image_previews_enabled);
+        assert_eq!(context.image_protocol, Some(ImageProtocol::Sixel), "PDF previews still have a protocol");
     }
 
     fn sixel_app(name: &str) -> (App, std::path::PathBuf) {
@@ -780,6 +823,7 @@ mod tests {
             sixel_supported: true,
             cell_pixel_width: 8,
             cell_pixel_height: 16,
+            kitty_graphics: false,
         });
         (app, root)
     }
@@ -799,10 +843,10 @@ mod tests {
         assert!(app.preview.sixel_pending);
         assert!(app.preview.sixel_image_top > app.layout.right_pane.top);
 
-        let sixel = app.take_pending_sixel().expect("sixel written");
+        let sixel = app.take_pending_image_output().expect("sixel written");
         let cursor = crate::ansi::move_cursor(app.preview.sixel_image_top, app.layout.right_pane.left);
         assert!(sixel.starts_with(&format!("{cursor}\x1bPq")));
-        assert!(app.take_pending_sixel().is_none(), "written once per render");
+        assert!(app.take_pending_image_output().is_none(), "written once per render");
     }
 
     #[test]
@@ -813,7 +857,7 @@ mod tests {
         render(&mut app);
 
         app.input_mode = InputMode::Help;
-        assert!(app.take_pending_sixel().is_none());
+        assert!(app.take_pending_image_output().is_none());
 
         let (mut plain, _root) = app_with("app-image-nosixel", &[]);
         image::RgbImage::new(8, 8).save(_root.join("pic.png")).unwrap();
@@ -835,7 +879,7 @@ mod tests {
 
         // 64x32 px over 8x16 px cells: 8x2 cells centered in the 80x24 pane
         let expected = app.layout.expanded_pane.center_content(8, 2);
-        let sixel = app.take_pending_sixel().expect("sixel");
+        let sixel = app.take_pending_image_output().expect("sixel");
         assert!(sixel.starts_with(&crate::ansi::move_cursor(expected.0, expected.1)));
     }
 
@@ -1031,5 +1075,129 @@ mod tests {
         let sections = app.properties_metadata_sections("a.txt").unwrap();
         assert_eq!(sections.len(), 1);
         assert_eq!(sections[0].header.as_deref(), Some("Archive"));
+    }
+
+    // --- Kitty graphics (Rust only) -----------------------------------------
+
+    fn kitty_app(name: &str, files: &[(&str, &str)]) -> (App, std::path::PathBuf) {
+        let (mut app, root) = app_with(name, files);
+        image::RgbImage::from_fn(64, 32, |x, y| image::Rgb([x as u8 * 4, y as u8 * 8, 90]))
+            .save(root.join("pic.png"))
+            .unwrap();
+        app.set_capabilities(crate::terminal_caps::TerminalCapabilities {
+            sixel_supported: true,
+            cell_pixel_width: 8,
+            cell_pixel_height: 16,
+            kitty_graphics: true,
+        });
+        (app, root)
+    }
+
+    fn render_frame(app: &mut App) -> ScreenBuffer {
+        let mut buffer = ScreenBuffer::new(80, 25);
+        app.render(&mut buffer);
+        buffer
+    }
+
+    fn load_image(app: &mut App) -> u32 {
+        render(app);
+        pump(app, |app| loaded(app) && app.preview.cached_metadata_sections.is_some() && app.preview.cached_image.is_some());
+        match app.preview.cached_image {
+            Some(ImageData::Kitty { id, .. }) => id,
+            ref other => panic!("kitty image expected, got {other:?}"),
+        }
+    }
+
+    /// Placeholder columns on `row`.
+    fn placeholder_cols(buffer: &ScreenBuffer, row: i32) -> Vec<usize> {
+        buffer.row_text(row).chars().enumerate().filter(|(_, ch)| *ch == crate::imaging::kitty::PLACEHOLDER).map(|(i, _)| i).collect()
+    }
+
+    #[test]
+    fn kitty_image_is_placeholder_cells_and_transmits_once() {
+        let (mut app, _root) = kitty_app("app-kitty", &[]);
+        let id = load_image(&mut app);
+        let buffer = render_frame(&mut app);
+
+        // 64x32 px over 8x16 px cells: 8x2 cells below the metadata
+        let pane = app.layout.right_pane;
+        let left = pane.left as usize;
+        let mut frame = buffer;
+        let top = (pane.top..pane.top + pane.height).find(|&row| !placeholder_cols(&frame, row).is_empty()).expect("placeholders");
+        assert!(top > pane.top + 1, "below the metadata header");
+        let (first, second, after) = (placeholder_cols(&frame, top), placeholder_cols(&frame, top + 1), placeholder_cols(&frame, top + 2));
+        assert_eq!(first, (left..left + 8).collect::<Vec<_>>());
+        assert_eq!(second, first);
+        assert!(after.is_empty() && placeholder_cols(&frame, top - 1).is_empty(), "exactly 2 rows");
+        assert!(!app.preview.sixel_pending, "no Sixel write for kitty");
+
+        let color = crate::imaging::kitty::id_color(id);
+        let mut out = String::new();
+        frame.serialize(&mut out);
+        assert!(out.contains(&format!("\x1b[38;2;{};{};{}m\u{10EEEE}", color.r, color.g, color.b)), "id color");
+
+        let output = app.take_pending_image_output().expect("transmit");
+        assert!(output.starts_with(&format!("\x1b_Ga=T,U=1,f=32,o=z,s=64,v=32,i={id},c=8,r=2,")), "{}", &output[..80]);
+        render(&mut app);
+        assert!(app.take_pending_image_output().is_none(), "transmitted once");
+    }
+
+    #[test]
+    fn kitty_image_stays_visible_under_an_overlay() {
+        let (mut app, _root) = kitty_app("app-kitty-overlay", &[]);
+        load_image(&mut app);
+        let _ = app.take_pending_image_output();
+
+        // Wide enough that the palette covers only part of the image
+        app.set_screen_size(300, 40);
+        app.layout.calculate(300, 40, true, true);
+        let mut frame = ScreenBuffer::new(300, 40);
+        app.render(&mut frame);
+        let shown = |frame: &ScreenBuffer| -> usize { (0..40).map(|row| placeholder_cols(frame, row).len()).sum() };
+        let before = shown(&frame);
+        assert!(before > 0);
+
+        app.dispatch(AppAction::ShowActionPalette);
+        assert_eq!(app.input_mode, InputMode::ActionPalette);
+        let mut frame = ScreenBuffer::new(300, 40);
+        app.render(&mut frame);
+        let after = shown(&frame);
+        assert!(after > 0 && after < before, "uncovered placeholder cells are still drawn: {after} of {before}");
+    }
+
+    #[test]
+    fn replaced_kitty_images_are_deleted() {
+        let (mut app, _root) = kitty_app("app-kitty-delete", &[("z.txt", "text")]);
+        let id = load_image(&mut app);
+        let _ = app.take_pending_image_output();
+
+        app.dispatch(AppAction::NavigateDown);
+        render(&mut app);
+        let output = app.take_pending_image_output().expect("delete");
+        assert_eq!(output, crate::imaging::kitty::encode_delete(id));
+        assert!(app.take_pending_image_output().is_none());
+        pump(&mut app, |app| loaded(app) && app.preview.cached_path.as_deref().is_some_and(|p| p.ends_with("z.txt")));
+
+        // Clearing the cache (refresh, tab switch, ...) also frees the image
+        app.dispatch(AppAction::NavigateUp);
+        let id = load_image(&mut app);
+        let _ = app.take_pending_image_output();
+        app.clear_preview_cache();
+        assert_eq!(app.take_pending_image_output().as_deref(), Some(crate::imaging::kitty::encode_delete(id).as_str()));
+    }
+
+    #[test]
+    fn image_protocol_setting_selects_or_disables_the_backend() {
+        let (mut app, _root) = kitty_app("app-kitty-forced-sixel", &[]);
+        app.config.image_protocol = crate::imaging::ImageProtocolSetting::Sixel;
+        app.set_capabilities(app.capabilities);
+        render(&mut app);
+        pump(&mut app, |app| loaded(app) && app.preview.cached_metadata_sections.is_some());
+        assert!(matches!(app.preview.cached_image, Some(ImageData::Sixel(_))));
+
+        let (mut app, _root) = sixel_app("app-kitty-forced-missing");
+        app.config.image_protocol = crate::imaging::ImageProtocolSetting::Kitty;
+        app.set_capabilities(app.capabilities);
+        assert!(app.image_protocol.is_none() && !app.image_previews_effective, "kitty forced but not detected");
     }
 }

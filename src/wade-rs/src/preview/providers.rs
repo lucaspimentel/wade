@@ -12,7 +12,7 @@ fn label_or(path: &str, fallback: &str) -> Option<String> {
     Some(file_preview::get_file_type_label(path).unwrap_or(fallback).to_string())
 }
 
-/// Port of `ImagePreviewProvider`: Sixel previews of image files.
+/// Port of `ImagePreviewProvider`: Sixel (or kitty) previews of image files.
 pub struct ImagePreviewProvider;
 
 impl PreviewProvider for ImagePreviewProvider {
@@ -31,13 +31,14 @@ impl PreviewProvider for ImagePreviewProvider {
             context.pane_height_cells,
             context.cell_pixel_width,
             context.cell_pixel_height,
+            context.image_protocol?,
             cancel,
         )?;
 
         Some(PreviewResult {
-            sixel_data: Some(result.sixel_data),
-            sixel_pixel_width: result.pixel_width,
-            sixel_pixel_height: result.pixel_height,
+            image: Some(result.image),
+            image_pixel_width: result.pixel_width,
+            image_pixel_height: result.pixel_height,
             file_type_label: Some(result.label),
             ..PreviewResult::default()
         })
@@ -54,7 +55,7 @@ impl PreviewProvider for PdfPreviewProvider {
     }
 
     fn can_preview(&self, path: &str, context: &PreviewContext) -> bool {
-        context.pdf_preview_enabled && context.sixel_supported && crate::imaging::pdf::can_convert(path)
+        context.pdf_preview_enabled && context.image_protocol.is_some() && crate::imaging::pdf::can_convert(path)
     }
 
     fn get_preview(&self, path: &str, context: &PreviewContext, cancel: &CancelToken) -> Option<PreviewResult> {
@@ -65,15 +66,16 @@ impl PreviewProvider for PdfPreviewProvider {
             context.pane_height_cells,
             context.cell_pixel_width,
             context.cell_pixel_height,
+            context.image_protocol?,
             cancel,
         )?;
 
         let doc_ext = file_preview::extension(path).trim_start_matches('.').to_uppercase();
 
         Some(PreviewResult {
-            sixel_data: Some(result.sixel_data),
-            sixel_pixel_width: result.pixel_width,
-            sixel_pixel_height: result.pixel_height,
+            image: Some(result.image),
+            image_pixel_width: result.pixel_width,
+            image_pixel_height: result.pixel_height,
             file_type_label: Some(format!("{doc_ext} Document (page 1)")),
             ..PreviewResult::default()
         })

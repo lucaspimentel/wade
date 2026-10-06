@@ -1,6 +1,7 @@
 //! Port of `src/Wade/Terminal/TerminalCapabilities.cs`: Sixel support and
 //! cell pixel size, with the parser for the Unix DA1 / cell-size query
 //! responses (the Unix query itself lands with the Phase 9 input work).
+//! Rust-only: kitty graphics detection (a graphics query plus XTVERSION).
 
 /// Port of `TerminalCapabilities`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -8,6 +9,9 @@ pub struct TerminalCapabilities {
     pub sixel_supported: bool,
     pub cell_pixel_width: i32,
     pub cell_pixel_height: i32,
+    /// Rust-only: the terminal supports kitty graphics with Unicode
+    /// placeholders (answered the `a=q` query and is kitty or Ghostty).
+    pub kitty_graphics: bool,
 }
 
 impl TerminalCapabilities {
@@ -16,6 +20,7 @@ impl TerminalCapabilities {
         sixel_supported: false,
         cell_pixel_width: 8,
         cell_pixel_height: 16,
+        kitty_graphics: false,
     };
 
     /// Port of `ParseQueryResponses`: DA1 (`ESC[?..c`, Sixel when a param is
@@ -60,8 +65,47 @@ impl TerminalCapabilities {
             }
         }
 
+        caps.kitty_graphics = kitty_graphics_ok(data) && xtversion_name(data).is_some_and(is_placeholder_terminal);
         caps
     }
+}
+
+/// Terminals that answer the graphics query and also support Unicode
+/// placeholders (WezTerm and Konsole answer the query but don't).
+fn is_placeholder_terminal(name: &str) -> bool {
+    let name = name.to_ascii_lowercase();
+    name.starts_with("kitty") || name.starts_with("ghostty")
+}
+
+/// The payload of every `<prefix>...ESC \` string in `data`.
+fn st_strings<'a>(data: &'a [u8], prefix: &'a [u8]) -> impl Iterator<Item = &'a [u8]> + 'a {
+    let mut rest = data;
+    std::iter::from_fn(move || {
+        let start = rest.windows(prefix.len()).position(|w| w == prefix)? + prefix.len();
+        let body = &rest[start..];
+        let end = body.windows(2).position(|w| w == b"\x1b\\").unwrap_or(body.len());
+        rest = &body[end..];
+        Some(&body[..end])
+    })
+}
+
+/// A reply to the graphics query `i=31`: `ESC _ G i=31 ; OK ESC \`.
+fn kitty_graphics_ok(data: &[u8]) -> bool {
+    st_strings(data, b"\x1b_G").any(|body| {
+        let mut parts = body.splitn(2, |&b| b == b';');
+        let keys = parts.next().unwrap_or_default();
+        let message = parts.next().unwrap_or_default();
+        keys.split(|&b| b == b',').any(|kv| kv == b"i=31") && message == b"OK"
+    })
+}
+
+/// The terminal name from an XTVERSION reply: `DCS > | name(version) ST`
+/// (or `name version`).
+fn xtversion_name(data: &[u8]) -> Option<&str> {
+    let body = st_strings(data, b"\x1bP>|").next()?;
+    let text = std::str::from_utf8(body).ok()?;
+    let name = text.split(['(', ' ']).next().unwrap_or_default();
+    (!name.is_empty()).then_some(name)
 }
 
 /// Semicolon-separated numeric params of a CSI sequence (digits only).
@@ -132,5 +176,35 @@ mod tests {
         assert_eq!((caps.sixel_supported, caps.cell_pixel_width, caps.cell_pixel_height), (true, 9, 18));
 
         assert_eq!(Caps::parse_query_responses(b"\x1b[1;2;3t"), Caps::DEFAULT);
+    }
+
+    const KITTY_OK: &[u8] = b"\x1b_Gi=31;OK\x1b\\";
+
+    fn kitty(data: &[u8]) -> bool {
+        Caps::parse_query_responses(data).kitty_graphics
+    }
+
+    #[test]
+    fn kitty_graphics_needs_the_query_reply_and_an_allowlisted_name() {
+        let with = |reply: &[u8], version: &[u8]| [reply, version, b"\x1b[?62;4c"].concat();
+
+        assert!(kitty(&with(KITTY_OK, b"\x1bP>|kitty(0.39.1)\x1b\\")));
+        assert!(kitty(&with(KITTY_OK, b"\x1bP>|ghostty 1.1.3\x1b\\")));
+        assert!(kitty(&with(b"", &[b"\x1bP>|Ghostty 1.2\x1b\\".as_slice(), KITTY_OK].concat())), "any order");
+
+        assert!(!kitty(&with(KITTY_OK, b"\x1bP>|WezTerm 20240203\x1b\\")), "no placeholders");
+        assert!(!kitty(&with(b"\x1b_Gi=31;EINVAL:bad\x1b\\", b"\x1bP>|kitty(0.39.1)\x1b\\")));
+        assert!(!kitty(&with(b"", b"\x1bP>|kitty(0.39.1)\x1b\\")), "no graphics reply");
+        assert!(!kitty(&with(KITTY_OK, b"")), "no XTVERSION reply");
+        assert!(!kitty(b""));
+    }
+
+    #[test]
+    fn kitty_replies_do_not_disturb_the_other_queries() {
+        let caps = Caps::parse_query_responses(&[KITTY_OK, b"\x1bP>|kitty(0.39.1)\x1b\\\x1b[6;20;10t\x1b[?62;4c"].concat());
+        assert_eq!(
+            (caps.kitty_graphics, caps.sixel_supported, caps.cell_pixel_width, caps.cell_pixel_height),
+            (true, true, 10, 20)
+        );
     }
 }

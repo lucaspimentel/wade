@@ -87,6 +87,7 @@ Config file: ~/.config/wade/config.toml
 
   show_icons_enabled = true
   image_previews_enabled = true
+  image_protocol = auto           # auto, kitty, sixel
   show_hidden_files = false
   sort_mode = name                # name, modified, size, extension
   sort_ascending = true

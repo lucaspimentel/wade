@@ -48,6 +48,8 @@ pub struct AppConfig {
     pub start_path: String,
     pub show_icons_enabled: bool,
     pub image_previews_enabled: bool,
+    /// Rust-only: `image_protocol = auto|kitty|sixel` (config file only).
+    pub image_protocol: crate::imaging::ImageProtocolSetting,
     pub show_hidden_files: bool,
     pub show_system_files: bool,
     pub sort_mode: SortMode,
@@ -91,6 +93,7 @@ impl Default for AppConfig {
             start_path: String::new(),
             show_icons_enabled: true,
             image_previews_enabled: true,
+            image_protocol: crate::imaging::ImageProtocolSetting::Auto,
             show_hidden_files: false,
             show_system_files: false,
             sort_mode: SortMode::Name,
@@ -196,6 +199,10 @@ pub struct App {
     pub(crate) capabilities: crate::terminal_caps::TerminalCapabilities,
     /// C# `_imagePreviewsEffective`: the config flag and Sixel support.
     pub(crate) image_previews_effective: bool,
+    /// Rust-only: the image protocol for these capabilities and the
+    /// `image_protocol` setting (PDF previews use it even with image
+    /// previews off).
+    pub(crate) image_protocol: Option<crate::imaging::ImageProtocol>,
     /// Rust only: every tab's saved state; the active slot is a
     /// placeholder while its fields live inline above.
     pub(crate) tabs: Vec<tabs::TabState>,
@@ -234,6 +241,7 @@ impl App {
             preview: preview::PreviewState::default(),
             capabilities: crate::terminal_caps::TerminalCapabilities::DEFAULT,
             image_previews_effective: false,
+            image_protocol: None,
             tabs: vec![tabs::TabState::default()],
             active_tab: 0,
             bookmark_store: crate::fs::bookmark_store::BookmarkStore::new(None),
@@ -408,9 +416,9 @@ impl App {
             self.render(&mut buffer);
             flush_buffer(&mut buffer);
 
-            // Sixel data goes out after the flush, bypassing the cell grid
-            if let Some(sixel) = self.take_pending_sixel() {
-                write_raw(&sixel);
+            // Image data goes out after the flush, bypassing the cell grid
+            if let Some(output) = self.take_pending_image_output() {
+                write_raw(&output);
             }
 
             // Wait for next input event (pump thread feeds the queue; loader
@@ -459,6 +467,13 @@ impl App {
 
         pump_cancel.cancel();
         let _ = pump.join();
+
+        // Free the kitty image still shown (Rust-only)
+        self.preview.set_image(None);
+        if let Some(output) = self.take_pending_image_output() {
+            write_raw(&output);
+        }
+
         terminal.restore();
 
         if self.write_cwd {
@@ -468,10 +483,29 @@ impl App {
         }
     }
 
-    /// The Sixel write after a flush (App.cs:270-289): only while an image
-    /// is pending, the preview is visible, and no modal is open. Returns the
-    /// cursor move plus the Sixel data.
-    pub(crate) fn take_pending_sixel(&mut self) -> Option<String> {
+    /// The image write after a flush. Rust-only kitty output comes first, in
+    /// any mode: deletes for replaced images, then a new image's transmit
+    /// (once). Then the Sixel (App.cs:270-289): only while an image is
+    /// pending, the preview is visible, and no modal is open, as the cursor
+    /// move plus the Sixel data.
+    pub(crate) fn take_pending_image_output(&mut self) -> Option<String> {
+        let mut out = std::mem::take(&mut self.preview.kitty_deletes);
+
+        if self.preview.kitty_transmit_pending {
+            self.preview.kitty_transmit_pending = false;
+            if let Some(crate::imaging::ImageData::Kitty { transmit, .. }) = &self.preview.cached_image {
+                out.push_str(transmit);
+            }
+        }
+
+        if let Some(sixel) = self.take_pending_sixel() {
+            out.push_str(&sixel);
+        }
+
+        (!out.is_empty()).then_some(out)
+    }
+
+    fn take_pending_sixel(&mut self) -> Option<String> {
         let expanded = self.input_mode == InputMode::ExpandedPreview;
         if !self.preview.sixel_pending
             || !(self.preview_pane_enabled || expanded)
@@ -480,7 +514,9 @@ impl App {
             return None;
         }
 
-        let sixel = self.preview.cached_sixel_data.as_ref()?;
+        let Some(crate::imaging::ImageData::Sixel(sixel)) = &self.preview.cached_image else {
+            return None;
+        };
         self.preview.sixel_pending = false;
 
         let pane = if expanded { self.layout.expanded_pane } else { self.layout.right_pane };
@@ -501,7 +537,14 @@ impl App {
     /// Applies detected terminal capabilities (App.cs:237-241).
     pub fn set_capabilities(&mut self, capabilities: crate::terminal_caps::TerminalCapabilities) {
         self.capabilities = capabilities;
-        self.image_previews_effective = self.config.image_previews_enabled && capabilities.sixel_supported;
+        self.update_image_protocol();
+    }
+
+    /// Recomputes the image protocol and the effective image-previews flag
+    /// from the capabilities and the config.
+    pub(crate) fn update_image_protocol(&mut self) {
+        self.image_protocol = self.config.image_protocol.resolve(&self.capabilities);
+        self.image_previews_effective = self.config.image_previews_enabled && self.image_protocol.is_some();
     }
 
     fn default_start_path() -> String {

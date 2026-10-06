@@ -1,14 +1,15 @@
 //! Port of `ImagePreview`: decode an image, fit it to the pane (never
-//! upscaling), and encode it as Sixel.
+//! upscaling), and encode it as Sixel (or, Rust-only, for kitty graphics).
 
 use image::imageops::FilterType;
 
+use super::{ImageData, ImageProtocol};
 use crate::input::CancelToken;
 
 /// Port of `ImagePreviewResult`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ImagePreviewResult {
-    pub sixel_data: String,
+    pub image: ImageData,
     pub pixel_width: i32,
     pub pixel_height: i32,
     pub label: String,
@@ -46,6 +47,7 @@ pub fn load(
     pane_height_cells: i32,
     cell_pixel_width: i32,
     cell_pixel_height: i32,
+    protocol: ImageProtocol,
     cancel: &CancelToken,
 ) -> Option<ImagePreviewResult> {
     let max_width = pane_width_cells.checked_mul(cell_pixel_width)?;
@@ -74,7 +76,16 @@ pub fn load(
         return None;
     }
 
-    let sixel_data = super::sixel::encode(rgba.as_raw(), width as usize, height as usize, 256);
+    let image = match protocol {
+        ImageProtocol::Sixel => ImageData::Sixel(super::sixel::encode(rgba.as_raw(), width as usize, height as usize, 256)),
+        ImageProtocol::Kitty => {
+            let cols = super::kitty::cells_for(width as i32, cell_pixel_width, pane_width_cells);
+            let rows = super::kitty::cells_for(height as i32, cell_pixel_height, pane_height_cells);
+            let id = super::kitty::next_image_id();
+            let transmit = super::kitty::encode_transmit(rgba.as_raw(), width, height, id, cols, rows);
+            ImageData::Kitty { transmit, id, cols, rows }
+        }
+    };
     if cancel.is_cancelled() {
         return None;
     }
@@ -82,7 +93,7 @@ pub fn load(
     let ext = crate::fs::file_preview::extension(path).trim_start_matches('.').to_uppercase();
 
     Some(ImagePreviewResult {
-        sixel_data,
+        image,
         pixel_width: width as i32,
         pixel_height: height as i32,
         label: format!("{ext} Image ({src_width} x {src_height})"),
@@ -94,6 +105,7 @@ mod tests {
     //! Port of ImagePreviewTests.cs.
 
     use super::{fit_size, is_image_file, load};
+    use super::{ImageData, ImageProtocol};
     use crate::input::CancelToken;
 
     #[test]
@@ -123,20 +135,30 @@ mod tests {
 
     #[test]
     fn small_bmp_produces_sixel() {
-        let result = load(&small_bmp(), 80, 24, 8, 16, &CancelToken::new()).expect("result");
-        assert!(result.sixel_data.starts_with("\x1bPq"));
+        let result = load(&small_bmp(), 80, 24, 8, 16, ImageProtocol::Sixel, &CancelToken::new()).expect("result");
+        assert!(matches!(&result.image, ImageData::Sixel(data) if data.starts_with("\x1bPq")));
         assert_eq!((result.pixel_width, result.pixel_height), (4, 3));
         assert_eq!(result.label, "BMP Image (4 x 3)");
     }
 
     #[test]
+    fn kitty_protocol_transmits_and_sizes_in_cells() {
+        // 4x3 px at 2x2 px cells: 2x2 cells
+        let result = load(&small_bmp(), 80, 24, 2, 2, ImageProtocol::Kitty, &CancelToken::new()).expect("result");
+        let ImageData::Kitty { transmit, id, cols, rows } = &result.image else { panic!("kitty") };
+        assert_eq!((*cols, *rows), (2, 2));
+        assert!(transmit.starts_with(&format!("\x1b_Ga=T,U=1,f=32,o=z,s=4,v=3,i={id},c=2,r=2,")), "{transmit}");
+        assert_eq!((result.pixel_width, result.pixel_height), (4, 3));
+    }
+
+    #[test]
     fn missing_file_empty_pane_and_cancel_return_none() {
-        assert!(load("/no/such/file.png", 80, 24, 8, 16, &CancelToken::new()).is_none());
-        assert!(load(&small_bmp(), 0, 24, 8, 16, &CancelToken::new()).is_none());
+        assert!(load("/no/such/file.png", 80, 24, 8, 16, ImageProtocol::Sixel, &CancelToken::new()).is_none());
+        assert!(load(&small_bmp(), 0, 24, 8, 16, ImageProtocol::Sixel, &CancelToken::new()).is_none());
 
         let cancel = CancelToken::new();
         cancel.cancel();
-        assert!(load(&small_bmp(), 80, 24, 8, 16, &cancel).is_none());
+        assert!(load(&small_bmp(), 80, 24, 8, 16, ImageProtocol::Sixel, &cancel).is_none());
     }
 
     /// Timing check (run with `cargo test --release -- --ignored`): a
@@ -152,10 +174,10 @@ mod tests {
         img.save(&path).unwrap();
 
         let start = std::time::Instant::now();
-        let result = load(&path.to_string_lossy(), 120, 40, 8, 16, &CancelToken::new()).expect("result");
+        let result = load(&path.to_string_lossy(), 120, 40, 8, 16, ImageProtocol::Sixel, &CancelToken::new()).expect("result");
         let elapsed = start.elapsed();
 
-        eprintln!("4000x3000 JPEG -> {}x{} sixel ({} bytes) in {elapsed:?}", result.pixel_width, result.pixel_height, result.sixel_data.len());
+        eprintln!("4000x3000 JPEG -> {}x{} sixel ({} bytes) in {elapsed:?}", result.pixel_width, result.pixel_height, match &result.image { ImageData::Sixel(d) => d.len(), ImageData::Kitty { transmit, .. } => transmit.len() });
         assert!(elapsed < std::time::Duration::from_millis(1500), "{elapsed:?}");
     }
 }

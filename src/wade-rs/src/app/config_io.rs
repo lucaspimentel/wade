@@ -73,6 +73,11 @@ pub fn load_config(args: &[String]) -> AppConfig {
         match key {
             "show_icons_enabled" => config.show_icons_enabled = parse_bool(value, config.show_icons_enabled),
             "image_previews_enabled" => config.image_previews_enabled = parse_bool(value, config.image_previews_enabled),
+            "image_protocol" => {
+                if let Some(setting) = crate::imaging::ImageProtocolSetting::parse(value) {
+                    config.image_protocol = setting;
+                }
+            }
             "show_hidden_files" => config.show_hidden_files = parse_bool(value, config.show_hidden_files),
             "show_system_files" => config.show_system_files = parse_bool(value, config.show_system_files),
             "sort_mode" => {
@@ -221,6 +226,8 @@ pub fn to_json(config: &AppConfig) -> String {
         }
     }
 
+    // Rust-only key
+    json.push_str(&format!("\"image_protocol\":\"{}\",", config.image_protocol.name()));
     // C# escapes only backslashes in the start path
     json.push_str(&format!("\"start_path\":\"{}\"}}", config.start_path.replace('\\', "\\\\")));
     json
@@ -295,6 +302,12 @@ pub fn save_config(config: &AppConfig) -> std::io::Result<()> {
         config.ffprobe_enabled,
         config.mediainfo_enabled,
     );
+
+    // Rust-only key, written only when set so the file keeps the C# layout
+    let mut content = content;
+    if config.image_protocol != crate::imaging::ImageProtocolSetting::Auto {
+        content.push_str(&format!("image_protocol = {}\n", config.image_protocol.name()));
+    }
 
     std::fs::write(path, content)
 }
@@ -584,11 +597,38 @@ mediainfo_enabled = true
     }
 
     #[test]
+    fn image_protocol_parses_round_trips_and_is_saved_only_when_set() {
+        use crate::imaging::ImageProtocolSetting as Setting;
+
+        let config = config_with_path("image-protocol.txt");
+        let path = config_path(&config);
+        let load = |text: &str| {
+            std::fs::write(&path, text).unwrap();
+            load_config(&[format!("--config-file={}", path.display())]).image_protocol
+        };
+
+        assert_eq!(load(""), Setting::Auto);
+        assert_eq!(load("image_protocol = sixel\n"), Setting::Sixel);
+        assert_eq!(load("image_protocol = Kitty  # comment\n"), Setting::Kitty);
+        assert_eq!(load("image_protocol = iterm\n"), Setting::Auto, "unknown values keep the default");
+
+        save_config(&AppConfig { image_protocol: Setting::Kitty, ..config.clone() }).unwrap();
+        assert!(std::fs::read_to_string(&path).unwrap().ends_with("mediainfo_enabled = true\nimage_protocol = kitty\n"));
+        assert_eq!(load(&std::fs::read_to_string(&path).unwrap()), Setting::Kitty);
+
+        save_config(&config).unwrap();
+        assert!(!std::fs::read_to_string(&path).unwrap().contains("image_protocol"), "auto keeps the C# layout");
+        assert!(to_json(&config).contains("\"image_protocol\":\"auto\","));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
     fn to_json_lists_every_key_in_order() {
         let config = AppConfig { sort_mode: SortMode::Modified, show_hidden_files: true, start_path: "/x".to_string(), ..AppConfig::default() };
         let json = to_json(&config);
         let mut keys: Vec<&str> = bool_keys().iter().map(|(key, _, _)| *key).collect();
         keys.insert(4, "sort_mode");
+        keys.push("image_protocol");
         keys.push("start_path");
         let expected_keys: Vec<String> = keys.iter().map(|key| format!("\"{key}\":")).collect();
         let mut position = 0;

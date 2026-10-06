@@ -20,6 +20,7 @@ pub mod text_helper;
 
 use crate::fs::GitFileStatus;
 use crate::highlight::StyledLine;
+use crate::imaging::{ImageData, ImageProtocol};
 use crate::input::CancelToken;
 
 /// Port of `PreviewContext`: pane size, file facts and the config flags
@@ -41,7 +42,10 @@ pub struct PreviewContext {
     pub mediainfo_enabled: bool,
     pub zip_preview_enabled: bool,
     pub image_previews_enabled: bool,
-    pub sixel_supported: bool,
+    /// The image protocol in use, if any (independent of
+    /// `image_previews_enabled`, which gates image files only; PDF previews
+    /// need just a protocol).
+    pub image_protocol: Option<ImageProtocol>,
     pub archive_metadata_enabled: bool,
 }
 
@@ -55,10 +59,10 @@ pub struct PreviewResult {
     /// A placeholder message rather than content (suppresses the split
     /// layout when metadata is present).
     pub is_placeholder: bool,
-    /// Sixel image data and its pixel size (image and PDF previews).
-    pub sixel_data: Option<String>,
-    pub sixel_pixel_width: i32,
-    pub sixel_pixel_height: i32,
+    /// Encoded image data and its pixel size (image and PDF previews).
+    pub image: Option<ImageData>,
+    pub image_pixel_width: i32,
+    pub image_pixel_height: i32,
 }
 
 /// Port of `MetadataEntry`. An empty label renders as a list item.
@@ -125,7 +129,7 @@ pub(crate) fn test_context() -> PreviewContext {
         mediainfo_enabled: true,
         zip_preview_enabled: true,
         image_previews_enabled: true,
-        sixel_supported: true,
+        image_protocol: Some(ImageProtocol::Sixel),
         archive_metadata_enabled: true,
     }
 }

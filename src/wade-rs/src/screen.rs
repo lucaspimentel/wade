@@ -29,6 +29,9 @@ pub struct CellStyle {
 pub struct Cell {
     ch: char,
     style: CellStyle,
+    /// Rust-only: a kitty placeholder's row and column in its image,
+    /// written as two diacritics after `ch`.
+    placeholder: Option<(u16, u16)>,
 }
 
 impl Cell {
@@ -45,6 +48,7 @@ impl Cell {
     pub const EMPTY: Self = Self {
         ch: ' ',
         style: Self::DEFAULT_STYLE,
+        placeholder: None,
     };
     pub const DIRTY: Self = Self {
         ch: '\0',
@@ -57,10 +61,12 @@ impl Cell {
             underline: false,
             strikethrough: false,
         },
+        placeholder: None,
     };
     pub const WIDE_CONTINUATION: Self = Self {
         ch: '\0',
         style: Self::DEFAULT_STYLE,
+        placeholder: None,
     };
 
     #[must_use]
@@ -145,7 +151,7 @@ impl ScreenBuffer {
         }
 
         let idx = (row * self.width + col) as usize;
-        self.back[idx] = Cell { ch, style };
+        self.back[idx] = Cell { ch, style, placeholder: None };
 
         // Wide characters occupy 2 terminal columns; store a continuation marker
         // in the next cell
@@ -153,6 +159,19 @@ impl ScreenBuffer {
             self.back[idx + 1] = Cell::WIDE_CONTINUATION;
         }
 
+        self.mark_dirty(row);
+    }
+
+    /// Rust-only: a kitty placeholder cell showing cell (`image_row`,
+    /// `image_col`) of image `image_id` (its id is the foreground color).
+    pub fn put_placeholder(&mut self, row: i32, col: i32, image_id: u32, image_row: u16, image_col: u16) {
+        if row < 0 || row >= self.height || col < 0 || col >= self.width {
+            return;
+        }
+
+        let style = CellStyle { fg: Some(crate::imaging::kitty::id_color(image_id)), ..CellStyle::default() };
+        let idx = (row * self.width + col) as usize;
+        self.back[idx] = Cell { ch: crate::imaging::kitty::PLACEHOLDER, style, placeholder: Some((image_row, image_col)) };
         self.mark_dirty(row);
     }
 
@@ -167,7 +186,7 @@ impl ScreenBuffer {
             return;
         }
 
-        let cell = Cell { ch, style };
+        let cell = Cell { ch, style, placeholder: None };
         let start = (row * self.width + clamped_start) as usize;
         let end = (row * self.width + clamped_end) as usize;
         self.back[start..end].fill(cell);
@@ -202,7 +221,7 @@ impl ScreenBuffer {
 
             if c >= 0 {
                 let idx = (row_offset + c) as usize;
-                self.back[idx] = Cell { ch, style };
+                self.back[idx] = Cell { ch, style, placeholder: None };
                 if w == 2 && c + 1 < self.width {
                     self.back[idx + 1] = Cell::WIDE_CONTINUATION;
                 }
@@ -267,6 +286,11 @@ impl ScreenBuffer {
                 }
 
                 out.push(self.back[idx].ch);
+                if let Some((image_row, image_col)) = self.back[idx].placeholder {
+                    let diacritic = |i: u16| crate::imaging::kitty::DIACRITICS.get(usize::from(i)).copied().unwrap_or('\u{0305}');
+                    out.push(diacritic(image_row));
+                    out.push(diacritic(image_col));
+                }
 
                 let char_width = rune_width(self.back[idx].ch) as i32;
                 last_row = row;
@@ -357,5 +381,43 @@ fn append_style_diff(out: &mut String, old_style: CellStyle, new_style: CellStyl
 
     if !old_style.strikethrough && new_style.strikethrough {
         out.push_str("\x1b[9m");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ScreenBuffer;
+
+    #[test]
+    fn placeholder_cells_carry_the_id_color_and_both_diacritics() {
+        let mut buffer = ScreenBuffer::new(4, 2);
+        buffer.put_placeholder(1, 2, 0x01_0203, 0, 2);
+
+        let mut out = String::new();
+        buffer.serialize(&mut out);
+        assert!(out.contains("\x1b[38;2;1;2;3m\u{10EEEE}\u{0305}\u{030E}"), "{out:?}");
+
+        // Unchanged next frame: no output
+        buffer.clear();
+        buffer.put_placeholder(1, 2, 0x01_0203, 0, 2);
+        buffer.serialize(&mut out);
+        assert!(out.is_empty(), "{out:?}");
+
+        // Another position in the image is a change
+        buffer.clear();
+        buffer.put_placeholder(1, 2, 0x01_0203, 1, 2);
+        buffer.serialize(&mut out);
+        assert!(out.contains("\u{10EEEE}\u{030D}\u{030E}"), "{out:?}");
+    }
+
+    #[test]
+    fn placeholder_is_one_column_wide() {
+        let mut buffer = ScreenBuffer::new(3, 1);
+        buffer.put_placeholder(0, 0, 1, 0, 0);
+        buffer.put_placeholder(0, 1, 1, 0, 1);
+
+        let mut out = String::new();
+        buffer.serialize(&mut out);
+        assert_eq!(out.matches('H').count(), 1, "the second cell follows the first without a cursor move: {out:?}");
     }
 }

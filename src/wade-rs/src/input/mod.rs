@@ -163,11 +163,11 @@ pub struct PreviewReadyEvent {
     pub is_placeholder: bool,
 }
 
-/// Port of the `ImagePreviewReadyEvent` record: Sixel data for `path`.
+/// Port of the `ImagePreviewReadyEvent` record: the encoded image for `path`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ImagePreviewReadyEvent {
     pub path: String,
-    pub sixel_data: String,
+    pub image: crate::imaging::ImageData,
     pub pixel_width: i32,
     pub pixel_height: i32,
     pub file_type_label: String,
@@ -178,7 +178,7 @@ pub struct ImagePreviewReadyEvent {
 pub struct CombinedPreviewReadyEvent {
     pub path: String,
     pub styled_lines: Vec<crate::highlight::StyledLine>,
-    pub sixel_data: String,
+    pub image: crate::imaging::ImageData,
     pub pixel_width: i32,
     pub pixel_height: i32,
     pub file_type_label: Option<String>,

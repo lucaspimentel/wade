@@ -167,6 +167,22 @@ None. Phase 9 closed the last temporary entries.
   scroll, marks and `/` filter; settings and the per-directory sorts are
   shared. The bar takes row 0 only with two or more tabs, so one-tab frames
   match C#. Tabs are not persisted. C# has no tabs.
+- **Kitty graphics protocol for image previews (Rust-only addition).**
+  - **Detection.** On Unix, startup also sends a kitty graphics query (`a=q`) and XTVERSION (`CSI > q`). Kitty is
+    used only when the terminal answers `OK` and calls itself kitty or Ghostty. WezTerm and Konsole answer the query
+    but have no Unicode placeholders.
+  - **Choosing a protocol.** The new `image_protocol = auto|kitty|sixel` key goes in the config file only; the dialog
+    does not show it. With `auto`, kitty wins over Sixel. A forced protocol must still be detected. PDF previews use
+    whichever protocol is chosen.
+  - **The new key in output.** The key is written to the file only when it is not `auto`, so a default file keeps
+    the C# layout. `--show-config` gains `image_protocol` before `start_path`.
+  - **How images are drawn.** The image is sent once, compressed with zlib, with a virtual placement. The image area
+    is then U+10EEEE placeholder cells in the screen buffer: the foreground color is the image id, and two diacritics
+    give the cell's row and column. Replaced images are deleted.
+  - **Behaviour under dialogs.** Unlike Sixel, the uncovered part of a kitty image stays visible while a dialog is
+    open.
+  - **Not supported.** Windows Terminal (no kitty support) and tmux (queries do not reach the outer terminal).
+  - C# has Sixel only.
 - **TOML lock files are highlighted (Rust-only addition).** `Cargo.lock`,
   `poetry.lock`, `uv.lock` and `pdm.lock` use the TOML highlighter; C# shows
   them as plain text.

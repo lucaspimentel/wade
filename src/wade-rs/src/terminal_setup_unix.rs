@@ -103,15 +103,18 @@ impl Drop for TerminalSetup {
     }
 }
 
-/// Port of `DetectCapabilitiesUnix`: sends DA1 and `ESC[16t`, then reads
+/// Port of `DetectCapabilitiesUnix`: sends DA1 and `ESC[16t` (plus the
+/// kitty queries), then reads
 /// replies from the tty until 200ms pass without data.
 fn detect_capabilities(tty_fd: libc::c_int) -> TerminalCapabilities {
     if tty_fd < 0 {
         return TerminalCapabilities::DEFAULT;
     }
 
-    write_out(&["\x1b[c\x1b[16t"]);
-    let mut buf = [0u8; 256];
+    // Rust-only: the kitty graphics query and XTVERSION go first; DA1 stays
+    // last so terminals that ignore them still answer
+    write_out(&["\x1b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\\x1b[>0q\x1b[c\x1b[16t"]);
+    let mut buf = [0u8; 1024];
     let mut total = 0;
 
     while total < buf.len() {

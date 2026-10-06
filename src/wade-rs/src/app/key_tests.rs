@@ -881,9 +881,9 @@ fn sixel_output_is_suppressed_in_modal_modes() {
     ] {
         let (mut app, parent, _) = app();
         app.preview.sixel_pending = true;
-        app.preview.cached_sixel_data = Some("sixel".to_string());
+        app.preview.cached_image = Some(crate::imaging::ImageData::Sixel("sixel".to_string()));
         app.input_mode = mode;
-        assert_eq!(app.take_pending_sixel().is_some(), expected, "{mode:?}");
+        assert_eq!(app.take_pending_image_output().is_some(), expected, "{mode:?}");
         let _ = std::fs::remove_dir_all(&parent);
     }
 }
