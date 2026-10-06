@@ -202,7 +202,13 @@ impl App {
     pub fn new(config: AppConfig) -> Self {
         let mut app = Self {
             config,
-            directory_contents: DirectoryContents::new(),
+            directory_contents: {
+                let mut contents = DirectoryContents::new();
+                // Unit tests never touch the user's saved sorts
+                contents.path_sorts =
+                    crate::fs::sort_store::SortStore::new((!cfg!(test)).then(crate::fs::sort_store::SortStore::default_path));
+                contents
+            },
             layout: Layout::default(),
             current_path: String::new(),
             selected_index: 0,
@@ -320,6 +326,7 @@ impl App {
         self.directory_contents.show_system_files = self.config.show_system_files;
         self.directory_contents.sort_mode = self.config.sort_mode;
         self.directory_contents.sort_ascending = self.config.sort_ascending;
+        self.directory_contents.path_sorts.load();
         self.parent_pane_enabled = self.config.parent_pane_enabled;
         self.preview_pane_enabled = self.config.preview_pane_enabled;
 
@@ -626,22 +633,25 @@ impl App {
                 self.clear_preview_cache();
                 self.request_full_redraw = true;
             }
-            A::CycleSortMode => {
-                self.config.sort_mode = match self.config.sort_mode {
+            // Rust only: s/S change the current directory's saved sort; the
+            // config sort stays the default for the others
+            A::CycleSortMode if self.current_path != DRIVES_PATH => {
+                let (mode, ascending, _) = self.directory_contents.sort_for(&self.current_path);
+                let mode = match mode {
                     SortMode::Name => SortMode::Modified,
                     SortMode::Modified => SortMode::Size,
                     SortMode::Size => SortMode::Extension,
                     SortMode::Extension => SortMode::Name,
                 };
-                self.directory_contents.sort_mode = self.config.sort_mode;
-                self.directory_contents.invalidate_all();
-                self.clear_preview_cache();
+                self.set_directory_sort(Some((mode, ascending)));
             }
-            A::ToggleSortDirection => {
-                self.config.sort_ascending = !self.config.sort_ascending;
-                self.directory_contents.sort_ascending = self.config.sort_ascending;
-                self.directory_contents.invalidate_all();
-                self.clear_preview_cache();
+            A::ToggleSortDirection if self.current_path != DRIVES_PATH => {
+                let (mode, ascending, _) = self.directory_contents.sort_for(&self.current_path);
+                self.set_directory_sort(Some((mode, !ascending)));
+            }
+            A::ResetDirectorySort => {
+                self.set_directory_sort(None);
+                self.show_notification("Sort reset to default", NotificationKind::Success);
             }
             A::ShowHelp => {
                 self.input_mode = InputMode::Help;
@@ -1069,6 +1079,28 @@ impl App {
             .insert(event.directory_path, event.total_bytes);
     }
 
+    /// Rust only: saves (or with `None` forgets) the current directory's
+    /// sort and re-sorts its listing.
+    fn set_directory_sort(&mut self, sort: Option<(SortMode, bool)>) {
+        let path = self.current_path.clone();
+        let store = &mut self.directory_contents.path_sorts;
+
+        match sort {
+            Some((mode, ascending)) => store.set(&path, mode, ascending),
+            None => {
+                store.remove(&path);
+            }
+        }
+
+        if let Err(error) = self.directory_contents.path_sorts.save() {
+            self.show_notification(&format!("Could not save sort: {error}"), NotificationKind::Error);
+        }
+
+        self.directory_contents.invalidate(&path);
+        self.invalidate_filtered_entries();
+        self.clear_preview_cache();
+    }
+
     /// Port of `HandleInlineDirSizeComplete` (App.cs:1440).
     pub fn handle_inline_dir_size_complete(&mut self, event: crate::input::InlineDirSizeCompleteEvent) {
         if event.parent_path != self.current_path {
@@ -1078,7 +1110,7 @@ impl App {
         // C# shares one dictionary between the two; keep the App's copy for rendering
         self.directory_contents.dir_sizes.clone_from(&self.inline_dir_sizes);
 
-        if self.directory_contents.sort_mode == crate::fs::directory_contents::SortMode::Size {
+        if self.directory_contents.sort_for(&self.current_path).0 == crate::fs::directory_contents::SortMode::Size {
             self.directory_contents.invalidate(&self.current_path);
         }
     }
@@ -1765,8 +1797,7 @@ impl App {
             self.preview.cached_line_ending.as_deref(),
             self.notification.clone(),
             self.marked_paths.len(),
-            self.config.sort_mode,
-            self.config.sort_ascending,
+            self.directory_contents.sort_for(&self.current_path),
             self.clipboard_paths.len(),
             self.clipboard_is_cut,
             self.current_branch_name.as_deref(),
@@ -1900,8 +1931,7 @@ impl App {
             self.preview.cached_line_ending.as_deref(),
             self.notification.clone(),
             self.marked_paths.len(),
-            self.config.sort_mode,
-            self.config.sort_ascending,
+            self.directory_contents.sort_for(&self.current_path),
             self.clipboard_paths.len(),
             self.clipboard_is_cut,
             self.current_branch_name.as_deref(),
@@ -2243,12 +2273,15 @@ mod tests {
         let mut seen = Vec::new();
         for _ in 0..4 {
             app.dispatch(AppAction::CycleSortMode);
-            seen.push(app.directory_contents.sort_mode);
+            seen.push(app.directory_contents.sort_for(&app.current_path).0);
         }
 
         assert_eq!(seen, [SortMode::Modified, SortMode::Size, SortMode::Extension, SortMode::Name]);
         app.dispatch(AppAction::ToggleSortDirection);
-        assert!(!app.directory_contents.sort_ascending);
+        assert!(!app.directory_contents.sort_for(&app.current_path).1);
+        // Rust only: the config sort is the default for other directories
+        assert_eq!((app.config.sort_mode, app.config.sort_ascending), (SortMode::Name, true));
+        assert_eq!(app.directory_contents.sort_for("/elsewhere"), (SortMode::Name, true, false));
     }
 
     #[test]

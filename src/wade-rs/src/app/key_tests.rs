@@ -9,7 +9,7 @@ use super::test_support::{
     app_at, ch, ctrl, fixture, frame, frame_has, key, press, pump_until, row_with, select, selected_name, shift,
     status_bar, type_text, visible_names,
 };
-use super::{App, AppConfig};
+use super::{App, AppAction, AppConfig};
 use crate::console_key::ConsoleKey as K;
 use crate::input::{InputEvent, InputMode, MouseButton, MouseEvent};
 
@@ -941,5 +941,68 @@ fn ctrl_c_clears_the_finder_query() {
     assert_eq!(state.last_query, "", "the search restarted for the empty query");
     app.close_file_finder();
     assert_eq!(app.last_finder_query, "");
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+// --- Sort remembered per directory (Rust only) ------------------------------
+
+fn file_names(app: &mut App) -> Vec<String> {
+    visible_names(app).into_iter().filter(|n| n != "sub").collect()
+}
+
+#[test]
+fn s_sorts_only_the_current_directory_and_marks_it() {
+    let (mut app, parent, root) = app();
+    std::fs::write(root.join("sub").join("zzz.txt"), vec![0u8; 5000]).unwrap();
+    press(&mut app, ch('s')); // Modified
+    press(&mut app, ch('s')); // Size
+    assert_eq!(file_names(&mut app).first().map(String::as_str), Some("b.txt"));
+    assert!(status_bar(&mut app).contains("size\u{2191}*"), "{}", status_bar(&mut app));
+
+    select(&mut app, "sub");
+    press(&mut app, key(K::Enter));
+    assert_eq!(visible_names(&mut app), ["inner.txt", "zzz.txt"], "sub keeps the default name sort");
+    let bar = status_bar(&mut app);
+    assert!(bar.contains("name\u{2191}") && !bar.contains("name\u{2191}*"), "{bar}");
+    assert_eq!((app.config.sort_mode, app.config.sort_ascending), (crate::fs::SortMode::Name, true));
+
+    // The parent pane lists root with root's own sort
+    let root_order: Vec<String> =
+        app.directory_contents.get_entries(&root.to_string_lossy()).into_iter().map(|e| e.name).collect();
+    assert_eq!(root_order.iter().find(|n| *n != "sub").map(String::as_str), Some("b.txt"), "{root_order:?}");
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn reset_sort_from_the_palette_restores_the_default() {
+    let (mut app, parent, _) = app();
+    let has_reset = |app: &App| {
+        app.modal.action_menu_stack.last().unwrap().items.iter().any(|i| i.action == AppAction::ResetDirectorySort)
+    };
+    press(&mut app, ctrl(K::P));
+    assert!(!has_reset(&app), "no saved sort, no reset item");
+    press(&mut app, key(K::Escape));
+
+    press(&mut app, ch('S'));
+    assert!(status_bar(&mut app).contains("name\u{2193}*"));
+    press(&mut app, ctrl(K::P));
+    assert!(has_reset(&app));
+    type_text(&mut app, "reset sort");
+    press(&mut app, key(K::Enter));
+    let bar = status_bar(&mut app);
+    assert!(bar.contains("name\u{2191}") && !bar.contains('*'), "{bar}");
+    assert_eq!(file_names(&mut app), ["a.txt", "b.txt", "empty.zip", "readme.md"]);
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn saved_sorts_survive_a_restart() {
+    let (mut app, parent, root) = app();
+    press(&mut app, ch('S'));
+    drop(app);
+
+    let mut restarted = app_at(AppConfig { git_status_enabled: false, ..AppConfig::default() }, &root);
+    assert_eq!(file_names(&mut restarted), ["readme.md", "empty.zip", "b.txt", "a.txt"]);
+    assert!(status_bar(&mut restarted).contains("name\u{2193}*"));
     let _ = std::fs::remove_dir_all(&parent);
 }

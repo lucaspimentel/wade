@@ -1133,6 +1133,13 @@ impl App {
             ActionMenuItem::new("Toggle right pane", "]", AppAction::TogglePreviewPane),
             ActionMenuItem::new("Cycle sort mode", "s", AppAction::CycleSortMode),
             ActionMenuItem::new("Reverse sort direction", "S", AppAction::ToggleSortDirection),
+        ]);
+
+        if self.directory_contents.sort_for(&self.current_path).2 {
+            items.push(ActionMenuItem::new("Reset sort for this directory", "", AppAction::ResetDirectorySort));
+        }
+
+        items.extend([
             ActionMenuItem::new("Bookmarks", "b", AppAction::ShowBookmarks),
             ActionMenuItem::new("Toggle bookmark", "B", AppAction::ToggleBookmark),
             ActionMenuItem::new("Go to path", "Ctrl+G", AppAction::GoToPath),

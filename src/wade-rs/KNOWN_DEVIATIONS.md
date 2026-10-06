@@ -153,6 +153,13 @@ None. Phase 9 closed the last temporary entries.
 - **Ctrl+C clears search and filter boxes (Rust-only addition).** In the
   Ctrl+F finder, the `/` filter, the Ctrl+P palette and the `b` bookmarks
   list, Ctrl+C empties the input and lists everything again; C# ignores it.
+- **The sort is remembered per directory (Rust-only addition).** `s` and
+  `S` change only the current directory's sort, saved in
+  `~/.config/wade/sorts` (`<mode> <asc|desc> <path>` per line) and applied in
+  every pane that lists that directory. Other directories use the config
+  `sort_mode`/`sort_ascending`, which `s`/`S` no longer change. The status bar
+  adds `*` after the sort marker for a saved sort, and the palette's "Reset
+  sort for this directory" forgets it. C# has one global sort.
 - **TOML lock files are highlighted (Rust-only addition).** `Cargo.lock`,
   `poetry.lock`, `uv.lock` and `pdm.lock` use the TOML highlighter; C# shows
   them as plain text.

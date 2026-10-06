@@ -25,6 +25,8 @@ pub enum AppAction {
     ToggleMark,
     CycleSortMode,
     ToggleSortDirection,
+    /// Rust only: forget the current directory's saved sort.
+    ResetDirectorySort,
     GoToPath,
     OpenExternal,
     Rename,

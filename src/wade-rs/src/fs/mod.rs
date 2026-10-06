@@ -12,6 +12,7 @@ pub mod hex_preview;
 pub mod lnk;
 pub mod path_completion;
 pub mod reparse;
+pub mod sort_store;
 pub mod system_clipboard;
 pub mod tar_preview;
 pub mod zip_preview;

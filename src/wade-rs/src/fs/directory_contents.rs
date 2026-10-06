@@ -108,8 +108,11 @@ pub struct DirectoryContents {
     cache: HashMap<String, Vec<FileSystemEntry>>,
     pub show_hidden_files: bool,
     pub show_system_files: bool,
+    /// Default sort, for directories without a saved one.
     pub sort_mode: SortMode,
     pub sort_ascending: bool,
+    /// Rust only: sorts remembered per directory.
+    pub path_sorts: super::sort_store::SortStore,
     /// Port of `DirectoryContents.DirSizes`: inline directory sizes, used
     /// when building directory entries.
     pub dir_sizes: Option<HashMap<String, i64>>,
@@ -123,6 +126,7 @@ impl Default for DirectoryContents {
             show_system_files: false,
             sort_mode: SortMode::Name,
             sort_ascending: true,
+            path_sorts: super::sort_store::SortStore::default(),
             dir_sizes: None,
         }
     }
@@ -147,9 +151,20 @@ impl DirectoryContents {
         let mut entries = load_entries(path, self.show_hidden_files, self.show_system_files, self.dir_sizes.as_ref());
         // C# LoadEntries sorts with the instance's SortMode/SortAscending;
         // load_entries sorts by name, so ties keep name order (stable sort)
-        sort_entries(&mut entries, self.sort_mode, self.sort_ascending);
+        let (sort_mode, sort_ascending, _) = self.sort_for(path);
+        sort_entries(&mut entries, sort_mode, sort_ascending);
         self.cache.insert(path.to_string(), entries.clone());
         entries
+    }
+
+    /// Rust only: the directory's saved sort, or the default. The flag is
+    /// true when the directory has a saved sort.
+    #[must_use]
+    pub fn sort_for(&self, path: &str) -> (SortMode, bool, bool) {
+        match self.path_sorts.get(path) {
+            Some((mode, ascending)) => (mode, ascending, true),
+            None => (self.sort_mode, self.sort_ascending, false),
+        }
     }
 
     /// Mirrors `DirectoryContents.IsDriveRoot`.
@@ -606,6 +621,30 @@ mod tests {
         assert_eq!(names(SortMode::Size, true), ["dir", "a.txt", "c.rs", "b.md"]);
         assert_eq!(names(SortMode::Size, false), ["dir", "b.md", "c.rs", "a.txt"]);
         assert_eq!(names(SortMode::Extension, true), ["dir", "b.md", "c.rs", "a.txt"]);
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn a_saved_sort_applies_to_its_directory_only() {
+        let root = std::env::temp_dir().join(format!("wade-pathsort-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        for dir in ["one", "two"] {
+            std::fs::create_dir_all(root.join(dir)).unwrap();
+            std::fs::write(root.join(dir).join("a.txt"), vec![0u8; 10]).unwrap();
+            std::fs::write(root.join(dir).join("b.txt"), vec![0u8; 1000]).unwrap();
+        }
+        let one = root.join("one").to_string_lossy().into_owned();
+        let two = root.join("two").to_string_lossy().into_owned();
+        let mut contents = DirectoryContents::new();
+        contents.path_sorts.set(&one, SortMode::Size, false);
+        let names = |contents: &mut DirectoryContents, path: &str| -> Vec<String> {
+            contents.get_entries(path).into_iter().map(|e| e.name).collect()
+        };
+
+        assert_eq!(names(&mut contents, &one), ["b.txt", "a.txt"]);
+        assert_eq!(names(&mut contents, &two), ["a.txt", "b.txt"], "the default applies elsewhere");
+        assert_eq!(contents.sort_for(&one), (SortMode::Size, false, true));
+        assert_eq!(contents.sort_for(&two), (SortMode::Name, true, false));
         std::fs::remove_dir_all(&root).unwrap();
     }
 

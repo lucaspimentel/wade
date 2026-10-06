@@ -45,8 +45,7 @@ pub fn render(
     line_ending: Option<&str>,
     notification: Option<Notification>,
     marked_count: usize,
-    sort_mode: SortMode,
-    sort_ascending: bool,
+    (sort_mode, sort_ascending, sort_overridden): (SortMode, bool, bool),
     clipboard_count: usize,
     clipboard_is_cut: bool,
     branch_name: Option<&str>,
@@ -117,7 +116,7 @@ pub fn render(
     }
 
     // Right side: always show metadata right-aligned
-    let right_text = build_right_text(item_count, selected_index, selected_entry, file_type_label, encoding, line_ending, sort_mode, sort_ascending);
+    let right_text = build_right_text(item_count, selected_index, selected_entry, file_type_label, encoding, line_ending, sort_mode, sort_ascending, sort_overridden);
     let right_len = i32::try_from(right_text.chars().count()).unwrap_or(0);
 
     let right_col = rect.width - right_len - 1;
@@ -166,6 +165,7 @@ fn build_right_text(
     line_ending: Option<&str>,
     sort_mode: SortMode,
     sort_ascending: bool,
+    sort_overridden: bool,
 ) -> String {
     let mut out = String::new();
 
@@ -177,6 +177,10 @@ fn build_right_text(
         SortMode::Name => "name",
     });
     out.push(if sort_ascending { '\u{2191}' } else { '\u{2193}' });
+    // Rust only: the directory has its own saved sort
+    if sort_overridden {
+        out.push('*');
+    }
     out.push_str("  ");
 
     if let Some(entry) = selected_entry {

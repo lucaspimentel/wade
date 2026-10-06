@@ -47,6 +47,9 @@ pub(crate) fn app_at(mut config: AppConfig, root: &Path) -> App {
     config.config_file_path = Some(root.join("config.toml").to_string_lossy().into_owned());
     let mut app = App::new(config);
     app.bookmark_store = crate::fs::bookmark_store::BookmarkStore::new(Some(root.join("bookmarks.txt")));
+    // Outside the listed directory, so saving a sort doesn't add an entry
+    let sorts_file = root.parent().unwrap_or(root).join("sorts.txt");
+    app.directory_contents.path_sorts = crate::fs::sort_store::SortStore::new(Some(sorts_file));
     app.apply_startup_config();
     app.set_screen_size(WIDTH, HEIGHT);
     app.layout.calculate(WIDTH, HEIGHT, app.preview_pane_enabled, app.parent_pane_enabled);

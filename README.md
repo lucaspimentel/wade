@@ -117,7 +117,7 @@ wade C:\Users     # open in a specific directory
 show_icons_enabled = true
 show_hidden_files = false
 show_system_files = false       # Windows only; requires show_hidden_files
-sort_mode = name                # name, modified, size, extension
+sort_mode = name                # name, modified, size, extension (Rust: default for unsorted directories)
 sort_ascending = true
 confirm_delete_enabled = true
 parent_pane_enabled = true
@@ -194,6 +194,8 @@ Then use `wd` instead of `wade` to browse. Press `q` to quit and cd to the last 
 | ] | Toggle right (preview) pane |
 | s | Cycle sort (name / time / size / ext) |
 | S | Reverse sort direction |
+
+In the Rust build, `s` and `S` sort the current directory only. The sort is remembered for that directory in `~/.config/wade/sorts` and shown with a `*` after the sort marker; "Reset sort for this directory" in the action palette goes back to the configured default.
 | Ctrl+G | Go to path (Esc clears input, Up goes up a directory) |
 | b | Open bookmarks dialog |
 | B | Toggle current directory as bookmark |
