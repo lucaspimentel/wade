@@ -161,6 +161,8 @@ pub struct PreviewReadyEvent {
     pub file_type_label: Option<String>,
     pub is_rendered: bool,
     pub is_placeholder: bool,
+    /// Rust only: the last line is a truncation marker.
+    pub has_truncation_marker: bool,
 }
 
 /// Port of the `ImagePreviewReadyEvent` record: the encoded image for `path`.

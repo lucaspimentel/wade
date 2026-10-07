@@ -1349,3 +1349,39 @@ fn enter_on_a_file_without_a_preview_does_nothing_with_the_right_pane_hidden() {
     assert_eq!(app.input_mode, InputMode::Normal);
     let _ = std::fs::remove_dir_all(&parent);
 }
+
+// --- Preview limits ----------------------------------------------------------
+
+#[test]
+fn the_right_pane_reads_its_height_and_full_screen_reads_the_config_limit() {
+    let (mut app, parent, root) = app();
+    let text: String = (1..=500).map(|i| format!("row {i}\n")).collect();
+    std::fs::write(root.join("long.txt"), text).unwrap();
+    app.directory_contents.invalidate(&app.current_path.clone());
+    let loaded = |app: &App| app.preview.cached_styled_lines.as_ref().map(Vec::len);
+
+    select(&mut app, "long.txt");
+    frame(&mut app);
+    pump_until(&mut app, "the right pane preview", |app| app.preview.cached_styled_lines.is_some());
+    let pane_height = usize::try_from(app.layout.right_pane.height).unwrap();
+    assert_eq!(loaded(&app), Some(pane_height), "the right pane reads only what it shows");
+
+    // The whole file fits under the default limit: no marker
+    press(&mut app, key(K::Enter));
+    pump_until(&mut app, "the full-screen preview", |app| loaded(app) == Some(500));
+    assert!(!app.preview.has_truncation_marker);
+
+    press(&mut app, key(K::Escape));
+    app.config.preview_max_lines = 200;
+    press(&mut app, key(K::Enter));
+    pump_until(&mut app, "the limited preview", |app| loaded(app) == Some(201));
+    assert!(app.preview.has_truncation_marker);
+    press(&mut app, key(K::End));
+    let marker = row_with(&mut app, "preview limited to 200 lines");
+    assert!(frame_has(&mut app, " 200 row 200"), "the last real line keeps its number");
+    assert!(!marker.contains("201"), "the marker has no line number: {marker:?}");
+
+    press(&mut app, key(K::Escape));
+    pump_until(&mut app, "the right pane preview again", |app| loaded(app) == Some(pane_height));
+    let _ = std::fs::remove_dir_all(&parent);
+}

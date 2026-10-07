@@ -143,6 +143,8 @@ pdf_metadata_enabled = true
 markdown_preview_enabled = true
 ffprobe_enabled = true
 mediainfo_enabled = true
+preview_max_lines = 10000        # Rust build: full-screen preview line limit (min 100)
+preview_max_bytes = 4194304      # Rust build: full-screen preview byte limit (min 65536)
 ```
 
 ### CLI flags

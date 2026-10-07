@@ -244,9 +244,9 @@ Research and implement image previews for Office Open XML formats (`.docx`, `.xl
 
 Investigate enabling `ENABLE_VIRTUAL_TERMINAL_INPUT` on Windows Terminal (detected via `WT_SESSION`) to get proper bracketed paste and modifier key support via VT sequences instead of structured `ReadConsoleInput` records. This would unify the input pipeline with Unix but requires significant refactoring of `WindowsInputSource`.
 
-### File previews longer than 100 lines
+### ~~File previews longer than 100 lines~~ (Done in Rust)
 
-- [ ] Allow showing more than 100 lines in file previews. Text previews stop at `MAX_PREVIEW_LINES` (100) in `src/wade-rs/src/fs/file_preview.rs` (C# `GetPreviewLines`).
+- [x] Allow showing more than 100 lines in file previews. The full-screen preview reads up to `preview_max_lines` (default 10,000) and `preview_max_bytes` (default 4 MiB); the right pane reads its own height.
 
 ### ~~Full-screen preview with the right pane disabled~~ (Done in Rust)
 

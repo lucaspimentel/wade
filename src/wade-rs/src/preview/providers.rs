@@ -137,8 +137,8 @@ impl PreviewProvider for ZipContentsPreviewProvider {
         context.zip_preview_enabled && zip_preview::is_zip_file(path)
     }
 
-    fn get_preview(&self, path: &str, _context: &PreviewContext, cancel: &CancelToken) -> Option<PreviewResult> {
-        let lines = zip_preview::get_preview_lines(path, cancel)?;
+    fn get_preview(&self, path: &str, context: &PreviewContext, cancel: &CancelToken) -> Option<PreviewResult> {
+        let lines = zip_preview::get_preview_lines(path, context.limits.lines, cancel)?;
         Some(archive_result(path, lines.iter().map(|line| StyledLine::plain(line)).collect()))
     }
 }
@@ -156,11 +156,11 @@ impl PreviewProvider for TarContentsPreviewProvider {
         context.zip_preview_enabled && (tar_preview::is_tar_archive(path) || tar_preview::is_plain_gzip(path))
     }
 
-    fn get_preview(&self, path: &str, _context: &PreviewContext, cancel: &CancelToken) -> Option<PreviewResult> {
+    fn get_preview(&self, path: &str, context: &PreviewContext, cancel: &CancelToken) -> Option<PreviewResult> {
         let body = if tar_preview::is_plain_gzip(path) {
-            tar_preview::get_gzip_styled_preview(path, cancel)?
+            tar_preview::get_gzip_styled_preview(path, context.limits, cancel)?
         } else {
-            let lines = tar_preview::get_preview_lines(path, cancel)?;
+            let lines = tar_preview::get_preview_lines(path, context.limits, cancel)?;
             lines.iter().map(|line| StyledLine::plain(line)).collect()
         };
 
@@ -180,8 +180,10 @@ impl PreviewProvider for TextPreviewProvider {
         !file_preview::is_binary(path)
     }
 
-    fn get_preview(&self, path: &str, _context: &PreviewContext, cancel: &CancelToken) -> Option<PreviewResult> {
-        let (raw_lines, metadata) = file_preview::get_preview_lines(path);
+    fn get_preview(&self, path: &str, context: &PreviewContext, cancel: &CancelToken) -> Option<PreviewResult> {
+        let limits = context.limits;
+        let (raw_lines, metadata, truncation) =
+            file_preview::get_preview_lines_limited(path, limits.lines, limits.bytes);
 
         if cancel.is_cancelled() {
             return None;
@@ -198,12 +200,20 @@ impl PreviewProvider for TextPreviewProvider {
         }
 
         let lines: Vec<&str> = raw_lines.iter().map(String::as_str).collect();
+        let mut text_lines = highlight::highlight(&lines, path);
+
+        // Rust only: the full-screen preview says where it stopped
+        let truncation = truncation.filter(|_| limits.mark_truncation);
+        if let Some(truncation) = truncation {
+            text_lines.push(crate::preview::truncation_marker(limits, truncation));
+        }
 
         Some(PreviewResult {
-            text_lines: Some(highlight::highlight(&lines, path)),
+            text_lines: Some(text_lines),
             file_type_label: label_or(path, "Text"),
             is_rendered: false,
             is_placeholder: metadata.placeholder_message.is_some(),
+            has_truncation_marker: truncation.is_some(),
             ..PreviewResult::default()
         })
     }
@@ -368,5 +378,41 @@ mod tests {
             .get_preview("anything.xyz", &test_context(), &CancelToken::new())
             .expect("result");
         assert!(result.is_placeholder);
+    }
+
+    #[test]
+    fn text_marks_a_cut_off_preview_only_when_asked() {
+        use crate::preview::PreviewLimits;
+
+        let path = crate::preview::test_path("ten.txt");
+        let text: String = (1..=10).map(|i| format!("line {i}\n")).collect();
+        std::fs::write(&path, text).unwrap();
+        let path = path.to_string_lossy().into_owned();
+        let preview = |lines, mark_truncation| {
+            let context = PreviewContext {
+                limits: PreviewLimits {
+                    lines,
+                    bytes: PreviewLimits::DEFAULT_MAX_BYTES,
+                    mark_truncation,
+                },
+                ..test_context()
+            };
+            super::TextPreviewProvider.get_preview(&path, &context, &CancelToken::new()).unwrap()
+        };
+
+        let marked = preview(5, true);
+        let lines = marked.text_lines.unwrap();
+        assert_eq!(lines.len(), 6);
+        assert_eq!(lines[5].text, "\u{2026} preview limited to 5 lines");
+        assert!(marked.has_truncation_marker);
+
+        let unmarked = preview(5, false);
+        assert_eq!(unmarked.text_lines.unwrap().len(), 5);
+        assert!(!unmarked.has_truncation_marker);
+
+        let whole = preview(10, true);
+        assert_eq!(whole.text_lines.unwrap().len(), 10, "nothing cut, no marker");
+        assert!(!whole.has_truncation_marker);
+        let _ = std::fs::remove_file(&path);
     }
 }

@@ -67,6 +67,9 @@ pub struct AppConfig {
     pub file_metadata_enabled: bool,
     pub file_previews_enabled: bool,
     pub archive_metadata_enabled: bool,
+    /// Rust only: the full-screen preview's line and byte limits.
+    pub preview_max_lines: usize,
+    pub preview_max_bytes: u64,
     pub dir_size_ssd_enabled: bool,
     pub dir_size_hdd_enabled: bool,
     pub dir_size_network_enabled: bool,
@@ -111,6 +114,8 @@ impl Default for AppConfig {
             file_metadata_enabled: true,
             file_previews_enabled: true,
             archive_metadata_enabled: true,
+            preview_max_lines: crate::preview::PreviewLimits::DEFAULT_MAX_LINES,
+            preview_max_bytes: crate::preview::PreviewLimits::DEFAULT_MAX_BYTES,
             dir_size_ssd_enabled: true,
             dir_size_hdd_enabled: false,
             dir_size_network_enabled: false,

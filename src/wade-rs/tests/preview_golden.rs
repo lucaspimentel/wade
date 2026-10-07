@@ -164,6 +164,7 @@ fn contexts(repo_root: &str) -> Vec<(&'static str, PreviewContext)> {
         image_previews_enabled: false,
         image_protocol: None,
         archive_metadata_enabled: true,
+        limits: wade::preview::PreviewLimits::CSHARP,
     };
 
     vec![
@@ -374,7 +375,21 @@ fn archive_fixtures_match_csharp_golden() {
             let _ = writeln!(out, "metadata-providers[{context_name}] {}", metadata.join(" | "));
         }
 
-        let default_context = &all_contexts[0].1;
+        // C# shows 30 lines from the first 4 KB of a gzipped text and 100
+        // archive entries; Rust uses one limit for both
+        let gzip_context = PreviewContext {
+            limits: wade::preview::PreviewLimits {
+                lines: 30,
+                bytes: 4096,
+                mark_truncation: false,
+            },
+            ..all_contexts[0].1.clone()
+        };
+        let default_context = if tar_preview::is_plain_gzip(&path) {
+            &gzip_context
+        } else {
+            &all_contexts[0].1
+        };
         let archive_providers: [&dyn PreviewProvider; 2] = [&ZipContentsPreviewProvider, &TarContentsPreviewProvider];
 
         for provider in archive_providers {

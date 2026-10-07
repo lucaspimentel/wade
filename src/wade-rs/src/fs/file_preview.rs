@@ -4,8 +4,10 @@
 use std::io::Read;
 
 use super::file_type_labels;
+use crate::preview::Truncation;
 
-const MAX_PREVIEW_LINES: usize = 100;
+/// C#'s line limit, kept for `get_preview_lines` (the parity goldens).
+const CSHARP_PREVIEW_LINES: usize = 100;
 const BINARY_CHECK_SIZE: usize = 512;
 
 /// Extensions treated as binary without reading the file.
@@ -194,11 +196,24 @@ fn detect_bomless_utf16(buffer: &[u8]) -> Option<&'static str> {
 /// (with `placeholder_message` set for placeholders).
 #[must_use]
 pub fn get_preview_lines(path: &str) -> (Vec<String>, FileMetadata) {
+    let (lines, metadata, _) =
+        get_preview_lines_limited(path, CSHARP_PREVIEW_LINES, crate::preview::PreviewLimits::DEFAULT_MAX_BYTES);
+    (lines, metadata)
+}
+
+/// `get_preview_lines` with Rust's limits: up to `line_limit` lines and
+/// `byte_limit` bytes read, plus where the text was cut off, if it was.
+#[must_use]
+pub fn get_preview_lines_limited(
+    path: &str,
+    line_limit: usize,
+    byte_limit: u64,
+) -> (Vec<String>, FileMetadata, Option<Truncation>) {
     let mut metadata = detect_file_metadata(path);
 
     if metadata.is_binary {
         metadata.placeholder_message = Some("[binary file]".to_string());
-        return (vec!["[binary file]".to_string()], metadata);
+        return (vec!["[binary file]".to_string()], metadata, None);
     }
 
     let placeholder = |message: String| {
@@ -208,11 +223,11 @@ pub fn get_preview_lines(path: &str) -> (Vec<String>, FileMetadata) {
             line_ending: None,
             placeholder_message: Some(message.clone()),
         };
-        (vec![message], metadata)
+        (vec![message], metadata, None)
     };
 
-    let lines = match read_lines(path, &metadata.encoding) {
-        Ok(lines) => lines,
+    let (lines, truncation) = match read_lines(path, &metadata.encoding, line_limit, byte_limit) {
+        Ok(result) => result,
         Err(err) if err.kind() == std::io::ErrorKind::PermissionDenied => {
             return placeholder("[access denied]".to_string());
         }
@@ -221,28 +236,59 @@ pub fn get_preview_lines(path: &str) -> (Vec<String>, FileMetadata) {
 
     if lines.is_empty() {
         metadata.placeholder_message = Some("[empty file]".to_string());
-        return (vec!["[empty file]".to_string()], metadata);
+        return (vec!["[empty file]".to_string()], metadata, None);
     }
 
-    (lines, metadata)
+    (lines, metadata, truncation)
 }
 
-/// `StreamReader.ReadLine` x 100: decodes as UTF-16 when detected (BOM or
-/// not), otherwise UTF-8 (BOM skipped, invalid bytes as U+FFFD); lines end
-/// at `\r`, `\n` or `\r\n`, and a final unterminated line counts.
-fn read_lines(path: &str, encoding: &str) -> std::io::Result<Vec<String>> {
+/// `StreamReader.ReadLine` up to `line_limit` times: decodes as UTF-16
+/// when detected (BOM or not), otherwise UTF-8 (BOM skipped, invalid bytes
+/// as U+FFFD); lines end at `\r`, `\n` or `\r\n`, and a final unterminated
+/// line counts. Reads at most `byte_limit` bytes. Also returns where the
+/// text was cut off when content remained.
+fn read_lines(
+    path: &str,
+    encoding: &str,
+    line_limit: usize,
+    byte_limit: u64,
+) -> std::io::Result<(Vec<String>, Option<Truncation>)> {
     let mut file = std::fs::File::open(path)?;
+    let file_len = file.metadata().map_or(0, |meta| meta.len());
     let mut lines = Vec::new();
     let mut decoder = Decoder::new(encoding);
     let mut current: Vec<char> = Vec::new();
     let mut pending_cr = false;
     let mut chunk = vec![0u8; 64 * 1024];
+    let mut bytes_read: u64 = 0;
+    let line_limit = line_limit.max(1);
 
     loop {
-        let n = file.read(&mut chunk)?;
-        let chars = if n == 0 { decoder.finish() } else { decoder.decode(&chunk[..n]) };
+        let remaining = byte_limit.saturating_sub(bytes_read);
+        let want = usize::try_from(remaining).unwrap_or(usize::MAX).min(chunk.len());
+        let n = if want == 0 { 0 } else { file.read(&mut chunk[..want])? };
+        bytes_read += n as u64;
+        let byte_capped = n == 0 && remaining == 0 && file_len > byte_limit;
+        let chars = if n > 0 {
+            decoder.decode(&chunk[..n])
+        } else if byte_capped {
+            // A sequence cut by the byte limit is dropped, not shown as U+FFFD
+            Vec::new()
+        } else {
+            decoder.finish()
+        };
 
         for ch in chars {
+            if lines.len() == line_limit {
+                // Anything after the last kept line break means more lines
+                if pending_cr && ch == '\n' {
+                    pending_cr = false;
+                    continue;
+                }
+
+                return Ok((lines, Some(Truncation::Lines)));
+            }
+
             if pending_cr {
                 pending_cr = false;
 
@@ -255,25 +301,19 @@ fn read_lines(path: &str, encoding: &str) -> std::io::Result<Vec<String>> {
                 '\r' | '\n' => {
                     lines.push(take_line(&mut current));
                     pending_cr = ch == '\r';
-
-                    if lines.len() == MAX_PREVIEW_LINES {
-                        return Ok(lines);
-                    }
                 }
                 _ => current.push(ch),
             }
         }
 
         if n == 0 {
-            break;
+            if lines.len() < line_limit && !current.is_empty() {
+                lines.push(take_line(&mut current));
+            }
+
+            return Ok((lines, byte_capped.then_some(Truncation::Bytes)));
         }
     }
-
-    if !current.is_empty() {
-        lines.push(take_line(&mut current));
-    }
-
-    Ok(lines)
 }
 
 fn take_line(current: &mut Vec<char>) -> String {
@@ -492,5 +532,70 @@ mod tests {
         assert_eq!(lines.len(), 1, "{lines:?}");
         assert!(metadata.placeholder_message.is_some(), "{lines:?}");
         assert_ne!(lines[0], "hello");
+    }
+
+    fn limited(
+        name: &str,
+        content: &[u8],
+        lines: usize,
+        bytes: u64,
+    ) -> (Vec<String>, Option<crate::preview::Truncation>) {
+        let path = crate::preview::test_path(name);
+        std::fs::write(&path, content).unwrap();
+        let (lines, _, truncation) = super::get_preview_lines_limited(&path.to_string_lossy(), lines, bytes);
+        let _ = std::fs::remove_file(&path);
+        (lines, truncation)
+    }
+
+    #[test]
+    fn line_limit_reads_that_many_lines_and_says_when_more_remain() {
+        use crate::preview::Truncation;
+
+        let text: String = (1..=300).map(|i| format!("line {i}\n")).collect();
+        let (lines, truncation) = limited("300.txt", text.as_bytes(), 50, 1 << 20);
+        assert_eq!(lines.len(), 50);
+        assert_eq!(lines[49], "line 50");
+        assert_eq!(truncation, Some(Truncation::Lines));
+
+        let (lines, truncation) = limited("300b.txt", text.as_bytes(), 1000, 1 << 20);
+        assert_eq!(lines.len(), 300);
+        assert_eq!(truncation, None);
+    }
+
+    #[test]
+    fn line_limit_boundary_counts_only_real_content() {
+        use crate::preview::Truncation;
+
+        for (content, expected) in [
+            ("a\nb\n", None),
+            ("a\r\nb\r\n", None),
+            ("a\rb\r", None),
+            ("a\nb", None),
+            ("a\nb\nc", Some(Truncation::Lines)),
+            ("a\nb\n\n", Some(Truncation::Lines)),
+            ("a\r\nb\r\nc", Some(Truncation::Lines)),
+        ] {
+            let (lines, truncation) = limited("edge.txt", content.as_bytes(), 2, 1 << 20);
+            assert_eq!(lines, ["a", "b"], "{content:?}");
+            assert_eq!(truncation, expected, "{content:?}");
+        }
+    }
+
+    #[test]
+    fn byte_limit_cuts_a_long_line_without_a_broken_character() {
+        use crate::preview::Truncation;
+
+        let (lines, truncation) = limited("long.txt", &[b'x'; 10_000], 100, 1000);
+        assert_eq!(lines, ["x".repeat(1000)]);
+        assert_eq!(truncation, Some(Truncation::Bytes));
+
+        // 3 bytes of "\u{e9}\u{e9}" plus half of the next one: the half is dropped
+        let (lines, truncation) = limited("utf8.txt", "\u{e9}\u{e9}\u{e9}".as_bytes(), 100, 5);
+        assert_eq!(lines, ["\u{e9}\u{e9}"]);
+        assert_eq!(truncation, Some(Truncation::Bytes));
+
+        let (lines, truncation) = limited("exact.txt", b"abc", 100, 3);
+        assert_eq!(lines, ["abc"]);
+        assert_eq!(truncation, None, "a file of exactly the limit is complete");
     }
 }

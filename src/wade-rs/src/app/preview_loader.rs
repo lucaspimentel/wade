@@ -174,6 +174,7 @@ fn load_with_provider(
             file_type_label: result.file_type_label,
             is_rendered: result.is_rendered,
             is_placeholder: result.is_placeholder,
+            has_truncation_marker: result.has_truncation_marker,
         })),
         (None, None) => Ok(()),
     };
@@ -214,6 +215,7 @@ mod tests {
             image_previews_enabled: true,
             image_protocol: Some(crate::imaging::ImageProtocol::Sixel),
             archive_metadata_enabled: true,
+            limits: crate::preview::PreviewLimits::CSHARP,
         }
     }
 

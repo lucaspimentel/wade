@@ -47,6 +47,88 @@ pub struct PreviewContext {
     /// need just a protocol).
     pub image_protocol: Option<ImageProtocol>,
     pub archive_metadata_enabled: bool,
+    /// How much text and how many archive entries to read (Rust only).
+    pub limits: PreviewLimits,
+}
+
+/// How much a preview reads (Rust only; C# reads 100 lines or entries).
+/// The right pane reads its own height; the full-screen preview reads
+/// `preview_max_lines` and `preview_max_bytes` and marks a cut-off text.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PreviewLimits {
+    /// Text lines, archive entries and gzip text lines.
+    pub lines: usize,
+    /// Bytes read from a text file or a gzip payload.
+    pub bytes: u64,
+    /// Append a dim last line to text that was cut off.
+    pub mark_truncation: bool,
+}
+
+impl PreviewLimits {
+    pub const DEFAULT_MAX_LINES: usize = 10_000;
+    pub const DEFAULT_MAX_BYTES: u64 = 4 * 1024 * 1024;
+    pub const MIN_MAX_LINES: usize = 100;
+    pub const MIN_MAX_BYTES: u64 = 64 * 1024;
+
+    /// C#'s 100 lines or entries, without a marker (tests and goldens).
+    pub const CSHARP: Self = Self {
+        lines: 100,
+        bytes: Self::DEFAULT_MAX_BYTES,
+        mark_truncation: false,
+    };
+
+    /// The limits for a pane `height` rows tall (at least one line).
+    #[must_use]
+    pub fn for_pane(height: i32, max_bytes: u64) -> Self {
+        Self {
+            lines: usize::try_from(height).unwrap_or(0).max(1),
+            bytes: max_bytes,
+            mark_truncation: false,
+        }
+    }
+
+    /// The full-screen limits from the config.
+    #[must_use]
+    pub const fn full_screen(max_lines: usize, max_bytes: u64) -> Self {
+        Self {
+            lines: max_lines,
+            bytes: max_bytes,
+            mark_truncation: true,
+        }
+    }
+}
+
+/// Where a text preview was cut off.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Truncation {
+    Lines,
+    Bytes,
+}
+
+/// The dim last line of a cut-off text preview.
+#[must_use]
+pub fn truncation_marker(limits: PreviewLimits, truncation: Truncation) -> StyledLine {
+    let text = match truncation {
+        Truncation::Lines => format!("\u{2026} preview limited to {} lines", group_thousands(limits.lines as u64)),
+        Truncation::Bytes => format!(
+            "\u{2026} preview limited to {}",
+            crate::ui::format_helpers::format_size_string(i64::try_from(limits.bytes).unwrap_or(i64::MAX))
+        ),
+    };
+    let len = text.chars().count();
+    StyledLine::with_spans(&text, vec![crate::highlight::StyledSpan::new(0, len, crate::highlight::TokenKind::Comment)])
+}
+
+fn group_thousands(value: u64) -> String {
+    let digits = value.to_string();
+    let mut out = String::new();
+    for (i, ch) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
+            out.push(',');
+        }
+        out.push(ch);
+    }
+    out
 }
 
 /// Port of `PreviewResult`.
@@ -63,6 +145,9 @@ pub struct PreviewResult {
     pub image: Option<ImageData>,
     pub image_pixel_width: i32,
     pub image_pixel_height: i32,
+    /// The last text line is a truncation marker: drawn without a line
+    /// number (Rust only).
+    pub has_truncation_marker: bool,
 }
 
 /// Port of `MetadataEntry`. An empty label renders as a list item.
@@ -131,6 +216,7 @@ pub(crate) fn test_context() -> PreviewContext {
         image_previews_enabled: true,
         image_protocol: Some(ImageProtocol::Sixel),
         archive_metadata_enabled: true,
+        limits: PreviewLimits::CSHARP,
     }
 }
 

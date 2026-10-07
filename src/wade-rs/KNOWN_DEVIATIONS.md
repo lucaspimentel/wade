@@ -288,3 +288,18 @@ None. Phase 9 closed the last temporary entries.
   on Enter when the pane is hidden. Leaving the expanded preview then clears
   the preview state instead of reloading it into the hidden pane. Files with
   no preview (binary files, or previews turned off) still do nothing.
+- **Preview limits depend on the view (Rust-only).** C# reads 100 text
+  lines, 100 archive (zip, tar, MSI) entries and 30 lines from the first
+  4 KB of a gzipped text, in both the right pane and the full-screen
+  preview, and stops silently.
+  - The right pane reads only as many lines or entries as it has rows.
+  - The full-screen preview reads up to `preview_max_lines` lines or
+    entries (default 10,000, minimum 100) and `preview_max_bytes` bytes of
+    text or gzip payload (default 4 MiB, minimum 64 KiB). Both keys go in
+    the config file only; like `image_protocol`, they are saved only when
+    changed, and `--show-config` lists them before `start_path`.
+  - A cut-off text or gzip preview in full-screen ends with a dim
+    "… preview limited to N lines" (or "to SIZE") line, drawn without a
+    line number. Archive listings keep their "... and N more entries" line.
+  - The archive golden test reads plain `.gz` files with C#'s 30 lines and
+    4 KB to stay comparable.

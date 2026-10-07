@@ -12,8 +12,6 @@ use crate::highlight::StyledLine;
 use crate::input::CancelToken;
 use crate::ui::format_helpers::format_size_string;
 
-const MAX_ENTRIES: usize = 100;
-
 /// A File table row: `MsiFileEntry`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MsiFileEntry {
@@ -120,7 +118,7 @@ impl PreviewProvider for MsiPreviewProvider {
         is_msi(path)
     }
 
-    fn get_preview(&self, path: &str, _context: &PreviewContext, cancel: &CancelToken) -> Option<PreviewResult> {
+    fn get_preview(&self, path: &str, context: &PreviewContext, cancel: &CancelToken) -> Option<PreviewResult> {
         if cancel.is_cancelled() {
             return None;
         }
@@ -142,7 +140,7 @@ impl PreviewProvider for MsiPreviewProvider {
         }
 
         Some(PreviewResult {
-            text_lines: Some(file_listing(&mut files)),
+            text_lines: Some(file_listing(&mut files, context.limits.lines)),
             file_type_label: Some("MSI".to_string()),
             is_rendered: true,
             ..PreviewResult::default()
@@ -151,11 +149,11 @@ impl PreviewProvider for MsiPreviewProvider {
 }
 
 /// The listing body of `GetPreview`: sorted by name (OrdinalIgnoreCase),
-/// capped at 100 rows.
+/// capped at `entry_limit` rows (C#: 100).
 #[must_use]
-pub fn file_listing(files: &mut [MsiFileEntry]) -> Vec<StyledLine> {
+pub fn file_listing(files: &mut [MsiFileEntry], entry_limit: usize) -> Vec<StyledLine> {
     files.sort_by(|a, b| crate::text::compare_ordinal_ignore_case(&a.file_name, &b.file_name));
-    let take = files.len().min(MAX_ENTRIES);
+    let take = files.len().min(entry_limit);
     let mut lines = Vec::with_capacity(take + 4);
     lines.push(StyledLine::plain("  Installer Files"));
     lines.push(StyledLine::plain(&format!("  {}", "\u{2500}".repeat(16))));
@@ -166,8 +164,8 @@ pub fn file_listing(files: &mut [MsiFileEntry]) -> Vec<StyledLine> {
         lines.push(StyledLine::plain(&format!("  {size:>10}  {}", entry.file_name)));
     }
 
-    if files.len() > MAX_ENTRIES {
-        lines.push(StyledLine::plain(&format!("... and {} more files", files.len() - MAX_ENTRIES)));
+    if files.len() > entry_limit {
+        lines.push(StyledLine::plain(&format!("... and {} more files", files.len() - entry_limit)));
     }
 
     lines
@@ -433,7 +431,7 @@ mod tests {
                 file_size: 1,
             })
             .collect();
-        let lines = file_listing(&mut files);
+        let lines = file_listing(&mut files, 100);
         assert_eq!(lines.len(), 3 + 100 + 1);
         assert_eq!(lines.last().unwrap().text, "... and 5 more files");
     }

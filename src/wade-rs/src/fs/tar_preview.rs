@@ -17,10 +17,9 @@ use std::io::{self, BufReader, Read, Seek, SeekFrom};
 use crate::fs::gzip::{GzipReader, read_fully};
 use crate::highlight::StyledLine;
 use crate::input::CancelToken;
+use crate::preview::{PreviewLimits, Truncation, truncation_marker};
 use crate::ui::format_helpers::format_size_string;
 
-const MAX_ENTRIES: usize = 100;
-const TEXT_HEAD_LINES: usize = 30;
 const BINARY_CHECK_SIZE: usize = 4096;
 const RECORD_SIZE: usize = 512;
 const USTAR_MAGIC_OFFSET: usize = 257;
@@ -484,9 +483,13 @@ fn with_tar_source<T>(path: &str, f: impl FnOnce(&mut dyn TarSource) -> Result<T
     }
 }
 
-/// Port of `RenderTarEntries`: the first 100 non-directory entries in
-/// archive order, then sorted case-insensitively.
-fn render_tar_entries(source: &mut dyn TarSource, cancel: &CancelToken) -> Result<Option<Vec<String>>, TarError> {
+/// Port of `RenderTarEntries`: the first `entry_limit` (C#: 100)
+/// non-directory entries in archive order, then sorted case-insensitively.
+fn render_tar_entries(
+    source: &mut dyn TarSource,
+    entry_limit: usize,
+    cancel: &CancelToken,
+) -> Result<Option<Vec<String>>, TarError> {
     let mut reader = TarReader::new(source);
     let mut entries: Vec<(String, i64)> = Vec::new();
     let mut total_files = 0usize;
@@ -505,7 +508,7 @@ fn render_tar_entries(source: &mut dyn TarSource, cancel: &CancelToken) -> Resul
         }
 
         total_files += 1;
-        if entries.len() < MAX_ENTRIES {
+        if entries.len() < entry_limit {
             entries.push((entry.name, entry.length));
         }
     }
@@ -527,8 +530,8 @@ fn render_tar_entries(source: &mut dyn TarSource, cancel: &CancelToken) -> Resul
         lines.push(format!("  {:>10}  {name}", format_size_string(size)));
     }
 
-    if total_files > MAX_ENTRIES {
-        lines.push(format!("... and {} more entries", total_files - MAX_ENTRIES));
+    if total_files > entry_limit {
+        lines.push(format!("... and {} more entries", total_files - entry_limit));
     }
 
     Ok(Some(lines))
@@ -590,18 +593,21 @@ fn invalid_or_none<T>(result: Result<Option<T>, TarError>, invalid: impl FnOnce(
 
 /// Port of `GetPreviewLines` (tar and tar.gz listings; plain .gz text).
 #[must_use]
-pub fn get_preview_lines(path: &str, cancel: &CancelToken) -> Option<Vec<String>> {
+pub fn get_preview_lines(path: &str, limits: PreviewLimits, cancel: &CancelToken) -> Option<Vec<String>> {
     let invalid = || vec!["[invalid archive]".to_string()];
 
     if ends_with_ignore_case(path, ".tar")
         || ends_with_ignore_case(path, ".tar.gz")
         || ends_with_ignore_case(path, ".tgz")
     {
-        return invalid_or_none(with_tar_source(path, |source| render_tar_entries(source, cancel)), invalid);
+        return invalid_or_none(
+            with_tar_source(path, |source| render_tar_entries(source, limits.lines, cancel)),
+            invalid,
+        );
     }
 
     if ends_with_ignore_case(path, ".gz") {
-        return invalid_or_none(render_gzip(path, cancel), invalid);
+        return invalid_or_none(render_gzip(path, limits, cancel), invalid);
     }
 
     None
@@ -695,14 +701,17 @@ fn build_gzip_metadata_line(path: &str) -> Result<String, TarError> {
 struct GzipContent {
     lines: Vec<String>,
     is_text: bool,
+    truncation: Option<Truncation>,
 }
 
-/// Port of `ReadGzipContent`: the first 4 KB decompressed, as up to 30
-/// text lines, or a placeholder.
-fn read_gzip_content(path: &str, cancel: &CancelToken) -> Result<Option<GzipContent>, TarError> {
+/// Port of `ReadGzipContent`: the binary check on the first 4 KB
+/// decompressed, then text lines up to `limits` (C#: 30 lines from those
+/// 4 KB), or a placeholder.
+fn read_gzip_content(path: &str, limits: PreviewLimits, cancel: &CancelToken) -> Result<Option<GzipContent>, TarError> {
     let placeholder = |text: &str| GzipContent {
         lines: vec![text.to_string()],
         is_text: false,
+        truncation: None,
     };
 
     let mut gz = match File::open(path) {
@@ -710,29 +719,88 @@ fn read_gzip_content(path: &str, cancel: &CancelToken) -> Result<Option<GzipCont
         Err(_) => return Ok(Some(placeholder("[read error]"))),
     };
 
-    let mut buf = vec![0u8; BINARY_CHECK_SIZE];
-    let read = match read_fully(&mut gz, &mut buf) {
-        Ok(read) => read,
-        Err(err) if err.kind() == io::ErrorKind::InvalidData => return Ok(Some(placeholder("[invalid gzip content]"))),
-        Err(_) => return Ok(Some(placeholder("[read error]"))),
+    let byte_limit = usize::try_from(limits.bytes).unwrap_or(usize::MAX).max(1);
+    let line_limit = limits.lines.max(1);
+    let mut data = Vec::new();
+    let mut breaks = 0usize;
+    let mut chunk = vec![0u8; BINARY_CHECK_SIZE];
+    let mut more = false;
+
+    // Read whole chunks until there are more lines than wanted or the byte
+    // limit is reached, so the right pane does not decompress megabytes
+    loop {
+        let read = match read_fully(&mut gz, &mut chunk) {
+            Ok(read) => read,
+            Err(err) if err.kind() == io::ErrorKind::InvalidData => {
+                return Ok(Some(placeholder("[invalid gzip content]")));
+            }
+            Err(_) => return Ok(Some(placeholder("[read error]"))),
+        };
+
+        if cancel.is_cancelled() {
+            return Ok(None);
+        }
+
+        if data.is_empty() {
+            if read == 0 {
+                return Ok(Some(placeholder("[empty]")));
+            }
+
+            if chunk[..read].contains(&0) {
+                return Ok(Some(placeholder("[binary content]")));
+            }
+        }
+
+        if read == 0 {
+            break;
+        }
+
+        let room = byte_limit - data.len();
+        if read > room {
+            data.extend_from_slice(&chunk[..room]);
+            more = true;
+            break;
+        }
+
+        data.extend_from_slice(&chunk[..read]);
+        breaks += chunk[..read].iter().filter(|&&b| b == b'\n' || b == b'\r').count();
+
+        if breaks > line_limit || data.len() == byte_limit {
+            // Is there anything past what was kept?
+            more = data.len() == byte_limit && read_fully(&mut gz, &mut chunk[..1]).is_ok_and(|n| n > 0);
+            break;
+        }
+
+        if read < chunk.len() {
+            break;
+        }
+    }
+
+    let text = utf8_prefix_lossy(&data, more);
+    let mut lines = string_reader_lines(&text);
+    let truncation = if lines.len() > line_limit {
+        lines.truncate(line_limit);
+        Some(Truncation::Lines)
+    } else if more {
+        Some(Truncation::Bytes)
+    } else {
+        None
     };
 
-    if cancel.is_cancelled() {
-        return Ok(None);
+    Ok(Some(GzipContent { lines, is_text: true, truncation }))
+}
+
+/// `String::from_utf8_lossy`, dropping a sequence cut off at the end when
+/// the text continues past `data`.
+fn utf8_prefix_lossy(data: &[u8], cut: bool) -> String {
+    if cut
+        && let Err(err) = std::str::from_utf8(data)
+        && err.error_len().is_none()
+    {
+        return String::from_utf8_lossy(&data[..err.valid_up_to()]).into_owned();
     }
 
-    if read == 0 {
-        return Ok(Some(placeholder("[empty]")));
-    }
-
-    if buf[..read].contains(&0) {
-        return Ok(Some(placeholder("[binary content]")));
-    }
-
-    let text = String::from_utf8_lossy(&buf[..read]);
-    let lines = string_reader_lines(&text).into_iter().take(TEXT_HEAD_LINES).collect();
-
-    Ok(Some(GzipContent { lines, is_text: true }))
+    String::from_utf8_lossy(data).into_owned()
 }
 
 /// `StringReader.ReadLine` until null: lines end at \r, \n or \r\n, and a
@@ -762,17 +830,21 @@ fn string_reader_lines(text: &str) -> Vec<String> {
 }
 
 /// Port of `RenderGzip`.
-fn render_gzip(path: &str, cancel: &CancelToken) -> Result<Option<Vec<String>>, TarError> {
+fn render_gzip(path: &str, limits: PreviewLimits, cancel: &CancelToken) -> Result<Option<Vec<String>>, TarError> {
     if looks_like_tar_gzip(path, cancel) {
-        return render_tar_entries(&mut open_gzip(path)?, cancel);
+        return render_tar_entries(&mut open_gzip(path)?, limits.lines, cancel);
     }
 
     let mut lines = vec![build_gzip_metadata_line(path)?, "\u{2500}".repeat(16)];
-    let Some(content) = read_gzip_content(path, cancel)? else {
+    let Some(content) = read_gzip_content(path, limits, cancel)? else {
         return Ok(None);
     };
 
     lines.extend(content.lines);
+    if let Some(truncation) = content.truncation.filter(|_| limits.mark_truncation) {
+        lines.push(truncation_marker(limits, truncation).text);
+    }
+
     Ok(Some(lines))
 }
 
@@ -780,25 +852,31 @@ fn render_gzip(path: &str, cancel: &CancelToken) -> Result<Option<Vec<String>>, 
 /// the metadata line, a rule, and the text head highlighted by the inner
 /// file name (`script.py.gz` as Python).
 #[must_use]
-pub fn get_gzip_styled_preview(path: &str, cancel: &CancelToken) -> Option<Vec<StyledLine>> {
+pub fn get_gzip_styled_preview(path: &str, limits: PreviewLimits, cancel: &CancelToken) -> Option<Vec<StyledLine>> {
     let result = (|| -> Result<Option<Vec<StyledLine>>, TarError> {
         if looks_like_tar_gzip(path, cancel) {
-            let lines = render_tar_entries(&mut open_gzip(path)?, cancel)?;
+            let lines = render_tar_entries(&mut open_gzip(path)?, limits.lines, cancel)?;
             return Ok(lines.map(|lines| lines.iter().map(|line| StyledLine::plain(line)).collect()));
         }
 
         let mut result =
             vec![StyledLine::plain(&build_gzip_metadata_line(path)?), StyledLine::plain(&"\u{2500}".repeat(16))];
 
-        let Some(content) = read_gzip_content(path, cancel)? else {
+        let Some(content) = read_gzip_content(path, limits, cancel)? else {
             return Ok(None);
         };
+
+        let truncation = content.truncation.filter(|_| limits.mark_truncation);
 
         if content.is_text && !content.lines.is_empty() {
             let lines: Vec<&str> = content.lines.iter().map(String::as_str).collect();
             result.extend(crate::highlight::highlight(&lines, file_name_without_extension(path)));
         } else {
             result.extend(content.lines.iter().map(|line| StyledLine::plain(line)));
+        }
+
+        if let Some(truncation) = truncation {
+            result.push(truncation_marker(limits, truncation));
         }
 
         Ok(Some(result))
@@ -816,6 +894,7 @@ mod tests {
 
     use super::{TarFormat, get_gzip_styled_preview, get_preview_lines, get_stats, is_plain_gzip, is_tar_archive};
     use crate::input::CancelToken;
+    use crate::preview::PreviewLimits;
 
     fn cancelled() -> CancelToken {
         let cancel = CancelToken::new();
@@ -851,12 +930,12 @@ mod tests {
 
     #[test]
     fn cancelled_returns_none() {
-        assert_eq!(get_preview_lines(&fixture("plain.tar"), &cancelled()), None);
-        assert_eq!(get_preview_lines(&fixture("plain.tgz"), &cancelled()), None);
+        assert_eq!(get_preview_lines(&fixture("plain.tar"), PreviewLimits::CSHARP, &cancelled()), None);
+        assert_eq!(get_preview_lines(&fixture("plain.tgz"), PreviewLimits::CSHARP, &cancelled()), None);
 
         let path = crate::preview::test_path("text.txt.gz");
         std::fs::write(&path, gz(b"hello\n")).unwrap();
-        assert!(get_gzip_styled_preview(&path.to_string_lossy(), &cancelled()).is_none());
+        assert!(get_gzip_styled_preview(&path.to_string_lossy(), PreviewLimits::CSHARP, &cancelled()).is_none());
     }
 
     #[test]
@@ -890,7 +969,47 @@ mod tests {
         header[156] = b'S';
         std::fs::write(&path, header).unwrap();
 
-        assert_eq!(get_preview_lines(&path.to_string_lossy(), &CancelToken::new()), None);
+        assert_eq!(get_preview_lines(&path.to_string_lossy(), PreviewLimits::CSHARP, &CancelToken::new()), None);
         assert_eq!(get_stats(&path.to_string_lossy(), &CancelToken::new()), None);
+    }
+
+    fn limits(lines: usize, bytes: u64, mark_truncation: bool) -> PreviewLimits {
+        PreviewLimits { lines, bytes, mark_truncation }
+    }
+
+    #[test]
+    fn tar_listing_stops_at_the_entry_limit() {
+        let lines = get_preview_lines(&fixture("many.tar"), limits(5, 1 << 20, true), &CancelToken::new()).unwrap();
+        assert_eq!(lines.len(), 1 + 5 + 1, "{lines:?}");
+        assert!(lines.last().unwrap().starts_with("... and "), "{lines:?}");
+    }
+
+    #[test]
+    fn gzip_text_reads_up_to_the_limits_and_marks_the_cut() {
+        let text: String = (1..=300).map(|i| format!("line {i}\n")).collect();
+        let path = crate::preview::test_path("log.txt.gz");
+        std::fs::write(&path, gz(text.as_bytes())).unwrap();
+        let path = path.to_string_lossy().into_owned();
+        let texts = |limits| -> Vec<String> {
+            get_gzip_styled_preview(&path, limits, &CancelToken::new())
+                .unwrap()
+                .into_iter()
+                .map(|l| l.text)
+                .collect()
+        };
+
+        // Metadata line and rule, then the text
+        let lines = texts(limits(50, 1 << 20, true));
+        assert_eq!(lines.len(), 2 + 50 + 1);
+        assert_eq!(lines[51], "line 50");
+        assert_eq!(lines[52], "\u{2026} preview limited to 50 lines");
+
+        assert_eq!(texts(limits(50, 1 << 20, false)).len(), 2 + 50, "no marker in the right pane");
+        assert_eq!(texts(limits(1000, 1 << 20, true)).len(), 2 + 300, "all of it, no marker");
+
+        let lines = texts(limits(1000, 100, true));
+        assert!(lines.last().unwrap().starts_with("\u{2026} preview limited to "), "{lines:?}");
+        assert!(!lines.last().unwrap().ends_with("lines"), "{lines:?}");
+        assert!(lines.len() < 2 + 20, "{lines:?}");
     }
 }

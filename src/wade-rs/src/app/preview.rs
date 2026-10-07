@@ -12,7 +12,7 @@ use crate::input::{
     PreviewLoadingCompleteEvent, PreviewReadyEvent,
 };
 use crate::preview::providers::NonePreviewProvider;
-use crate::preview::{MetadataProvider, MetadataSection, PreviewContext, PreviewProvider, registry};
+use crate::preview::{MetadataProvider, MetadataSection, PreviewContext, PreviewLimits, PreviewProvider, registry};
 use crate::screen::{CellStyle, Color, ScreenBuffer};
 use crate::ui::action_palette::{ActionMenuItem, ActionMenuLevel};
 use crate::ui::layout::Rect;
@@ -49,6 +49,9 @@ pub struct PreviewState {
     pub(crate) loading: bool,
     pub(crate) is_rendered: bool,
     pub(crate) is_placeholder: bool,
+    /// Rust only: the last cached line is a truncation marker, drawn
+    /// without a line number.
+    pub(crate) has_truncation_marker: bool,
     pub(crate) expanded_scroll_offset: usize,
     // Image previews (C# `_cachedSixelData`, `_cachedImagePath`, ...)
     pub(crate) cached_image: Option<ImageData>,
@@ -136,6 +139,13 @@ impl App {
             image_previews_enabled: self.image_previews_effective,
             image_protocol: self.image_protocol,
             archive_metadata_enabled: self.config.archive_metadata_enabled,
+            // Rust only: the right pane reads what it can show; full-screen
+            // reads up to the config limits and marks a cut-off text
+            limits: if self.input_mode == InputMode::ExpandedPreview {
+                PreviewLimits::full_screen(self.config.preview_max_lines, self.config.preview_max_bytes)
+            } else {
+                PreviewLimits::for_pane(pane_height, self.config.preview_max_bytes)
+            },
         }
     }
 
@@ -195,6 +205,7 @@ impl App {
         state.is_combined_preview = false;
         state.is_rendered = false;
         state.is_placeholder = false;
+        state.has_truncation_marker = false;
         let sender = self.pipeline.sender();
         self.preview
             .loader
@@ -235,6 +246,7 @@ impl App {
         state.loading = false;
         state.is_rendered = event.is_rendered;
         state.is_placeholder = event.is_placeholder;
+        state.has_truncation_marker = event.has_truncation_marker;
         state.is_image_preview = false;
         state.is_combined_preview = false;
         state.set_image(None);
@@ -277,6 +289,7 @@ impl App {
         state.is_image_preview = false;
         state.is_combined_preview = true;
         state.is_rendered = event.is_rendered;
+        state.has_truncation_marker = false;
         state.loading = false;
     }
 
@@ -611,13 +624,23 @@ impl App {
             fill_blank(buffer, pane, pane.top);
             self.draw_image_area(buffer, pane, 0, true);
         } else if let Some(lines) = &self.preview.cached_styled_lines {
-            PaneRenderer::render_preview(
-                buffer,
-                pane,
-                lines,
-                self.preview.expanded_scroll_offset,
-                !self.preview.is_rendered,
-            );
+            let scroll = self.preview.expanded_scroll_offset;
+            let numbered = !self.preview.is_rendered;
+
+            if let (true, true, Some((marker, numbered_lines))) =
+                (numbered, self.preview.has_truncation_marker, lines.split_last())
+            {
+                // Rust only: the truncation marker gets no line number
+                PaneRenderer::render_preview(buffer, pane, numbered_lines, scroll, true);
+                let marker_row = i32::try_from(numbered_lines.len()).unwrap_or(i32::MAX) - scroll as i32;
+
+                if (0..pane.height).contains(&marker_row) {
+                    let row = Rect::new(pane.left + 5, pane.top + marker_row, (pane.width - 5).max(0), 1);
+                    PaneRenderer::render_preview(buffer, row, std::slice::from_ref(marker), 0, false);
+                }
+            } else {
+                PaneRenderer::render_preview(buffer, pane, lines, scroll, numbered);
+            }
         }
     }
 
@@ -918,6 +941,7 @@ mod tests {
             file_type_label: None,
             is_rendered: false,
             is_placeholder: false,
+            has_truncation_marker: false,
         });
         app.handle_metadata_ready(MetadataReadyEvent {
             path: "/stale".to_string(),
@@ -951,6 +975,7 @@ mod tests {
             file_type_label: None,
             is_rendered: false,
             is_placeholder: false,
+            has_truncation_marker: false,
         });
         // C#: the preview's label (null) replaces it
         assert_eq!(app.preview.cached_file_type_label, None);

@@ -2,6 +2,7 @@
 //! `~/.config/wade/config.toml`, `key = value` lines with `#` comments; keys
 //! match C# exactly.
 
+use crate::preview::PreviewLimits;
 use std::path::{Path, PathBuf};
 
 use crate::app::AppConfig;
@@ -66,6 +67,18 @@ pub fn load_config(args: &[String]) -> AppConfig {
             "show_icons_enabled" => config.show_icons_enabled = parse_bool(value, config.show_icons_enabled),
             "image_previews_enabled" => {
                 config.image_previews_enabled = parse_bool(value, config.image_previews_enabled)
+            }
+            // Rust-only keys: invalid values keep the default, small ones
+            // are raised to the minimum
+            "preview_max_lines" => {
+                if let Ok(lines) = value.parse::<usize>() {
+                    config.preview_max_lines = lines.max(PreviewLimits::MIN_MAX_LINES);
+                }
+            }
+            "preview_max_bytes" => {
+                if let Ok(bytes) = value.parse::<u64>() {
+                    config.preview_max_bytes = bytes.max(PreviewLimits::MIN_MAX_BYTES);
+                }
             }
             "image_protocol" => {
                 if let Some(setting) = crate::imaging::ImageProtocolSetting::parse(value) {
@@ -238,6 +251,8 @@ pub fn to_json(config: &AppConfig) -> String {
 
     // Rust-only key
     json.push_str(&format!("\"image_protocol\":\"{}\",", config.image_protocol.name()));
+    json.push_str(&format!("\"preview_max_lines\":{},", config.preview_max_lines));
+    json.push_str(&format!("\"preview_max_bytes\":{},", config.preview_max_bytes));
     // C# escapes only backslashes in the start path
     json.push_str(&format!("\"start_path\":\"{}\"}}", config.start_path.replace('\\', "\\\\")));
     json
@@ -317,6 +332,14 @@ pub fn save_config(config: &AppConfig) -> std::io::Result<()> {
     let mut content = content;
     if config.image_protocol != crate::imaging::ImageProtocolSetting::Auto {
         content.push_str(&format!("image_protocol = {}\n", config.image_protocol.name()));
+    }
+
+    if config.preview_max_lines != PreviewLimits::DEFAULT_MAX_LINES {
+        content.push_str(&format!("preview_max_lines = {}\n", config.preview_max_lines));
+    }
+
+    if config.preview_max_bytes != PreviewLimits::DEFAULT_MAX_BYTES {
+        content.push_str(&format!("preview_max_bytes = {}\n", config.preview_max_bytes));
     }
 
     std::fs::write(path, content)
@@ -655,6 +678,37 @@ mediainfo_enabled = true
     }
 
     #[test]
+    fn preview_limits_parse_clamp_and_are_saved_only_when_set() {
+        let config = config_with_path("preview-limits.txt");
+        let path = config_path(&config);
+        let load = |text: &str| {
+            std::fs::write(&path, text).unwrap();
+            let loaded = load_config(&[format!("--config-file={}", path.display())]);
+            (loaded.preview_max_lines, loaded.preview_max_bytes)
+        };
+
+        assert_eq!(load(""), (10_000, 4 * 1024 * 1024));
+        assert_eq!(load("preview_max_lines = 500\npreview_max_bytes = 1048576\n"), (500, 1_048_576));
+        assert_eq!(load("preview_max_lines = 5\npreview_max_bytes = 10\n"), (100, 64 * 1024), "raised to the minimum");
+        assert_eq!(load("preview_max_lines = lots\npreview_max_bytes = -1\n"), (10_000, 4 * 1024 * 1024));
+
+        save_config(&AppConfig {
+            preview_max_lines: 500,
+            preview_max_bytes: 1_048_576,
+            ..config.clone()
+        })
+        .unwrap();
+        let saved = std::fs::read_to_string(&path).unwrap();
+        assert!(saved.ends_with("mediainfo_enabled = true\npreview_max_lines = 500\npreview_max_bytes = 1048576\n"));
+        assert_eq!(load(&saved), (500, 1_048_576));
+
+        save_config(&config).unwrap();
+        assert!(!std::fs::read_to_string(&path).unwrap().contains("preview_max"), "defaults keep the C# layout");
+        assert!(to_json(&config).contains("\"preview_max_lines\":10000,\"preview_max_bytes\":4194304,"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
     fn to_json_lists_every_key_in_order() {
         let config = AppConfig {
             sort_mode: SortMode::Modified,
@@ -666,6 +720,8 @@ mediainfo_enabled = true
         let mut keys: Vec<&str> = bool_keys().iter().map(|(key, _, _)| *key).collect();
         keys.insert(4, "sort_mode");
         keys.push("image_protocol");
+        keys.push("preview_max_lines");
+        keys.push("preview_max_bytes");
         keys.push("start_path");
         let expected_keys: Vec<String> = keys.iter().map(|key| format!("\"{key}\":")).collect();
         let mut position = 0;

@@ -8,8 +8,6 @@ use std::io::{self, Read, Seek, SeekFrom};
 use crate::input::CancelToken;
 use crate::ui::format_helpers::{format_percent_p0, format_size_string};
 
-const MAX_ENTRIES: usize = 100;
-
 const EOCD_SIGNATURE: [u8; 4] = [0x50, 0x4b, 0x05, 0x06];
 const EOCD_SIZE: u64 = 22;
 const MAX_COMMENT_LENGTH: u64 = 65535;
@@ -329,7 +327,7 @@ pub fn read_entry_data(path: &str, entry: &ZipEntry) -> Result<Vec<u8>, ZipError
 /// Port of `GetPreviewLines`. `None` on cancellation or an I/O error (C#
 /// lets the `IOException` escape, so no preview arrives either).
 #[must_use]
-pub fn get_preview_lines(path: &str, cancel: &CancelToken) -> Option<Vec<String>> {
+pub fn get_preview_lines(path: &str, entry_limit: usize, cancel: &CancelToken) -> Option<Vec<String>> {
     let entries = match read_entries(path) {
         Ok(entries) => entries,
         Err(ZipError::InvalidData) => return Some(vec!["[invalid archive]".to_string()]),
@@ -352,7 +350,7 @@ pub fn get_preview_lines(path: &str, cancel: &CancelToken) -> Option<Vec<String>
 
     files.sort_by(|a, b| crate::text::compare_ordinal_ignore_case(&a.full_name, &b.full_name));
 
-    let take = files.len().min(MAX_ENTRIES);
+    let take = files.len().min(entry_limit);
     let mut lines = Vec::with_capacity(take + 2);
     lines.push("        Size  Compressed  Ratio  Name".to_string());
 
@@ -372,8 +370,8 @@ pub fn get_preview_lines(path: &str, cancel: &CancelToken) -> Option<Vec<String>
         lines.push(format!("  {size:>10}  {compressed:>10}  {ratio:>5}  {}", entry.full_name));
     }
 
-    if files.len() > MAX_ENTRIES {
-        lines.push(format!("... and {} more entries", files.len() - MAX_ENTRIES));
+    if files.len() > entry_limit {
+        lines.push(format!("... and {} more entries", files.len() - entry_limit));
     }
 
     Some(lines)
@@ -421,24 +419,35 @@ mod tests {
         std::fs::write(&path, eocd).unwrap();
 
         let path = path.to_string_lossy().into_owned();
-        assert_eq!(get_preview_lines(&path, &CancelToken::new()), Some(vec!["[empty archive]".to_string()]));
+        assert_eq!(get_preview_lines(&path, 100, &CancelToken::new()), Some(vec!["[empty archive]".to_string()]));
 
         let cancel = CancelToken::new();
         cancel.cancel();
-        assert_eq!(get_preview_lines(&path, &cancel), None);
+        assert_eq!(get_preview_lines(&path, 100, &cancel), None);
     }
 
     #[test]
     fn missing_files_are_io_errors_and_tiny_files_are_invalid() {
-        assert_eq!(get_preview_lines("/no/such/file.zip", &CancelToken::new()), None);
+        assert_eq!(get_preview_lines("/no/such/file.zip", 100, &CancelToken::new()), None);
 
         let tiny = crate::preview::test_path("tiny.zip");
         for content in [&b""[..], b"PK", b"this is not a zip"] {
             std::fs::write(&tiny, content).unwrap();
             assert_eq!(
-                get_preview_lines(&tiny.to_string_lossy(), &CancelToken::new()),
+                get_preview_lines(&tiny.to_string_lossy(), 100, &CancelToken::new()),
                 Some(vec!["[invalid archive]".to_string()])
             );
         }
+    }
+
+    #[test]
+    fn listing_stops_at_the_entry_limit() {
+        let path = format!("{}/../../tests/golden/preview/archives/many.zip", env!("CARGO_MANIFEST_DIR"));
+        // The column header, the entries, then the count of the rest
+        let lines = get_preview_lines(&path, 5, &CancelToken::new()).unwrap();
+        assert_eq!(lines.len(), 1 + 5 + 1, "{lines:?}");
+        assert_eq!(lines.last().unwrap(), "... and 115 more entries");
+        let all = get_preview_lines(&path, 100_000, &CancelToken::new()).unwrap();
+        assert_eq!(all.len(), 1 + 120);
     }
 }
