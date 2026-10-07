@@ -139,7 +139,9 @@ fn append_line(out: &mut String, line: &StyledLine) {
     }
 }
 
-fn run_cases(path: &Path) -> String {
+/// Renders the cases of `path` whose target `keep` accepts, as
+/// (original case index, "%%%% case N" block) pairs.
+fn run_cases(path: &Path, keep: &dyn Fn(&str) -> bool) -> Vec<(usize, String)> {
     let text = read(path);
     let mut target = String::new();
     let mut cases: Vec<Vec<&str>> = Vec::new();
@@ -161,39 +163,83 @@ fn run_cases(path: &Path) -> String {
         last.pop();
     }
 
-    let mut out = String::new();
+    let mut blocks = Vec::new();
 
     for (index, case) in cases.iter().enumerate() {
-        let _ = writeln!(out, "%%%% case {index}");
-
         // A leading "target: NAME" line overrides the file's target for this case
         let (case, case_target) = match case.first().and_then(|line| line.strip_prefix("target: ")) {
             Some(case_target) => (&case[1..], case_target),
             None => (&case[..], target.as_str()),
         };
 
+        if !keep(case_target) {
+            continue;
+        }
+
+        let mut out = format!("%%%% case {index}\n");
+
         for line in highlight_case(case, case_target) {
             append_line(&mut out, &line);
+        }
+
+        blocks.push((index, out));
+    }
+
+    blocks
+}
+
+fn join(blocks: &[(usize, String)]) -> String {
+    blocks.iter().map(|(_, block)| block.as_str()).collect()
+}
+
+/// The golden's "%%%% case N" blocks whose index is in `indices`.
+fn golden_blocks(golden: &str, indices: &[usize]) -> String {
+    let mut out = String::new();
+    let mut keep = false;
+
+    for line in golden.lines() {
+        if let Some(index) = line.strip_prefix("%%%% case ") {
+            keep = indices.contains(&index.parse().expect("case index"));
+        }
+
+        if keep {
+            out.push_str(line);
+            out.push('\n');
         }
     }
 
     out
 }
 
-fn assert_matches_golden(golden_path: &Path, actual: &str) {
-    let expected = read(golden_path);
-
+fn assert_text_matches(label: &Path, expected: &str, actual: &str) {
     for (number, (expected_line, actual_line)) in expected.lines().zip(actual.lines()).enumerate() {
-        assert_eq!(
-            actual_line,
-            expected_line,
-            "{} line {}",
-            golden_path.display(),
-            number + 1
-        );
+        assert_eq!(actual_line, expected_line, "{} line {}", label.display(), number + 1);
     }
 
-    assert_eq!(actual.lines().count(), expected.lines().count(), "{}", golden_path.display());
+    assert_eq!(actual.lines().count(), expected.lines().count(), "{}", label.display());
+}
+
+/// CSS tokenizing is Rust-owned (KNOWN_DEVIATIONS.md): its cases are
+/// compared to goldens under src/wade-rs/tests/golden/highlight instead.
+fn is_rust_owned_target(target: &str) -> bool {
+    [".css", ".scss", ".sass"].iter().any(|ext| target.ends_with(ext))
+}
+
+const RUST_OWNED: &[&str] = &["css"];
+
+fn rust_golden_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/golden/highlight")
+}
+
+/// Compares with a Rust-owned golden, or rewrites it with
+/// WADE_UPDATE_GOLDENS=1.
+fn assert_matches_rust_golden(golden_path: &Path, actual: &str) {
+    if std::env::var_os("WADE_UPDATE_GOLDENS").is_some_and(|value| value == "1") {
+        std::fs::write(golden_path, actual).unwrap_or_else(|e| panic!("write {}: {e}", golden_path.display()));
+        return;
+    }
+
+    assert_text_matches(golden_path, &read(golden_path), actual);
 }
 
 #[test]
@@ -208,16 +254,30 @@ fn highlight_cases_match_csharp_golden() {
             continue;
         }
 
-        if PENDING.contains(&stem.as_str()) {
+        if PENDING.contains(&stem.as_str()) || RUST_OWNED.contains(&stem.as_str()) {
             continue;
         }
 
-        let actual = run_cases(&path);
-        assert_matches_golden(&path.with_extension("golden.txt"), &actual);
+        let blocks = run_cases(&path, &|target| !is_rust_owned_target(target));
+        let indices: Vec<usize> = blocks.iter().map(|(index, _)| *index).collect();
+        let golden_path = path.with_extension("golden.txt");
+        let expected = golden_blocks(&read(&golden_path), &indices);
+        assert_text_matches(&golden_path, &expected, &join(&blocks));
         checked += 1;
     }
 
     assert!(checked > 0, "no highlight cases found");
+}
+
+#[test]
+fn css_cases_match_rust_golden() {
+    let dir = rust_golden_dir();
+    let css = run_cases(&dir.join("css.cases"), &|_| true);
+    assert_matches_rust_golden(&dir.join("css.golden.txt"), &join(&css));
+
+    let fuzz = run_cases(&golden_dir().join("fuzz.cases"), &is_rust_owned_target);
+    assert!(!fuzz.is_empty(), "no CSS fuzz cases");
+    assert_matches_rust_golden(&dir.join("fuzz-css.golden.txt"), &join(&fuzz));
 }
 
 #[test]

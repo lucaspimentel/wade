@@ -1,0 +1,117 @@
+# Rust-owned CSS highlight cases (KNOWN_DEVIATIONS.md): the C# cases from
+# tests/golden/highlight/css.cases plus cases for the Rust extensions. Each
+# %%%% block is tokenized from state 0; regenerate the golden with
+# WADE_UPDATE_GOLDENS=1 cargo test --test highlight_golden.
+file: sample.css
+%%%%
+/* start
+middle
+end */
+%%%%
+color: red;
+%%%%
+/* comment */
+%%%%
+content: "text";
+%%%%
+{ color: red; }
+%%%%
+color: #e4e4e4;
+%%%%
+color: #f00;
+%%%%
+color: #ff000080;
+%%%%
+color: #f008;
+%%%%
+background: linear-gradient(#abc, #def);
+%%%%
+#main { color: red; }
+%%%%
+/* #ff0000 */
+%%%%
+content: "#ff0000";
+%%%%
+color: #gg0000;
+%%%%
+color: #12345;
+%%%%
+color: #1234567;
+%%%%
+color: #12;
+%%%%
+color: #f00000;
+%%%%
+/* Theme */
+:root {
+  --accent: #3366CC;
+  --muted: #abc8;
+}
+a:hover #abc { color: #fff; }
+#main .card > p::first-line {
+  color: #12345678;
+  background: url("img/bg.png") no-repeat, #000 !important;
+  border: 1px solid #ABCDEF; font-family: 'Fira Code', monospace;
+}
+@media (min-width: 600px) { .x { color: #0f0; } }
+.bad { color: #gg0000; width: #12; margin: #12345; top: #1234567; }
+%%%%
+.multi {
+  color:
+    #abc;
+}
+%%%%
+/* unterminated
+still comment */ .after { color: #f00 }
+%%%%
+x { a: #fff b: #000 }
+%%%%
+x{color:#FFF;}
+%%%%
+a:hover #abc { color: #fff; }
+%%%%
+a:hover #abc,
+b { color: red; }
+%%%%
+.multi {
+  color:
+    #abc;
+  margin: 0;
+  #def
+}
+#abc
+%%%%
+@media (min-width: 600px) {
+  .x { color: #0f0; }
+  a:hover #abc { color: tomato; }
+}
+%%%%
+.c {
+  a: rgb(255, 0, 0); b: rgba(0,0,255,.5); c: rgb(255 0 0 / 50%); d: rgb(100% 0% 0%);
+  e: hsl(120, 100%, 50%); f: hsl(120deg 100% 25%); g: hsl(0.5turn 100% 50%); h: HSLA(240,100%,50%,0.3);
+  i: rgb(var(--r), 0, 0); j: rgb(1, 2); k: rgb(1, 2, 3
+}
+%%%%
+.n {
+  color: red; border: 1px solid RebeccaPurple; --accent: tomato;
+  background: url(red.png) transparent; content: "red"; x: red-ish; y: #red;
+  z: #abc rgb(0 0 0) navy;
+}
+%%%%
+.red { color: blue }
+%%%%
+.a { /* comment
+  spans */ color: #abc; }
+%%%%
+target: sample.scss
+.a {
+  &:hover #abc { color: red; }
+  .b { color: $red; }
+}
+%%%%
+target: sample.sass
+.a
+  color: #abc
+  background: rgb(0, 128, 0)
+  &:hover
+    border: 1px solid navy

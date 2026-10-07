@@ -224,3 +224,20 @@ None. Phase 9 closed the last temporary entries.
 - **`--show-config` ends with a bare line feed (Phase 10).** C# writes the
   JSON with `Console.WriteLine`, which ends with CRLF on Windows; Rust ends
   with LF on every platform. The JSON itself is identical.
+- **CSS swatches follow value positions (Rust-only change).** In `.css` and
+  `.scss`, the tokenizer tracks brace depth in its line state, so a color
+  needs a `:` inside a block. A value continues onto the next line until
+  `;`, `{` or `}`. When a `{` follows, the colors found since the previous
+  `;`, `{` or `}` on that line are dropped, because that run was a selector:
+  `a:hover #abc { color: #fff; }` swatches only `#fff`. C# swatches any
+  `#hex` after a `:` on the same line, which includes selectors and
+  declarations outside any block.
+  - Limit: a nested selector whose `{` is on a later line still swatches.
+  - `.sass` (indented syntax, no braces) keeps the line-local rule.
+  - Rust also swatches `rgb()`/`rgba()`/`hsl()`/`hsla()` and the 148 CSS
+    named colors (not `transparent` or `currentcolor`). An unquoted
+    `url(...)` is skipped.
+  - The CSS highlight goldens are Rust-owned
+    (`tests/golden/highlight/css.*` and `fuzz-css.golden.txt` under
+    `src/wade-rs`). The shared C# CSS cases are skipped in the C#
+    comparison.

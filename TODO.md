@@ -254,21 +254,11 @@ Investigate enabling `ENABLE_VIRTUAL_TERMINAL_INPUT` on Windows Terminal (detect
 - Implementation emits a full `CellStyle[]` via `SyntaxTheme.GetStyle` lookups for lines with hex colors; lines without hex colors remain on the token-span path with zero extra allocation. Follows the `DiffLanguage` precedent — no renderer or `StyledLine` changes needed.
 - Known v1 limitation: `:pseudo #abc { }` (pseudo-class followed by an ID selector that happens to be valid hex) can produce a false positive. Acceptable — future work can track brace depth multi-line via the `state` byte. `rgb()`/`hsl()` and named colors still TODO.
 
-### CSS color swatches — disambiguate pseudo-class/element selectors
+### ~~CSS color swatches — disambiguate pseudo-class/element selectors~~ (Done in Rust)
 
-Follow-up to the shipped hex swatch feature in `src/Wade/Highlighting/Languages/CssLanguage.cs`. Current limitation: `a:hover #abc { }` incorrectly swatches `#abc` as a color because the line-local `afterColon` flag doesn't distinguish a property separator from a pseudo `:`/`::`.
+Rust tracks brace depth across lines and drops colors in a run that ends in `{`. A nested selector whose `{` is
+on a later line still swatches.
 
-- Track brace depth (or an in-block bit) across lines via the `state` byte — currently `state` only encodes `StateNormal`/`StateBlockComment`. Add a bit (e.g. `StateInBlock = 0b100`) and refactor `state == StateBlockComment` equality checks to mask-aware checks.
-- Only treat `#hex` as a color when both `insideBraces` (across lines) AND `afterColon` (line-local) are true. Selectors live outside `{ }`, values live inside.
-- Handle nested `@media { @supports { ... } }` — a single in-block bit is sufficient for value-position detection since any brace depth ≥ 1 means we're inside a declaration block.
-- Update tests to cover `a:hover #abc { }`, multi-line rules (`color:\n  #abc;`), and `@media (min-width: 600px) { .x { color: #abc; } }`.
+### ~~CSS color swatches — `rgb()` / `rgba()` / `hsl()` / `hsla()` / named colors~~ (Done in Rust)
 
-### CSS color swatches — `rgb()` / `rgba()` / `hsl()` / `hsla()` / named colors
-
-Extend the swatch feature to cover the remaining CSS color notations.
-
-- Detection sites in `CssLanguage.ScanCss`: `rgb(`, `rgba(`, `hsl(`, `hsla(` function-call syntax. Parse decimal/percent arguments, handle both comma-separated (legacy) and space-separated (CSS Colors Level 4) syntaxes, and both `hsl(360, 50%, 50%)` and `hsl(360deg 50% 50%)` forms.
-- HSL → RGB conversion helper alongside `TryParseHexColor` in `CssLanguage`.
-- Named CSS colors (`red`, `rebeccapurple`, `cornflowerblue`, etc.) — full list is ~148 entries. Use a `FrozenDictionary<string, Color>` for lookup. Only match when `afterColon` is true and the identifier is followed by a non-identifier char (so `.red { }` selectors are not swatched).
-- Modern CSS Color 4 syntax (`color(display-p3 ...)`, `lab()`, `lch()`, `oklab()`, `oklch()`) — out of scope; these need proper color-space conversion math.
-- Reuse the existing `BuildSwatchResult` pipeline — it already handles arbitrary `HexColorMatch` positions, so only the detection layer needs extension. Consider renaming `HexColorMatch` to `CssColorMatch` once non-hex sources are added.
+Modern CSS Color 4 functions (`color()`, `lab()`, `lch()`, `oklab()`, `oklch()`) are out of scope.
