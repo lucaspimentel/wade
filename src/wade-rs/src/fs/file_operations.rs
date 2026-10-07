@@ -64,68 +64,9 @@ fn delete_one(path: &str) -> bool {
     }
 
     match std::fs::symlink_metadata(path) {
-        Ok(meta) if meta.is_dir() => remove_dir_all_forced(path).is_ok(),
-        Ok(_) => remove_file_forced(path).is_ok(),
+        Ok(meta) if meta.is_dir() => std::fs::remove_dir_all(path).is_ok(),
+        Ok(_) => std::fs::remove_file(path).is_ok(),
         Err(_) => false,
-    }
-}
-
-/// `remove_file` that also deletes a read-only file on Windows by clearing
-/// the attribute and retrying, as Explorer does.
-fn remove_file_forced(path: &str) -> Result<(), std::io::Error> {
-    match std::fs::remove_file(path) {
-        #[cfg(windows)]
-        Err(err) if is_permission_denied(&err) && clear_readonly(Path::new(path)) => std::fs::remove_file(path),
-        result => result,
-    }
-}
-
-/// `remove_dir_all` that also deletes read-only files and directories inside
-/// the tree on Windows by clearing their attribute and retrying.
-fn remove_dir_all_forced(path: &str) -> Result<(), std::io::Error> {
-    match std::fs::remove_dir_all(path) {
-        #[cfg(windows)]
-        Err(err) if is_permission_denied(&err) => {
-            clear_readonly_tree(Path::new(path));
-            std::fs::remove_dir_all(path)
-        }
-        result => result,
-    }
-}
-
-/// Clears the read-only attribute; true when it was set and is now cleared.
-#[cfg(windows)]
-fn clear_readonly(path: &Path) -> bool {
-    let Ok(meta) = std::fs::symlink_metadata(path) else {
-        return false;
-    };
-
-    let mut permissions = meta.permissions();
-    if !permissions.readonly() {
-        return false;
-    }
-
-    // On Windows this only clears FILE_ATTRIBUTE_READONLY
-    #[allow(clippy::permissions_set_readonly_false)]
-    permissions.set_readonly(false);
-    std::fs::set_permissions(path, permissions).is_ok()
-}
-
-/// Clears the read-only attribute on `path` and everything below it,
-/// without following links.
-#[cfg(windows)]
-fn clear_readonly_tree(path: &Path) {
-    clear_readonly(path);
-
-    let is_real_dir = std::fs::symlink_metadata(path).is_ok_and(|meta| meta.is_dir());
-    if !is_real_dir {
-        return;
-    }
-
-    if let Ok(entries) = std::fs::read_dir(path) {
-        for entry in entries.flatten() {
-            clear_readonly_tree(&entry.path());
-        }
     }
 }
 
@@ -291,9 +232,9 @@ pub fn delete_existing(path: &str) -> Result<(), std::io::Error> {
 
     let meta = std::fs::symlink_metadata(path)?;
     if meta.is_dir() {
-        remove_dir_all_forced(path)
+        std::fs::remove_dir_all(path)
     } else {
-        remove_file_forced(path)
+        std::fs::remove_file(path)
     }
 }
 
@@ -429,6 +370,9 @@ mod tests {
         std::fs::set_permissions(path, permissions).expect("set read-only");
     }
 
+    /// Rust's `remove_file` and `remove_dir_all` delete read-only files on
+    /// Windows, where C#'s `File.Delete` throws, so no attribute clearing is
+    /// needed.
     #[cfg(windows)]
     #[test]
     fn permanent_delete_removes_read_only_files_and_trees() {

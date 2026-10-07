@@ -265,11 +265,11 @@ None. Phase 9 closed the last temporary entries.
   fix).** C# copies until the path is too long. Rust counts the item as an
   error and creates nothing. Moving a directory link into its target is
   still allowed, since only the link moves.
-- **Read-only files are deleted and overwritten on Windows (Rust-only).** C#
-  fails on the read-only attribute when deleting permanently or overwriting
-  on paste. Rust clears the attribute and retries, as Explorer does,
-  including for read-only files and directories inside a deleted tree. The
-  Recycle Bin path is unchanged; it already handles them.
+- **Read-only files are deleted and overwritten on Windows.** C# fails on
+  the read-only attribute when deleting permanently or overwriting on
+  paste. Rust's `std::fs::remove_file` and `remove_dir_all` delete
+  read-only files and directories on Windows, as Explorer does, so no
+  attribute clearing is needed. The Recycle Bin path already handled them.
 - **Case-only rename works on Windows (Rust-only fix).** C# reports that
   `Foo` already exists when renaming `foo`, because Windows file names are
   case-insensitive. Rust skips that check when only the case changes.
