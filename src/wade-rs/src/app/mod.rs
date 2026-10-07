@@ -626,8 +626,18 @@ impl App {
                             self.update_terminal_title();
                             self.refresh_git_status();
                         }
-                    } else if self.active_provider_is_previewable() {
-                        self.enter_expanded_preview();
+                    } else {
+                        // Rust only: with the right pane hidden nothing has
+                        // picked the file's preview yet, so pick it here
+                        if !self.preview_pane_enabled {
+                            let path = entry.full_path.clone();
+                            let expanded = self.layout.expanded_pane;
+                            self.set_applicable_providers(&path, expanded.width, expanded.height);
+                        }
+
+                        if self.active_provider_is_previewable() {
+                            self.enter_expanded_preview();
+                        }
                     }
                 }
             }

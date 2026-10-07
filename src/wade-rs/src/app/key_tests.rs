@@ -1290,3 +1290,46 @@ fn switching_tabs_from_search_mode_keeps_the_filter() {
     assert_eq!(app.input_mode, InputMode::Normal);
     let _ = std::fs::remove_dir_all(&parent);
 }
+
+// --- Expanded preview -------------------------------------------------------
+
+#[test]
+fn enter_opens_the_full_screen_preview_with_the_right_pane_hidden() {
+    let (mut app, parent, _) = app();
+    app.dispatch(AppAction::TogglePreviewPane);
+    assert!(!app.preview_pane_enabled);
+
+    select(&mut app, "readme.md");
+    press(&mut app, key(K::Enter));
+    assert_eq!(app.input_mode, InputMode::ExpandedPreview);
+    pump_until(&mut app, "the readme preview", |app| app.preview.cached_styled_lines.is_some());
+    assert!(frame_has(&mut app, "Title"));
+
+    press(&mut app, key(K::Escape));
+    assert_eq!(app.input_mode, InputMode::Normal);
+    assert!(!app.preview_pane_enabled, "the right pane stays hidden");
+    assert!(app.preview.applicable_providers.is_none(), "nothing left over for the next file");
+    assert!(!frame_has(&mut app, "Title"));
+
+    // The next file gets its own preview, not the readme's
+    select(&mut app, "a.txt");
+    press(&mut app, key(K::Enter));
+    assert_eq!(app.input_mode, InputMode::ExpandedPreview);
+    pump_until(&mut app, "the a.txt preview", |app| app.preview.cached_styled_lines.is_some());
+    assert!(frame_has(&mut app, "aaaaaaaaaa"));
+    assert!(!frame_has(&mut app, "Title"));
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn enter_on_a_file_without_a_preview_does_nothing_with_the_right_pane_hidden() {
+    let (mut app, parent, root) = app();
+    std::fs::write(root.join("blob.bin"), [0u8, 1, 2, 0, 0, 0, 0xff, 0]).unwrap();
+    app.directory_contents.invalidate(&app.current_path.clone());
+    app.dispatch(AppAction::TogglePreviewPane);
+
+    select(&mut app, "blob.bin");
+    press(&mut app, key(K::Enter));
+    assert_eq!(app.input_mode, InputMode::Normal);
+    let _ = std::fs::remove_dir_all(&parent);
+}

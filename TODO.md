@@ -99,8 +99,9 @@ backlog.
 - [ ] macOS is untested (CI covers only Linux and Windows): clipboard via
   `osascript`, open via `open`, `notify` file watcher, drive detection
 - [ ] Delete the merged remote branches (`phase-9a` to `phase-9g`, `phase-10a`,
-  `install-local-rust`, `todo-*`, `palette-settings-label`, and older
-  phase branches); the session proxy could not delete them
+  `install-local-rust`, `todo-*`, `palette-settings-label`, the temporary
+  `mut-no-file-retry`, `mut-no-tree-retry` and `mut-no-case-skip` mutation
+  check branches, and older phase branches); the session proxy could not delete them
 - [ ] Two weeks of daily use on the Rust binary
 - [ ] Cutover: delete `src/Wade*`, remove dual-build CI, update
   README/CLAUDE.md/CHANGELOG
@@ -247,9 +248,9 @@ Investigate enabling `ENABLE_VIRTUAL_TERMINAL_INPUT` on Windows Terminal (detect
 
 - [ ] Allow showing more than 100 lines in file previews. Text previews stop at `MAX_PREVIEW_LINES` (100) in `src/wade-rs/src/fs/file_preview.rs` (C# `GetPreviewLines`).
 
-### Full-screen preview with the right pane disabled
+### ~~Full-screen preview with the right pane disabled~~ (Done in Rust)
 
-- [ ] Allow opening the full-screen (expanded) file preview even when the right pane (`Show Right Pane`) is disabled.
+- [x] Allow opening the full-screen (expanded) file preview even when the right pane (`Show Right Pane`) is disabled.
 
 ### CSV preview
 

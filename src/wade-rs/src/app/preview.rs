@@ -141,7 +141,7 @@ impl App {
 
     /// The selection-change half of `SetApplicableProviders` shared by the
     /// right pane and `EnterExpandedPreview`.
-    fn set_applicable_providers(&mut self, path: &str, pane_width: i32, pane_height: i32) {
+    pub(crate) fn set_applicable_providers(&mut self, path: &str, pane_width: i32, pane_height: i32) {
         self.preview.active_provider_index = 0;
         let context = self.build_preview_context(pane_width, pane_height);
         self.preview.applicable_metadata_providers =
@@ -415,7 +415,11 @@ impl App {
         self.input_mode = InputMode::Normal;
         self.preview.expanded_scroll_offset = 0;
 
-        if let Some(path) = self.preview.reload_path() {
+        if !self.preview_pane_enabled {
+            // Rust only: nothing to show it in, and the next Enter picks the
+            // providers for its own selection
+            self.clear_preview_cache();
+        } else if let Some(path) = self.preview.reload_path() {
             self.preview.drop_image_for_reload();
             let right = self.layout.right_pane;
             self.preview.active_context = Some(self.build_preview_context(right.width, right.height));

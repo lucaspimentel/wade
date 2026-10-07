@@ -281,3 +281,10 @@ None. Phase 9 closed the last temporary entries.
   creates a different name.
   - The rename dialog also checks for invalid characters on every OS. C#
     does not, and fails in the rename itself.
+- **Enter opens the full-screen preview with the right pane hidden
+  (Rust-only).** In C#, Enter on a file opens the expanded preview only when
+  the right pane has already picked a preview for it, so with the pane
+  hidden Enter does nothing. Rust picks the preview for the selected file
+  on Enter when the pane is hidden. Leaving the expanded preview then clears
+  the preview state instead of reloading it into the hidden pane. Files with
+  no preview (binary files, or previews turned off) still do nothing.
