@@ -66,7 +66,6 @@ impl FileOperationRunner {
 /// Builds the paste operation (copy or move per item) with the C# runner's
 /// exact per-item logic, emitting progress events. Never emits the
 /// completion event itself, the runner does.
-#[must_use]
 pub fn paste_operation(
     sources: Vec<String>,
     destination: String,
@@ -122,7 +121,6 @@ pub fn paste_operation(
 }
 
 /// Builds the delete operation with the C# runner's exact per-item loop.
-#[must_use]
 pub fn delete_operation(paths: Vec<String>, permanent: bool) -> FileOperation {
     Box::new(move |cancel, progress| {
         let total = paths.len();

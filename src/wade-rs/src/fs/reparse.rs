@@ -80,8 +80,7 @@ pub fn parse_app_exec_link_target(buffer: &[u8]) -> Option<String> {
         return None;
     }
 
-    let units: Vec<u16> =
-        buffer[offset..end].chunks_exact(2).map(|pair| u16::from_le_bytes([pair[0], pair[1]])).collect();
+    let units: Vec<u16> = buffer[offset..end].as_chunks::<2>().0.iter().map(|&pair| u16::from_le_bytes(pair)).collect();
     Some(String::from_utf16_lossy(&units))
 }
 

@@ -120,7 +120,9 @@ pub fn encode(rgba: &[u8], width: usize, height: usize, max_colors: usize) -> St
     }
 
     let packed: Vec<u32> = rgba
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .take(width * height)
         .map(|p| u32::from(p[0]) << 16 | u32::from(p[1]) << 8 | u32::from(p[2]))
         .collect();

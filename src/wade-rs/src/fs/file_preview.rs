@@ -164,7 +164,7 @@ fn detect_bomless_utf16(buffer: &[u8]) -> Option<&'static str> {
     let pair_count = analysis_length / 2;
     let (mut even_nulls, mut odd_nulls) = (0, 0);
 
-    for pair in buffer[..analysis_length].chunks_exact(2) {
+    for pair in buffer[..analysis_length].as_chunks::<2>().0 {
         if pair[0] == 0 {
             even_nulls += 1;
         }
@@ -377,14 +377,10 @@ impl Decoder {
         }
 
         let units: Vec<u16> = self.pending[..usable]
-            .chunks_exact(2)
-            .map(|pair| {
-                if big_endian {
-                    u16::from_be_bytes([pair[0], pair[1]])
-                } else {
-                    u16::from_le_bytes([pair[0], pair[1]])
-                }
-            })
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|&pair| if big_endian { u16::from_be_bytes(pair) } else { u16::from_le_bytes(pair) })
             .collect();
         self.pending.drain(..usable);
 
