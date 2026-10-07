@@ -251,6 +251,10 @@ Investigate enabling `ENABLE_VIRTUAL_TERMINAL_INPUT` on Windows Terminal (detect
 
 - [ ] Allow opening the full-screen (expanded) file preview even when the right pane (`Show Right Pane`) is disabled.
 
+### CSV preview
+
+- [ ] File preview for CSV (and TSV) files, e.g. with aligned columns.
+
 ### Keyboard shortcut convention audit
 
 - [ ] Review remaining keybinding consistency. Current mix: some dialogs/tools use `Ctrl+` (`Ctrl+F` finder, `Ctrl+T` terminal, `Ctrl+L` symlink, `Ctrl+R` refresh, `Ctrl+P` command palette, `Ctrl+G` go-to-path) while others use bare keys (`n`/`N` new file/dir, `b`/`B` bookmarks, `/` filter, `,` config, `?` help, `i` properties). Convention: `Ctrl+<key>` for opening tools/dialogs/overlays, bare keys for direct actions.
