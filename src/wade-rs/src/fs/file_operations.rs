@@ -75,7 +75,6 @@ fn delete_one(path: &str) -> bool {
 fn remove_file_forced(path: &str) -> Result<(), std::io::Error> {
     match std::fs::remove_file(path) {
         #[cfg(windows)]
-        Err(err) if is_permission_denied(&err) && clear_readonly(Path::new(path)) => std::fs::remove_file(path),
         result => result,
     }
 }
