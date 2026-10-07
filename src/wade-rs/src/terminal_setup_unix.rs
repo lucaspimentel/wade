@@ -6,6 +6,15 @@ use std::io::Write;
 
 pub use crate::terminal_caps::TerminalCapabilities;
 
+/// Written by `restore` after the tty modes: leave the alternate screen,
+/// then put the pre-wade title back (Rust-only; C# only clears it).
+pub(crate) const RESTORE_SEQUENCE: &[&str] = &[
+    crate::ansi::RESET_ATTRIBUTES,
+    crate::ansi::SHOW_CURSOR,
+    crate::ansi::LEAVE_ALTERNATE_SCREEN,
+    crate::ansi::EXIT_TITLE,
+];
+
 /// Applies raw mode and the terminal modes; `restore` (or drop) undoes
 /// them, as C# `Dispose` does.
 pub struct TerminalSetup {
@@ -81,12 +90,7 @@ impl TerminalSetup {
             }
         }
 
-        write_out(&[
-            crate::ansi::RESET_ATTRIBUTES,
-            crate::ansi::SHOW_CURSOR,
-            crate::ansi::LEAVE_ALTERNATE_SCREEN,
-            crate::ansi::CLEAR_TITLE,
-        ]);
+        write_out(RESTORE_SEQUENCE);
 
         if self.tty_fd >= 0 {
             unsafe {
@@ -155,4 +159,18 @@ fn write_out(parts: &[&str]) {
     }
 
     let _ = out.flush();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RESTORE_SEQUENCE;
+    use crate::ansi::{EXIT_TITLE, LEAVE_ALTERNATE_SCREEN};
+
+    #[test]
+    fn restore_pops_the_saved_title_after_leaving_the_alternate_screen() {
+        let leave = RESTORE_SEQUENCE.iter().position(|part| *part == LEAVE_ALTERNATE_SCREEN).unwrap();
+        let title = RESTORE_SEQUENCE.iter().position(|part| *part == EXIT_TITLE).unwrap();
+        assert!(leave < title);
+        assert!(EXIT_TITLE.ends_with("\x1b[23;0t"));
+    }
 }

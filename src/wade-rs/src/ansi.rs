@@ -48,6 +48,14 @@ pub const SHOW_CURSOR: &str = "\x1b[?25h";
 /// Push the window title on the terminal's title stack (`CSI 22;0 t`).
 pub const SAVE_TITLE: &str = "\x1b[22;0t";
 pub const CLEAR_TITLE: &str = "\x1b]0;\x07";
+/// Pop the title pushed by `SAVE_TITLE` (`CSI 23;0 t`).
+pub const RESTORE_TITLE: &str = "\x1b[23;0t";
+/// Exit: an empty title, then the saved one where the terminal has a title
+/// stack (Rust-only; C# only clears it).
+pub const EXIT_TITLE: &str = "\x1b]0;\x07\x1b[23;0t";
+/// Title setting turned off: show the saved title again and push it back
+/// so exit can still pop it (Rust-only; C# only clears it).
+pub const SHOW_SAVED_TITLE: &str = "\x1b]0;\x07\x1b[23;0t\x1b[22;0t";
 pub const ENABLE_MOUSE_REPORTING: &str = "\x1b[?1000h";
 pub const DISABLE_MOUSE_REPORTING: &str = "\x1b[?1000l";
 pub const ENABLE_SGR_MOUSE_MODE: &str = "\x1b[?1006h";
@@ -67,4 +75,16 @@ pub fn move_cursor(row: i32, col: i32) -> String {
 #[must_use]
 pub fn set_title(title: &str) -> String {
     format!("\u{1b}]0;{title}\u{7}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CLEAR_TITLE, EXIT_TITLE, RESTORE_TITLE, SAVE_TITLE, SHOW_SAVED_TITLE};
+
+    #[test]
+    fn title_sequences_clear_then_pop_the_saved_title() {
+        assert_eq!(RESTORE_TITLE, "\x1b[23;0t");
+        assert_eq!(EXIT_TITLE, format!("{CLEAR_TITLE}{RESTORE_TITLE}"));
+        assert_eq!(SHOW_SAVED_TITLE, format!("{CLEAR_TITLE}{RESTORE_TITLE}{SAVE_TITLE}"));
+    }
 }

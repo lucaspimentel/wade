@@ -913,14 +913,15 @@ impl App {
         });
     }
 
-    /// The OSC 0 sequence `update_terminal_title` writes: the current path
-    /// when the title setting is on, an empty title otherwise.
+    /// The title sequence `update_terminal_title` writes: the current path
+    /// when the title setting is on; otherwise the title from before wade
+    /// started (Rust-only; C# writes an empty title).
     #[must_use]
     pub fn terminal_title_sequence(&self) -> String {
         if self.config.terminal_title_enabled {
             crate::ansi::set_title(&format!("wade - {}", self.current_path))
         } else {
-            crate::ansi::set_title("")
+            crate::ansi::SHOW_SAVED_TITLE.to_string()
         }
     }
 
@@ -931,6 +932,13 @@ impl App {
         // print! (not a raw stdout write) so test runs capture it
         print!("{}", self.terminal_title_sequence());
         let _ = std::io::stdout().flush();
+
+        // Hosts without a title stack (Windows Terminal) get the console
+        // title saved at startup
+        #[cfg(windows)]
+        if !self.config.terminal_title_enabled {
+            crate::terminal_setup::restore_console_title();
+        }
     }
 
     /// Port of the mouse-event dispatch (App.cs:541-573) and

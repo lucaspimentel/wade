@@ -241,3 +241,15 @@ None. Phase 9 closed the last temporary entries.
     (`tests/golden/highlight/css.*` and `fuzz-css.golden.txt` under
     `src/wade-rs`). The shared C# CSS cases are skipped in the C#
     comparison.
+- **The terminal title is restored on exit (Rust-only fix).** C# pushes the
+  title onto the terminal's title stack at startup (`CSI 22;0 t`) but never
+  pops it: on exit, and when `terminal_title_enabled` is turned off, it
+  writes an empty title.
+  - Rust writes the empty title and then pops the stack (`CSI 23;0 t`).
+  - When the setting is turned off, Rust also pushes the title again so
+    exit can still pop it.
+  - On Windows, Rust also saves the console title with `GetConsoleTitleW`
+    at startup and puts it back with `SetConsoleTitleW`, which works
+    whether or not the host supports the title stack.
+  - Unix terminals without a title stack (for example tmux) still end with
+    an empty title, as in C#.

@@ -77,6 +77,8 @@ backlog.
   - paste into Explorer after copy/cut in wade, and copy/cut from Explorer
   - SSD inline directory sizes and the drive list on screen
   - filesystem auto-refresh on screen
+  - the tab title returns to the pre-wade title on exit and when
+    `terminal_title_enabled` is turned off
 - [ ] Windows follow-ups from the verification pass:
   - run `install-local-rust.ps1` for real (it overwrites `~/.local/bin/wade.exe`)
   - opening a file with an unknown extension reports success while Windows

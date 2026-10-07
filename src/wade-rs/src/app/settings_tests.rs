@@ -382,3 +382,14 @@ fn toggle_keys_flip_panes_and_hidden_files() {
         let _ = std::fs::remove_dir_all(&parent);
     }
 }
+
+#[test]
+fn turning_the_title_off_shows_the_saved_title_again() {
+    let (_tmp, root) = fixture();
+    let mut app = app_at(AppConfig::default(), &root);
+    assert!(app.terminal_title_sequence().starts_with("\x1b]0;wade - "));
+
+    app.config.terminal_title_enabled = false;
+    // Clear, pop the title saved at startup, and push it again for exit
+    assert_eq!(app.terminal_title_sequence(), "\x1b]0;\x07\x1b[23;0t\x1b[22;0t");
+}

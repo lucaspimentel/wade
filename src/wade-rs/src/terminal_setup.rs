@@ -7,9 +7,33 @@
 
 use windows_sys::Win32::Foundation::HANDLE;
 use windows_sys::Win32::System::Console::{
-    CONSOLE_MODE, GetConsoleCP, GetConsoleMode, GetConsoleOutputCP, GetStdHandle, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
-    SetConsoleCP, SetConsoleMode, SetConsoleOutputCP,
+    CONSOLE_MODE, GetConsoleCP, GetConsoleMode, GetConsoleOutputCP, GetConsoleTitleW, GetStdHandle, STD_INPUT_HANDLE,
+    STD_OUTPUT_HANDLE, SetConsoleCP, SetConsoleMode, SetConsoleOutputCP, SetConsoleTitleW,
 };
+
+/// The console title before wade changed it, NUL-terminated (Rust-only:
+/// restored on exit and when the title setting is turned off).
+static ORIGINAL_TITLE: std::sync::OnceLock<Vec<u16>> = std::sync::OnceLock::new();
+
+fn save_console_title() {
+    let mut buffer = vec![0u16; 1024];
+    let len = unsafe { GetConsoleTitleW(buffer.as_mut_ptr(), buffer.len() as u32) } as usize;
+
+    if len > 0 && len < buffer.len() {
+        buffer.truncate(len);
+        buffer.push(0);
+        let _ = ORIGINAL_TITLE.set(buffer);
+    }
+}
+
+/// Sets the console title back to the one saved at startup, if any.
+pub fn restore_console_title() {
+    if let Some(title) = ORIGINAL_TITLE.get() {
+        unsafe {
+            SetConsoleTitleW(title.as_ptr());
+        }
+    }
+}
 
 const CP_UTF8: u32 = 65001;
 
@@ -90,6 +114,7 @@ impl TerminalSetup {
             ..TerminalCapabilities::DEFAULT
         };
 
+        save_console_title();
         write_out(&[
             crate::ansi::SAVE_TITLE,
             crate::ansi::ENTER_ALTERNATE_SCREEN,
@@ -126,8 +151,9 @@ impl TerminalSetup {
             crate::ansi::RESET_ATTRIBUTES,
             crate::ansi::SHOW_CURSOR,
             crate::ansi::LEAVE_ALTERNATE_SCREEN,
-            crate::ansi::CLEAR_TITLE,
+            crate::ansi::EXIT_TITLE,
         ]);
+        restore_console_title();
 
         unsafe {
             SetConsoleMode(self.stdout_handle, self.original_output_mode);
