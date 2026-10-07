@@ -85,10 +85,6 @@ fn remove_file_forced(path: &str) -> Result<(), std::io::Error> {
 fn remove_dir_all_forced(path: &str) -> Result<(), std::io::Error> {
     match std::fs::remove_dir_all(path) {
         #[cfg(windows)]
-        Err(err) if is_permission_denied(&err) => {
-            clear_readonly_tree(Path::new(path));
-            std::fs::remove_dir_all(path)
-        }
         result => result,
     }
 }
