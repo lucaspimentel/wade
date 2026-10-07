@@ -69,7 +69,7 @@ jobs:
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
       with:
-        components: rustfmt
+        components: rustfmt, clippy
 
     - name: Check formatting
       if: runner.os == 'Linux'
@@ -83,3 +83,7 @@ jobs:
     - name: Test
       working-directory: src/wade-rs
       run: cargo test --locked
+
+    - name: Clippy
+      working-directory: src/wade-rs
+      run: cargo clippy --all-targets --locked -- -D warnings
