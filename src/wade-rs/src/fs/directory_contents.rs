@@ -855,4 +855,68 @@ mod tests {
             (local.year(), local.month(), local.day(), local.hour(), local.minute())
         );
     }
+
+    /// Denies Everyone the right to list `dir`; false when icacls is not
+    /// usable, so the caller can skip.
+    #[cfg(windows)]
+    fn deny_listing(dir: &Path) -> bool {
+        std::process::Command::new("icacls")
+            .arg(dir)
+            .args(["/deny", "*S-1-1-0:(RD)"])
+            .output()
+            .is_ok_and(|output| output.status.success())
+            && std::fs::read_dir(dir).is_err()
+    }
+
+    #[cfg(windows)]
+    fn allow_listing(dir: &Path) {
+        let _ = std::process::Command::new("icacls").arg(dir).args(["/remove:d", "*S-1-1-0"]).output();
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn hardlinks_list_as_separate_entries_with_full_sizes() {
+        let root = test_dir("hardlink");
+        std::fs::write(root.join("a.bin"), [0u8; 100]).unwrap();
+        std::fs::hard_link(root.join("a.bin"), root.join("b.bin")).unwrap();
+
+        let entries = load_entries(&root.to_string_lossy(), true, true, None);
+        assert_eq!(names(&entries), ["a.bin", "b.bin"]);
+        assert!(entries.iter().all(|entry| entry.size == 100));
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn alternate_data_streams_are_not_listed_or_counted() {
+        let root = test_dir("ads");
+        std::fs::write(root.join("f.txt"), [0u8; 10]).unwrap();
+        std::fs::write(root.join("f.txt:extra"), [0u8; 50]).unwrap();
+        assert_eq!(std::fs::read(root.join("f.txt:extra")).unwrap().len(), 50, "the stream exists");
+
+        let entries = load_entries(&root.to_string_lossy(), true, true, None);
+        assert_eq!(names(&entries), ["f.txt"]);
+        assert_eq!(entries[0].size, 10, "only the main stream");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_directory_that_cannot_be_listed_is_empty_and_still_shown_in_its_parent() {
+        let root = test_dir("denied");
+        let denied = root.join("denied");
+        std::fs::create_dir(&denied).unwrap();
+        std::fs::write(denied.join("hidden.txt"), b"x").unwrap();
+        if !deny_listing(&denied) {
+            allow_listing(&denied);
+            return;
+        }
+
+        let inside = load_entries(&denied.to_string_lossy(), true, true, None);
+        let parent = load_entries(&root.to_string_lossy(), true, true, None);
+        allow_listing(&denied);
+        assert!(inside.is_empty());
+        assert_eq!(names(&parent), ["denied"]);
+        let _ = std::fs::remove_dir_all(&root);
+    }
 }

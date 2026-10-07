@@ -253,3 +253,31 @@ None. Phase 9 closed the last temporary entries.
     whether or not the host supports the title stack.
   - Unix terminals without a title stack (for example tmux) still end with
     an empty title, as in C#.
+- **Pasting into the source's own folder makes a copy (Rust-only fix).** In
+  C#, copying an item and pasting it into the folder it came from counts it
+  as a conflict. Confirming Overwrite deletes the source before copying it,
+  so the item is lost.
+  - Rust does not count it as a conflict. A copy gets an Explorer-style
+    name (`a - Copy.txt`, then `a - Copy (2).txt`); directories and
+    dotfiles keep the whole name as the stem (`sub - Copy`, `.env - Copy`).
+  - A cut pasted into its own folder does nothing and counts as a success.
+- **A directory is not pasted into itself or its own subtree (Rust-only
+  fix).** C# copies until the path is too long. Rust counts the item as an
+  error and creates nothing. Moving a directory link into its target is
+  still allowed, since only the link moves.
+- **Read-only files are deleted and overwritten on Windows (Rust-only).** C#
+  fails on the read-only attribute when deleting permanently or overwriting
+  on paste. Rust clears the attribute and retries, as Explorer does,
+  including for read-only files and directories inside a deleted tree. The
+  Recycle Bin path is unchanged; it already handles them.
+- **Case-only rename works on Windows (Rust-only fix).** C# reports that
+  `Foo` already exists when renaming `foo`, because Windows file names are
+  case-insensitive. Rust skips that check when only the case changes.
+- **Windows-only names are refused (Rust-only).** On Windows, the new file,
+  new directory, symlink and rename dialogs refuse device names (`CON`,
+  `PRN`, `AUX`, `NUL`, `COM1`-`COM9`, `LPT1`-`LPT9`, with or without an
+  extension, such as `nul.txt`) and names ending in a dot or space, which
+  Win32 would strip silently. C# lets them through and the call fails or
+  creates a different name.
+  - The rename dialog also checks for invalid characters on every OS. C#
+    does not, and fails in the rename itself.

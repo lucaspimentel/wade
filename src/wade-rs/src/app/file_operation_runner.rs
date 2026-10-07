@@ -90,7 +90,32 @@ pub fn paste_operation(
                 current_name: current_name.clone(),
             }));
 
-            let dest_path = std::path::Path::new(&destination).join(&current_name).to_string_lossy().to_string();
+            // A directory copied or moved into itself or its own subtree
+            // would recurse until the path is too long. Moving a link only
+            // moves the link, so it is safe. A copy may fall back to copying
+            // the link's contents, so it is not.
+            let keeps_link = is_cut && file_operations::is_symlink(source_path);
+            let is_directory = std::fs::metadata(source_path).is_ok_and(|meta| meta.is_dir());
+            if is_directory && !keeps_link && file_operations::is_within(&destination, source_path) {
+                errors += 1;
+                continue;
+            }
+
+            // Pasting into the source's own folder: a move is a no-op, a copy
+            // gets an Explorer-style "- Copy" name instead of overwriting
+            // (and deleting) the source
+            let dest_name = if file_operations::same_location(source_path, &destination) {
+                if is_cut {
+                    success += 1;
+                    continue;
+                }
+
+                file_operations::unique_copy_name(&destination, &current_name, is_directory)
+            } else {
+                current_name.clone()
+            };
+
+            let dest_path = std::path::Path::new(&destination).join(&dest_name).to_string_lossy().to_string();
 
             if std::path::Path::new(&dest_path).symlink_metadata().is_ok() {
                 if !overwrite {
@@ -178,6 +203,133 @@ mod tests {
         events
     }
 
+    /// Runs a paste to completion; returns (success, errors).
+    fn run_paste(sources: &[&Path], destination: &Path, is_cut: bool, overwrite: bool) -> (usize, usize) {
+        let mut runner = FileOperationRunner::new();
+        let pipeline = InputPipeline::new();
+        let sources = sources.iter().map(|source| p(source)).collect();
+        runner.begin(paste_operation(sources, p(destination), is_cut, overwrite, false), pipeline.sender());
+
+        let cancel = CancelToken::new();
+        while let Some(event) = pipeline.wait_next(&cancel) {
+            if let InputEvent::FileOperationComplete(completion) = event {
+                return (completion.success_count, completion.error_count);
+            }
+        }
+
+        panic!("no completion event");
+    }
+
+    fn names_in(dir: &Path) -> Vec<String> {
+        let mut names: Vec<String> = std::fs::read_dir(dir)
+            .expect("read_dir")
+            .map(|entry| entry.expect("entry").file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        names
+    }
+
+    #[test]
+    fn copy_into_the_source_folder_makes_numbered_copies() {
+        let dir = temp_dir("selfcopy");
+        std::fs::write(dir.join("a.txt"), b"data").expect("write");
+        let sub = dir.join("sub");
+        std::fs::create_dir(&sub).expect("mkdir");
+        std::fs::write(sub.join("x.txt"), b"x").expect("write");
+
+        assert_eq!(run_paste(&[&dir.join("a.txt"), &sub], &dir, false, false), (2, 0));
+        assert_eq!(run_paste(&[&dir.join("a.txt")], &dir, false, true), (1, 0), "overwrite never hits the source");
+        assert_eq!(run_paste(&[&dir.join("a.txt")], &dir, false, false), (1, 0));
+
+        assert_eq!(
+            names_in(&dir),
+            ["a - Copy (2).txt", "a - Copy (3).txt", "a - Copy.txt", "a.txt", "sub", "sub - Copy"]
+        );
+        assert_eq!(std::fs::read(dir.join("a.txt")).expect("read"), b"data");
+        assert_eq!(std::fs::read(dir.join("a - Copy (3).txt")).expect("read"), b"data");
+        assert_eq!(std::fs::read(dir.join("sub - Copy").join("x.txt")).expect("read"), b"x");
+    }
+
+    #[test]
+    fn cut_into_the_source_folder_does_nothing() {
+        let dir = temp_dir("selfcut");
+        std::fs::write(dir.join("a.txt"), b"data").expect("write");
+
+        assert_eq!(run_paste(&[&dir.join("a.txt")], &dir, true, true), (1, 0));
+        assert_eq!(names_in(&dir), ["a.txt"]);
+        assert_eq!(std::fs::read(dir.join("a.txt")).expect("read"), b"data");
+    }
+
+    #[test]
+    fn paste_into_its_own_subtree_is_refused() {
+        let dir = temp_dir("subtree");
+        let outer = dir.join("outer");
+        let inner = outer.join("inner");
+        std::fs::create_dir_all(&inner).expect("mkdir");
+        std::fs::write(outer.join("f.txt"), b"x").expect("write");
+
+        assert_eq!(run_paste(&[&outer], &inner, false, false), (0, 1));
+        assert_eq!(run_paste(&[&outer], &outer, false, false), (0, 1), "into itself");
+        assert_eq!(run_paste(&[&outer], &inner, true, false), (0, 1));
+        assert_eq!(names_in(&inner), Vec::<String>::new());
+        assert_eq!(names_in(&outer), ["f.txt", "inner"]);
+    }
+
+    #[test]
+    fn overwrite_replaces_a_file_with_a_directory_and_back() {
+        let dir = temp_dir("kindswap");
+        let src = dir.join("src");
+        let dest = dir.join("dest");
+        std::fs::create_dir_all(src.join("item")).expect("mkdir");
+        std::fs::write(src.join("item").join("x.txt"), b"x").expect("write");
+        std::fs::write(src.join("file"), b"f").expect("write");
+        std::fs::create_dir_all(dest.join("file")).expect("mkdir");
+        std::fs::write(dest.join("item"), b"old").expect("write");
+
+        assert_eq!(run_paste(&[&src.join("item"), &src.join("file")], &dest, false, false), (0, 2));
+        assert!(dest.join("item").is_file());
+        assert!(dest.join("file").is_dir());
+
+        assert_eq!(run_paste(&[&src.join("item"), &src.join("file")], &dest, false, true), (2, 0));
+        assert_eq!(std::fs::read(dest.join("item").join("x.txt")).expect("read"), b"x");
+        assert_eq!(std::fs::read(dest.join("file")).expect("read"), b"f");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn overwrite_replaces_a_read_only_file() {
+        let dir = temp_dir("readonly-overwrite");
+        let src = dir.join("src");
+        std::fs::create_dir_all(&src).expect("mkdir");
+        std::fs::write(src.join("f.txt"), b"new").expect("write");
+        let dest = dir.join("f.txt");
+        std::fs::write(&dest, b"old").expect("write");
+        let mut permissions = std::fs::metadata(&dest).expect("meta").permissions();
+        permissions.set_readonly(true);
+        std::fs::set_permissions(&dest, permissions).expect("set read-only");
+
+        assert_eq!(run_paste(&[&src.join("f.txt")], &dir, false, true), (1, 0));
+        assert_eq!(std::fs::read(&dest).expect("read"), b"new");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn overwrite_of_a_locked_file_is_an_error() {
+        use std::os::windows::fs::OpenOptionsExt;
+
+        let dir = temp_dir("locked-overwrite");
+        let src = dir.join("src");
+        std::fs::create_dir_all(&src).expect("mkdir");
+        std::fs::write(src.join("f.txt"), b"new").expect("write");
+        let dest = dir.join("f.txt");
+        std::fs::write(&dest, b"old").expect("write");
+        let lock = std::fs::OpenOptions::new().read(true).share_mode(0).open(&dest).expect("lock");
+
+        assert_eq!(run_paste(&[&src.join("f.txt")], &dir, false, true), (0, 1));
+        drop(lock);
+        assert_eq!(std::fs::read(&dest).expect("read"), b"old");
+    }
+
     #[test]
     fn delete_operation_reports_counts_and_completion() {
         let dir = temp_dir("delrun");
@@ -250,7 +402,9 @@ mod tests {
     #[test]
     fn paste_without_overwrite_counts_existing_as_error() {
         let dir = temp_dir("conflict");
-        let src = dir.join("f.txt");
+        let src_dir = dir.join("src");
+        std::fs::create_dir_all(&src_dir).expect("mkdir");
+        let src = src_dir.join("f.txt");
         std::fs::write(&src, b"new").expect("write");
         let dest = dir.join("f.txt");
         std::fs::write(&dest, b"old").expect("write");

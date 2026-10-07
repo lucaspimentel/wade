@@ -216,4 +216,55 @@ mod tests {
         let _ = std::fs::remove_dir_all(&root);
         assert_eq!(total, 7);
     }
+
+    /// Denies Everyone the right to list `dir`; false when icacls is not
+    /// usable, so the caller can skip.
+    #[cfg(windows)]
+    fn deny_listing(dir: &std::path::Path) -> bool {
+        std::process::Command::new("icacls")
+            .arg(dir)
+            .args(["/deny", "*S-1-1-0:(RD)"])
+            .output()
+            .is_ok_and(|output| output.status.success())
+            && std::fs::read_dir(dir).is_err()
+    }
+
+    #[cfg(windows)]
+    fn allow_listing(dir: &std::path::Path) {
+        let _ = std::process::Command::new("icacls").arg(dir).args(["/remove:d", "*S-1-1-0"]).output();
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn hardlinks_count_once_per_link_and_streams_are_excluded() {
+        let root = test_root("links-streams");
+        std::fs::write(root.join("a.bin"), [0u8; 100]).unwrap();
+        std::fs::hard_link(root.join("a.bin"), root.join("b.bin")).unwrap();
+        std::fs::write(root.join("f.txt"), [0u8; 10]).unwrap();
+        std::fs::write(root.join("f.txt:extra"), [0u8; 50]).unwrap();
+
+        // Like C# and Explorer: each link counts in full, streams do not
+        let total = super::sum_directory(&root.to_string_lossy(), &CancelToken::new());
+        let _ = std::fs::remove_dir_all(&root);
+        assert_eq!(total, 210);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_directory_that_cannot_be_listed_is_skipped() {
+        let root = test_root("denied");
+        std::fs::write(root.join("a.bin"), [0u8; 7]).unwrap();
+        let denied = root.join("denied");
+        std::fs::create_dir(&denied).unwrap();
+        std::fs::write(denied.join("big.bin"), [0u8; 1000]).unwrap();
+        if !deny_listing(&denied) {
+            allow_listing(&denied);
+            return;
+        }
+
+        let total = super::sum_directory(&root.to_string_lossy(), &CancelToken::new());
+        allow_listing(&denied);
+        let _ = std::fs::remove_dir_all(&root);
+        assert_eq!(total, 7);
+    }
 }

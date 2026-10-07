@@ -473,4 +473,24 @@ mod tests {
             assert_eq!(super::get_file_type_label(name), Some(label), "{name}");
         }
     }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_locked_file_previews_as_a_placeholder() {
+        use std::os::windows::fs::OpenOptionsExt;
+
+        let dir = std::env::temp_dir().join(format!("wade-preview-locked-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("locked.txt");
+        std::fs::write(&file, b"hello").unwrap();
+        let lock = std::fs::OpenOptions::new().read(true).share_mode(0).open(&file).unwrap();
+
+        let (lines, metadata) = super::get_preview_lines(&file.to_string_lossy());
+        drop(lock);
+        let _ = std::fs::remove_dir_all(&dir);
+        assert_eq!(lines.len(), 1, "{lines:?}");
+        assert!(metadata.placeholder_message.is_some(), "{lines:?}");
+        assert_ne!(lines[0], "hello");
+    }
 }

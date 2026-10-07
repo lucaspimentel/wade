@@ -83,14 +83,13 @@ backlog.
   - run `install-local-rust.ps1` for real (it overwrites `~/.local/bin/wade.exe`)
   - opening a file with an unknown extension reports success while Windows
     shows the "Open with" dialog; check whether C# behaves the same
-- [ ] More native Windows checks that need no TUI (none run yet):
-  - Windows file names: case-only rename, reserved names (`CON`, `NUL`),
-    trailing dots and spaces, invalid characters
-  - locked or in-use files, read-only attribute and access denied: delete,
-    rename and read
-  - paste conflicts: overwrite a read-only file, paste into itself, directory
-    over a file
-  - hardlinks and alternate data streams (listing and sizes)
+- [x] Windows file-system edge cases, now `#[cfg(windows)]` tests run by
+  CI's `rust (windows-latest)` job: case-only rename, reserved names and
+  trailing dots or spaces, locked, read-only and access-denied files
+  (delete, rename, read), paste conflicts (read-only overwrite, paste into
+  the source folder or its own subtree, directory over a file), hardlinks
+  and alternate data streams (listing and sizes)
+- [ ] More native Windows checks that need no TUI:
   - C# vs Rust diff of inline and full directory sizes, the drive list and the
     properties overlay on real data
   - PDF and Sixel previews end to end (`pdftopng`, `pdfinfo`, `ffprobe` and

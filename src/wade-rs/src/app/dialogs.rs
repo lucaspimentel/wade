@@ -86,9 +86,76 @@ pub fn is_invalid_file_name(name: &str) -> bool {
     }
 }
 
+/// Names Windows cannot use even though every character is valid: device
+/// names (`CON`, `nul.txt`) and names ending in a dot or space, which Win32
+/// strips silently. Compiled on every OS so it can be tested anywhere.
+#[must_use]
+pub fn windows_name_problem(name: &str) -> Option<String> {
+    const RESERVED: [&str; 22] = [
+        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1",
+        "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+    ];
+
+    let base = name.split('.').next().unwrap_or(name).trim_end_matches(' ');
+    if RESERVED.iter().any(|reserved| reserved.eq_ignore_ascii_case(base)) {
+        return Some(format!("'{name}' is a reserved name on Windows"));
+    }
+
+    if name.ends_with(['.', ' ']) {
+        return Some("Name cannot end with a dot or space".to_string());
+    }
+
+    None
+}
+
+/// The notification for a name the create and rename dialogs refuse, or
+/// `None` when the name is usable.
+#[must_use]
+pub fn name_problem(name: &str, invalid_message: &str) -> Option<String> {
+    if is_invalid_file_name(name) {
+        return Some(invalid_message.to_string());
+    }
+
+    if cfg!(windows) {
+        return windows_name_problem(name);
+    }
+
+    None
+}
+
 #[cfg(test)]
 mod invalid_name_tests {
-    use super::is_invalid_file_name;
+    use super::{is_invalid_file_name, name_problem, windows_name_problem};
+
+    #[test]
+    fn windows_rejects_device_names_with_or_without_an_extension() {
+        for name in ["CON", "con", "Nul", "nul.txt", "aux.tar.gz", "COM1", "lpt9", "PRN ", "con .txt"] {
+            assert_eq!(windows_name_problem(name), Some(format!("'{name}' is a reserved name on Windows")), "{name}");
+        }
+
+        for name in ["console", "con2", "COM0", "COM10", "LPT", "xcon", "my.con", "nul-file.txt", ".con"] {
+            assert_eq!(windows_name_problem(name), None, "{name}");
+        }
+    }
+
+    #[test]
+    fn windows_rejects_a_trailing_dot_or_space() {
+        for name in ["a.", "a ", "a.txt.", "a..", "..."] {
+            assert_eq!(windows_name_problem(name), Some("Name cannot end with a dot or space".to_string()), "{name}");
+        }
+
+        for name in ["a.b", " a", ".a", "a b"] {
+            assert_eq!(windows_name_problem(name), None, "{name}");
+        }
+    }
+
+    #[test]
+    fn name_problem_checks_characters_everywhere_and_windows_names_on_windows() {
+        assert_eq!(name_problem("a/b", "Invalid file name").as_deref(), Some("Invalid file name"));
+        assert_eq!(name_problem("ok.txt", "Invalid file name"), None);
+        assert_eq!(name_problem("con", "Invalid file name").is_some(), cfg!(windows));
+        assert_eq!(name_problem("a.", "Invalid file name").is_some(), cfg!(windows));
+    }
 
     #[test]
     fn rejects_separators_and_reserved() {
@@ -472,7 +539,13 @@ impl App {
             return;
         };
 
-        if new_name.trim().is_empty() || new_name == crate::app::dialogs::file_name_of(&target) {
+        let old_name = crate::app::dialogs::file_name_of(&target);
+        if new_name.trim().is_empty() || new_name == old_name {
+            return;
+        }
+
+        if let Some(problem) = name_problem(new_name, "Invalid file name") {
+            self.show_notification(&problem, NotificationKind::Error);
             return;
         }
 
@@ -481,7 +554,10 @@ impl App {
         };
         let new_path = std::path::Path::new(&parent).join(new_name).to_string_lossy().to_string();
 
-        let result = if std::path::Path::new(&new_path).symlink_metadata().is_ok() {
+        // Windows names are case-insensitive: for `foo` -> `Foo` the new path
+        // "exists" because it is the entry being renamed
+        let case_only = cfg!(windows) && new_name.to_lowercase() == old_name.to_lowercase();
+        let result = if !case_only && std::path::Path::new(&new_path).symlink_metadata().is_ok() {
             Err(std::io::Error::other("cannot rename to an existing path"))
         } else {
             crate::fs::file_operations::move_path(&target, &new_path)
@@ -503,11 +579,12 @@ impl App {
 
     /// Port of the NewFile callback (App.cs:3372-3414).
     fn complete_new_file(&mut self, name: &str) {
-        if name.trim().is_empty() || is_invalid_file_name(name) {
-            if is_invalid_file_name(name) {
-                self.show_notification("Invalid file name", NotificationKind::Error);
-            }
+        if name.trim().is_empty() {
+            return;
+        }
 
+        if let Some(problem) = name_problem(name, "Invalid file name") {
+            self.show_notification(&problem, NotificationKind::Error);
             return;
         }
 
@@ -534,11 +611,12 @@ impl App {
 
     /// Port of the NewDirectory callback (App.cs:3415-3457).
     fn complete_new_directory(&mut self, name: &str) {
-        if name.trim().is_empty() || is_invalid_file_name(name) {
-            if is_invalid_file_name(name) {
-                self.show_notification("Invalid directory name", NotificationKind::Error);
-            }
+        if name.trim().is_empty() {
+            return;
+        }
 
+        if let Some(problem) = name_problem(name, "Invalid directory name") {
+            self.show_notification(&problem, NotificationKind::Error);
             return;
         }
 
@@ -569,11 +647,12 @@ impl App {
             return;
         };
 
-        if link_name.trim().is_empty() || is_invalid_file_name(link_name) {
-            if is_invalid_file_name(link_name) {
-                self.show_notification("Invalid link name", NotificationKind::Error);
-            }
+        if link_name.trim().is_empty() {
+            return;
+        }
 
+        if let Some(problem) = name_problem(link_name, "Invalid link name") {
+            self.show_notification(&problem, NotificationKind::Error);
             return;
         }
 

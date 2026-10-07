@@ -9,7 +9,7 @@ use std::path::Path;
 /// checks `FileInfo.LinkTarget` before any Directory.Exists call, because
 /// Directory.Exists follows links on Windows.
 #[must_use]
-fn is_symlink(path: &str) -> bool {
+pub fn is_symlink(path: &str) -> bool {
     std::fs::symlink_metadata(path).is_ok_and(|meta| meta.file_type().is_symlink())
 }
 
@@ -64,9 +64,129 @@ fn delete_one(path: &str) -> bool {
     }
 
     match std::fs::symlink_metadata(path) {
-        Ok(meta) if meta.is_dir() => std::fs::remove_dir_all(path).is_ok(),
-        Ok(_) => std::fs::remove_file(path).is_ok(),
+        Ok(meta) if meta.is_dir() => remove_dir_all_forced(path).is_ok(),
+        Ok(_) => remove_file_forced(path).is_ok(),
         Err(_) => false,
+    }
+}
+
+/// `remove_file` that also deletes a read-only file on Windows by clearing
+/// the attribute and retrying, as Explorer does.
+fn remove_file_forced(path: &str) -> Result<(), std::io::Error> {
+    match std::fs::remove_file(path) {
+        #[cfg(windows)]
+        Err(err) if is_permission_denied(&err) && clear_readonly(Path::new(path)) => std::fs::remove_file(path),
+        result => result,
+    }
+}
+
+/// `remove_dir_all` that also deletes read-only files and directories inside
+/// the tree on Windows by clearing their attribute and retrying.
+fn remove_dir_all_forced(path: &str) -> Result<(), std::io::Error> {
+    match std::fs::remove_dir_all(path) {
+        #[cfg(windows)]
+        Err(err) if is_permission_denied(&err) => {
+            clear_readonly_tree(Path::new(path));
+            std::fs::remove_dir_all(path)
+        }
+        result => result,
+    }
+}
+
+/// Clears the read-only attribute; true when it was set and is now cleared.
+#[cfg(windows)]
+fn clear_readonly(path: &Path) -> bool {
+    let Ok(meta) = std::fs::symlink_metadata(path) else {
+        return false;
+    };
+
+    let mut permissions = meta.permissions();
+    if !permissions.readonly() {
+        return false;
+    }
+
+    // On Windows this only clears FILE_ATTRIBUTE_READONLY
+    #[allow(clippy::permissions_set_readonly_false)]
+    permissions.set_readonly(false);
+    std::fs::set_permissions(path, permissions).is_ok()
+}
+
+/// Clears the read-only attribute on `path` and everything below it,
+/// without following links.
+#[cfg(windows)]
+fn clear_readonly_tree(path: &Path) {
+    clear_readonly(path);
+
+    let is_real_dir = std::fs::symlink_metadata(path).is_ok_and(|meta| meta.is_dir());
+    if !is_real_dir {
+        return;
+    }
+
+    if let Ok(entries) = std::fs::read_dir(path) {
+        for entry in entries.flatten() {
+            clear_readonly_tree(&entry.path());
+        }
+    }
+}
+
+/// Canonical form of `path` for location comparisons; lowercase on Windows,
+/// where names are case-insensitive.
+fn location_key(path: &Path) -> Option<std::path::PathBuf> {
+    let canonical = std::fs::canonicalize(path).ok()?;
+    if cfg!(windows) {
+        Some(std::path::PathBuf::from(canonical.to_string_lossy().to_lowercase()))
+    } else {
+        Some(canonical)
+    }
+}
+
+/// True when `source` sits directly in `dest_dir`, so pasting it there would
+/// target the source itself.
+#[must_use]
+pub fn same_location(source: &str, dest_dir: &str) -> bool {
+    let Some(parent) = Path::new(source).parent() else {
+        return false;
+    };
+
+    match (location_key(parent), location_key(Path::new(dest_dir))) {
+        (Some(parent), Some(dest)) => parent == dest,
+        _ => false,
+    }
+}
+
+/// True when `dest_dir` is `source` or inside it (links resolved), so a
+/// recursive copy or move of `source` into `dest_dir` can never finish.
+#[must_use]
+pub fn is_within(dest_dir: &str, source: &str) -> bool {
+    match (location_key(Path::new(dest_dir)), location_key(Path::new(source))) {
+        (Some(dest), Some(source)) => dest.starts_with(source),
+        _ => false,
+    }
+}
+
+/// Explorer-style name for a copy pasted next to its source: `a.txt` becomes
+/// `a - Copy.txt`, then `a - Copy (2).txt` and so on until a free name is
+/// found. Directories and dotfiles keep the whole name as the stem.
+#[must_use]
+pub fn unique_copy_name(dir: &str, name: &str, is_directory: bool) -> String {
+    let (stem, extension) = match name.rfind('.') {
+        Some(index) if index > 0 && !is_directory => name.split_at(index),
+        _ => (name, ""),
+    };
+
+    let mut number = 1;
+    loop {
+        let candidate = if number == 1 {
+            format!("{stem} - Copy{extension}")
+        } else {
+            format!("{stem} - Copy ({number}){extension}")
+        };
+
+        if Path::new(dir).join(&candidate).symlink_metadata().is_err() {
+            return candidate;
+        }
+
+        number += 1;
     }
 }
 
@@ -171,9 +291,9 @@ pub fn delete_existing(path: &str) -> Result<(), std::io::Error> {
 
     let meta = std::fs::symlink_metadata(path)?;
     if meta.is_dir() {
-        std::fs::remove_dir_all(path)
+        remove_dir_all_forced(path)
     } else {
-        std::fs::remove_file(path)
+        remove_file_forced(path)
     }
 }
 
@@ -259,6 +379,102 @@ mod tests {
         let _ = std::fs::remove_file(&link);
         let _ = std::fs::remove_file(&target);
         ok
+    }
+
+    #[test]
+    fn unique_copy_name_follows_explorer() {
+        let dir = temp_dir("copyname");
+        let d = p(&dir);
+        assert_eq!(unique_copy_name(&d, "a.txt", false), "a - Copy.txt");
+        std::fs::write(dir.join("a - Copy.txt"), b"").expect("write");
+        assert_eq!(unique_copy_name(&d, "a.txt", false), "a - Copy (2).txt");
+        std::fs::write(dir.join("a - Copy (2).txt"), b"").expect("write");
+        assert_eq!(unique_copy_name(&d, "a.txt", false), "a - Copy (3).txt");
+
+        assert_eq!(unique_copy_name(&d, "a.tar.gz", false), "a.tar - Copy.gz");
+        assert_eq!(unique_copy_name(&d, "Makefile", false), "Makefile - Copy");
+        assert_eq!(unique_copy_name(&d, ".env", false), ".env - Copy");
+        assert_eq!(unique_copy_name(&d, "v1.2", true), "v1.2 - Copy", "directories keep the whole name");
+    }
+
+    #[test]
+    fn same_location_and_is_within_resolve_paths() {
+        let dir = temp_dir("location");
+        let sub = dir.join("sub");
+        std::fs::create_dir_all(sub.join("deeper")).expect("mkdir");
+        std::fs::write(dir.join("f.txt"), b"").expect("write");
+
+        assert!(same_location(&p(&dir.join("f.txt")), &p(&dir)));
+        assert!(same_location(&p(&dir.join("f.txt")), &p(&sub.join(".."))));
+        assert!(!same_location(&p(&dir.join("f.txt")), &p(&sub)));
+
+        assert!(is_within(&p(&sub), &p(&sub)));
+        assert!(is_within(&p(&sub.join("deeper")), &p(&sub)));
+        assert!(!is_within(&p(&dir), &p(&sub)));
+        // A sibling sharing a name prefix is not inside
+        std::fs::create_dir_all(dir.join("sub2")).expect("mkdir");
+        assert!(!is_within(&p(&dir.join("sub2")), &p(&sub)));
+
+        if cfg!(windows) {
+            let upper = p(&sub).to_uppercase();
+            assert!(is_within(&p(&sub.join("deeper")), &upper), "case-insensitive on Windows");
+            assert!(same_location(&p(&dir.join("F.TXT")), &p(&dir).to_uppercase()));
+        }
+    }
+
+    #[cfg(windows)]
+    fn make_read_only(path: &Path) {
+        let mut permissions = std::fs::metadata(path).expect("meta").permissions();
+        permissions.set_readonly(true);
+        std::fs::set_permissions(path, permissions).expect("set read-only");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn permanent_delete_removes_read_only_files_and_trees() {
+        let dir = temp_dir("readonly-delete");
+        let file = dir.join("ro.txt");
+        std::fs::write(&file, b"x").expect("write");
+        make_read_only(&file);
+        let tree = dir.join("tree");
+        std::fs::create_dir_all(tree.join("inner")).expect("mkdir");
+        std::fs::write(tree.join("inner").join("ro.txt"), b"x").expect("write");
+        make_read_only(&tree.join("inner").join("ro.txt"));
+        make_read_only(&tree.join("inner"));
+
+        let (success, errors) = delete_paths(&[p(&file), p(&tree)], true, &CancelToken::new());
+        assert_eq!((success, errors), (2, 0));
+        assert!(!file.exists());
+        assert!(!tree.exists());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn read_only_files_can_be_renamed() {
+        let dir = temp_dir("readonly-rename");
+        let file = dir.join("ro.txt");
+        std::fs::write(&file, b"x").expect("write");
+        make_read_only(&file);
+
+        move_path(&p(&file), &p(&dir.join("renamed.txt"))).expect("rename");
+        assert!(dir.join("renamed.txt").is_file());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn locked_files_are_not_deleted_or_renamed() {
+        use std::os::windows::fs::OpenOptionsExt;
+
+        let dir = temp_dir("locked");
+        let file = dir.join("locked.txt");
+        std::fs::write(&file, b"x").expect("write");
+        let lock = std::fs::OpenOptions::new().read(true).share_mode(0).open(&file).expect("lock");
+
+        assert_eq!(delete_paths(&[p(&file)], true, &CancelToken::new()), (0, 1));
+        assert!(move_path(&p(&file), &p(&dir.join("moved.txt"))).is_err());
+        assert!(std::fs::read(&file).is_err(), "reads are refused while the file is locked");
+        drop(lock);
+        assert_eq!(std::fs::read(&file).expect("read"), b"x");
     }
 
     #[test]

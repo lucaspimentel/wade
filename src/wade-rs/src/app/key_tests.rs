@@ -384,6 +384,85 @@ fn f2_renames_the_selected_entry() {
     let _ = std::fs::remove_dir_all(&parent);
 }
 
+/// Opens the rename dialog on `old` and submits `new`.
+fn rename(app: &mut App, old: &str, new: &str) {
+    select(app, old);
+    press(app, key(K::F2));
+    for _ in 0..old.chars().count() {
+        press(app, key(K::Backspace));
+    }
+    type_text(app, new);
+    press(app, key(K::Enter));
+}
+
+fn notification(app: &App) -> String {
+    app.notification.as_ref().map(|n| n.message.clone()).unwrap_or_default()
+}
+
+#[test]
+fn f2_rejects_a_name_with_a_separator() {
+    let (mut app, parent, root) = app();
+    rename(&mut app, "b.txt", "x/c.txt");
+    assert_eq!(notification(&app), "Invalid file name");
+    assert!(root.join("b.txt").is_file());
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[cfg(windows)]
+#[test]
+fn f2_changes_only_the_case_of_a_file_and_a_directory() {
+    let (mut app, parent, root) = app();
+    let on_disk = |name: &str| {
+        std::fs::read_dir(&root)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .any(|actual| actual == name)
+    };
+
+    rename(&mut app, "b.txt", "B.TXT");
+    assert_eq!(notification(&app), "Renamed to 'B.TXT'");
+    assert!(on_disk("B.TXT") && !on_disk("b.txt"));
+    assert_eq!(selected_name(&mut app), "B.TXT");
+
+    rename(&mut app, "sub", "Sub");
+    assert_eq!(notification(&app), "Renamed to 'Sub'");
+    assert!(on_disk("Sub") && !on_disk("sub"));
+    assert_eq!(selected_name(&mut app), "Sub");
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[cfg(windows)]
+#[test]
+fn reserved_names_and_trailing_dots_are_refused_on_windows() {
+    let (mut app, parent, root) = app();
+    let before = std::fs::read_dir(&root).unwrap().count();
+    let cases = [
+        ("CON", "'CON' is a reserved name on Windows"),
+        ("con.txt", "'con.txt' is a reserved name on Windows"),
+        ("a.", "Name cannot end with a dot or space"),
+        ("a ", "Name cannot end with a dot or space"),
+    ];
+
+    for (name, message) in cases {
+        press(&mut app, ch('n'));
+        type_text(&mut app, name);
+        press(&mut app, key(K::Enter));
+        assert_eq!(notification(&app), message, "new file {name:?}");
+
+        press(&mut app, ch('N'));
+        type_text(&mut app, name);
+        press(&mut app, key(K::Enter));
+        assert_eq!(notification(&app), message, "new directory {name:?}");
+
+        rename(&mut app, "b.txt", name);
+        assert_eq!(notification(&app), message, "rename to {name:?}");
+    }
+
+    assert_eq!(std::fs::read_dir(&root).unwrap().count(), before, "nothing created");
+    assert!(root.join("b.txt").is_file());
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
 #[test]
 fn f2_onto_an_existing_name_keeps_both_files() {
     let (mut app, parent, root) = app();

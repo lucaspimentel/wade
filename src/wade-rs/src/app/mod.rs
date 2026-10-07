@@ -1409,9 +1409,12 @@ impl App {
             .clipboard_paths
             .iter()
             .filter(|path| {
-                Path::new(path.as_str())
-                    .file_name()
-                    .is_some_and(|name| Path::new(&self.current_path).join(name).exists())
+                // Pasting into the source's own folder makes a "- Copy", so it
+                // is not a conflict
+                !crate::fs::file_operations::same_location(path, &self.current_path)
+                    && Path::new(path.as_str())
+                        .file_name()
+                        .is_some_and(|name| Path::new(&self.current_path).join(name).exists())
             })
             .count();
 
@@ -2673,14 +2676,37 @@ mod tests {
     #[test]
     fn paste_onto_existing_names_asks_to_overwrite() {
         let root = test_root("clip-conflict");
+        let source = test_root("clip-conflict-src");
+        std::fs::write(source.join("a.txt"), "new").unwrap();
         let mut app = app_at(&root, &["a.txt"]);
-        app.dispatch(AppAction::Copy);
+        app.clipboard_paths = vec![source.join("a.txt").to_string_lossy().into_owned()];
         app.dispatch(AppAction::Paste);
 
         assert_eq!(app.input_mode, InputMode::Confirm);
         assert_eq!(app.modal.confirm_title.as_deref(), Some("Overwrite"));
         assert_eq!(app.modal.confirm_message.as_deref(), Some("1 item(s) already exist. Overwrite?"));
         assert!(matches!(app.modal.confirm_yes_action, Some(super::dialogs::ConfirmAction::Paste { overwrite: true })));
+        std::fs::remove_dir_all(&root).unwrap();
+        std::fs::remove_dir_all(&source).unwrap();
+    }
+
+    #[test]
+    fn paste_into_the_source_folder_makes_a_copy_without_asking() {
+        let root = test_root("clip-self");
+        let mut app = app_at(&root, &["a.txt"]);
+        app.dispatch(AppAction::Copy);
+        app.dispatch(AppAction::Paste);
+
+        assert_eq!(app.input_mode, InputMode::FileOperation, "no Overwrite prompt");
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        while std::fs::read(root.join("a - Copy.txt")).ok().as_deref() != Some(b"x".as_slice())
+            && std::time::Instant::now() < deadline
+        {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        app.file_operation_runner.cancel();
+        assert_eq!(std::fs::read(root.join("a.txt")).unwrap(), b"x", "the source is kept");
+        assert_eq!(std::fs::read(root.join("a - Copy.txt")).unwrap(), b"x");
         std::fs::remove_dir_all(&root).unwrap();
     }
 
