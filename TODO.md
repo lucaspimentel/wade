@@ -247,6 +247,10 @@ Investigate enabling `ENABLE_VIRTUAL_TERMINAL_INPUT` on Windows Terminal (detect
 
 - [ ] Allow showing more than 100 lines in file previews. Text previews stop at `MAX_PREVIEW_LINES` (100) in `src/wade-rs/src/fs/file_preview.rs` (C# `GetPreviewLines`).
 
+### Full-screen preview with the right pane disabled
+
+- [ ] Allow opening the full-screen (expanded) file preview even when the right pane (`Show Right Pane`) is disabled.
+
 ### Keyboard shortcut convention audit
 
 - [ ] Review remaining keybinding consistency. Current mix: some dialogs/tools use `Ctrl+` (`Ctrl+F` finder, `Ctrl+T` terminal, `Ctrl+L` symlink, `Ctrl+R` refresh, `Ctrl+P` command palette, `Ctrl+G` go-to-path) while others use bare keys (`n`/`N` new file/dir, `b`/`B` bookmarks, `/` filter, `,` config, `?` help, `i` properties). Convention: `Ctrl+<key>` for opening tools/dialogs/overlays, bare keys for direct actions.
