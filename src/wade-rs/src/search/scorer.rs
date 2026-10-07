@@ -58,11 +58,7 @@ fn score_with_positions_cs(query: &[char], target: &[char], case_sensitive: bool
     let mut positions = vec![0usize; query.len()];
     let score = score_core(query, target, &mut positions, case_sensitive);
 
-    if score == NO_MATCH {
-        (NO_MATCH, Vec::new())
-    } else {
-        (score, positions)
-    }
+    if score == NO_MATCH { (NO_MATCH, Vec::new()) } else { (score, positions) }
 }
 
 /// Core scoring logic: writes tightened match positions into `positions`
@@ -145,10 +141,7 @@ pub fn score_with_file_name_priority_positions(
     relative_path: &[char],
     file_name_start: usize,
 ) -> (i32, Vec<usize>) {
-    with_depth_penalty(
-        relative_path,
-        term_score(QueryMode::Fuzzy, query, false, relative_path, file_name_start),
-    )
+    with_depth_penalty(relative_path, term_score(QueryMode::Fuzzy, query, false, relative_path, file_name_start))
 }
 
 /// Score a query as an exact contiguous substring (fzf `'` prefix).
@@ -218,15 +211,13 @@ pub fn term_score(
                 (score_cs(text, target, case_sensitive), Vec::new())
             }
         }),
-        QueryMode::ExactSubstring => {
-            with_file_name_priority(relative_path, file_name_start, |target, positions| {
-                if positions {
-                    exact_score_with_positions(text, target, case_sensitive)
-                } else {
-                    (exact_score(text, target, case_sensitive), Vec::new())
-                }
-            })
-        }
+        QueryMode::ExactSubstring => with_file_name_priority(relative_path, file_name_start, |target, positions| {
+            if positions {
+                exact_score_with_positions(text, target, case_sensitive)
+            } else {
+                (exact_score(text, target, case_sensitive), Vec::new())
+            }
+        }),
         QueryMode::Prefix | QueryMode::Suffix | QueryMode::PrefixSuffix => {
             anchored_score(mode, text, case_sensitive, relative_path, file_name_start)
         }
@@ -328,18 +319,11 @@ fn anchored_score(
 
 /// Maps `/` and `\` in a query to the platform separator.
 fn normalize_separators(query: &[char]) -> Vec<char> {
-    query
-        .iter()
-        .map(|&c| if c == '/' || c == '\\' { std::path::MAIN_SEPARATOR } else { c })
-        .collect()
+    query.iter().map(|&c| if c == '/' || c == '\\' { std::path::MAIN_SEPARATOR } else { c }).collect()
 }
 
 fn chars_equal(a: char, b: char, case_sensitive: bool) -> bool {
-    if case_sensitive {
-        a == b
-    } else {
-        a == b || to_upper(a) == to_upper(b)
-    }
+    if case_sensitive { a == b } else { a == b || to_upper(a) == to_upper(b) }
 }
 
 /// Shared candidate selection of the `*WithFileNamePriority` methods: a
@@ -508,13 +492,13 @@ mod tests {
     #[test]
     fn score_matches_subsequence() {
         for (query, target) in [
-            ("abc", "abc"),                  // exact match
-            ("abc", "aXbXc"),                // subsequence with gaps
-            ("app", "App.cs"),               // case insensitive
-            ("pdf", "report.pdf"),           // match after dot boundary
-            ("cs", "App.cs"),                // extension match
-            ("wade", "Wade"),                // case insensitive full match
-            ("NP", "NullPointerException"),  // camelCase initials
+            ("abc", "abc"),                 // exact match
+            ("abc", "aXbXc"),               // subsequence with gaps
+            ("app", "App.cs"),              // case insensitive
+            ("pdf", "report.pdf"),          // match after dot boundary
+            ("cs", "App.cs"),               // extension match
+            ("wade", "Wade"),               // case insensitive full match
+            ("NP", "NullPointerException"), // camelCase initials
         ] {
             assert!(s(query, target) > NO_MATCH, "{query:?} in {target:?}");
         }
@@ -742,7 +726,9 @@ mod tests {
                 "exact-cs" => exact_score_with_positions(&query, &target, true),
                 "fname" => score_with_file_name_priority_positions(&query, &target, file_name_start),
                 "fname-exact" => exact_score_with_file_name_priority_positions(&query, &target, file_name_start, false),
-                "fname-exact-cs" => exact_score_with_file_name_priority_positions(&query, &target, file_name_start, true),
+                "fname-exact-cs" => {
+                    exact_score_with_file_name_priority_positions(&query, &target, file_name_start, true)
+                }
                 kind => panic!("unknown kind {kind}"),
             };
 

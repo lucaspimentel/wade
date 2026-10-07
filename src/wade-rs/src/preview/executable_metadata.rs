@@ -59,7 +59,10 @@ fn read_metadata(path: &str, cancel: &CancelToken) -> Result<Option<MetadataResu
         }
     }
 
-    sections.push(MetadataSection { header: Some("Executable Info".to_string()), entries: pe_entries });
+    sections.push(MetadataSection {
+        header: Some("Executable Info".to_string()),
+        entries: pe_entries,
+    });
 
     if cancel.is_cancelled() {
         return Ok(None);
@@ -83,13 +86,20 @@ fn read_metadata(path: &str, cancel: &CancelToken) -> Result<Option<MetadataResu
         }
     }
 
-    Ok(Some(MetadataResult { sections, file_type_label: Some(extension(path).to_ascii_uppercase()) }))
+    Ok(Some(MetadataResult {
+        sections,
+        file_type_label: Some(extension(path).to_ascii_uppercase()),
+    }))
 }
 
 /// Port of `GetAssemblyMetadataSections`; false when the image is not an
 /// assembly (C# `GetAssemblyDefinition` throws InvalidOperationException,
 /// which nulls the whole result).
-fn assembly_sections(sections: &mut Vec<MetadataSection>, reader: &MetadataReader, cancel: &CancelToken) -> Result<bool, BadImage> {
+fn assembly_sections(
+    sections: &mut Vec<MetadataSection>,
+    reader: &MetadataReader,
+    cancel: &CancelToken,
+) -> Result<bool, BadImage> {
     let Some((name, version)) = reader.assembly()? else {
         return Ok(false);
     };
@@ -106,7 +116,10 @@ fn assembly_sections(sections: &mut Vec<MetadataSection>, reader: &MetadataReade
         entries.push(MetadataEntry::new("Framework", &tfm));
     }
 
-    sections.push(MetadataSection { header: Some(".NET Assembly".to_string()), entries });
+    sections.push(MetadataSection {
+        header: Some(".NET Assembly".to_string()),
+        entries,
+    });
 
     if cancel.is_cancelled() {
         return Ok(true);
@@ -263,12 +276,14 @@ mod version_info {
             return None;
         }
 
-        let lang_id = query(&data, "\\VarFileInfo\\Translation")
-            .filter(|&(_, len)| len >= 4)
-            .map_or(0x0409_04E4, |(ptr, _)| {
-                let raw = unsafe { std::slice::from_raw_parts(ptr, 4) };
-                (u32::from(u16::from_le_bytes([raw[0], raw[1]])) << 16) | u32::from(u16::from_le_bytes([raw[2], raw[3]]))
-            });
+        let lang_id =
+            query(&data, "\\VarFileInfo\\Translation")
+                .filter(|&(_, len)| len >= 4)
+                .map_or(0x0409_04E4, |(ptr, _)| {
+                    let raw = unsafe { std::slice::from_raw_parts(ptr, 4) };
+                    (u32::from(u16::from_le_bytes([raw[0], raw[1]])) << 16)
+                        | u32::from(u16::from_le_bytes([raw[2], raw[3]]))
+                });
 
         let mut strings = read_code_page(&data, lang_id);
 
@@ -318,7 +333,10 @@ mod version_info {
         }
 
         add("Original name", fvi.original_name.as_ref());
-        Some(MetadataSection { header: Some("Version Info".to_string()), entries })
+        Some(MetadataSection {
+            header: Some("Version Info".to_string()),
+            entries,
+        })
     }
 }
 
@@ -347,7 +365,10 @@ mod tests {
     #[test]
     fn non_pe_file_returns_none() {
         let path = temp_file("text.exe", b"This is not a PE file");
-        assert_eq!(ExecutableMetadataProvider.get_metadata(&path.to_string_lossy(), &test_context(), &CancelToken::new()), None);
+        assert_eq!(
+            ExecutableMetadataProvider.get_metadata(&path.to_string_lossy(), &test_context(), &CancelToken::new()),
+            None
+        );
         std::fs::remove_file(path).unwrap();
     }
 
@@ -384,8 +405,10 @@ mod tests {
 
     #[test]
     fn registry_includes_executable_provider() {
-        let labels: Vec<&str> =
-            registry::applicable_metadata_providers("app.exe", &test_context()).iter().map(|p| p.label()).collect();
+        let labels: Vec<&str> = registry::applicable_metadata_providers("app.exe", &test_context())
+            .iter()
+            .map(|p| p.label())
+            .collect();
         assert!(labels.contains(&"Executable metadata"));
     }
 

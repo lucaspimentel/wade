@@ -17,7 +17,12 @@ pub struct ContextMenuState {
 impl ContextMenuState {
     #[must_use]
     pub fn new(items: Vec<ActionMenuItem>, anchor_row: i32, anchor_col: i32) -> Self {
-        Self { items, anchor_row, anchor_col, selected_index: 0 }
+        Self {
+            items,
+            anchor_row,
+            anchor_col,
+            selected_index: 0,
+        }
     }
 
     /// Port of `MoveUp` (wraps around).
@@ -119,7 +124,14 @@ pub fn render(buffer: &mut ScreenBuffer, screen_width: i32, screen_height: i32, 
     let content_width = box_rect.width - 4;
 
     // Top border
-    draw_horizontal_border(buffer, box_rect.top, box_rect.left, box_rect.width, ('\u{250c}', '\u{2500}', '\u{2510}'), border_style);
+    draw_horizontal_border(
+        buffer,
+        box_rect.top,
+        box_rect.left,
+        box_rect.width,
+        ('\u{250c}', '\u{2500}', '\u{2510}'),
+        border_style,
+    );
 
     // Item rows
     for i in 0..item_count {
@@ -223,11 +235,7 @@ mod tests {
 
     #[test]
     fn empty_shortcut_widens_label_only() {
-        let state = ContextMenuState::new(
-            vec![ActionMenuItem::new("Git: Stage", "", AppAction::None)],
-            0,
-            0,
-        );
+        let state = ContextMenuState::new(vec![ActionMenuItem::new("Git: Stage", "", AppAction::None)], 0, 0);
         let rect = get_menu_rect(80, 25, &state);
         assert_eq!(rect.width, 10 + 4);
     }
@@ -265,7 +273,10 @@ mod tests {
 
     fn copy_paste(row: i32, col: i32) -> Rect {
         let state = ContextMenuState::new(
-            vec![ActionMenuItem::new("Copy", "c", AppAction::Copy), ActionMenuItem::new("Paste", "v", AppAction::Paste)],
+            vec![
+                ActionMenuItem::new("Copy", "c", AppAction::Copy),
+                ActionMenuItem::new("Paste", "v", AppAction::Paste),
+            ],
             row,
             col,
         );

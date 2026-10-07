@@ -2,8 +2,8 @@
 //! (ProcessRecords / DecodeRecords). Pure: no console access, so the fixture
 //! harnesses run identically on every platform.
 
-use crate::console_key::ConsoleKey;
 use super::{InputEvent, KeyEvent, MouseButton, MouseEvent, ResizeEvent};
+use crate::console_key::ConsoleKey;
 
 pub const KEY_EVENT_TYPE: u16 = 0x0001;
 pub const MOUSE_EVENT_TYPE: u16 = 0x0002;
@@ -56,11 +56,7 @@ fn make_key_event(virtual_key_code: u16, unicode_char: u16, control_key_state: u
 /// Port of `WindowsInputSource.DecodeRecords`: decodes raw console input
 /// records into input events. `window_width`/`window_height` mirror the live
 /// console size the C# call site passes in.
-pub fn decode_records(
-    records: &[RawRecord],
-    window_width: i32,
-    window_height: i32,
-) -> Vec<InputEvent> {
+pub fn decode_records(records: &[RawRecord], window_width: i32, window_height: i32) -> Vec<InputEvent> {
     let mut pending = Vec::new();
     let mut i = 0;
 
@@ -90,10 +86,7 @@ pub fn decode_records(
                                 i += 1;
                                 continue;
                             }
-                            RawRecord::Key {
-                                unicode_char: next_char,
-                                ..
-                            } => {
+                            RawRecord::Key { unicode_char: next_char, .. } => {
                                 if u32::from(next_char) < u32::from(' ') {
                                     break;
                                 }
@@ -121,30 +114,18 @@ pub fn decode_records(
                             unreachable!("burst starts with a key record");
                         };
 
-                        pending.push(InputEvent::Key(make_key_event(
-                            virtual_key_code,
-                            unicode_char,
-                            control_key_state,
-                        )));
+                        pending
+                            .push(InputEvent::Key(make_key_event(virtual_key_code, unicode_char, control_key_state)));
                     }
 
                     continue;
                 }
 
-                pending.push(InputEvent::Key(make_key_event(
-                    virtual_key_code,
-                    unicode_char,
-                    control_key_state,
-                )));
+                pending.push(InputEvent::Key(make_key_event(virtual_key_code, unicode_char, control_key_state)));
 
                 i += 1;
             }
-            RawRecord::Mouse {
-                x,
-                y,
-                button_state,
-                event_flags,
-            } => {
+            RawRecord::Mouse { x, y, button_state, event_flags } => {
                 if event_flags == MOUSE_MOVED {
                     i += 1;
                     continue; // ignore mouse move
@@ -154,11 +135,7 @@ pub fn decode_records(
                     // High word of dwButtonState is a signed wheel delta
                     let hi_word = ((button_state >> 16) & 0xFFFF) as u16;
                     let signed = i16::from_ne_bytes(hi_word.to_ne_bytes());
-                    let scroll_button = if signed > 0 {
-                        MouseButton::ScrollUp
-                    } else {
-                        MouseButton::ScrollDown
-                    };
+                    let scroll_button = if signed > 0 { MouseButton::ScrollUp } else { MouseButton::ScrollDown };
                     pending.push(InputEvent::Mouse(MouseEvent {
                         button: scroll_button,
                         row: i32::from(y),
@@ -241,9 +218,24 @@ mod tests {
     fn key_up_events_are_skipped() {
         let events = decode_records(
             &[
-                RawRecord::Key { key_down: true, virtual_key_code: 72, unicode_char: 72u16.wrapping_add(0x1000), control_key_state: 0 },
-                RawRecord::Key { key_down: false, virtual_key_code: 72, unicode_char: 72u16.wrapping_add(0x1000), control_key_state: 0 },
-                RawRecord::Key { key_down: true, virtual_key_code: 72, unicode_char: 72u16.wrapping_add(0x1000), control_key_state: 0 },
+                RawRecord::Key {
+                    key_down: true,
+                    virtual_key_code: 72,
+                    unicode_char: 72u16.wrapping_add(0x1000),
+                    control_key_state: 0,
+                },
+                RawRecord::Key {
+                    key_down: false,
+                    virtual_key_code: 72,
+                    unicode_char: 72u16.wrapping_add(0x1000),
+                    control_key_state: 0,
+                },
+                RawRecord::Key {
+                    key_down: true,
+                    virtual_key_code: 72,
+                    unicode_char: 72u16.wrapping_add(0x1000),
+                    control_key_state: 0,
+                },
             ],
             80,
             25,

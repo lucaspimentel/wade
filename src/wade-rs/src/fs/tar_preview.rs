@@ -14,7 +14,7 @@
 use std::fs::File;
 use std::io::{self, BufReader, Read, Seek, SeekFrom};
 
-use crate::fs::gzip::{read_fully, GzipReader};
+use crate::fs::gzip::{GzipReader, read_fully};
 use crate::highlight::StyledLine;
 use crate::input::CancelToken;
 use crate::ui::format_helpers::format_size_string;
@@ -787,10 +787,8 @@ pub fn get_gzip_styled_preview(path: &str, cancel: &CancelToken) -> Option<Vec<S
             return Ok(lines.map(|lines| lines.iter().map(|line| StyledLine::plain(line)).collect()));
         }
 
-        let mut result = vec![
-            StyledLine::plain(&build_gzip_metadata_line(path)?),
-            StyledLine::plain(&"\u{2500}".repeat(16)),
-        ];
+        let mut result =
+            vec![StyledLine::plain(&build_gzip_metadata_line(path)?), StyledLine::plain(&"\u{2500}".repeat(16))];
 
         let Some(content) = read_gzip_content(path, cancel)? else {
             return Ok(None);
@@ -816,7 +814,7 @@ mod tests {
 
     use std::io::Write;
 
-    use super::{get_gzip_styled_preview, get_preview_lines, get_stats, is_plain_gzip, is_tar_archive, TarFormat};
+    use super::{TarFormat, get_gzip_styled_preview, get_preview_lines, get_stats, is_plain_gzip, is_tar_archive};
     use crate::input::CancelToken;
 
     fn cancelled() -> CancelToken {

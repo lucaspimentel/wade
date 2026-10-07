@@ -15,7 +15,13 @@ use crate::input::{InputEvent, InputMode, MouseButton, MouseEvent};
 
 fn app() -> (App, std::path::PathBuf, std::path::PathBuf) {
     let (parent, root) = fixture();
-    let app = app_at(AppConfig { git_status_enabled: false, ..AppConfig::default() }, &root);
+    let app = app_at(
+        AppConfig {
+            git_status_enabled: false,
+            ..AppConfig::default()
+        },
+        &root,
+    );
     (app, parent, root)
 }
 
@@ -38,7 +44,12 @@ fn center_row_of(app: &mut App, name: &str) -> i32 {
     let rows = frame(app);
     (pane.top..pane.top + pane.height)
         .find(|&row| {
-            rows[row as usize].chars().skip(pane.left as usize).take(pane.width as usize).collect::<String>().contains(name)
+            rows[row as usize]
+                .chars()
+                .skip(pane.left as usize)
+                .take(pane.width as usize)
+                .collect::<String>()
+                .contains(name)
         })
         .unwrap_or_else(|| panic!("{name} not drawn in the center pane"))
 }
@@ -168,9 +179,7 @@ fn s_and_shift_s_reorder_the_listing() {
     let (mut app, parent, root) = app();
     std::fs::write(root.join("big.bin"), vec![0u8; 50_000]).unwrap();
     app.directory_contents.invalidate_all();
-    let files = |app: &mut App| -> Vec<String> {
-        visible_names(app).into_iter().filter(|n| n != "sub").collect()
-    };
+    let files = |app: &mut App| -> Vec<String> { visible_names(app).into_iter().filter(|n| n != "sub").collect() };
 
     press(&mut app, ch('s')); // Modified
     press(&mut app, ch('s')); // Size
@@ -275,7 +284,15 @@ fn comma_opens_the_config_dialog_and_enter_saves_a_toggled_item() {
     assert_eq!(app.input_mode, InputMode::Config);
     assert!(frame_has(&mut app, "Show Hidden Files"));
 
-    let hidden_item = app.modal.config_state.as_ref().unwrap().items.iter().position(|item| item.label == "Show Hidden Files").unwrap();
+    let hidden_item = app
+        .modal
+        .config_state
+        .as_ref()
+        .unwrap()
+        .items
+        .iter()
+        .position(|item| item.label == "Show Hidden Files")
+        .unwrap();
     for _ in 0..hidden_item {
         press(&mut app, key(K::DownArrow));
     }
@@ -605,14 +622,20 @@ fn git_app() -> Option<(App, std::path::PathBuf, std::path::PathBuf)> {
 
 fn wait_for_git_action(app: &mut App) {
     pump_until(app, "the git action", |app| {
-        app.notification.as_ref().is_some_and(|n| n.message.starts_with("Git action completed") || n.message.starts_with("Git error"))
+        app.notification
+            .as_ref()
+            .is_some_and(|n| n.message.starts_with("Git action completed") || n.message.starts_with("Git error"))
     });
     let message = app.notification.take().map(|n| n.message).unwrap_or_default();
     assert_eq!(message, "Git action completed");
 }
 
 fn staged_files(root: &Path) -> Vec<String> {
-    git(root, &["diff", "--cached", "--name-only"]).unwrap_or_default().lines().map(str::to_string).collect()
+    git(root, &["diff", "--cached", "--name-only"])
+        .unwrap_or_default()
+        .lines()
+        .map(str::to_string)
+        .collect()
 }
 
 /// The status bar at 400 columns, so a long temp path (Windows CI) leaves
@@ -706,7 +729,13 @@ fn git_commit_dialog_commits_the_index() {
 // --- Ports of SearchFilterTests.cs and ModalInputTests.cs ------------------------
 
 fn char_only(c: char) -> crate::input::KeyEvent {
-    crate::input::KeyEvent { key: K::None, key_char: c as u16, shift: false, alt: false, control: false }
+    crate::input::KeyEvent {
+        key: K::None,
+        key_char: c as u16,
+        shift: false,
+        alt: false,
+        control: false,
+    }
 }
 
 #[test]
@@ -754,7 +783,11 @@ fn the_search_bar_shows_the_slash_and_the_filter() {
 }
 
 fn confirm_toggle_hidden(app: &mut App) {
-    app.show_confirm_dialog("Test", "Test?", super::dialogs::ConfirmAction::Dispatch(super::AppAction::ToggleHiddenFiles));
+    app.show_confirm_dialog(
+        "Test",
+        "Test?",
+        super::dialogs::ConfirmAction::Dispatch(super::AppAction::ToggleHiddenFiles),
+    );
 }
 
 #[test]
@@ -793,7 +826,8 @@ fn confirm_dialog_keys() {
 fn text_input_dialog_editing_keys() {
     let (mut app, parent, _) = app();
     press(&mut app, ch('n'));
-    let value = |app: &App| app.modal.active_text_input.as_ref().map(|i| (i.value().to_string(), i.cursor_position())).unwrap();
+    let value =
+        |app: &App| app.modal.active_text_input.as_ref().map(|i| (i.value().to_string(), i.cursor_position())).unwrap();
 
     type_text(&mut app, "abc");
     assert_eq!(value(&app), ("abc".to_string(), 3));
@@ -823,7 +857,16 @@ fn help_and_properties_stay_open_for_modifier_keys() {
             let (mut app, parent, _) = app();
             press(&mut app, open);
             let mode = app.input_mode;
-            press(&mut app, crate::input::KeyEvent { key: K(vk), key_char: 0, shift: false, alt: false, control: false });
+            press(
+                &mut app,
+                crate::input::KeyEvent {
+                    key: K(vk),
+                    key_char: 0,
+                    shift: false,
+                    alt: false,
+                    control: false,
+                },
+            );
             assert_eq!(app.input_mode, mode, "modifier {vk} keeps {mode:?} open");
             press(&mut app, ch('x'));
             assert_eq!(app.input_mode, InputMode::Normal, "a real key closes {mode:?}");
@@ -832,7 +875,16 @@ fn help_and_properties_stay_open_for_modifier_keys() {
     }
 
     for vk in [16u16, 17, 18] {
-        assert!(crate::input::KeyEvent { key: K(vk), key_char: 0, shift: false, alt: false, control: false }.is_modifier_only());
+        assert!(
+            crate::input::KeyEvent {
+                key: K(vk),
+                key_char: 0,
+                shift: false,
+                alt: false,
+                control: false
+            }
+            .is_modifier_only()
+        );
     }
     for k in [K::A, K::Escape, K::Enter, K::Spacebar] {
         assert!(!key(k).is_modifier_only(), "{k:?}");
@@ -977,7 +1029,13 @@ fn s_sorts_only_the_current_directory_and_marks_it() {
 fn reset_sort_from_the_palette_restores_the_default() {
     let (mut app, parent, _) = app();
     let has_reset = |app: &App| {
-        app.modal.action_menu_stack.last().unwrap().items.iter().any(|i| i.action == AppAction::ResetDirectorySort)
+        app.modal
+            .action_menu_stack
+            .last()
+            .unwrap()
+            .items
+            .iter()
+            .any(|i| i.action == AppAction::ResetDirectorySort)
     };
     press(&mut app, ctrl(K::P));
     assert!(!has_reset(&app), "no saved sort, no reset item");
@@ -1001,7 +1059,13 @@ fn saved_sorts_survive_a_restart() {
     press(&mut app, ch('S'));
     drop(app);
 
-    let mut restarted = app_at(AppConfig { git_status_enabled: false, ..AppConfig::default() }, &root);
+    let mut restarted = app_at(
+        AppConfig {
+            git_status_enabled: false,
+            ..AppConfig::default()
+        },
+        &root,
+    );
     assert_eq!(file_names(&mut restarted), ["readme.md", "empty.zip", "b.txt", "a.txt"]);
     assert!(status_bar(&mut restarted).contains("name\u{2193}*"));
     let _ = std::fs::remove_dir_all(&parent);
@@ -1020,7 +1084,14 @@ fn one_tab_shows_no_bar_and_t_adds_one() {
     assert_eq!(app.tab_count(), 2);
     assert_eq!(app.active_tab, 1, "the new tab follows the active one");
     let rows = frame(&mut app);
-    assert!(rows[0].starts_with(&format!(" 1 {CURRENT} \u{2502} 2 {CURRENT} ", CURRENT = crate::app::test_support::CURRENT_DIR)), "{}", rows[0]);
+    assert!(
+        rows[0].starts_with(&format!(
+            " 1 {CURRENT} \u{2502} 2 {CURRENT} ",
+            CURRENT = crate::app::test_support::CURRENT_DIR
+        )),
+        "{}",
+        rows[0]
+    );
     assert_eq!(app.layout.center_pane.top, 1, "the panes start below the bar");
     assert_eq!(rows[1], before[0], "the old first row moves down one");
     let _ = std::fs::remove_dir_all(&parent);

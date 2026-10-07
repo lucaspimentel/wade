@@ -230,27 +230,19 @@ fn issue_read(
 /// returned) requests a full refresh and keeps watching; any other failure
 /// requests one full refresh and stops watching.
 #[cfg(windows)]
-fn spawn_watch_thread(
-    directory_path: &str,
-    event_tx: std::sync::mpsc::Sender<bool>,
-) -> Result<WatchWorker, ()> {
+fn spawn_watch_thread(directory_path: &str, event_tx: std::sync::mpsc::Sender<bool>) -> Result<WatchWorker, ()> {
     use std::os::windows::ffi::OsStrExt;
     use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
 
-    use windows_sys::Win32::Foundation::{
-        ERROR_OPERATION_ABORTED, GetLastError, INVALID_HANDLE_VALUE, WAIT_OBJECT_0,
-    };
+    use windows_sys::Win32::Foundation::{ERROR_OPERATION_ABORTED, GetLastError, INVALID_HANDLE_VALUE, WAIT_OBJECT_0};
     use windows_sys::Win32::Storage::FileSystem::{
-        CreateFileW, FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OVERLAPPED,
-        FILE_LIST_DIRECTORY, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING,
+        CreateFileW, FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OVERLAPPED, FILE_LIST_DIRECTORY, FILE_SHARE_DELETE,
+        FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING,
     };
     use windows_sys::Win32::System::IO::{CancelIoEx, GetOverlappedResult};
     use windows_sys::Win32::System::Threading::{CreateEventW, INFINITE, WaitForMultipleObjects};
 
-    let wide_path: Vec<u16> = std::ffi::OsStr::new(directory_path)
-        .encode_wide()
-        .chain(std::iter::once(0))
-        .collect();
+    let wide_path: Vec<u16> = std::ffi::OsStr::new(directory_path).encode_wide().chain(std::iter::once(0)).collect();
 
     let raw_directory = unsafe {
         CreateFileW(
@@ -349,9 +341,8 @@ fn spawn_watch_thread(
                 // Buffer overflow: changes were lost, request a full refresh
                 let _ = event_tx.send(true);
             } else {
-                let bytes = unsafe {
-                    std::slice::from_raw_parts(read.buffer.as_ptr().cast::<u8>(), bytes_returned as usize)
-                };
+                let bytes =
+                    unsafe { std::slice::from_raw_parts(read.buffer.as_ptr().cast::<u8>(), bytes_returned as usize) };
                 parse_notify_buffer(bytes, &event_tx);
             }
 
@@ -365,10 +356,7 @@ fn spawn_watch_thread(
         // _directory and _io_event close here (OwnedHandle drop)
     });
 
-    Ok(WatchWorker {
-        stop_event,
-        thread: Some(thread),
-    })
+    Ok(WatchWorker { stop_event, thread: Some(thread) })
 }
 
 /// Parses a `FILE_NOTIFY_INFORMATION` sequence, forwarding one debounce
@@ -380,20 +368,14 @@ fn parse_notify_buffer(buffer: &[u8], event_tx: &std::sync::mpsc::Sender<bool>) 
 
     while offset + 12 <= buffer.len() {
         let next_entry_offset = u32::from_ne_bytes(buffer[offset..offset + 4].try_into().unwrap());
-        let file_name_length =
-            u32::from_ne_bytes(buffer[offset + 8..offset + 12].try_into().unwrap()) as usize;
+        let file_name_length = u32::from_ne_bytes(buffer[offset + 8..offset + 12].try_into().unwrap()) as usize;
 
         if offset + 12 + file_name_length > buffer.len() {
             break;
         }
 
         let name_bytes = &buffer[offset + 12..offset + 12 + file_name_length];
-        let name_utf16: Vec<u16> = name_bytes
-            .as_chunks::<2>()
-            .0
-            .iter()
-            .map(|pair| u16::from_ne_bytes(*pair))
-            .collect();
+        let name_utf16: Vec<u16> = name_bytes.as_chunks::<2>().0.iter().map(|pair| u16::from_ne_bytes(*pair)).collect();
 
         if let Ok(name) = String::from_utf16(&name_utf16)
             && !is_git_internal_event(&name)
@@ -437,18 +419,17 @@ fn spawn_watch_thread(
             Err(_) => Some(true),
             Ok(event) if event.need_rescan() => Some(true),
             // The watched directory itself went away (C# raises Error)
-            Ok(event) if matches!(event.kind, EventKind::Remove(_)) && event.paths.contains(&watched) => {
-                Some(true)
-            }
+            Ok(event) if matches!(event.kind, EventKind::Remove(_)) && event.paths.contains(&watched) => Some(true),
             Ok(event) => {
                 let relevant = matches!(
                     event.kind,
                     EventKind::Create(_) | EventKind::Remove(_) | EventKind::Modify(_) | EventKind::Any
                 );
                 let only_git = !event.paths.is_empty()
-                    && event.paths.iter().all(|p| {
-                        p.file_name().is_some_and(|name| is_git_internal_event(&name.to_string_lossy()))
-                    });
+                    && event
+                        .paths
+                        .iter()
+                        .all(|p| p.file_name().is_some_and(|name| is_git_internal_event(&name.to_string_lossy())));
                 (relevant && !only_git).then_some(false)
             }
         };
@@ -465,7 +446,7 @@ fn spawn_watch_thread(
 
 #[cfg(test)]
 mod tests {
-    use super::{is_git_internal_event, paths_equal, FileSystemWatcherManager, DEBOUNCE_MS};
+    use super::{DEBOUNCE_MS, FileSystemWatcherManager, is_git_internal_event, paths_equal};
     use crate::input::InputEvent;
     use crate::input::input_pipeline::InputPipeline;
 
@@ -712,10 +693,7 @@ mod tests {
         // Wine's ReadDirectoryChangesW never completes for a deleted
         // directory, so only the upper bound holds there.
         if !running_under_wine() {
-            assert!(
-                events.iter().any(|event| event.full_refresh),
-                "expected a full-refresh event, got {events:?}"
-            );
+            assert!(events.iter().any(|event| event.full_refresh), "expected a full-refresh event, got {events:?}");
         }
     }
 

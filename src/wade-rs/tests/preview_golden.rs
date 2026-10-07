@@ -5,16 +5,20 @@
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-use wade::fs::{file_preview, GitFileStatus};
+use wade::fs::{GitFileStatus, file_preview};
+use wade::fs::{tar_preview, zip_preview};
 use wade::highlight::StyledLine;
 use wade::input::CancelToken;
-use wade::fs::{tar_preview, zip_preview};
 use wade::preview::document_metadata::{NuGetMetadataProvider, OfficeMetadataProvider};
 use wade::preview::executable_metadata::ExecutableMetadataProvider;
 use wade::preview::media_metadata;
 use wade::preview::metadata_providers::{ArchiveMetadataProvider, FileMetadataProvider, ShortcutMetadataProvider};
-use wade::preview::providers::{HexPreviewProvider, TarContentsPreviewProvider, TextPreviewProvider, ZipContentsPreviewProvider};
-use wade::preview::{registry, MetadataEntry, MetadataProvider, MetadataSection, PreviewContext, PreviewProvider, PreviewResult};
+use wade::preview::providers::{
+    HexPreviewProvider, TarContentsPreviewProvider, TextPreviewProvider, ZipContentsPreviewProvider,
+};
+use wade::preview::{
+    MetadataEntry, MetadataProvider, MetadataSection, PreviewContext, PreviewProvider, PreviewResult, registry,
+};
 use wade::screen::{CellStyle, Color};
 use wade::ui::metadata_renderer;
 
@@ -202,10 +206,8 @@ fn assert_matches(expected: &str, actual: &str, golden: &str) {
 fn preview_fixtures_match_csharp_golden() {
     let dir = golden_dir();
     let repo_root = dir.to_string_lossy().into_owned();
-    let mut files: Vec<PathBuf> = std::fs::read_dir(dir.join("files"))
-        .unwrap()
-        .map(|entry| entry.unwrap().path())
-        .collect();
+    let mut files: Vec<PathBuf> =
+        std::fs::read_dir(dir.join("files")).unwrap().map(|entry| entry.unwrap().path()).collect();
     files.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
 
     let mut out = String::new();
@@ -255,7 +257,12 @@ fn preview_fixtures_match_csharp_golden() {
         let default_context = &contexts[0].1;
 
         if TextPreviewProvider.can_preview(&path, default_context) {
-            append_result(&mut out, "text", TextPreviewProvider.get_preview(&path, default_context, &cancel), usize::MAX);
+            append_result(
+                &mut out,
+                "text",
+                TextPreviewProvider.get_preview(&path, default_context, &cancel),
+                usize::MAX,
+            );
         }
 
         append_result(&mut out, "hex", HexPreviewProvider.get_preview(&path, default_context, &cancel), HEX_HEAD_ROWS);
@@ -269,11 +276,7 @@ fn preview_fixtures_match_csharp_golden() {
     }
 
     let golden_path = dir.join("preview.golden.txt");
-    let expected: String = read(&golden_path)
-        .lines()
-        .map(str::to_string)
-        .collect::<Vec<_>>()
-        .join("\n");
+    let expected: String = read(&golden_path).lines().map(str::to_string).collect::<Vec<_>>().join("\n");
 
     assert_matches(&expected, &out, &golden_path.display().to_string());
 }
@@ -287,10 +290,7 @@ fn metadata_renderer_cases_match_csharp_golden() {
         },
         MetadataSection {
             header: None,
-            entries: vec![
-                MetadataEntry::new("Resolution", "4000 x 3000"),
-                MetadataEntry::new("", "list item value"),
-            ],
+            entries: vec![MetadataEntry::new("Resolution", "4000 x 3000"), MetadataEntry::new("", "list item value")],
         },
         MetadataSection {
             header: Some("Empty section".to_string()),
@@ -343,10 +343,8 @@ const RATIO_CASES: &[(i64, i64)] = &[
 #[test]
 fn archive_fixtures_match_csharp_golden() {
     let dir = golden_dir();
-    let mut files: Vec<PathBuf> = std::fs::read_dir(dir.join("archives"))
-        .unwrap()
-        .map(|entry| entry.unwrap().path())
-        .collect();
+    let mut files: Vec<PathBuf> =
+        std::fs::read_dir(dir.join("archives")).unwrap().map(|entry| entry.unwrap().path()).collect();
     files.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
 
     let mut out = String::new();
@@ -365,9 +363,13 @@ fn archive_fixtures_match_csharp_golden() {
             tar_preview::is_plain_gzip(&path)
         );
 
-        for (context_name, context) in all_contexts.iter().filter(|(name, _)| matches!(*name, "default" | "archive-metadata-off")) {
-            let previews: Vec<&str> = registry::applicable_preview_providers(&path, context).iter().map(|p| p.label()).collect();
-            let metadata: Vec<&str> = registry::applicable_metadata_providers(&path, context).iter().map(|p| p.label()).collect();
+        for (context_name, context) in
+            all_contexts.iter().filter(|(name, _)| matches!(*name, "default" | "archive-metadata-off"))
+        {
+            let previews: Vec<&str> =
+                registry::applicable_preview_providers(&path, context).iter().map(|p| p.label()).collect();
+            let metadata: Vec<&str> =
+                registry::applicable_metadata_providers(&path, context).iter().map(|p| p.label()).collect();
             let _ = writeln!(out, "preview-providers[{context_name}] {}", previews.join(" | "));
             let _ = writeln!(out, "metadata-providers[{context_name}] {}", metadata.join(" | "));
         }
@@ -385,7 +387,8 @@ fn archive_fixtures_match_csharp_golden() {
             match ArchiveMetadataProvider.get_metadata(&path, default_context, &cancel) {
                 None => out.push_str("archive-metadata null\n"),
                 Some(result) => {
-                    let _ = writeln!(out, "archive-metadata label={}", result.file_type_label.as_deref().unwrap_or("-"));
+                    let _ =
+                        writeln!(out, "archive-metadata label={}", result.file_type_label.as_deref().unwrap_or("-"));
                     for section in &result.sections {
                         let _ = writeln!(out, "  [{}]", section.header.as_deref().unwrap_or("-"));
                         for entry in &section.entries {
@@ -407,11 +410,7 @@ fn archive_fixtures_match_csharp_golden() {
     }
 
     let golden_path = dir.join("archives.golden.txt");
-    let expected: String = read(&golden_path)
-        .lines()
-        .map(str::to_string)
-        .collect::<Vec<_>>()
-        .join("\n");
+    let expected: String = read(&golden_path).lines().map(str::to_string).collect::<Vec<_>>().join("\n");
 
     assert_matches(&expected, &out, &golden_path.display().to_string());
 }
@@ -419,10 +418,8 @@ fn archive_fixtures_match_csharp_golden() {
 #[test]
 fn shortcut_fixtures_match_csharp_golden() {
     let dir = golden_dir();
-    let mut files: Vec<PathBuf> = std::fs::read_dir(dir.join("shortcuts"))
-        .unwrap()
-        .map(|entry| entry.unwrap().path())
-        .collect();
+    let mut files: Vec<PathBuf> =
+        std::fs::read_dir(dir.join("shortcuts")).unwrap().map(|entry| entry.unwrap().path()).collect();
     files.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
 
     let mut out = String::new();
@@ -431,7 +428,8 @@ fn shortcut_fixtures_match_csharp_golden() {
     for file in &files {
         let path = file.to_string_lossy().into_owned();
         let _ = writeln!(out, "=== {}", file.file_name().unwrap().to_string_lossy());
-        let metadata: Vec<&str> = registry::applicable_metadata_providers(&path, context).iter().map(|p| p.label()).collect();
+        let metadata: Vec<&str> =
+            registry::applicable_metadata_providers(&path, context).iter().map(|p| p.label()).collect();
         let _ = writeln!(out, "metadata-providers {}", metadata.join(" | "));
 
         if !ShortcutMetadataProvider.can_provide_metadata(&path, context) {
@@ -458,11 +456,7 @@ fn shortcut_fixtures_match_csharp_golden() {
     }
 
     let golden_path = dir.join("shortcuts.golden.txt");
-    let expected: String = read(&golden_path)
-        .lines()
-        .map(str::to_string)
-        .collect::<Vec<_>>()
-        .join("\n");
+    let expected: String = read(&golden_path).lines().map(str::to_string).collect::<Vec<_>>().join("\n");
 
     assert_matches(&expected, &out, &golden_path.display().to_string());
 }
@@ -470,10 +464,8 @@ fn shortcut_fixtures_match_csharp_golden() {
 #[test]
 fn executable_fixtures_match_csharp_golden() {
     let dir = golden_dir();
-    let mut files: Vec<PathBuf> = std::fs::read_dir(dir.join("executables"))
-        .unwrap()
-        .map(|entry| entry.unwrap().path())
-        .collect();
+    let mut files: Vec<PathBuf> =
+        std::fs::read_dir(dir.join("executables")).unwrap().map(|entry| entry.unwrap().path()).collect();
     files.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
 
     let mut out = String::new();
@@ -482,7 +474,8 @@ fn executable_fixtures_match_csharp_golden() {
     for file in &files {
         let path = file.to_string_lossy().into_owned();
         let _ = writeln!(out, "=== {}", file.file_name().unwrap().to_string_lossy());
-        let metadata: Vec<&str> = registry::applicable_metadata_providers(&path, context).iter().map(|p| p.label()).collect();
+        let metadata: Vec<&str> =
+            registry::applicable_metadata_providers(&path, context).iter().map(|p| p.label()).collect();
         let _ = writeln!(out, "metadata-providers {}", metadata.join(" | "));
 
         if !ExecutableMetadataProvider.can_provide_metadata(&path, context) {
@@ -531,13 +524,15 @@ fn sorted_files(dir: &Path) -> Vec<PathBuf> {
 fn document_fixtures_match_csharp_golden() {
     let dir = golden_dir();
     let context = &contexts(&dir.to_string_lossy())[0].1;
-    let providers: [(&str, &dyn MetadataProvider); 2] = [("office", &OfficeMetadataProvider), ("nuget", &NuGetMetadataProvider)];
+    let providers: [(&str, &dyn MetadataProvider); 2] =
+        [("office", &OfficeMetadataProvider), ("nuget", &NuGetMetadataProvider)];
     let mut out = String::new();
 
     for file in sorted_files(&dir.join("documents")) {
         let path = file.to_string_lossy().into_owned();
         let _ = writeln!(out, "=== {}", file.file_name().unwrap().to_string_lossy());
-        let metadata: Vec<&str> = registry::applicable_metadata_providers(&path, context).iter().map(|p| p.label()).collect();
+        let metadata: Vec<&str> =
+            registry::applicable_metadata_providers(&path, context).iter().map(|p| p.label()).collect();
         let _ = writeln!(out, "metadata-providers {}", metadata.join(" | "));
 
         for (name, provider) in providers {

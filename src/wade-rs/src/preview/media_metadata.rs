@@ -11,8 +11,7 @@ use crate::input::CancelToken;
 
 const EXTENSIONS: &[&str] = &[
     // Audio
-    "mp3", "flac", "wav", "ogg", "aac", "wma", "m4a", "opus", "aiff",
-    // Video
+    "mp3", "flac", "wav", "ogg", "aac", "wma", "m4a", "opus", "aiff", // Video
     "mp4", "mkv", "avi", "mov", "wmv", "webm", "flv", "m4v", "ts", "mpg", "mpeg",
 ];
 
@@ -24,7 +23,10 @@ pub struct JsonError;
 type Sections = Result<Option<Vec<MetadataSection>>, JsonError>;
 
 fn extension(path: &str) -> String {
-    std::path::Path::new(path).extension().map(|e| e.to_string_lossy().to_ascii_lowercase()).unwrap_or_default()
+    std::path::Path::new(path)
+        .extension()
+        .map(|e| e.to_string_lossy().to_ascii_lowercase())
+        .unwrap_or_default()
 }
 
 fn ffprobe_available() -> bool {
@@ -75,13 +77,21 @@ impl MetadataProvider for MediaMetadataProvider {
             return None;
         }
 
-        let sections = if use_ffprobe { parse_ffprobe_json(&json) } else { parse_mediainfo_json(&json) }.ok()??;
+        let sections = if use_ffprobe {
+            parse_ffprobe_json(&json)
+        } else {
+            parse_mediainfo_json(&json)
+        }
+        .ok()??;
 
         if sections.is_empty() {
             return None;
         }
 
-        Some(MetadataResult { sections, file_type_label: Some(file_type_label(path)) })
+        Some(MetadataResult {
+            sections,
+            file_type_label: Some(file_type_label(path)),
+        })
     }
 }
 
@@ -132,7 +142,10 @@ fn get_string(element: &RawValue, name: &str) -> Result<Option<String>, JsonErro
 
 fn section(header: &str, entries: Vec<MetadataEntry>, sections: &mut Vec<MetadataSection>) {
     if !entries.is_empty() {
-        sections.push(MetadataSection { header: Some(header.to_string()), entries });
+        sections.push(MetadataSection {
+            header: Some(header.to_string()),
+            entries,
+        });
     }
 }
 
@@ -230,7 +243,13 @@ pub fn parse_mediainfo_json(json: &str) -> Sections {
     Ok((!sections.is_empty()).then_some(sections))
 }
 
-fn add_json_entry(entries: &mut Vec<MetadataEntry>, label: &str, element: &RawValue, name: &str, suffix: &str) -> Result<(), JsonError> {
+fn add_json_entry(
+    entries: &mut Vec<MetadataEntry>,
+    label: &str,
+    element: &RawValue,
+    name: &str,
+    suffix: &str,
+) -> Result<(), JsonError> {
     if let Some(value) = get_string(element, name)?.filter(|v| !v.trim().is_empty()) {
         entries.push(MetadataEntry::new(label, &format!("{value}{suffix}")));
     }
@@ -291,7 +310,12 @@ fn add_bit_rate_entry(entries: &mut Vec<MetadataEntry>, element: &RawValue, name
     Ok(())
 }
 
-fn add_resolution_entry(entries: &mut Vec<MetadataEntry>, element: &RawValue, width: &str, height: &str) -> Result<(), JsonError> {
+fn add_resolution_entry(
+    entries: &mut Vec<MetadataEntry>,
+    element: &RawValue,
+    width: &str,
+    height: &str,
+) -> Result<(), JsonError> {
     if let (Some(w), Some(h)) = (get_string(element, width)?, get_string(element, height)?) {
         entries.push(MetadataEntry::new("Resolution", &format!("{w}\u{00d7}{h}")));
     }
@@ -318,7 +342,12 @@ fn add_frame_rate_entry(entries: &mut Vec<MetadataEntry>, element: &RawValue, na
     Ok(())
 }
 
-fn add_channels_entry(entries: &mut Vec<MetadataEntry>, element: &RawValue, channels: &str, layout: Option<&str>) -> Result<(), JsonError> {
+fn add_channels_entry(
+    entries: &mut Vec<MetadataEntry>,
+    element: &RawValue,
+    channels: &str,
+    layout: Option<&str>,
+) -> Result<(), JsonError> {
     let Some(channels) = get_string(element, channels)? else {
         return Ok(());
     };
@@ -474,13 +503,19 @@ mod tests {
 
     #[test]
     fn duration_and_size_format_like_csharp() {
-        for (seconds, expected) in [(0.0, "0s"), (5.0, "5s"), (65.0, "1m 05s"), (222.5, "3m 42s"), (3661.0, "1h 01m 01s")] {
+        for (seconds, expected) in
+            [(0.0, "0s"), (5.0, "5s"), (65.0, "1m 05s"), (222.5, "3m 42s"), (3661.0, "1h 01m 01s")]
+        {
             assert_eq!(format_duration(seconds), expected);
         }
 
-        for (bytes, expected) in
-            [(500, "500 B"), (1024, "1.0 KB"), (1_048_576, "1.0 MB"), (8_912_345, "8.5 MB"), (1_073_741_824, "1.0 GB")]
-        {
+        for (bytes, expected) in [
+            (500, "500 B"),
+            (1024, "1.0 KB"),
+            (1_048_576, "1.0 MB"),
+            (8_912_345, "8.5 MB"),
+            (1_073_741_824, "1.0 GB"),
+        ] {
             assert_eq!(format_file_size(bytes), expected);
         }
     }

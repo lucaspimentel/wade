@@ -60,10 +60,7 @@ pub fn format_date(buf: &mut [char], parts: DateParts, max_width: usize) -> usiz
     let text = if max_width >= 19 {
         let hh = if parts.hour.is_multiple_of(12) { 12 } else { parts.hour % 12 };
         let tt = if parts.hour < 12 { "AM" } else { "PM" };
-        format!(
-            "{:04}-{:02}-{:02} {hh:02}:{:02} {tt}",
-            parts.year, parts.month, parts.day, parts.minute
-        )
+        format!("{:04}-{:02}-{:02} {hh:02}:{:02} {tt}", parts.year, parts.month, parts.day, parts.minute)
     } else if max_width >= 10 {
         format!("{:04}-{:02}-{:02}", parts.year, parts.month, parts.day)
     } else if max_width >= 6 {
@@ -178,7 +175,7 @@ mod tests {
 
     #[test]
     fn format_size_matches_csharp_output() {
-        let mut buf = [ '\0'; 16];
+        let mut buf = ['\0'; 16];
         assert_eq!(format_size(&mut buf, 0), 3);
         assert_eq!(&buf[..3], ['0', ' ', 'B']);
         assert_eq!(format_size(&mut buf, 512), 5);
@@ -213,7 +210,14 @@ mod tests {
     }
 
     fn date_text(max_width: usize) -> String {
-        let parts = DateParts { year: 2025, month: 3, day: 6, hour: 14, minute: 30, ..DateParts::default() };
+        let parts = DateParts {
+            year: 2025,
+            month: 3,
+            day: 6,
+            hour: 14,
+            minute: 30,
+            ..DateParts::default()
+        };
         let mut buf = ['\0'; 32];
         let len = format_date(&mut buf, parts, max_width);
         buf[..len].iter().collect()
@@ -247,7 +251,11 @@ mod tests {
             (0.3, 10, 3, format!("{}30%{}", cells(3, full), cells(4, empty))),
         ] {
             let (result, text) = bar(fraction, width);
-            assert_eq!((result.length, result.filled_count, text.as_str()), (width, filled, expected.as_str()), "{fraction}");
+            assert_eq!(
+                (result.length, result.filled_count, text.as_str()),
+                (width, filled, expected.as_str()),
+                "{fraction}"
+            );
         }
 
         let (result, _) = bar(0.5, 10);

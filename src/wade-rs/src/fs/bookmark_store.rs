@@ -26,9 +26,7 @@ impl BookmarkStore {
     /// `~/.config/wade/bookmarks`. Tests pass an explicit path.
     pub fn new(file_path: Option<PathBuf>) -> Self {
         let file_path = file_path.unwrap_or_else(|| {
-            let home = std::env::var_os("USERPROFILE")
-                .or_else(|| std::env::var_os("HOME"))
-                .unwrap_or_default();
+            let home = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")).unwrap_or_default();
             Path::new(&home).join(".config").join("wade").join("bookmarks")
         });
 
@@ -147,7 +145,9 @@ mod tests {
         empty.load();
         assert!(empty.bookmarks().is_empty());
 
-        let mut missing = BookmarkStore::new(Some(std::env::temp_dir().join(format!("wade-bookmarks-missing-{}", std::process::id())).join("none")));
+        let mut missing = BookmarkStore::new(Some(
+            std::env::temp_dir().join(format!("wade-bookmarks-missing-{}", std::process::id())).join("none"),
+        ));
         missing.load();
         assert!(missing.bookmarks().is_empty());
     }

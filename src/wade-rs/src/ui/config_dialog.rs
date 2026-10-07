@@ -182,12 +182,7 @@ impl ConfigDialogState {
         ];
 
         #[cfg(windows)]
-        items.push(ConfigItem::new(
-            "Show System Files",
-            1,
-            ConfigField::ShowSystemFiles,
-            ConfigGate::HiddenFiles,
-        ));
+        items.push(ConfigItem::new("Show System Files", 1, ConfigField::ShowSystemFiles, ConfigGate::HiddenFiles));
 
         items.extend([
             ConfigItem::new("Sort Mode", 0, ConfigField::SortMode, ConfigGate::None),
@@ -231,12 +226,7 @@ impl ConfigDialogState {
             ),
             ConfigItem::new("Show File Previews", 0, ConfigField::FilePreviews, ConfigGate::None),
             ConfigItem::new("Show Image Previews", 1, ConfigField::ImagePreviews, ConfigGate::FilePreviews),
-            ConfigItem::new(
-                "Show PDF Previews (pdftopng)",
-                1,
-                ConfigField::PdfPreview,
-                ConfigGate::FilePreviews,
-            ),
+            ConfigItem::new("Show PDF Previews (pdftopng)", 1, ConfigField::PdfPreview, ConfigGate::FilePreviews),
             ConfigItem::new("Show Archive Contents", 1, ConfigField::ZipPreview, ConfigGate::FilePreviews),
             ConfigItem::new(
                 "Show Markdown Preview (built-in)",
@@ -416,11 +406,7 @@ impl ConfigDialogState {
 /// Port of `ConfigDialogState.FormatBool`.
 #[must_use]
 pub fn format_bool(value: bool) -> &'static str {
-    if value {
-        "[X]"
-    } else {
-        "[ ]"
-    }
+    if value { "[X]" } else { "[ ]" }
 }
 
 #[must_use]
@@ -505,11 +491,7 @@ mod tests {
         let mut state = default_state();
         // Find indexes by label so the test is Windows/Unix agnostic
         let index_of = |label: &str, state: &ConfigDialogState| -> usize {
-            state
-                .items
-                .iter()
-                .position(|item| item.label == label)
-                .expect("item")
+            state.items.iter().position(|item| item.label == label).expect("item")
         };
 
         let hdd = index_of("Directory Sizes on HDD", &state);
@@ -538,11 +520,7 @@ mod tests {
     fn move_down_skips_disabled_and_wraps() {
         let mut state = default_state();
         let index_of = |label: &str, state: &ConfigDialogState| -> usize {
-            state
-                .items
-                .iter()
-                .position(|item| item.label == label)
-                .expect("item")
+            state.items.iter().position(|item| item.label == label).expect("item")
         };
 
         let size_column = index_of("Show Size Column", &state);
@@ -577,11 +555,8 @@ mod tests {
         state.toggle_selected(); // Show Icons
         assert!(!state.show_icons);
 
-        state.selected_index = state
-            .items
-            .iter()
-            .position(|item| item.field == ConfigField::SortMode)
-            .expect("sort mode item");
+        state.selected_index =
+            state.items.iter().position(|item| item.field == ConfigField::SortMode).expect("sort mode item");
         assert_eq!(state.sort_mode, SortMode::Name);
         state.cycle_next_selected();
         assert_eq!(state.sort_mode, SortMode::Modified);
@@ -657,9 +632,21 @@ mod tests {
     #[test]
     fn detail_and_preview_sub_items_follow_their_parents() {
         let mut state = default_state();
-        let details = ["Show Archive Details", "Show PDF Details (pdfinfo)", "Show Media Details (ffprobe)", "Show Media Details (mediainfo)"];
-        let previews = ["Show Image Previews", "Show PDF Previews (pdftopng)", "Show Archive Contents", "Show Markdown Preview (built-in)"];
-        let enabled = |state: &ConfigDialogState, labels: &[&str]| labels.iter().map(|l| state.is_enabled(index_of(state, l))).collect::<Vec<_>>();
+        let details = [
+            "Show Archive Details",
+            "Show PDF Details (pdfinfo)",
+            "Show Media Details (ffprobe)",
+            "Show Media Details (mediainfo)",
+        ];
+        let previews = [
+            "Show Image Previews",
+            "Show PDF Previews (pdftopng)",
+            "Show Archive Contents",
+            "Show Markdown Preview (built-in)",
+        ];
+        let enabled = |state: &ConfigDialogState, labels: &[&str]| {
+            labels.iter().map(|l| state.is_enabled(index_of(state, l))).collect::<Vec<_>>()
+        };
 
         assert_eq!(enabled(&state, &details), [true; 4]);
         state.file_metadata = false;
@@ -713,11 +700,8 @@ mod tests {
         assert_eq!(format_bool(false), "[ ]");
 
         let mut state = default_state();
-        let sort_index = state
-            .items
-            .iter()
-            .position(|item| item.field == ConfigField::SortMode)
-            .expect("sort mode item");
+        let sort_index =
+            state.items.iter().position(|item| item.field == ConfigField::SortMode).expect("sort mode item");
         assert_eq!(state.format_value(sort_index), "\u{25c4} name \u{25ba}");
         state.sort_mode = SortMode::Extension;
         assert_eq!(state.format_value(sort_index), "\u{25c4} extension \u{25ba}");

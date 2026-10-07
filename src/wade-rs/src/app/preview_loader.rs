@@ -87,7 +87,11 @@ pub fn load_metadata_and_preview(
                 (None, None)
             } else {
                 let metadata = file_preview::detect_file_metadata(path);
-                if metadata.is_binary { (None, None) } else { (Some(metadata.encoding), metadata.line_ending) }
+                if metadata.is_binary {
+                    (None, None)
+                } else {
+                    (Some(metadata.encoding), metadata.line_ending)
+                }
             };
 
             let rendered_rows = metadata_renderer::render(&sections, context.pane_width_cells).len() as i32;
@@ -121,9 +125,8 @@ pub fn load_metadata_and_preview(
     match preview_provider {
         Some(provider) => load_with_provider(path, provider, &context, cancel, out),
         None => {
-            let _ = out.send(InputEvent::PreviewLoadingComplete(PreviewLoadingCompleteEvent {
-                path: path.to_string(),
-            }));
+            let _ =
+                out.send(InputEvent::PreviewLoadingComplete(PreviewLoadingCompleteEvent { path: path.to_string() }));
         }
     }
 }
@@ -180,14 +183,17 @@ fn load_with_provider(
 mod tests {
     //! Port of PreviewLoaderTests.cs.
 
-    use std::sync::mpsc::{channel, Receiver};
+    use std::sync::mpsc::{Receiver, channel};
     use std::time::Duration;
 
     use super::PreviewLoader;
     use crate::highlight::StyledLine;
     use crate::input::{CancelToken, InputEvent, MetadataReadyEvent, PreviewReadyEvent};
     use crate::preview::providers::TextPreviewProvider;
-    use crate::preview::{MetadataEntry, MetadataProvider, MetadataResult, MetadataSection, PreviewContext, PreviewProvider, PreviewResult};
+    use crate::preview::{
+        MetadataEntry, MetadataProvider, MetadataResult, MetadataSection, PreviewContext, PreviewProvider,
+        PreviewResult,
+    };
 
     fn default_context() -> PreviewContext {
         PreviewContext {
@@ -285,7 +291,9 @@ mod tests {
 
     fn next_metadata(rx: &Receiver<InputEvent>) -> MetadataReadyEvent {
         loop {
-            if let InputEvent::MetadataReady(metadata) = rx.recv_timeout(Duration::from_secs(5)).expect("event within 5s") {
+            if let InputEvent::MetadataReady(metadata) =
+                rx.recv_timeout(Duration::from_secs(5)).expect("event within 5s")
+            {
                 return metadata;
             }
         }

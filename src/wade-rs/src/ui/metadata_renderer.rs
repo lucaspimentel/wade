@@ -11,10 +11,7 @@ const HEADER_COLOR: Color = Color { r: 180, g: 180, b: 200 };
 const DIVIDER_COLOR: Color = Color { r: 80, g: 80, b: 100 };
 
 fn fg(color: Color) -> CellStyle {
-    CellStyle {
-        fg: Some(color),
-        ..CellStyle::default()
-    }
+    CellStyle { fg: Some(color), ..CellStyle::default() }
 }
 
 fn styled(text: String, style: CellStyle) -> StyledLine {
@@ -49,13 +46,7 @@ pub fn render(sections: &[MetadataSection], max_width: i32) -> Vec<StyledLine> {
         }
 
         if let Some(header) = &section.header {
-            lines.push(styled(
-                format!("  {header}"),
-                CellStyle {
-                    bold: true,
-                    ..fg(HEADER_COLOR)
-                },
-            ));
+            lines.push(styled(format!("  {header}"), CellStyle { bold: true, ..fg(HEADER_COLOR) }));
 
             // Divider only when entries follow
             if !section.entries.is_empty() {
@@ -75,10 +66,7 @@ pub fn render(sections: &[MetadataSection], max_width: i32) -> Vec<StyledLine> {
             let label_part = format!("  {:<label_width$}", entry.label);
             let label_len = label_part.chars().count();
             let text = format!("{label_part}{}", entry.value);
-            let label_style = CellStyle {
-                dim: true,
-                ..fg(LABEL_COLOR)
-            };
+            let label_style = CellStyle { dim: true, ..fg(LABEL_COLOR) };
 
             let styles = (0..text.chars().count())
                 .map(|i| if i < label_len { label_style } else { fg(VALUE_COLOR) })

@@ -233,7 +233,8 @@ mod tests {
 
     #[test]
     fn kitty_replies_do_not_disturb_the_other_queries() {
-        let caps = Caps::parse_query_responses(&[KITTY_OK, b"\x1bP>|kitty(0.39.1)\x1b\\\x1b[6;20;10t\x1b[?62;4c"].concat());
+        let caps =
+            Caps::parse_query_responses(&[KITTY_OK, b"\x1bP>|kitty(0.39.1)\x1b\\\x1b[6;20;10t\x1b[?62;4c"].concat());
         assert_eq!(
             (caps.kitty_graphics, caps.sixel_supported, caps.cell_pixel_width, caps.cell_pixel_height),
             (true, true, 10, 20)

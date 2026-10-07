@@ -3,8 +3,8 @@
 //! loader event handlers, the right-pane file preview, the "Change
 //! preview" menu, expanded-preview mode, and the image (Sixel) paths.
 
-use crate::app::input_reader::AppAction;
 use crate::app::App;
+use crate::app::input_reader::AppAction;
 use crate::highlight::StyledLine;
 use crate::imaging::ImageData;
 use crate::input::{
@@ -12,7 +12,7 @@ use crate::input::{
     PreviewLoadingCompleteEvent, PreviewReadyEvent,
 };
 use crate::preview::providers::NonePreviewProvider;
-use crate::preview::{registry, MetadataProvider, MetadataSection, PreviewContext, PreviewProvider};
+use crate::preview::{MetadataProvider, MetadataSection, PreviewContext, PreviewProvider, registry};
 use crate::screen::{CellStyle, Color, ScreenBuffer};
 use crate::ui::action_palette::{ActionMenuItem, ActionMenuLevel};
 use crate::ui::layout::Rect;
@@ -29,7 +29,6 @@ const META_SEPARATOR_STYLE: CellStyle = CellStyle {
     underline: false,
     strikethrough: false,
 };
-
 
 /// The App's preview cache (C# `_cachedPreview*`, `_applicable*`, ...).
 #[derive(Default)]
@@ -78,7 +77,11 @@ impl PreviewState {
             return None;
         }
 
-        if self.is_image_preview { self.cached_image_path.clone() } else { self.cached_path.clone() }
+        if self.is_image_preview {
+            self.cached_image_path.clone()
+        } else {
+            self.cached_path.clone()
+        }
     }
 
     /// Replaces the cached image; a kitty image that is replaced is queued
@@ -109,7 +112,8 @@ impl App {
         // C# TryGetValue: the default (None) status when the path is absent
         let git_status = match (&self.git_statuses, selected) {
             (Some(statuses), Some(entry)) => Some(
-                crate::fs::git_utils::statuses_get(statuses, &entry.full_path).unwrap_or(crate::fs::GitFileStatus::NONE),
+                crate::fs::git_utils::statuses_get(statuses, &entry.full_path)
+                    .unwrap_or(crate::fs::GitFileStatus::NONE),
             ),
             _ => None,
         };
@@ -140,10 +144,8 @@ impl App {
     fn set_applicable_providers(&mut self, path: &str, pane_width: i32, pane_height: i32) {
         self.preview.active_provider_index = 0;
         let context = self.build_preview_context(pane_width, pane_height);
-        self.preview.applicable_metadata_providers = self
-            .config
-            .file_metadata_enabled
-            .then(|| registry::applicable_metadata_providers(path, &context));
+        self.preview.applicable_metadata_providers =
+            self.config.file_metadata_enabled.then(|| registry::applicable_metadata_providers(path, &context));
         self.preview.applicable_providers = Some(if self.config.file_previews_enabled {
             registry::applicable_preview_providers(path, &context)
         } else {
@@ -372,7 +374,11 @@ impl App {
                 .enumerate()
                 .map(|(i, provider)| {
                     let prefix = if i == self.preview.active_provider_index { "\u{25cf} " } else { "  " };
-                    let mut item = ActionMenuItem::new(&format!("{prefix}{}", provider.label()), "", AppAction::SelectPreviewProvider);
+                    let mut item = ActionMenuItem::new(
+                        &format!("{prefix}{}", provider.label()),
+                        "",
+                        AppAction::SelectPreviewProvider,
+                    );
                     item.data = i as i32;
                     item
                 })
@@ -437,10 +443,7 @@ impl App {
 
     fn expanded_max_scroll(&self) -> Option<usize> {
         let height = usize::try_from(self.layout.expanded_pane.height).unwrap_or(0);
-        self.preview
-            .cached_styled_lines
-            .as_ref()
-            .map(|lines| lines.len().saturating_sub(height))
+        self.preview.cached_styled_lines.as_ref().map(|lines| lines.len().saturating_sub(height))
     }
 
     /// Port of `HandleExpandedPreviewKey`.
@@ -604,7 +607,13 @@ impl App {
             fill_blank(buffer, pane, pane.top);
             self.draw_image_area(buffer, pane, 0, true);
         } else if let Some(lines) = &self.preview.cached_styled_lines {
-            PaneRenderer::render_preview(buffer, pane, lines, self.preview.expanded_scroll_offset, !self.preview.is_rendered);
+            PaneRenderer::render_preview(
+                buffer,
+                pane,
+                lines,
+                self.preview.expanded_scroll_offset,
+                !self.preview.is_rendered,
+            );
         }
     }
 
@@ -1113,7 +1122,9 @@ mod tests {
 
     fn load_image(app: &mut App) -> u32 {
         render(app);
-        pump(app, |app| loaded(app) && app.preview.cached_metadata_sections.is_some() && app.preview.cached_image.is_some());
+        pump(app, |app| {
+            loaded(app) && app.preview.cached_metadata_sections.is_some() && app.preview.cached_image.is_some()
+        });
         match app.preview.cached_image {
             Some(ImageData::Kitty { id, .. }) => id,
             ref other => panic!("kitty image expected, got {other:?}"),
@@ -1122,7 +1133,13 @@ mod tests {
 
     /// Placeholder columns on `row`.
     fn placeholder_cols(buffer: &ScreenBuffer, row: i32) -> Vec<usize> {
-        buffer.row_text(row).chars().enumerate().filter(|(_, ch)| *ch == crate::imaging::kitty::PLACEHOLDER).map(|(i, _)| i).collect()
+        buffer
+            .row_text(row)
+            .chars()
+            .enumerate()
+            .filter(|(_, ch)| *ch == crate::imaging::kitty::PLACEHOLDER)
+            .map(|(i, _)| i)
+            .collect()
     }
 
     #[test]
@@ -1135,9 +1152,12 @@ mod tests {
         let pane = app.layout.right_pane;
         let left = pane.left as usize;
         let mut frame = buffer;
-        let top = (pane.top..pane.top + pane.height).find(|&row| !placeholder_cols(&frame, row).is_empty()).expect("placeholders");
+        let top = (pane.top..pane.top + pane.height)
+            .find(|&row| !placeholder_cols(&frame, row).is_empty())
+            .expect("placeholders");
         assert!(top > pane.top + 1, "below the metadata header");
-        let (first, second, after) = (placeholder_cols(&frame, top), placeholder_cols(&frame, top + 1), placeholder_cols(&frame, top + 2));
+        let (first, second, after) =
+            (placeholder_cols(&frame, top), placeholder_cols(&frame, top + 1), placeholder_cols(&frame, top + 2));
         assert_eq!(first, (left..left + 8).collect::<Vec<_>>());
         assert_eq!(second, first);
         assert!(after.is_empty() && placeholder_cols(&frame, top - 1).is_empty(), "exactly 2 rows");
@@ -1303,7 +1323,9 @@ mod tests {
     fn iterm_image_is_written_like_sixel() {
         let (mut app, _root) = iterm_app("app-iterm");
         render(&mut app);
-        pump(&mut app, |app| loaded(app) && app.preview.cached_metadata_sections.is_some() && app.preview.cached_image.is_some());
+        pump(&mut app, |app| {
+            loaded(app) && app.preview.cached_metadata_sections.is_some() && app.preview.cached_image.is_some()
+        });
         assert!(matches!(app.preview.cached_image, Some(ImageData::Iterm(_))));
 
         render(&mut app);

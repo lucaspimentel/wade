@@ -12,7 +12,7 @@ use std::sync::{Arc, Condvar, Mutex};
 
 use super::query::{QueryMode, SearchQuery};
 use super::scorer::{self, NO_MATCH};
-use super::{is_separator, SearchResult};
+use super::{SearchResult, is_separator};
 use crate::input::CancelToken;
 
 /// Port of `SearchOptions`.
@@ -81,11 +81,7 @@ impl SearchIndex {
 
             let relative: Vec<char> = relative_path(&self.base_path, path).chars().collect();
             let file_name_start = relative.iter().rposition(|&c| is_separator(c)).map_or(0, |i| i + 1);
-            let entry = Arc::new(PathEntry {
-                absolute,
-                relative,
-                file_name_start,
-            });
+            let entry = Arc::new(PathEntry { absolute, relative, file_name_start });
             state.entries.push(Arc::clone(&entry));
             entry
         };
@@ -295,13 +291,8 @@ impl ActiveQuery {
         let mut has_positive = false;
 
         for term in &self.terms {
-            let (score, term_positions) = scorer::term_score(
-                term.mode,
-                &term.text,
-                term.case_sensitive,
-                &entry.relative,
-                entry.file_name_start,
-            );
+            let (score, term_positions) =
+                scorer::term_score(term.mode, &term.text, term.case_sensitive, &entry.relative, entry.file_name_start);
 
             if term.negated {
                 if score != NO_MATCH {
@@ -353,8 +344,8 @@ mod tests {
     use std::sync::mpsc::Receiver;
     use std::time::Duration;
 
-    use super::{relative_path, SearchIndex, SearchOptions};
-    use crate::search::{scorer, SearchResult};
+    use super::{SearchIndex, SearchOptions, relative_path};
+    use crate::search::{SearchResult, scorer};
 
     const SEP: char = std::path::MAIN_SEPARATOR;
 
@@ -363,10 +354,7 @@ mod tests {
     }
 
     fn abs(parts: &[&str]) -> String {
-        std::path::Path::new(&base_path())
-            .join(parts.join(&SEP.to_string()))
-            .to_string_lossy()
-            .into_owned()
+        std::path::Path::new(&base_path()).join(parts.join(&SEP.to_string())).to_string_lossy().into_owned()
     }
 
     fn search(index: &SearchIndex, query: &str) -> Receiver<SearchResult> {
@@ -584,10 +572,7 @@ mod tests {
         assert!(results.len() >= 2);
 
         let app = results.iter().find(|r| r.path == abs(&["src", "Wade", "App.cs"])).unwrap();
-        let config = results
-            .iter()
-            .find(|r| r.path == abs(&["src", "Applications", "Config.cs"]))
-            .unwrap();
+        let config = results.iter().find(|r| r.path == abs(&["src", "Applications", "Config.cs"])).unwrap();
         assert!(app.score > config.score);
     }
 
@@ -777,10 +762,7 @@ mod tests {
     fn relative_path_strips_base_and_separator() {
         let base = format!("{SEP}tmp{SEP}");
         assert_eq!(relative_path(&base, &format!("{SEP}tmp{SEP}src{SEP}a.cs")), format!("src{SEP}a.cs"));
-        assert_eq!(
-            relative_path(&format!("{SEP}tmp"), &format!("{SEP}tmp{SEP}a.cs")),
-            "a.cs"
-        );
+        assert_eq!(relative_path(&format!("{SEP}tmp"), &format!("{SEP}tmp{SEP}a.cs")), "a.cs");
         // Prefix-sharing sibling is not under the base
         let sibling = format!("{SEP}tmpx{SEP}a.cs");
         assert_eq!(relative_path(&format!("{SEP}tmp"), &sibling), sibling);

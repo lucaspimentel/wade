@@ -16,5 +16,5 @@ pub mod sort_store;
 pub mod system_clipboard;
 pub mod tar_preview;
 pub mod zip_preview;
-pub use directory_contents::{DirectoryContents, FileSystemEntry, GitFileStatus, SortMode, DRIVES_PATH};
+pub use directory_contents::{DRIVES_PATH, DirectoryContents, FileSystemEntry, GitFileStatus, SortMode};
 pub use drive_media_type::DriveMediaType;

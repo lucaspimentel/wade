@@ -12,12 +12,7 @@ pub struct Rect {
 impl Rect {
     #[must_use]
     pub const fn new(left: i32, top: i32, width: i32, height: i32) -> Self {
-        Self {
-            left,
-            top,
-            width,
-            height,
-        }
+        Self { left, top, width, height }
     }
 
     #[must_use]
@@ -60,7 +55,13 @@ pub struct Layout {
 
 impl Layout {
     /// Port of `Layout.Calculate`.
-    pub fn calculate(&mut self, terminal_width: i32, terminal_height: i32, preview_pane_enabled: bool, parent_pane_enabled: bool) {
+    pub fn calculate(
+        &mut self,
+        terminal_width: i32,
+        terminal_height: i32,
+        preview_pane_enabled: bool,
+        parent_pane_enabled: bool,
+    ) {
         self.calculate_with_top(terminal_width, terminal_height, preview_pane_enabled, parent_pane_enabled, 0);
     }
 
@@ -113,14 +114,16 @@ impl Layout {
             )
         } else {
             // Center only: full width, no borders
-            (
-                Rect::new(0, 0, 0, 0),
-                Rect::new(0, 0, terminal_width, content_height),
-                Rect::new(0, 0, 0, 0),
-            )
+            (Rect::new(0, 0, 0, 0), Rect::new(0, 0, terminal_width, content_height), Rect::new(0, 0, 0, 0))
         };
 
-        let shift = |rect: Rect| if rect.width == 0 && rect.height == 0 { rect } else { Rect::new(rect.left, rect.top + top, rect.width, rect.height) };
+        let shift = |rect: Rect| {
+            if rect.width == 0 && rect.height == 0 {
+                rect
+            } else {
+                Rect::new(rect.left, rect.top + top, rect.width, rect.height)
+            }
+        };
         self.left_pane = shift(left);
         self.center_pane = shift(center);
         self.right_pane = shift(right);

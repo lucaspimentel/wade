@@ -4,39 +4,39 @@
 //! tracked as a temporary deviation in KNOWN_DEVIATIONS.md.
 
 pub mod config_io;
+pub mod dialogs;
 pub mod directory_size_loader;
-pub mod file_operation_runner;
 pub mod file_finder;
+pub mod file_operation_runner;
 pub mod fs_watcher;
 pub mod git_action_runner;
 pub mod git_menu_items;
 pub mod git_status_loader;
 pub mod inline_dir_size_loader;
-pub mod dialogs;
 pub mod input_reader;
-pub mod preview;
-pub mod preview_loader;
-pub mod tabs;
 #[cfg(test)]
 mod key_tests;
+pub mod preview;
+pub mod preview_loader;
 #[cfg(test)]
 mod settings_tests;
+pub mod tabs;
 #[cfg(test)]
 mod test_support;
 
 use std::collections::HashMap;
 use std::path::Path;
 
-use crate::fs::directory_contents::{DirectoryContents, FileSystemEntry, GitFileStatus, DRIVES_PATH};
+use crate::fs::directory_contents::SortMode;
+use crate::fs::directory_contents::{DRIVES_PATH, DirectoryContents, FileSystemEntry, GitFileStatus};
 pub use crate::input::InputMode;
 use crate::input::{InputEvent, KeyEvent, ResizeEvent};
 use crate::screen::ScreenBuffer;
+use crate::ui::Layout;
 use crate::ui::notification::{Notification, NotificationKind};
 use crate::ui::pane_renderer::PaneRenderer;
-use crate::fs::directory_contents::SortMode;
-use crate::ui::Layout;
 
-use input_reader::{map_key, AppAction};
+use input_reader::{AppAction, map_key};
 
 const NOTIFICATION_DURATION_MS: i64 = 4000;
 
@@ -217,8 +217,9 @@ impl App {
             directory_contents: {
                 let mut contents = DirectoryContents::new();
                 // Unit tests never touch the user's saved sorts
-                contents.path_sorts =
-                    crate::fs::sort_store::SortStore::new((!cfg!(test)).then(crate::fs::sort_store::SortStore::default_path));
+                contents.path_sorts = crate::fs::sort_store::SortStore::new(
+                    (!cfg!(test)).then(crate::fs::sort_store::SortStore::default_path),
+                );
                 contents
             },
             layout: Layout::default(),
@@ -253,9 +254,7 @@ impl App {
             inline_dir_size_loader: crate::app::inline_dir_size_loader::InlineDirSizeLoader::new(),
             // fs_watcher is rewired to the real pipeline below (needs the
             // pipeline built first).
-            fs_watcher: crate::app::fs_watcher::FileSystemWatcherManager::new(
-                std::sync::mpsc::channel().0,
-            ),
+            fs_watcher: crate::app::fs_watcher::FileSystemWatcherManager::new(std::sync::mpsc::channel().0),
             properties_dir_size_path: None,
             properties_dir_size_text: None,
             properties_scroll_offset: 0,
@@ -265,7 +264,11 @@ impl App {
             detect_drive_media_type: crate::fs::drive_media_type::detect,
             clipboard_paths: Vec::new(),
             clipboard_is_cut: false,
-            os_clipboard: if cfg!(test) { OsClipboard::Fake(FakeClipboard::default()) } else { OsClipboard::System },
+            os_clipboard: if cfg!(test) {
+                OsClipboard::Fake(FakeClipboard::default())
+            } else {
+                OsClipboard::System
+            },
             request_full_redraw: false,
             file_finder: None,
             last_finder_query: String::new(),
@@ -335,7 +338,11 @@ impl App {
     /// copies the config into the listing and pane state. Split out of
     /// `run` so tests apply settings exactly as startup does.
     pub fn apply_startup_config(&mut self) {
-        let start = if self.config.start_path.is_empty() { App::default_start_path() } else { self.config.start_path.clone() };
+        let start = if self.config.start_path.is_empty() {
+            App::default_start_path()
+        } else {
+            self.config.start_path.clone()
+        };
         self.current_path = capitalize_drive_letter(&dialogs::get_full_path(&start));
         self.directory_contents.show_hidden_files = self.config.show_hidden_files;
         self.directory_contents.show_system_files = self.config.show_system_files;
@@ -399,9 +406,10 @@ impl App {
         while !self.quit {
             // Auto-clear expired notifications
             if let Some(notif) = &self.notification
-                && notif.is_expired(now_ms(), NOTIFICATION_DURATION_MS) {
-                    self.notification = None;
-                }
+                && notif.is_expired(now_ms(), NOTIFICATION_DURATION_MS)
+            {
+                self.notification = None;
+            }
 
             // Ensure filesystem watcher tracks the current directory (App.cs:264)
             self.tick_file_system_watcher();
@@ -476,11 +484,7 @@ impl App {
 
         terminal.restore();
 
-        if self.write_cwd {
-            Some(self.current_path.clone())
-        } else {
-            None
-        }
+        if self.write_cwd { Some(self.current_path.clone()) } else { None }
     }
 
     /// The image write after a flush. Rust-only kitty output comes first, in
@@ -516,17 +520,23 @@ impl App {
         }
 
         // Rust-only: iTerm2 inline images are written exactly like Sixel
-        let Some(crate::imaging::ImageData::Sixel(sixel) | crate::imaging::ImageData::Iterm(sixel)) = &self.preview.cached_image
+        let Some(crate::imaging::ImageData::Sixel(sixel) | crate::imaging::ImageData::Iterm(sixel)) =
+            &self.preview.cached_image
         else {
             return None;
         };
         self.preview.sixel_pending = false;
 
         let pane = if expanded { self.layout.expanded_pane } else { self.layout.right_pane };
-        let mut row = if self.preview.sixel_image_top > 0 { self.preview.sixel_image_top } else { pane.top };
+        let mut row = if self.preview.sixel_image_top > 0 {
+            self.preview.sixel_image_top
+        } else {
+            pane.top
+        };
         let mut col = pane.left;
 
-        let (pixel_width, pixel_height) = (self.preview.cached_image_pixel_width, self.preview.cached_image_pixel_height);
+        let (pixel_width, pixel_height) =
+            (self.preview.cached_image_pixel_width, self.preview.cached_image_pixel_height);
         if !self.preview.is_combined_preview && expanded && pixel_width > 0 && pixel_height > 0 {
             (row, col) = pane.center_content(
                 pixel_width / self.capabilities.cell_pixel_width.max(1),
@@ -551,9 +561,7 @@ impl App {
     }
 
     fn default_start_path() -> String {
-        std::env::current_dir()
-            .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|_| ".".to_string())
+        std::env::current_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_else(|_| ".".to_string())
     }
 
     fn handle_resize(&mut self, resize: ResizeEvent, buffer: &mut ScreenBuffer, width: &mut i32, height: &mut i32) {
@@ -628,7 +636,8 @@ impl App {
                 self.selected_index = self.selected_index.saturating_sub(self.visible_file_list_height(&entries));
             }
             A::PageDown => {
-                self.selected_index = (self.selected_index + self.visible_file_list_height(&entries)).min(entries.len().saturating_sub(1));
+                self.selected_index = (self.selected_index + self.visible_file_list_height(&entries))
+                    .min(entries.len().saturating_sub(1));
             }
             A::Home => self.selected_index = 0,
             A::End => self.selected_index = entries.len().saturating_sub(1),
@@ -767,19 +776,15 @@ impl App {
             A::StageAll => {
                 if let Some(root) = self.current_repo_root.clone() {
                     let sender = self.pipeline.sender();
-                    self.git_action_runner.start_action(
-                        Box::new(move |cancel| crate::fs::git_utils::stage_all(&root, cancel)),
-                        sender,
-                    );
+                    self.git_action_runner
+                        .start_action(Box::new(move |cancel| crate::fs::git_utils::stage_all(&root, cancel)), sender);
                 }
             }
             A::UnstageAll => {
                 if let Some(root) = self.current_repo_root.clone() {
                     let sender = self.pipeline.sender();
-                    self.git_action_runner.start_action(
-                        Box::new(move |cancel| crate::fs::git_utils::unstage_all(&root, cancel)),
-                        sender,
-                    );
+                    self.git_action_runner
+                        .start_action(Box::new(move |cancel| crate::fs::git_utils::unstage_all(&root, cancel)), sender);
                 }
             }
             A::GitCommit => {
@@ -839,9 +844,7 @@ impl App {
             self.update_terminal_title();
             self.refresh_git_status();
             let drive_entries = self.directory_contents.get_entries(DRIVES_PATH);
-            let root = drive_root(&old_path)
-                .map(|r| r.trim_end_matches(['\\', '/']).to_string())
-                .unwrap_or_default();
+            let root = drive_root(&old_path).map(|r| r.trim_end_matches(['\\', '/']).to_string()).unwrap_or_default();
             let idx = drive_entries.iter().position(|e| e.name.eq_ignore_ascii_case(&root));
             self.selected_index = idx.unwrap_or(0);
         } else if let Some(parent) = Path::new(&self.current_path).parent() {
@@ -850,12 +853,11 @@ impl App {
             self.update_terminal_title();
             self.refresh_git_status();
             let parent_entries = self.directory_contents.get_entries(&self.current_path);
-            let old_name = Path::new(&old_path)
-                .file_name()
-                .map(|n| n.to_string_lossy().to_string())
-                .unwrap_or_default();
+            let old_name =
+                Path::new(&old_path).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
             let idx = parent_entries.iter().position(|e| e.name.eq_ignore_ascii_case(&old_name));
-            self.selected_index = idx.unwrap_or_else(|| *self.selected_index_per_dir.get(&self.current_path).unwrap_or(&0));
+            self.selected_index =
+                idx.unwrap_or_else(|| *self.selected_index_per_dir.get(&self.current_path).unwrap_or(&0));
         }
 
         self.scroll_offset = 0;
@@ -873,11 +875,7 @@ impl App {
 
         if self.filtered_entries.is_none() {
             let filter = self.search_filter.to_lowercase();
-            self.filtered_entries = Some(
-                all.into_iter()
-                    .filter(|e| e.name.to_lowercase().contains(&filter))
-                    .collect(),
-            );
+            self.filtered_entries = Some(all.into_iter().filter(|e| e.name.to_lowercase().contains(&filter)).collect());
         }
 
         self.filtered_entries.clone().unwrap_or_default()
@@ -914,7 +912,6 @@ impl App {
             timestamp_ms: now_ms(),
         });
     }
-
 
     /// The OSC 0 sequence `update_terminal_title` writes: the current path
     /// when the title setting is on, an empty title otherwise.
@@ -1013,11 +1010,8 @@ impl App {
 
             // Right-click opens the context menu
             if mouse.button == MouseButton::Right && entry_index < entries.len() {
-                self.modal.context_menu = Some(crate::ui::context_menu::ContextMenuState::new(
-                    self.build_context_menu_items(),
-                    row,
-                    col,
-                ));
+                self.modal.context_menu =
+                    Some(crate::ui::context_menu::ContextMenuState::new(self.build_context_menu_items(), row, col));
                 self.input_mode = InputMode::ContextMenu;
             }
         } else if Self::hit_test_pane(self.layout.left_pane, row, col) {
@@ -1028,11 +1022,7 @@ impl App {
 
         // Clamp after mouse handling
         let entries = self.get_visible_entries();
-        self.selected_index = if entries.is_empty() {
-            0
-        } else {
-            self.selected_index.min(entries.len() - 1)
-        };
+        self.selected_index = if entries.is_empty() { 0 } else { self.selected_index.min(entries.len() - 1) };
     }
 
     /// Port of `HitTestPane`.
@@ -1137,8 +1127,7 @@ impl App {
         }
 
         let formatted = format_size_buf(event.total_bytes);
-        self.properties_dir_size_text =
-            Some(format!("{} ({} bytes)", formatted, group_thousands(event.total_bytes)));
+        self.properties_dir_size_text = Some(format!("{} ({} bytes)", formatted, group_thousands(event.total_bytes)));
     }
 
     /// Port of `HandleInlineDirSizeReady` (App.cs:1429).
@@ -1510,7 +1499,9 @@ impl App {
                 if !entries.is_empty() && self.selected_index < entries.len() {
                     let entry = entries[self.selected_index].clone();
                     match open_external(&entry.full_path) {
-                        Ok(()) => self.show_notification(&format!("Opened '{}'", entry.name), NotificationKind::Success),
+                        Ok(()) => {
+                            self.show_notification(&format!("Opened '{}'", entry.name), NotificationKind::Success)
+                        }
                         Err(err) => self.show_notification(&format!("Error: {err}"), NotificationKind::Error),
                     }
                 }
@@ -1532,7 +1523,10 @@ impl App {
                 }
 
                 let (targets, prompt) = if !self.marked_paths.is_empty() {
-                    (self.marked_paths.iter().cloned().collect::<Vec<String>>(), format!("Delete {} item(s)?", self.marked_paths.len()))
+                    (
+                        self.marked_paths.iter().cloned().collect::<Vec<String>>(),
+                        format!("Delete {} item(s)?", self.marked_paths.len()),
+                    )
                 } else if self.selected_index < entries.len() {
                     (
                         vec![entries[self.selected_index].full_path.clone()],
@@ -1563,9 +1557,7 @@ impl App {
             A::NewDirectory => {
                 self.show_text_input_dialog("New Directory", "", Some(dialogs::TextInputPurpose::NewDirectory), None);
             }
-            A::CreateSymlink
-                if !entries.is_empty() && self.selected_index < entries.len() =>
-            {
+            A::CreateSymlink if !entries.is_empty() && self.selected_index < entries.len() => {
                 let entry = entries[self.selected_index].clone();
                 let initial = format!("{}_link", entry.name);
                 self.show_text_input_dialog(
@@ -1624,10 +1616,9 @@ impl App {
         };
 
         if !self.marked_paths.is_empty() {
-            return self
-                .marked_paths
-                .iter()
-                .any(|path| crate::fs::git_utils::statuses_get(statuses, path).is_some_and(|s| s.intersects(status_mask)));
+            return self.marked_paths.iter().any(|path| {
+                crate::fs::git_utils::statuses_get(statuses, path).is_some_and(|s| s.intersects(status_mask))
+            });
         }
 
         if self.selected_index < entries.len() {
@@ -1690,7 +1681,8 @@ impl App {
         };
 
         let left_entries = self.directory_contents.get_entries(&parent_key);
-        let entry_index = self.mouse_left_pane_scroll(&left_entries) + (row - self.layout.left_pane.top - header_offset);
+        let entry_index =
+            self.mouse_left_pane_scroll(&left_entries) + (row - self.layout.left_pane.top - header_offset);
         let entry_index = usize::try_from(entry_index).unwrap_or(usize::MAX);
         if entry_index >= left_entries.len() {
             return;
@@ -1706,10 +1698,8 @@ impl App {
             self.update_terminal_title();
             self.refresh_git_status();
             let parent_entries = self.directory_contents.get_entries(&self.current_path);
-            self.selected_index = parent_entries
-                .iter()
-                .position(|e| e.name.eq_ignore_ascii_case(&clicked.name))
-                .unwrap_or(0);
+            self.selected_index =
+                parent_entries.iter().position(|e| e.name.eq_ignore_ascii_case(&clicked.name)).unwrap_or(0);
             self.scroll_offset = 0;
             self.marked_paths.clear();
             self.clear_search_filter();
@@ -1734,10 +1724,8 @@ impl App {
             }
         };
 
-        let parent_selected = parent_entries
-            .iter()
-            .position(|e| e.name.eq_ignore_ascii_case(&current_name))
-            .unwrap_or(0);
+        let parent_selected =
+            parent_entries.iter().position(|e| e.name.eq_ignore_ascii_case(&current_name)).unwrap_or(0);
 
         let mut left_pane = self.layout.left_pane;
         if self.config.column_headers_enabled && left_pane.height > 2 {
@@ -1775,10 +1763,8 @@ impl App {
             // File in previewed directory: navigate there, select the file
             self.navigate_to_directory(&crate::fs::directory_contents::capitalize_drive_letter(&selected.full_path));
             let dir_entries = self.directory_contents.get_entries(&self.current_path);
-            self.selected_index = dir_entries
-                .iter()
-                .position(|e| e.name.eq_ignore_ascii_case(&clicked.name))
-                .unwrap_or(0);
+            self.selected_index =
+                dir_entries.iter().position(|e| e.name.eq_ignore_ascii_case(&clicked.name)).unwrap_or(0);
         }
     }
 
@@ -1849,7 +1835,13 @@ impl App {
         self.render_right_pane(buffer, &entries);
 
         // Borders
-        PaneRenderer::render_borders(buffer, &self.layout, self.last_height, self.preview_pane_enabled, self.parent_pane_enabled);
+        PaneRenderer::render_borders(
+            buffer,
+            &self.layout,
+            self.last_height,
+            self.preview_pane_enabled,
+            self.parent_pane_enabled,
+        );
         self.render_tab_bar(buffer);
 
         // Status bar
@@ -1916,7 +1908,15 @@ impl App {
 
         if self.config.column_headers_enabled && left_pane.height > 2 {
             let header_rect = Rect2::new(left_pane.left, left_pane.top, left_pane.width, 2);
-            PaneRenderer::render_column_headers(buffer, header_rect, self.config.show_icons_enabled, false, false, false, false);
+            PaneRenderer::render_column_headers(
+                buffer,
+                header_rect,
+                self.config.show_icons_enabled,
+                false,
+                false,
+                false,
+                false,
+            );
             left_pane.top += 2;
             left_pane.height -= 2;
         }
@@ -1952,7 +1952,15 @@ impl App {
 
                 if self.config.column_headers_enabled && right_list_pane.height > 2 {
                     let header_rect = Rect2::new(right_list_pane.left, right_list_pane.top, right_list_pane.width, 2);
-                    PaneRenderer::render_column_headers(buffer, header_rect, self.config.show_icons_enabled, false, false, false, false);
+                    PaneRenderer::render_column_headers(
+                        buffer,
+                        header_rect,
+                        self.config.show_icons_enabled,
+                        false,
+                        false,
+                        false,
+                        false,
+                    );
                     right_list_pane.top += 2;
                     right_list_pane.height -= 2;
                 }
@@ -2054,17 +2062,22 @@ fn open_external(path: &str) -> Result<(), std::io::Error> {
             &["xdg-open", "gnome-open", "kfmclient"]
         };
 
-        let opener = openers.iter().find(|program| find_program(program).is_some()).ok_or_else(|| {
-            std::io::Error::new(std::io::ErrorKind::NotFound, "No program found to open the file")
-        })?;
+        let opener = openers
+            .iter()
+            .find(|program| find_program(program).is_some())
+            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "No program found to open the file"))?;
         quiet(Command::new(opener).arg(path))
     }
 }
 
 #[cfg(windows)]
 fn shell_execute(path: &str) -> std::io::Result<()> {
-    use windows_sys::Win32::System::Com::{CoInitializeEx, CoUninitialize, COINIT_APARTMENTTHREADED, COINIT_DISABLE_OLE1DDE};
-    use windows_sys::Win32::UI::Shell::{ShellExecuteExW, SEE_MASK_FLAG_DDEWAIT, SEE_MASK_FLAG_NO_UI, SHELLEXECUTEINFOW};
+    use windows_sys::Win32::System::Com::{
+        COINIT_APARTMENTTHREADED, COINIT_DISABLE_OLE1DDE, CoInitializeEx, CoUninitialize,
+    };
+    use windows_sys::Win32::UI::Shell::{
+        SEE_MASK_FLAG_DDEWAIT, SEE_MASK_FLAG_NO_UI, SHELLEXECUTEINFOW, ShellExecuteExW,
+    };
 
     let file: Vec<u16> = path.encode_utf16().chain(std::iter::once(0)).collect();
 
@@ -2122,12 +2135,8 @@ fn open_terminal(working_directory: &str) -> std::io::Result<()> {
         match wt {
             Ok(_) => Ok(()),
             Err(_) => {
-                let comspec =
-                    std::env::var("COMSPEC").unwrap_or_else(|_| "cmd.exe".to_string());
-                std::process::Command::new(comspec)
-                    .current_dir(working_directory)
-                    .spawn()
-                    .map(|_| ())
+                let comspec = std::env::var("COMSPEC").unwrap_or_else(|_| "cmd.exe".to_string());
+                std::process::Command::new(comspec).current_dir(working_directory).spawn().map(|_| ())
             }
         }
     }
@@ -2135,10 +2144,7 @@ fn open_terminal(working_directory: &str) -> std::io::Result<()> {
     #[cfg(not(windows))]
     {
         let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
-        std::process::Command::new(shell)
-            .current_dir(working_directory)
-            .spawn()
-            .map(|_| ())
+        std::process::Command::new(shell).current_dir(working_directory).spawn().map(|_| ())
     }
 }
 /// Case-insensitive path comparison on every platform (C#
@@ -2169,11 +2175,7 @@ pub(crate) fn group_thousands(value: i64) -> String {
         }
     }
 
-    if value < 0 {
-        format!("-{grouped}")
-    } else {
-        grouped
-    }
+    if value < 0 { format!("-{grouped}") } else { grouped }
 }
 
 /// `FormatHelpers.FormatSize` convenience wrapper returning a String.
@@ -2281,8 +2283,6 @@ fn flush_buffer(buffer: &mut ScreenBuffer) {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::{App, AppAction, AppConfig, InputMode};
@@ -2301,7 +2301,7 @@ mod tests {
             (DriveMediaType::Network, true, false, false, false),
             (DriveMediaType::Removable, true, false, false, true), // follows SSD
             (DriveMediaType::Removable, false, false, false, false), // follows SSD
-            (DriveMediaType::Unknown, true, true, true, false), // Unknown = disabled
+            (DriveMediaType::Unknown, true, true, true, false),    // Unknown = disabled
         ];
 
         for (drive_type, ssd, hdd, network, expected) in cases {
@@ -2344,7 +2344,10 @@ mod tests {
     fn cycle_sort_mode_wraps_back_to_name() {
         use crate::fs::directory_contents::SortMode;
 
-        let mut app = App::new(AppConfig { git_status_enabled: false, ..AppConfig::default() });
+        let mut app = App::new(AppConfig {
+            git_status_enabled: false,
+            ..AppConfig::default()
+        });
         let mut seen = Vec::new();
         for _ in 0..4 {
             app.dispatch(AppAction::CycleSortMode);
@@ -2392,7 +2395,11 @@ mod tests {
     /// An App over `root` with icons off (so screen columns equal string
     /// indices), laid out at 100x30.
     fn plain_app(root: &std::path::Path) -> App {
-        let mut app = App::new(AppConfig { git_status_enabled: false, show_icons_enabled: false, ..AppConfig::default() });
+        let mut app = App::new(AppConfig {
+            git_status_enabled: false,
+            show_icons_enabled: false,
+            ..AppConfig::default()
+        });
         app.current_path = root.to_string_lossy().into_owned();
         app.set_screen_size(100, 30);
         app.layout.calculate(100, 30, true, true);
@@ -2406,7 +2413,13 @@ mod tests {
     }
 
     fn key(key: crate::console_key::ConsoleKey) -> crate::input::InputEvent {
-        crate::input::InputEvent::Key(crate::input::KeyEvent { key, key_char: 0, shift: false, alt: false, control: false })
+        crate::input::InputEvent::Key(crate::input::KeyEvent {
+            key,
+            key_char: 0,
+            shift: false,
+            alt: false,
+            control: false,
+        })
     }
 
     #[test]
@@ -2430,7 +2443,9 @@ mod tests {
         let expected = |has_status_col: bool| -> String {
             let mut direct = crate::screen::ScreenBuffer::new(17, 30);
             let rect = crate::ui::layout::Rect::new(pane.left, pane.top, pane.width, 2);
-            crate::ui::pane_renderer::PaneRenderer::render_column_headers(&mut direct, rect, false, true, true, false, has_status_col);
+            crate::ui::pane_renderer::PaneRenderer::render_column_headers(
+                &mut direct, rect, false, true, true, false, has_status_col,
+            );
             header_of(&direct)
         };
 
@@ -2467,14 +2482,22 @@ mod tests {
         let clicked_row = first_row + 5;
         let drawn = format!("f{:03}.txt", app.scroll_offset() + 5);
         assert!(rows[clicked_row as usize].contains(&drawn));
-        app.handle_event(InputEvent::Mouse(MouseEvent { button: MouseButton::Left, row: clicked_row, col: app.layout.center_pane.left + 2, is_release: false }));
+        app.handle_event(InputEvent::Mouse(MouseEvent {
+            button: MouseButton::Left,
+            row: clicked_row,
+            col: app.layout.center_pane.left + 2,
+            is_release: false,
+        }));
         assert_eq!(app.get_visible_entries()[app.selected_index()].name, drawn);
         std::fs::remove_dir_all(&root).unwrap();
     }
 
     #[test]
     fn toggling_the_parent_pane_requests_a_full_redraw() {
-        let mut app = App::new(AppConfig { git_status_enabled: false, ..AppConfig::default() });
+        let mut app = App::new(AppConfig {
+            git_status_enabled: false,
+            ..AppConfig::default()
+        });
         app.dispatch(AppAction::ToggleParentPane);
         assert!(app.request_full_redraw);
     }
@@ -2737,7 +2760,6 @@ mod tests {
         assert!(super::hydrate_file(&root.join("missing.bin").to_string_lossy()).is_err());
         std::fs::remove_dir_all(&root).unwrap();
     }
-
 }
 
 /// The OS clipboard behind wade's copy/cut/paste and path copies.

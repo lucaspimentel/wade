@@ -22,11 +22,7 @@ impl Default for SortStore {
 
 /// Map key for a path: case-insensitive on Windows, like `BookmarkStore`.
 fn key(path: &str) -> String {
-    if cfg!(windows) {
-        path.to_lowercase()
-    } else {
-        path.to_string()
-    }
+    if cfg!(windows) { path.to_lowercase() } else { path.to_string() }
 }
 
 fn mode_name(mode: SortMode) -> &'static str {

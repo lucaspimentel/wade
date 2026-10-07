@@ -388,9 +388,8 @@ impl Decoder {
             .collect();
         self.pending.drain(..usable);
 
-        let mut chars: Vec<char> = char::decode_utf16(units)
-            .map(|unit| unit.unwrap_or(char::REPLACEMENT_CHARACTER))
-            .collect();
+        let mut chars: Vec<char> =
+            char::decode_utf16(units).map(|unit| unit.unwrap_or(char::REPLACEMENT_CHARACTER)).collect();
 
         // An odd trailing byte at EOF decodes to U+FFFD
         if last && !self.pending.is_empty() {

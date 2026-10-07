@@ -103,7 +103,8 @@ mod tests {
     /// binaries must report the same number until the C# code is retired.
     #[test]
     fn cargo_version_matches_directory_build_props() {
-        let props = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../Directory.Build.props")).expect("read Directory.Build.props");
+        let props = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../Directory.Build.props"))
+            .expect("read Directory.Build.props");
         let start = props.find("<Version>").expect("<Version> element") + "<Version>".len();
         let end = start + props[start..].find("</Version>").expect("</Version>");
         assert_eq!(&props[start..end], env!("CARGO_PKG_VERSION"));

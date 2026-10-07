@@ -71,9 +71,6 @@ impl ActionMenuLevel {
         }
 
         let filter_upper = filter.to_uppercase();
-        self.items
-            .iter()
-            .filter(|item| item.label.to_uppercase().contains(&filter_upper))
-            .collect()
+        self.items.iter().filter(|item| item.label.to_uppercase().contains(&filter_upper)).collect()
     }
 }

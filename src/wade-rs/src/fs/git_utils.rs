@@ -22,9 +22,7 @@ pub fn statuses_get(map: &HashMap<String, GitFileStatus>, path: &str) -> Option<
 
     #[cfg(windows)]
     {
-        map.iter()
-            .find(|(key, _)| key.eq_ignore_ascii_case(path))
-            .map(|(_, status)| *status)
+        map.iter().find(|(key, _)| key.eq_ignore_ascii_case(path)).map(|(_, status)| *status)
     }
 
     #[cfg(not(windows))]
@@ -77,9 +75,7 @@ pub fn read_branch_name(repo_root: &str) -> Option<String> {
     };
 
     let head_content = std::fs::read_to_string(head_path).ok()?.trim().to_string();
-    head_content
-        .strip_prefix("ref: refs/heads/")
-        .map(str::to_string)
+    head_content.strip_prefix("ref: refs/heads/").map(str::to_string)
 }
 
 /// Port of `GitUtils.RunGitCommand` (success/error shape); used by the
@@ -102,12 +98,7 @@ pub fn run_git_result(
 }
 
 /// Runs git and returns stdout on success.
-fn run_git_capturing(
-    repo_root: &str,
-    args: &[&str],
-    cancel: &CancelToken,
-    timeout_ms: u128,
-) -> Result<String, String> {
+fn run_git_capturing(repo_root: &str, args: &[&str], cancel: &CancelToken, timeout_ms: u128) -> Result<String, String> {
     if cancel.is_cancelled() {
         return Err("Cancelled".to_string());
     }
@@ -266,8 +257,7 @@ pub fn relative_path(repo_root: &str, path: &str) -> String {
     let path_norm = path.trim_end_matches(['/', '\\']);
 
     let under_root = if cfg!(windows) {
-        path_norm.len() >= root_norm.len()
-            && path_norm[..root_norm.len()].eq_ignore_ascii_case(root_norm)
+        path_norm.len() >= root_norm.len() && path_norm[..root_norm.len()].eq_ignore_ascii_case(root_norm)
     } else {
         path_norm.len() >= root_norm.len() && path_norm.starts_with(root_norm)
     };
@@ -336,7 +326,12 @@ pub fn unstage_all(repo_root: &str, cancel: &CancelToken) -> (bool, Option<Strin
 /// launcher then unescapes; passing the raw message as one argv word is
 /// equivalent.
 pub fn commit(repo_root: &str, message: &str, cancel: &CancelToken) -> (bool, Option<String>) {
-    run_git_args_owned(repo_root, &["commit".to_string(), "-m".to_string(), message.to_string()], cancel, LOCAL_TIMEOUT_MS)
+    run_git_args_owned(
+        repo_root,
+        &["commit".to_string(), "-m".to_string(), message.to_string()],
+        cancel,
+        LOCAL_TIMEOUT_MS,
+    )
 }
 
 /// Port of `GitUtils.Push`: `git push` (30s timeout).
@@ -399,10 +394,7 @@ pub fn parse_porcelain_output(output: &str, repo_root: &str) -> HashMap<String, 
 
         // Strip surrounding quotes if present (git quotes paths with spaces
         // and special chars) and decode the C-style escapes inside
-        if relative_path.chars().count() >= 2
-            && relative_path.starts_with('"')
-            && relative_path.ends_with('"')
-        {
+        if relative_path.chars().count() >= 2 && relative_path.starts_with('"') && relative_path.ends_with('"') {
             relative_path = unquote_git_path(&relative_path[1..relative_path.len() - 1]);
         }
 
@@ -442,8 +434,7 @@ pub fn parse_porcelain_output(output: &str, repo_root: &str) -> HashMap<String, 
 
         // Convert relative path (using /) to full path with platform
         // separators
-        let full_path = std::path::Path::new(repo_root)
-            .join(relative_path.replace('/', std::path::MAIN_SEPARATOR_STR));
+        let full_path = std::path::Path::new(repo_root).join(relative_path.replace('/', std::path::MAIN_SEPARATOR_STR));
         let full_path = normalize_full_path(&full_path.to_string_lossy());
 
         match statuses.get(&full_path) {
@@ -518,10 +509,7 @@ fn normalize_full_path(path: &str) -> String {
 /// Port of `AggregateDirectoryStatuses` (internal static, testable): ORs
 /// each entry's status (minus Ignored) into every parent directory up to the
 /// repo root.
-pub fn aggregate_directory_statuses(
-    statuses: &mut HashMap<String, GitFileStatus>,
-    repo_root: &str,
-) {
+pub fn aggregate_directory_statuses(statuses: &mut HashMap<String, GitFileStatus>, repo_root: &str) {
     // Snapshot keys to avoid modifying during enumeration
     let file_paths: Vec<String> = statuses.keys().cloned().collect();
 
@@ -560,9 +548,7 @@ pub fn aggregate_directory_statuses(
 }
 
 fn parent_of(path: &str) -> Option<String> {
-    std::path::Path::new(path)
-        .parent()
-        .map(|p| p.to_string_lossy().to_string())
+    std::path::Path::new(path).parent().map(|p| p.to_string_lossy().to_string())
 }
 
 /// Pure parse of `GetAheadBehind` stdout: format is
@@ -622,16 +608,9 @@ mod tests {
 
         let wt_root = wt_dir.join("checkout");
         std::fs::create_dir_all(&wt_root).expect("checkout");
-        std::fs::write(
-            wt_root.join(".git"),
-            format!("gitdir: {}", gitdir.to_string_lossy()),
-        )
-        .expect("git file");
+        std::fs::write(wt_root.join(".git"), format!("gitdir: {}", gitdir.to_string_lossy())).expect("git file");
 
-        assert_eq!(
-            read_branch_name(&wt_root.to_string_lossy()).as_deref(),
-            Some("feature")
-        );
+        assert_eq!(read_branch_name(&wt_root.to_string_lossy()).as_deref(), Some("feature"));
     }
 
     #[test]
@@ -656,11 +635,7 @@ mod tests {
     /// so tests use the platform's native form and build expected keys with
     /// the same join the parser uses.
     fn test_root() -> String {
-        if cfg!(windows) {
-            String::from("C:\\repo")
-        } else {
-            String::from("/repo")
-        }
+        if cfg!(windows) { String::from("C:\\repo") } else { String::from("/repo") }
     }
 
     fn test_key(root: &str, name: &str) -> String {
@@ -682,10 +657,7 @@ mod tests {
         assert_eq!(get("new.txt"), Some(GitFileStatus::UNTRACKED));
         assert_eq!(get("mod.txt"), Some(GitFileStatus::MODIFIED));
         assert_eq!(get("staged.txt"), Some(GitFileStatus::STAGED));
-        assert_eq!(
-            get("both.txt"),
-            Some(GitFileStatus::STAGED | GitFileStatus::MODIFIED)
-        );
+        assert_eq!(get("both.txt"), Some(GitFileStatus::STAGED | GitFileStatus::MODIFIED));
         assert_eq!(get("ignored.txt"), Some(GitFileStatus::IGNORED));
         assert_eq!(get("conflict.txt"), Some(GitFileStatus::CONFLICT));
         assert_eq!(get("both-added.txt"), Some(GitFileStatus::CONFLICT));
@@ -748,11 +720,7 @@ mod tests {
         assert!(!dir_status.contains(GitFileStatus::IGNORED));
         // But the ignored file itself keeps its flag
         let ignored_key = test_key(&root, "ignored.txt");
-        assert!(statuses
-            .get(&ignored_key)
-            .copied()
-            .expect("file")
-            .contains(GitFileStatus::IGNORED));
+        assert!(statuses.get(&ignored_key).copied().expect("file").contains(GitFileStatus::IGNORED));
     }
 
     #[test]
@@ -871,8 +839,14 @@ mod tests {
         let cancel = CancelToken::new();
         cancel.cancel();
         assert!(query_status(&root, &cancel).is_none());
-        assert_eq!(stage(&root, &[format!("{root}{}a.txt", std::path::MAIN_SEPARATOR)], &cancel), (false, Some("Cancelled".to_string())));
-        assert_eq!(run_git_result(&root, &["status"], &cancel, LOCAL_TIMEOUT_MS), (false, Some("Cancelled".to_string())));
+        assert_eq!(
+            stage(&root, &[format!("{root}{}a.txt", std::path::MAIN_SEPARATOR)], &cancel),
+            (false, Some("Cancelled".to_string()))
+        );
+        assert_eq!(
+            run_git_result(&root, &["status"], &cancel, LOCAL_TIMEOUT_MS),
+            (false, Some("Cancelled".to_string()))
+        );
     }
 
     #[test]
@@ -907,11 +881,7 @@ mod integration {
             .current_dir(dir)
             .output()
             .expect("git available");
-        assert!(
-            output.status.success(),
-            "git {args:?} failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+        assert!(output.status.success(), "git {args:?} failed: {}", String::from_utf8_lossy(&output.stderr));
     }
 
     fn git_installed() -> bool {
@@ -1179,14 +1149,11 @@ mod integration {
             let key = join(name);
             match statuses_get(map, &key) {
                 Some(status) => status,
-                None => panic!(
-                    "{what} not found for key {key:?}; map keys: {:?}",
-                    {
-                        let mut keys: Vec<&String> = map.keys().collect();
-                        keys.sort();
-                        keys
-                    }
-                ),
+                None => panic!("{what} not found for key {key:?}; map keys: {:?}", {
+                    let mut keys: Vec<&String> = map.keys().collect();
+                    keys.sort();
+                    keys
+                }),
             }
         };
 
@@ -1241,7 +1208,11 @@ mod integration {
         let root = repo.to_string_lossy().to_string();
         let cancel = CancelToken::new();
         let staged = || {
-            let output = Command::new("git").args(["diff", "--cached", "--name-only"]).current_dir(&repo).output().expect("git");
+            let output = Command::new("git")
+                .args(["diff", "--cached", "--name-only"])
+                .current_dir(&repo)
+                .output()
+                .expect("git");
             String::from_utf8_lossy(&output.stdout).lines().map(str::to_string).collect::<Vec<_>>()
         };
         assert_eq!(staged(), ["one.txt", "two.txt"]);

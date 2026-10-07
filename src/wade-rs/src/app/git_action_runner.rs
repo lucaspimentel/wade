@@ -44,10 +44,7 @@ impl GitActionRunner {
                 return;
             }
 
-            let _ = out.send(InputEvent::GitActionComplete(GitActionCompleteEvent {
-                success,
-                error_message: error,
-            }));
+            let _ = out.send(InputEvent::GitActionComplete(GitActionCompleteEvent { success, error_message: error }));
         });
     }
 
@@ -70,10 +67,7 @@ mod tests {
         let pipeline = InputPipeline::new();
         let sender = pipeline.sender();
 
-        runner.start_action(
-            Box::new(|_cancel| (true, None)),
-            sender,
-        );
+        runner.start_action(Box::new(|_cancel| (true, None)), sender);
 
         let cancel = CancelToken::new();
         match pipeline.wait_next(&cancel).expect("event") {
@@ -90,10 +84,7 @@ mod tests {
         let mut runner = GitActionRunner::new();
         let pipeline = InputPipeline::new();
 
-        runner.start_action(
-            Box::new(|_cancel| (false, Some("boom".to_string()))),
-            pipeline.sender(),
-        );
+        runner.start_action(Box::new(|_cancel| (false, Some("boom".to_string()))), pipeline.sender());
 
         let cancel = CancelToken::new();
         match pipeline.wait_next(&cancel).expect("event") {

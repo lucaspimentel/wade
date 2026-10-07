@@ -1,9 +1,9 @@
 //! Port of src/Wade/FileSystem/DirectoryContents.cs (core subset).
 
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
 #[cfg(windows)]
 use std::os::windows::fs::MetadataExt;
+use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 /// Mirrors the `GitFileStatus` flags enum in src/Wade/FileSystem/GitUtils.cs.
@@ -177,7 +177,7 @@ impl DirectoryContents {
                 let root = drive_root(path);
                 root.is_some_and(|r| r == full)
             }
-            _ => full == "/" ,
+            _ => full == "/",
         }
     }
 
@@ -214,11 +214,7 @@ pub fn drive_root(path: &str) -> Option<String> {
 #[cfg(not(windows))]
 #[must_use]
 pub fn drive_root(_path: &str) -> Option<String> {
-    if Path::new(_path).is_absolute() {
-        Some("/".to_string())
-    } else {
-        None
-    }
+    if Path::new(_path).is_absolute() { Some("/".to_string()) } else { None }
 }
 
 /// Port of `LoadEntries`: enumerate, filter, sort.
@@ -272,12 +268,10 @@ pub fn load_entries(
         #[cfg(windows)]
         let is_directory = attributes & 0x0010 != 0;
         #[cfg(not(windows))]
-        let is_directory = file_type.is_dir()
-            || (file_type.is_symlink() && std::fs::metadata(item.path()).is_ok_and(|m| m.is_dir()));
+        let is_directory =
+            file_type.is_dir() || (file_type.is_symlink() && std::fs::metadata(item.path()).is_ok_and(|m| m.is_dir()));
         let link_target = if file_type.is_symlink() {
-            std::fs::read_link(item.path())
-                .ok()
-                .map(|p| p.to_string_lossy().to_string())
+            std::fs::read_link(item.path()).ok().map(|p| p.to_string_lossy().to_string())
         } else {
             None
         };
@@ -298,8 +292,11 @@ pub fn load_entries(
         let (is_cloud_placeholder, is_reparse_point) = (false, false);
         let is_junction_point = is_directory && is_reparse_point && super::reparse::is_junction_point(&full_path);
         let is_app_exec_link = !is_directory && is_reparse_point && super::reparse::is_app_exec_link(&full_path);
-        let app_exec_link_target =
-            if is_app_exec_link { super::reparse::get_app_exec_link_target(&full_path) } else { None };
+        let app_exec_link_target = if is_app_exec_link {
+            super::reparse::get_app_exec_link_target(&full_path)
+        } else {
+            None
+        };
 
         list.push(FileSystemEntry {
             name,
@@ -361,15 +358,14 @@ pub fn sort_entries(list: &mut [FileSystemEntry], sort_mode: SortMode, sort_asce
             SortMode::Name => a.name.to_uppercase().cmp(&b.name.to_uppercase()),
         };
 
-        if sort_ascending {
-            cmp
-        } else {
-            cmp.reverse()
-        }
+        if sort_ascending { cmp } else { cmp.reverse() }
     });
 }
 
-fn compare_date_parts(a: &super::super::ui::format_helpers::DateParts, b: &super::super::ui::format_helpers::DateParts) -> std::cmp::Ordering {
+fn compare_date_parts(
+    a: &super::super::ui::format_helpers::DateParts,
+    b: &super::super::ui::format_helpers::DateParts,
+) -> std::cmp::Ordering {
     (a.year, a.month, a.day, a.hour, a.minute, a.second, a.nanosecond)
         .cmp(&(b.year, b.month, b.day, b.hour, b.minute, b.second, b.nanosecond))
 }
@@ -420,12 +416,8 @@ pub fn get_drive_entries() -> Vec<FileSystemEntry> {
                 let mut free_for_user: u64 = 0;
                 let drive_utf16: Vec<u16> = drive.encode_utf16().chain(std::iter::once(0)).collect();
 
-                let spaces_ok = GetDiskFreeSpaceExW(
-                    drive_utf16.as_ptr(),
-                    &mut free_for_user,
-                    &mut total,
-                    &mut free,
-                ) != 0;
+                let spaces_ok =
+                    GetDiskFreeSpaceExW(drive_utf16.as_ptr(), &mut free_for_user, &mut total, &mut free) != 0;
 
                 let mut volume_buf = [0u16; 261];
                 let mut fs_buf = [0u16; 64];
@@ -588,11 +580,8 @@ mod tests {
 
     #[test]
     fn sort_by_modified_uses_sub_minute_precision() {
-        let mut list = vec![
-            sort_probe_entry("a", 30, 0),
-            sort_probe_entry("b", 10, 500),
-            sort_probe_entry("c", 10, 100),
-        ];
+        let mut list =
+            vec![sort_probe_entry("a", 30, 0), sort_probe_entry("b", 10, 500), sort_probe_entry("c", 10, 100)];
         sort_entries(&mut list, SortMode::Modified, true);
         let names: Vec<&str> = list.iter().map(|e| e.name.as_str()).collect();
         assert_eq!(names, ["c", "b", "a"]);
@@ -698,7 +687,10 @@ mod tests {
     fn set_attributes(path: &Path, attributes: u32) {
         use std::os::windows::ffi::OsStrExt;
         let wide: Vec<u16> = path.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
-        assert_ne!(unsafe { windows_sys::Win32::Storage::FileSystem::SetFileAttributesW(wide.as_ptr(), attributes) }, 0);
+        assert_ne!(
+            unsafe { windows_sys::Win32::Storage::FileSystem::SetFileAttributesW(wide.as_ptr(), attributes) },
+            0
+        );
     }
 
     #[cfg(windows)]
@@ -721,7 +713,8 @@ mod tests {
 
         let path = root.to_string_lossy().into_owned();
         let listed = |hidden: bool, system: bool| {
-            let mut names: Vec<String> = load_entries(&path, hidden, system, None).into_iter().map(|e| e.name).collect();
+            let mut names: Vec<String> =
+                load_entries(&path, hidden, system, None).into_iter().map(|e| e.name).collect();
             names.sort();
             names
         };
@@ -791,7 +784,8 @@ mod tests {
 
     #[test]
     fn sort_by_extension_breaks_ties_by_name() {
-        let mut list = vec![sort_probe_entry("c.txt", 0, 0), sort_probe_entry("a.txt", 0, 0), sort_probe_entry("b.md", 0, 0)];
+        let mut list =
+            vec![sort_probe_entry("c.txt", 0, 0), sort_probe_entry("a.txt", 0, 0), sort_probe_entry("b.md", 0, 0)];
         sort_entries(&mut list, SortMode::Extension, true);
         assert_eq!(names(&list), ["b.md", "a.txt", "c.txt"]);
     }
@@ -805,7 +799,10 @@ mod tests {
             file.set_modified(base + std::time::Duration::from_secs(offset)).unwrap();
         }
         let path = root.to_string_lossy().into_owned();
-        let mut contents = DirectoryContents { sort_mode: SortMode::Modified, ..DirectoryContents::default() };
+        let mut contents = DirectoryContents {
+            sort_mode: SortMode::Modified,
+            ..DirectoryContents::default()
+        };
         assert_eq!(names(&contents.get_entries(&path)), ["old.txt", "mid.txt", "new.txt"]);
 
         contents.sort_ascending = false;

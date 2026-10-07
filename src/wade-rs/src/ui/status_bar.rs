@@ -68,32 +68,33 @@ pub fn render(
     let mut info_max_width = path_max_width - path_len;
 
     if let Some(branch_name) = branch_name
-        && info_max_width > 4 {
-            let branch_style = style((180, 140, 220), Some(STATUS_BG), false, false);
-            buffer.put(rect.top, info_col, ' ', branch_style);
-            buffer.put(rect.top, info_col + 1, ' ', branch_style);
-            buffer.put(rect.top, info_col + 2, '\u{E0A0}', branch_style); // nf-pl-branch
-            buffer.put(rect.top, info_col + 3, ' ', branch_style);
-            let max_branch = (i32::try_from(branch_name.chars().count()).unwrap_or(0)).min(info_max_width - 4);
-            if max_branch > 0 {
-                buffer.write_string(rect.top, info_col + 4, branch_name, branch_style, i64::from(max_branch));
-                let total = 4 + max_branch;
-                info_col += total;
-                info_max_width -= total;
-            }
+        && info_max_width > 4
+    {
+        let branch_style = style((180, 140, 220), Some(STATUS_BG), false, false);
+        buffer.put(rect.top, info_col, ' ', branch_style);
+        buffer.put(rect.top, info_col + 1, ' ', branch_style);
+        buffer.put(rect.top, info_col + 2, '\u{E0A0}', branch_style); // nf-pl-branch
+        buffer.put(rect.top, info_col + 3, ' ', branch_style);
+        let max_branch = (i32::try_from(branch_name.chars().count()).unwrap_or(0)).min(info_max_width - 4);
+        if max_branch > 0 {
+            buffer.write_string(rect.top, info_col + 4, branch_name, branch_style, i64::from(max_branch));
+            let total = 4 + max_branch;
+            info_col += total;
+            info_max_width -= total;
+        }
 
-            // Ahead/behind counts (after branch name)
-            if let Some(ahead_behind) = ahead_behind {
-                let ab_len = i32::try_from(ahead_behind.chars().count()).unwrap_or(0);
-                if info_max_width > ab_len {
-                    let ab_style = style((140, 140, 160), Some(STATUS_BG), false, true);
-                    buffer.write_string(rect.top, info_col, ahead_behind, ab_style, i64::from(info_max_width));
-                    let used = ab_len.min(info_max_width);
-                    info_col += used;
-                    info_max_width -= used;
-                }
+        // Ahead/behind counts (after branch name)
+        if let Some(ahead_behind) = ahead_behind {
+            let ab_len = i32::try_from(ahead_behind.chars().count()).unwrap_or(0);
+            if info_max_width > ab_len {
+                let ab_style = style((140, 140, 160), Some(STATUS_BG), false, true);
+                buffer.write_string(rect.top, info_col, ahead_behind, ab_style, i64::from(info_max_width));
+                let used = ab_len.min(info_max_width);
+                info_col += used;
+                info_max_width -= used;
             }
         }
+    }
 
     // Mark count
     if marked_count > 0 {
@@ -116,7 +117,10 @@ pub fn render(
     }
 
     // Right side: always show metadata right-aligned
-    let right_text = build_right_text(item_count, selected_index, selected_entry, file_type_label, encoding, line_ending, sort_mode, sort_ascending, sort_overridden);
+    let right_text = build_right_text(
+        item_count, selected_index, selected_entry, file_type_label, encoding, line_ending, sort_mode, sort_ascending,
+        sort_overridden,
+    );
     let right_len = i32::try_from(right_text.chars().count()).unwrap_or(0);
 
     let right_col = rect.width - right_len - 1;
@@ -223,5 +227,3 @@ fn build_right_text(
 fn month_name(month: u32) -> &'static str {
     month_abbrev(month)
 }
-
-

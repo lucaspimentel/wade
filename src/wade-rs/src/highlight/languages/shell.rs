@@ -4,21 +4,17 @@ use crate::highlight::c_like::CLikeLanguage;
 use crate::highlight::c_like::base_try_match_string;
 use crate::highlight::{StyledSpan, TokenKind};
 
-
 const KEYWORDS: &[&str] = &[
-    "if", "then", "else", "elif", "fi", "for", "while", "do", "done", "case", "esac", "in",
-    "function", "return", "exit", "export", "local", "readonly", "declare", "typeset", "unset",
-    "shift", "source", "break", "continue", "trap", "exec",
+    "if", "then", "else", "elif", "fi", "for", "while", "do", "done", "case", "esac", "in", "function", "return",
+    "exit", "export", "local", "readonly", "declare", "typeset", "unset", "shift", "source", "break", "continue",
+    "trap", "exec",
 ];
 
-const CONSTANTS: &[&str] = &[
-    "true", "false",
-];
+const CONSTANTS: &[&str] = &["true", "false"];
 
 const BUILTINS: &[&str] = &[
-    "echo", "printf", "read", "test", "cd", "pwd", "ls", "cp", "mv", "rm", "mkdir", "chmod",
-    "chown", "grep", "sed", "awk", "find", "cat", "head", "tail", "sort", "uniq", "wc", "cut",
-    "tr",
+    "echo", "printf", "read", "test", "cd", "pwd", "ls", "cp", "mv", "rm", "mkdir", "chmod", "chown", "grep", "sed",
+    "awk", "find", "cat", "head", "tail", "sort", "uniq", "wc", "cut", "tr",
 ];
 
 pub struct ShellLanguage;
@@ -48,7 +44,13 @@ impl CLikeLanguage for ShellLanguage {
         None
     }
 
-    fn try_match_string(&self, line: &[char], pos: usize, spans: &mut Vec<StyledSpan>, _state: &mut u8) -> Option<usize> {
+    fn try_match_string(
+        &self,
+        line: &[char],
+        pos: usize,
+        spans: &mut Vec<StyledSpan>,
+        _state: &mut u8,
+    ) -> Option<usize> {
         // Single-quoted strings: no escape processing
         if line[pos] == '\'' {
             let mut p = pos + 1;

@@ -51,7 +51,13 @@ pub trait CLikeLanguage: Sync {
     }
 
     /// Matches a string literal at `pos`; returns the end position.
-    fn try_match_string(&self, line: &[char], pos: usize, spans: &mut Vec<StyledSpan>, _state: &mut u8) -> Option<usize> {
+    fn try_match_string(
+        &self,
+        line: &[char],
+        pos: usize,
+        spans: &mut Vec<StyledSpan>,
+        _state: &mut u8,
+    ) -> Option<usize> {
         base_try_match_string(line, pos, spans)
     }
 

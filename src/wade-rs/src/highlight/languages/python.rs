@@ -1,30 +1,26 @@
 //! Port of `PythonLanguage`.
 
 use crate::highlight::c_like::CLikeLanguage;
-use crate::highlight::c_like::{scan_quoted_string, STATE_MULTI_STRING, STATE_NORMAL};
+use crate::highlight::c_like::{STATE_MULTI_STRING, STATE_NORMAL, scan_quoted_string};
 use crate::highlight::scan::index_of;
 use crate::highlight::{StyledSpan, TokenKind};
 use crate::text::is_letter_or_digit;
 
-
 const KEYWORDS: &[&str] = &[
-    "and", "as", "assert", "async", "await", "break", "class", "continue", "def", "del", "elif",
-    "else", "except", "finally", "for", "from", "global", "if", "import", "in", "is", "lambda",
-    "nonlocal", "not", "or", "pass", "raise", "return", "try", "while", "with", "yield",
+    "and", "as", "assert", "async", "await", "break", "class", "continue", "def", "del", "elif", "else", "except",
+    "finally", "for", "from", "global", "if", "import", "in", "is", "lambda", "nonlocal", "not", "or", "pass", "raise",
+    "return", "try", "while", "with", "yield",
 ];
 
-const CONSTANTS: &[&str] = &[
-    "True", "False", "None",
-];
+const CONSTANTS: &[&str] = &["True", "False", "None"];
 
 const BUILTINS: &[&str] = &[
-    "abs", "all", "any", "ascii", "bin", "bool", "breakpoint", "bytearray", "bytes", "callable",
-    "chr", "classmethod", "compile", "complex", "copyright", "delattr", "dict", "dir", "divmod",
-    "enumerate", "eval", "exec", "filter", "float", "format", "frozenset", "getattr", "globals",
-    "hasattr", "hash", "help", "hex", "id", "input", "int", "isinstance", "issubclass", "iter",
-    "len", "list", "locals", "map", "max", "memoryview", "min", "next", "object", "oct", "open",
-    "ord", "pow", "print", "property", "range", "repr", "reversed", "round", "set", "setattr",
-    "slice", "sorted", "staticmethod", "str", "sum", "super", "tuple", "type", "vars", "zip",
+    "abs", "all", "any", "ascii", "bin", "bool", "breakpoint", "bytearray", "bytes", "callable", "chr", "classmethod",
+    "compile", "complex", "copyright", "delattr", "dict", "dir", "divmod", "enumerate", "eval", "exec", "filter",
+    "float", "format", "frozenset", "getattr", "globals", "hasattr", "hash", "help", "hex", "id", "input", "int",
+    "isinstance", "issubclass", "iter", "len", "list", "locals", "map", "max", "memoryview", "min", "next", "object",
+    "oct", "open", "ord", "pow", "print", "property", "range", "repr", "reversed", "round", "set", "setattr", "slice",
+    "sorted", "staticmethod", "str", "sum", "super", "tuple", "type", "vars", "zip",
 ];
 
 pub struct PythonLanguage;
@@ -72,7 +68,13 @@ impl CLikeLanguage for PythonLanguage {
         0
     }
 
-    fn try_match_string(&self, line: &[char], pos: usize, spans: &mut Vec<StyledSpan>, state: &mut u8) -> Option<usize> {
+    fn try_match_string(
+        &self,
+        line: &[char],
+        pos: usize,
+        spans: &mut Vec<StyledSpan>,
+        state: &mut u8,
+    ) -> Option<usize> {
         let mut pos = pos;
 
         // f-strings, b-strings, r-strings: f"...", b"...", r"...", ...
@@ -84,7 +86,11 @@ impl CLikeLanguage for PythonLanguage {
         }
 
         // Only a lowercase prefix widens the span (as in C#)
-        let span_start = if pos > 0 && matches!(line[pos - 1], 'f' | 'b' | 'r' | 'u') { pos - 1 } else { pos };
+        let span_start = if pos > 0 && matches!(line[pos - 1], 'f' | 'b' | 'r' | 'u') {
+            pos - 1
+        } else {
+            pos
+        };
 
         // Triple-quoted strings: """...""" or '''...'''
         if pos + 2 < line.len() {

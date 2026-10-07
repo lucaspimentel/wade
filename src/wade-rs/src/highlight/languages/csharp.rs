@@ -7,26 +7,21 @@ use crate::highlight::c_like::{
 };
 use crate::highlight::{StyledSpan, TokenKind};
 
-
 const KEYWORDS: &[&str] = &[
-    "abstract", "as", "async", "await", "base", "break", "case", "catch", "checked", "class",
-    "const", "continue", "default", "delegate", "do", "else", "enum", "event", "explicit",
-    "extern", "finally", "fixed", "for", "foreach", "goto", "if", "implicit", "in", "interface",
-    "internal", "is", "lock", "namespace", "new", "operator", "out", "override", "params",
-    "partial", "private", "protected", "public", "readonly", "record", "ref", "required",
-    "return", "sealed", "sizeof", "stackalloc", "static", "struct", "switch", "this", "throw",
-    "try", "typeof", "unchecked", "unsafe", "using", "var", "virtual", "volatile", "when",
-    "where", "while", "with", "yield", "and", "or", "not", "init", "get", "set", "add",
-    "remove", "value", "nint", "nuint",
+    "abstract", "as", "async", "await", "base", "break", "case", "catch", "checked", "class", "const", "continue",
+    "default", "delegate", "do", "else", "enum", "event", "explicit", "extern", "finally", "fixed", "for", "foreach",
+    "goto", "if", "implicit", "in", "interface", "internal", "is", "lock", "namespace", "new", "operator", "out",
+    "override", "params", "partial", "private", "protected", "public", "readonly", "record", "ref", "required",
+    "return", "sealed", "sizeof", "stackalloc", "static", "struct", "switch", "this", "throw", "try", "typeof",
+    "unchecked", "unsafe", "using", "var", "virtual", "volatile", "when", "where", "while", "with", "yield", "and",
+    "or", "not", "init", "get", "set", "add", "remove", "value", "nint", "nuint",
 ];
 
-const CONSTANTS: &[&str] = &[
-    "true", "false", "null",
-];
+const CONSTANTS: &[&str] = &["true", "false", "null"];
 
 const BUILTINS: &[&str] = &[
-    "bool", "byte", "char", "decimal", "double", "dynamic", "float", "int", "long", "object",
-    "sbyte", "short", "string", "uint", "ulong", "ushort", "void",
+    "bool", "byte", "char", "decimal", "double", "dynamic", "float", "int", "long", "object", "sbyte", "short",
+    "string", "uint", "ulong", "ushort", "void",
 ];
 
 pub struct CSharpLanguage;
@@ -58,7 +53,13 @@ impl CLikeLanguage for CSharpLanguage {
         match_bracket_attribute(line, pos, spans)
     }
 
-    fn try_match_string(&self, line: &[char], pos: usize, spans: &mut Vec<StyledSpan>, state: &mut u8) -> Option<usize> {
+    fn try_match_string(
+        &self,
+        line: &[char],
+        pos: usize,
+        spans: &mut Vec<StyledSpan>,
+        state: &mut u8,
+    ) -> Option<usize> {
         // Raw string literals: """ ... """
         if let Some(end) = match_triple_quote_string(line, pos, spans, state) {
             return Some(end);

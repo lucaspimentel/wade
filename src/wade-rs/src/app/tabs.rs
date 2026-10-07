@@ -118,12 +118,24 @@ impl App {
     /// Recalculates the layout, leaving row 0 for the tab bar when shown.
     pub(crate) fn recalc_layout(&mut self) {
         let top = i32::from(self.tab_bar_visible());
-        self.layout.calculate_with_top(self.last_width, self.last_height, self.preview_pane_enabled, self.parent_pane_enabled, top);
+        self.layout.calculate_with_top(
+            self.last_width,
+            self.last_height,
+            self.preview_pane_enabled,
+            self.parent_pane_enabled,
+            top,
+        );
     }
 
     fn tab_labels(&self) -> Vec<String> {
         (0..self.tabs.len())
-            .map(|i| tab_label(if i == self.active_tab { &self.current_path } else { &self.tabs[i].current_path }))
+            .map(|i| {
+                tab_label(if i == self.active_tab {
+                    &self.current_path
+                } else {
+                    &self.tabs[i].current_path
+                })
+            })
             .collect()
     }
 
@@ -182,7 +194,10 @@ impl App {
     /// Opens a tab at the current directory, right after the active one.
     pub(crate) fn new_tab(&mut self) {
         if self.tabs.len() >= MAX_TABS {
-            self.show_notification(&format!("At most {MAX_TABS} tabs"), crate::ui::notification::NotificationKind::Info);
+            self.show_notification(
+                &format!("At most {MAX_TABS} tabs"),
+                crate::ui::notification::NotificationKind::Info,
+            );
             return;
         }
 
@@ -203,7 +218,11 @@ impl App {
     /// The next or previous tab, wrapping.
     pub(crate) fn cycle_tab(&mut self, forward: bool) {
         let count = self.tabs.len();
-        let index = if forward { (self.active_tab + 1) % count } else { (self.active_tab + count - 1) % count };
+        let index = if forward {
+            (self.active_tab + 1) % count
+        } else {
+            (self.active_tab + count - 1) % count
+        };
         self.switch_tab(index);
     }
 
@@ -232,8 +251,17 @@ impl App {
             return;
         }
 
-        let bar = CellStyle { fg: Some(BAR_FG), bg: Some(BAR_BG), ..CellStyle::default() };
-        let active = CellStyle { fg: Some(ACTIVE_FG), bg: Some(ACTIVE_BG), bold: true, ..CellStyle::default() };
+        let bar = CellStyle {
+            fg: Some(BAR_FG),
+            bg: Some(BAR_BG),
+            ..CellStyle::default()
+        };
+        let active = CellStyle {
+            fg: Some(ACTIVE_FG),
+            bg: Some(ACTIVE_BG),
+            bold: true,
+            ..CellStyle::default()
+        };
 
         for col in 0..self.last_width {
             buffer.put(0, col, ' ', bar);

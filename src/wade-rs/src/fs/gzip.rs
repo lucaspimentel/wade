@@ -31,11 +31,7 @@ struct PeekReader<R: Read> {
 
 impl<R: Read> PeekReader<R> {
     fn new(inner: R) -> Self {
-        Self {
-            inner,
-            buf: Vec::new(),
-            pos: 0,
-        }
+        Self { inner, buf: Vec::new(), pos: 0 }
     }
 
     /// The next `n` bytes, or fewer at end of stream.
@@ -140,8 +136,8 @@ pub fn read_fully(reader: &mut (impl Read + ?Sized), buf: &mut [u8]) -> io::Resu
 mod tests {
     use std::io::{Read, Write};
 
-    use flate2::write::GzEncoder;
     use flate2::Compression;
+    use flate2::write::GzEncoder;
 
     use super::GzipReader;
 

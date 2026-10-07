@@ -102,7 +102,13 @@ pub(crate) fn ch(c: char) -> KeyEvent {
     } else {
         ConsoleKey::None
     };
-    KeyEvent { key, key_char: c as u16, shift: c.is_ascii_uppercase(), alt: false, control: false }
+    KeyEvent {
+        key,
+        key_char: c as u16,
+        shift: c.is_ascii_uppercase(),
+        alt: false,
+        control: false,
+    }
 }
 
 pub(crate) fn key(key: ConsoleKey) -> KeyEvent {
@@ -113,15 +119,33 @@ pub(crate) fn key(key: ConsoleKey) -> KeyEvent {
         ConsoleKey::Spacebar => 32,
         _ => 0,
     };
-    KeyEvent { key, key_char, shift: false, alt: false, control: false }
+    KeyEvent {
+        key,
+        key_char,
+        shift: false,
+        alt: false,
+        control: false,
+    }
 }
 
 pub(crate) fn ctrl(key: ConsoleKey) -> KeyEvent {
-    KeyEvent { key, key_char: 0, shift: false, alt: false, control: true }
+    KeyEvent {
+        key,
+        key_char: 0,
+        shift: false,
+        alt: false,
+        control: true,
+    }
 }
 
 pub(crate) fn shift(key: ConsoleKey) -> KeyEvent {
-    KeyEvent { key, key_char: 0, shift: true, alt: false, control: false }
+    KeyEvent {
+        key,
+        key_char: 0,
+        shift: true,
+        alt: false,
+        control: false,
+    }
 }
 
 /// Feeds one event through the main-loop step.

@@ -70,7 +70,12 @@ pub enum ImageData {
     Sixel(String),
     /// A kitty transmit command (written once) and the `cols` x `rows`
     /// block of placeholder cells that shows image `id`.
-    Kitty { transmit: String, id: u32, cols: i32, rows: i32 },
+    Kitty {
+        transmit: String,
+        id: u32,
+        cols: i32,
+        rows: i32,
+    },
     /// An iTerm2 inline image (`OSC 1337`), written like a Sixel.
     Iterm(String),
 }
@@ -82,9 +87,22 @@ mod tests {
 
     #[test]
     fn protocol_resolution() {
-        let caps = |sixel, kitty| Caps { sixel_supported: sixel, kitty_graphics: kitty, ..Caps::DEFAULT };
-        let all = Caps { sixel_supported: true, kitty_graphics: true, iterm_images: true, ..Caps::DEFAULT };
-        let iterm_sixel = Caps { sixel_supported: true, iterm_images: true, ..Caps::DEFAULT };
+        let caps = |sixel, kitty| Caps {
+            sixel_supported: sixel,
+            kitty_graphics: kitty,
+            ..Caps::DEFAULT
+        };
+        let all = Caps {
+            sixel_supported: true,
+            kitty_graphics: true,
+            iterm_images: true,
+            ..Caps::DEFAULT
+        };
+        let iterm_sixel = Caps {
+            sixel_supported: true,
+            iterm_images: true,
+            ..Caps::DEFAULT
+        };
         let cases = [
             (Setting::Auto, caps(true, true), Some(ImageProtocol::Kitty)),
             (Setting::Auto, caps(true, false), Some(ImageProtocol::Sixel)),

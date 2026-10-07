@@ -59,9 +59,9 @@ pub fn build_git_menu_items(ctx: &GitMenuContext) -> Vec<ActionMenuItem> {
             }
         }
 
-        let has_any_changes = statuses.values().any(|status| {
-            status.contains(GitFileStatus::MODIFIED) || status.contains(GitFileStatus::UNTRACKED)
-        });
+        let has_any_changes = statuses
+            .values()
+            .any(|status| status.contains(GitFileStatus::MODIFIED) || status.contains(GitFileStatus::UNTRACKED));
 
         if has_any_changes {
             items.push(ActionMenuItem::new("Git: Stage all changes", "", AppAction::StageAll));
@@ -76,11 +76,7 @@ pub fn build_git_menu_items(ctx: &GitMenuContext) -> Vec<ActionMenuItem> {
     }
 
     items.push(ActionMenuItem::new("Git: Push", "", AppAction::GitPush));
-    items.push(ActionMenuItem::new(
-        "Git: Push (force with lease)",
-        "",
-        AppAction::GitPushForceWithLease,
-    ));
+    items.push(ActionMenuItem::new("Git: Push (force with lease)", "", AppAction::GitPushForceWithLease));
     items.push(ActionMenuItem::new("Git: Pull", "", AppAction::GitPull));
     items.push(ActionMenuItem::new("Git: Pull (rebase)", "", AppAction::GitPullRebase));
     items.push(ActionMenuItem::new("Git: Fetch", "", AppAction::GitFetch));
@@ -164,13 +160,7 @@ mod tests {
         let labels: Vec<&str> = items.iter().map(|item| item.label.as_str()).collect();
         assert_eq!(
             labels,
-            vec![
-                "Git: Push",
-                "Git: Push (force with lease)",
-                "Git: Pull",
-                "Git: Pull (rebase)",
-                "Git: Fetch",
-            ]
+            vec!["Git: Push", "Git: Push (force with lease)", "Git: Pull", "Git: Pull (rebase)", "Git: Fetch",]
         );
     }
 
@@ -215,7 +205,10 @@ mod tests {
 
         let items = build_git_menu_items(&ctx(root, &map, ""));
         let labels: Vec<&str> = items.iter().map(|item| item.label.as_str()).collect();
-        assert_eq!(labels, vec!["Git: Push", "Git: Push (force with lease)", "Git: Pull", "Git: Pull (rebase)", "Git: Fetch"]);
+        assert_eq!(
+            labels,
+            vec!["Git: Push", "Git: Push (force with lease)", "Git: Pull", "Git: Pull (rebase)", "Git: Fetch"]
+        );
     }
 
     #[test]
@@ -229,7 +222,7 @@ mod tests {
         let mut marked = HashSet::new();
         marked.insert(format!("{root}{sep}clean.txt"));
 
-        let other = format!("{root}{sep}other.txt");        // Marked path is clean: no Stage entry despite the dirty selection
+        let other = format!("{root}{sep}other.txt"); // Marked path is clean: no Stage entry despite the dirty selection
         let marked_ctx = GitMenuContext {
             repo_root: Some(root),
             statuses: Some(&map),

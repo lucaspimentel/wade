@@ -4,15 +4,15 @@
 
 use super::document_metadata::{NuGetMetadataProvider, OfficeMetadataProvider};
 use super::executable_metadata::ExecutableMetadataProvider;
-use super::media_metadata::MediaMetadataProvider;
-use super::msi::{MsiMetadataProvider, MsiPreviewProvider};
 use super::image_metadata::ImageMetadataProvider;
+use super::media_metadata::MediaMetadataProvider;
 use super::metadata_providers::{
     ArchiveMetadataProvider, FileMetadataProvider, PdfMetadataProvider, ShortcutMetadataProvider,
 };
+use super::msi::{MsiMetadataProvider, MsiPreviewProvider};
 use super::providers::{
-    DiffPreviewProvider, HexPreviewProvider, ImagePreviewProvider, MarkdigMarkdownPreviewProvider, PdfPreviewProvider, NonePreviewProvider,
-    TarContentsPreviewProvider, TextPreviewProvider, ZipContentsPreviewProvider,
+    DiffPreviewProvider, HexPreviewProvider, ImagePreviewProvider, MarkdigMarkdownPreviewProvider, NonePreviewProvider,
+    PdfPreviewProvider, TarContentsPreviewProvider, TextPreviewProvider, ZipContentsPreviewProvider,
 };
 use super::{MetadataProvider, PreviewContext, PreviewProvider};
 
@@ -55,11 +55,8 @@ pub fn applicable_preview_providers(path: &str, context: &PreviewContext) -> Vec
         return Vec::new();
     }
 
-    let mut result: Vec<&'static dyn PreviewProvider> = PREVIEW_PROVIDERS
-        .iter()
-        .copied()
-        .filter(|provider| provider.can_preview(path, context))
-        .collect();
+    let mut result: Vec<&'static dyn PreviewProvider> =
+        PREVIEW_PROVIDERS.iter().copied().filter(|provider| provider.can_preview(path, context)).collect();
 
     if crate::fs::zip_preview::is_zip_file(path) && !crate::fs::zip_preview::is_primary_archive(path) {
         let index_of = |label: &str| result.iter().position(|provider| provider.label() == label);
@@ -102,7 +99,7 @@ mod tests {
 
     use super::{applicable_metadata_providers, applicable_preview_providers};
     use crate::fs::GitFileStatus;
-    use crate::preview::{test_context, test_path, PreviewContext};
+    use crate::preview::{PreviewContext, test_context, test_path};
 
     fn cs_file() -> String {
         let path = test_path("file.cs");
@@ -235,10 +232,12 @@ mod tests {
             ..test_context()
         };
 
-        let cloud_labels: Vec<&str> = applicable_metadata_providers("file.zip", &cloud).iter().map(|p| p.label()).collect();
+        let cloud_labels: Vec<&str> =
+            applicable_metadata_providers("file.zip", &cloud).iter().map(|p| p.label()).collect();
         assert_eq!(cloud_labels, ["File info"]);
         assert!(applicable_metadata_providers("file.cs", &broken).is_empty());
-        let plain: Vec<&str> = applicable_metadata_providers("readme.txt", &test_context()).iter().map(|p| p.label()).collect();
+        let plain: Vec<&str> =
+            applicable_metadata_providers("readme.txt", &test_context()).iter().map(|p| p.label()).collect();
         assert_eq!(plain, ["File info"]);
     }
 }

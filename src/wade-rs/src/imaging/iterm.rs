@@ -37,7 +37,10 @@ mod tests {
         let (keys, payload) = body.split_once(':').expect("keys:payload");
         let png = crate::imaging::kitty::tests::decode_base64(payload);
 
-        assert_eq!(keys, format!("inline=1;size={};width=3;height=2;preserveAspectRatio=1;doNotMoveCursor=1", png.len()));
+        assert_eq!(
+            keys,
+            format!("inline=1;size={};width=3;height=2;preserveAspectRatio=1;doNotMoveCursor=1", png.len())
+        );
         assert!(png.starts_with(b"\x89PNG\r\n\x1a\n"));
         let decoded = image::load_from_memory(&png).unwrap().into_rgba8();
         assert_eq!(decoded.dimensions(), (6, 4));

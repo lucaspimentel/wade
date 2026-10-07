@@ -2,6 +2,7 @@
 //! name, then extension (both ASCII case-insensitive), then a few
 //! extensionless shell-like names.
 
+use super::Language;
 use super::languages::{
     c::CLanguage, cpp::CppLanguage, csharp::CSharpLanguage, css::CssLanguage, dockerfile::DockerfileLanguage,
     gitignore::GitIgnoreLanguage, go::GoLanguage, java::JavaLanguage, javascript::JavaScriptLanguage,
@@ -9,7 +10,6 @@ use super::languages::{
     rust::RustLanguage, shell::ShellLanguage, toml::TomlLanguage, typescript::TypeScriptLanguage,
     xml_html::XmlHtmlLanguage, yaml::YamlLanguage,
 };
-use super::Language;
 
 static C: CLanguage = CLanguage;
 static CPP: CppLanguage = CppLanguage;

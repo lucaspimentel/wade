@@ -122,9 +122,7 @@ pub fn copy_directory(source: &str, destination: &str, preserve_symlinks: bool) 
         let dest_path = Path::new(destination).join(&name).to_string_lossy().to_string();
 
         if preserve_symlinks && is_symlink(&source_path) {
-            let target = std::fs::read_link(&source_path)
-                .map(|p| p.to_string_lossy().to_string())
-                .ok();
+            let target = std::fs::read_link(&source_path).map(|p| p.to_string_lossy().to_string()).ok();
             if let Some(target) = target {
                 match create_symlink(&dest_path, &target, entry.path().is_dir()) {
                     Ok(()) => continue,
@@ -205,8 +203,7 @@ fn is_permission_denied(err: &std::io::Error) -> bool {
 #[cfg(windows)]
 fn recycle_files(paths: &[String]) -> i32 {
     use windows_sys::Win32::UI::Shell::{
-        SHFileOperationW, FOF_ALLOWUNDO, FOF_NOCONFIRMATION, FOF_NOERRORUI, FOF_SILENT,
-        FO_DELETE, SHFILEOPSTRUCTW,
+        FO_DELETE, FOF_ALLOWUNDO, FOF_NOCONFIRMATION, FOF_NOERRORUI, FOF_SILENT, SHFILEOPSTRUCTW, SHFileOperationW,
     };
 
     // pFrom requires a double-null-terminated wide string: paths separated by
@@ -274,11 +271,7 @@ mod tests {
         std::fs::write(nested.join("g.txt"), b"y").expect("write");
 
         let cancel = CancelToken::new();
-        let (success, errors) = delete_paths(
-            &[p(&file), p(&nested), p(&dir.join("missing.txt"))],
-            true,
-            &cancel,
-        );
+        let (success, errors) = delete_paths(&[p(&file), p(&nested), p(&dir.join("missing.txt"))], true, &cancel);
         assert_eq!((success, errors), (2, 1));
         assert!(!file.exists());
         assert!(!nested.exists());

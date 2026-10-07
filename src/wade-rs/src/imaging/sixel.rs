@@ -261,7 +261,9 @@ mod tests {
 
     #[test]
     fn palette_is_capped() {
-        let rgba: Vec<u8> = (0..64 * 64u32).flat_map(|i| [(i % 251) as u8, (i * 7 % 253) as u8, (i * 13 % 255) as u8, 255]).collect();
+        let rgba: Vec<u8> = (0..64 * 64u32)
+            .flat_map(|i| [(i % 251) as u8, (i * 7 % 253) as u8, (i * 13 % 255) as u8, 255])
+            .collect();
         let sixel = encode(&rgba, 64, 64, 16);
         assert!(sixel.contains("#15;2;"));
         assert!(!sixel.contains("#16;2;"));

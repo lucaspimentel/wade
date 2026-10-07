@@ -3,7 +3,7 @@
 //! `PdfMetadataProvider`.
 
 use super::{MetadataEntry, MetadataProvider, MetadataResult, MetadataSection, PreviewContext};
-use crate::fs::{lnk, tar_preview, zip_preview, GitFileStatus};
+use crate::fs::{GitFileStatus, lnk, tar_preview, zip_preview};
 use crate::input::CancelToken;
 use crate::ui::format_helpers::{format_percent_p0, format_size_string};
 use crate::ui::properties_overlay::format_git_status;
@@ -40,10 +40,7 @@ impl MetadataProvider for FileMetadataProvider {
         let name = trimmed.rsplit(crate::search::is_separator).next().unwrap_or(trimmed);
 
         Some(MetadataResult {
-            sections: vec![MetadataSection {
-                header: Some(name.to_string()),
-                entries,
-            }],
+            sections: vec![MetadataSection { header: Some(name.to_string()), entries }],
             file_type_label: None,
         })
     }
@@ -301,7 +298,7 @@ mod tests {
     use super::FileMetadataProvider;
     use crate::fs::GitFileStatus;
     use crate::input::CancelToken;
-    use crate::preview::{registry, test_context, test_path, MetadataProvider, MetadataResult, PreviewContext};
+    use crate::preview::{MetadataProvider, MetadataResult, PreviewContext, registry, test_context, test_path};
 
     fn flatten(result: &MetadataResult) -> String {
         result

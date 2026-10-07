@@ -143,7 +143,9 @@ pub fn drive_type_from_fs_type(fs_type: &str) -> DriveType {
         "nfs" | "nfs4" | "cifs" | "smbfs" | "smb3" | "smb2" | "ncpfs" | "afs" | "9p" | "fuse.sshfs" | "sshfs"
         | "davfs" | "fuse.rclone" | "ceph" | "glusterfs" | "fuse.glusterfs" | "lustre" | "coda" => DriveType::Network,
         "tmpfs" | "ramfs" | "proc" | "sysfs" | "devtmpfs" | "devpts" | "cgroup" | "cgroup2" | "debugfs"
-        | "securityfs" | "pstore" | "mqueue" | "hugetlbfs" | "tracefs" | "configfs" | "bpf" | "fusectl" => DriveType::Ram,
+        | "securityfs" | "pstore" | "mqueue" | "hugetlbfs" | "tracefs" | "configfs" | "bpf" | "fusectl" => {
+            DriveType::Ram
+        }
         "iso9660" | "udf" => DriveType::CDRom,
         _ => DriveType::Fixed,
     }
@@ -189,10 +191,10 @@ fn detect_linux_media_type(root: &str) -> DriveMediaType {
 
 #[cfg(windows)]
 mod windows {
-    use super::{parse_seek_penalty_result, DriveMediaType, DriveType};
+    use super::{DriveMediaType, DriveType, parse_seek_penalty_result};
     use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
     use windows_sys::Win32::Storage::FileSystem::{
-        CreateFileW, GetDriveTypeW, FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING,
+        CreateFileW, FILE_SHARE_READ, FILE_SHARE_WRITE, GetDriveTypeW, OPEN_EXISTING,
     };
     use windows_sys::Win32::System::IO::DeviceIoControl;
 
@@ -257,7 +259,11 @@ mod windows {
             query_type: PROPERTY_STANDARD_QUERY,
             additional_parameters: 0,
         };
-        let mut descriptor = DeviceSeekPenaltyDescriptor { version: 0, size: 0, incurs_seek_penalty: 0 };
+        let mut descriptor = DeviceSeekPenaltyDescriptor {
+            version: 0,
+            size: 0,
+            incurs_seek_penalty: 0,
+        };
         let mut returned = 0u32;
         let ok = unsafe {
             let ok = DeviceIoControl(

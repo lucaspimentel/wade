@@ -165,10 +165,7 @@ impl TextInput {
             self.scroll_offset = (cursor - max_width + 1).max(0) as usize;
         }
 
-        let cursor_style = CellStyle {
-            inverse: true,
-            ..style
-        };
+        let cursor_style = CellStyle { inverse: true, ..style };
         let scroll = self.scroll_offset as i32;
         let visible_end = (scroll + max_width).min(text_len);
         let chars: Vec<char> = self.buffer.chars().collect();
@@ -200,10 +197,7 @@ impl TextInput {
 }
 
 fn byte_index_of_char(s: &str, char_index: usize) -> usize {
-    s.char_indices()
-        .nth(char_index)
-        .map(|(i, _)| i)
-        .unwrap_or(s.len())
+    s.char_indices().nth(char_index).map(|(i, _)| i).unwrap_or(s.len())
 }
 
 #[cfg(test)]

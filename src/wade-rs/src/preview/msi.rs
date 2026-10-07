@@ -5,7 +5,9 @@
 
 use std::fs::File;
 
-use super::{MetadataEntry, MetadataProvider, MetadataResult, MetadataSection, PreviewContext, PreviewProvider, PreviewResult};
+use super::{
+    MetadataEntry, MetadataProvider, MetadataResult, MetadataSection, PreviewContext, PreviewProvider, PreviewResult,
+};
 use crate::highlight::StyledLine;
 use crate::input::CancelToken;
 use crate::ui::format_helpers::format_size_string;
@@ -60,7 +62,11 @@ fn query_property_table(db: &mut Package) -> Vec<(String, String)> {
 }
 
 fn property<'a>(properties: &'a [(String, String)], name: &str) -> Option<&'a str> {
-    properties.iter().rev().find(|(key, _)| key.eq_ignore_ascii_case(name)).map(|(_, value)| value.as_str())
+    properties
+        .iter()
+        .rev()
+        .find(|(key, _)| key.eq_ignore_ascii_case(name))
+        .map(|(_, value)| value.as_str())
 }
 
 /// Port of `QueryFileTable`.
@@ -193,7 +199,10 @@ impl MetadataProvider for MsiMetadataProvider {
         }
 
         let sections = metadata_sections(&properties, &summary_info(&db));
-        (!sections.is_empty()).then(|| MetadataResult { sections, file_type_label: Some("MSI".to_string()) })
+        (!sections.is_empty()).then(|| MetadataResult {
+            sections,
+            file_type_label: Some("MSI".to_string()),
+        })
     }
 }
 
@@ -216,7 +225,10 @@ pub fn metadata_sections(properties: &[(String, String)], summary: &MsiSummaryIn
     }
 
     if !installer.is_empty() {
-        sections.push(MetadataSection { header: Some("Installer".to_string()), entries: installer });
+        sections.push(MetadataSection {
+            header: Some("Installer".to_string()),
+            entries: installer,
+        });
     }
 
     let mut entries = Vec::new();
@@ -237,7 +249,10 @@ pub fn metadata_sections(properties: &[(String, String)], summary: &MsiSummaryIn
     }
 
     if !entries.is_empty() {
-        sections.push(MetadataSection { header: Some("Summary".to_string()), entries });
+        sections.push(MetadataSection {
+            header: Some("Summary".to_string()),
+            entries,
+        });
     }
 
     sections
@@ -285,12 +300,16 @@ mod tests {
             )
             .unwrap();
         package
-            .insert_rows(msi::Insert::into("Property").rows(
-                properties
-                    .iter()
-                    .map(|(key, value)| vec![msi::Value::from(*key), value.map_or(msi::Value::Null, msi::Value::from)])
-                    .collect(),
-            ))
+            .insert_rows(
+                msi::Insert::into("Property").rows(
+                    properties
+                        .iter()
+                        .map(|(key, value)| {
+                            vec![msi::Value::from(*key), value.map_or(msi::Value::Null, msi::Value::from)]
+                        })
+                        .collect(),
+                ),
+            )
             .unwrap();
 
         if !files.is_empty() {
@@ -305,13 +324,21 @@ mod tests {
                 )
                 .unwrap();
             package
-                .insert_rows(msi::Insert::into("File").rows(
-                    files
-                        .iter()
-                        .enumerate()
-                        .map(|(i, (name, size))| vec![msi::Value::from(format!("f{i}")), msi::Value::from(*name), msi::Value::from(*size)])
-                        .collect(),
-                ))
+                .insert_rows(
+                    msi::Insert::into("File").rows(
+                        files
+                            .iter()
+                            .enumerate()
+                            .map(|(i, (name, size))| {
+                                vec![
+                                    msi::Value::from(format!("f{i}")),
+                                    msi::Value::from(*name),
+                                    msi::Value::from(*size),
+                                ]
+                            })
+                            .collect(),
+                    ),
+                )
                 .unwrap();
         }
 
@@ -369,7 +396,11 @@ mod tests {
 
     #[test]
     fn preview_lists_files_sorted_with_long_names() {
-        let path = build_msi("files.msi", &[("ProductName", Some("X"))], &[("B~1|beta.dll", 2048), ("alpha.exe", 10), ("Gamma.txt", 0)]);
+        let path = build_msi(
+            "files.msi",
+            &[("ProductName", Some("X"))],
+            &[("B~1|beta.dll", 2048), ("alpha.exe", 10), ("Gamma.txt", 0)],
+        );
         let result = MsiPreviewProvider.get_preview(&path, &test_context(), &CancelToken::new()).unwrap();
         let lines: Vec<String> = result.text_lines.unwrap().iter().map(|l| l.text.clone()).collect();
         assert_eq!(
@@ -396,8 +427,12 @@ mod tests {
 
     #[test]
     fn listing_caps_at_one_hundred_rows() {
-        let mut files: Vec<MsiFileEntry> =
-            (0..105).map(|i| MsiFileEntry { file_name: format!("f{i:03}"), file_size: 1 }).collect();
+        let mut files: Vec<MsiFileEntry> = (0..105)
+            .map(|i| MsiFileEntry {
+                file_name: format!("f{i:03}"),
+                file_size: 1,
+            })
+            .collect();
         let lines = file_listing(&mut files);
         assert_eq!(lines.len(), 3 + 100 + 1);
         assert_eq!(lines.last().unwrap().text, "... and 5 more files");

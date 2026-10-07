@@ -15,7 +15,7 @@
 
 use pulldown_cmark::{CodeBlockKind, Event, LinkType, Options, Parser, Tag, TagEnd};
 
-use crate::highlight::theme::{get_style, PLAIN};
+use crate::highlight::theme::{PLAIN, get_style};
 use crate::highlight::{StyledLine, TokenKind};
 use crate::input::CancelToken;
 use crate::screen::{CellStyle, Color};
@@ -141,11 +141,7 @@ fn to_styled_line(text: &[u16], styles: Option<&[CellStyle]>) -> StyledLine {
         out
     });
 
-    StyledLine {
-        text: decoded,
-        spans: None,
-        char_styles,
-    }
+    StyledLine { text: decoded, spans: None, char_styles }
 }
 
 // ── Document model (the Markdig AST subset the renderer reads) ─────────
@@ -153,12 +149,22 @@ fn to_styled_line(text: &[u16], styles: Option<&[CellStyle]>) -> StyledLine {
 #[derive(Debug)]
 enum Inline {
     Literal(String),
-    Emphasis { strong: bool, children: Vec<Inline> },
+    Emphasis {
+        strong: bool,
+        children: Vec<Inline>,
+    },
     Code(String),
-    Link { url: String, children: Vec<Inline> },
-    Image { children: Vec<Inline> },
+    Link {
+        url: String,
+        children: Vec<Inline>,
+    },
+    Image {
+        children: Vec<Inline>,
+    },
     Autolink(String),
-    LineBreak { hard: bool },
+    LineBreak {
+        hard: bool,
+    },
     Html(String),
     /// Markdig's `HtmlEntityInline`: a leaf the renderer ignores.
     Entity,
@@ -166,25 +172,58 @@ enum Inline {
 
 #[derive(Debug)]
 enum Block {
-    Heading { level: usize, inlines: Vec<Inline> },
+    Heading {
+        level: usize,
+        inlines: Vec<Inline>,
+    },
     Paragraph(Vec<Inline>),
-    Code { info: Option<String>, lines: Vec<String> },
-    List { ordered: bool, start: Option<u64>, loose: bool, items: Vec<Vec<Block>> },
+    Code {
+        info: Option<String>,
+        lines: Vec<String>,
+    },
+    List {
+        ordered: bool,
+        start: Option<u64>,
+        loose: bool,
+        items: Vec<Vec<Block>>,
+    },
     Quote(Vec<Block>),
     Rule,
-    Table { columns: usize, rows: Vec<Vec<Vec<Inline>>> },
+    Table {
+        columns: usize,
+        rows: Vec<Vec<Vec<Inline>>>,
+    },
     /// `LinkReferenceDefinitionGroup` and `HtmlBlock`: render nothing.
     Silent,
 }
 
 enum Frame {
     Container(Vec<Block>),
-    Item { blocks: Vec<Block>, implicit: Option<Vec<Inline>>, explicit_paragraph: bool },
-    List { ordered: bool, start: Option<u64>, loose: bool, items: Vec<Vec<Block>> },
-    Leaf { kind: LeafKind, inlines: Vec<Inline> },
-    Code { info: Option<String>, text: String },
+    Item {
+        blocks: Vec<Block>,
+        implicit: Option<Vec<Inline>>,
+        explicit_paragraph: bool,
+    },
+    List {
+        ordered: bool,
+        start: Option<u64>,
+        loose: bool,
+        items: Vec<Vec<Block>>,
+    },
+    Leaf {
+        kind: LeafKind,
+        inlines: Vec<Inline>,
+    },
+    Code {
+        info: Option<String>,
+        text: String,
+    },
     Html,
-    Table { columns: usize, rows: Vec<Vec<Vec<Inline>>>, row: Vec<Vec<Inline>> },
+    Table {
+        columns: usize,
+        rows: Vec<Vec<Vec<Inline>>>,
+        row: Vec<Vec<Inline>>,
+    },
     Cell(Vec<Inline>),
     Inline(InlineFrame),
 }
@@ -350,14 +389,10 @@ impl<'a> Builder<'a> {
             ),
             Tag::TableHead | Tag::TableRow => {}
             Tag::TableCell => self.stack.push(Frame::Cell(Vec::new())),
-            Tag::Emphasis => self.stack.push(Frame::Inline(InlineFrame::Emphasis {
-                strong: false,
-                children: Vec::new(),
-            })),
-            Tag::Strong => self.stack.push(Frame::Inline(InlineFrame::Emphasis {
-                strong: true,
-                children: Vec::new(),
-            })),
+            Tag::Emphasis => {
+                self.stack.push(Frame::Inline(InlineFrame::Emphasis { strong: false, children: Vec::new() }))
+            }
+            Tag::Strong => self.stack.push(Frame::Inline(InlineFrame::Emphasis { strong: true, children: Vec::new() })),
             Tag::Link { link_type, dest_url, .. } => {
                 let frame = if matches!(link_type, LinkType::Autolink | LinkType::Email) {
                     InlineFrame::Autolink { text: String::new() }
@@ -404,28 +439,13 @@ impl<'a> Builder<'a> {
                 self.push_block(Block::Silent);
             }
             TagEnd::List(_) => {
-                if let Some(Frame::List {
-                    ordered,
-                    start,
-                    loose,
-                    items,
-                }) = self.stack.pop()
-                {
-                    self.push_block(Block::List {
-                        ordered,
-                        start,
-                        loose,
-                        items,
-                    });
+                if let Some(Frame::List { ordered, start, loose, items }) = self.stack.pop() {
+                    self.push_block(Block::List { ordered, start, loose, items });
                 }
             }
             TagEnd::Item => {
                 self.flush_implicit();
-                if let Some(Frame::Item {
-                    blocks,
-                    explicit_paragraph,
-                    ..
-                }) = self.stack.pop()
+                if let Some(Frame::Item { blocks, explicit_paragraph, .. }) = self.stack.pop()
                     && let Some(Frame::List { loose, items, .. }) = self.stack.last_mut()
                 {
                     *loose |= explicit_paragraph;
@@ -451,7 +471,9 @@ impl<'a> Builder<'a> {
             }
             TagEnd::Emphasis | TagEnd::Strong | TagEnd::Link | TagEnd::Image => {
                 let inline = match self.stack.pop() {
-                    Some(Frame::Inline(InlineFrame::Emphasis { strong, children })) => Inline::Emphasis { strong, children },
+                    Some(Frame::Inline(InlineFrame::Emphasis { strong, children })) => {
+                        Inline::Emphasis { strong, children }
+                    }
                     Some(Frame::Inline(InlineFrame::Link { url, children })) => Inline::Link { url, children },
                     Some(Frame::Inline(InlineFrame::Image { children })) => Inline::Image { children },
                     Some(Frame::Inline(InlineFrame::Autolink { text })) => Inline::Autolink(text),
@@ -774,12 +796,9 @@ fn render_blocks(
                     .and_then(|(_, ext)| crate::highlight::get_language(&format!("dummy{ext}")));
                 render_code_lines(code, lines, width, indent, quote_depth, lang);
             }
-            Block::List {
-                ordered,
-                start,
-                loose,
-                items,
-            } => render_list(*ordered, *start, *loose, items, lines, width, indent, quote_depth, cancel)?,
+            Block::List { ordered, start, loose, items } => {
+                render_list(*ordered, *start, *loose, items, lines, width, indent, quote_depth, cancel)?
+            }
             Block::Quote(children) => render_blocks(children, lines, width, indent, quote_depth + 1, cancel)?,
             Block::Rule => render_horizontal_rule(lines, width, indent, quote_depth),
             Block::Table { columns, rows } => render_table(*columns, rows, lines, width, indent, quote_depth),
@@ -794,7 +813,14 @@ fn render_blocks(
     Some(())
 }
 
-fn render_heading(level: usize, inlines: &[Inline], lines: &mut Vec<StyledLine>, width: usize, indent: usize, quote_depth: usize) {
+fn render_heading(
+    level: usize,
+    inlines: &[Inline],
+    lines: &mut Vec<StyledLine>,
+    width: usize,
+    indent: usize,
+    quote_depth: usize,
+) {
     let style = match level {
         1 => H1_STYLE,
         2 => H2_STYLE,
@@ -840,16 +866,13 @@ fn render_code_lines(
                 Some(
                     (0..decoded.chars().count())
                         .map(|ci| {
-                            spans
-                                .iter()
-                                .find(|span| ci >= span.start && ci < span.start + span.len)
-                                .map_or(CODE_BLOCK_BG, |span| {
+                            spans.iter().find(|span| ci >= span.start && ci < span.start + span.len).map_or(
+                                CODE_BLOCK_BG,
+                                |span| {
                                     let token = get_style(span.kind);
-                                    CellStyle {
-                                        bg: CODE_BLOCK_BG.bg,
-                                        ..token
-                                    }
-                                })
+                                    CellStyle { bg: CODE_BLOCK_BG.bg, ..token }
+                                },
+                            )
                         })
                         .collect(),
                 )
@@ -905,11 +928,7 @@ fn render_list(
     cancel: &CancelToken,
 ) -> Option<()> {
     // int.TryParse of the start; 1 when it doesn't fit an int
-    let mut item_number: u64 = if ordered {
-        start.filter(|&n| n <= i32::MAX as u64).unwrap_or(1)
-    } else {
-        0
-    };
+    let mut item_number: u64 = if ordered { start.filter(|&n| n <= i32::MAX as u64).unwrap_or(1) } else { 0 };
 
     for (i, item) in items.iter().enumerate() {
         if cancel.is_cancelled() {
@@ -939,12 +958,9 @@ fn render_list(
                     collect_inlines(inlines, &mut spans, PLAIN_STYLE);
                     emit_wrapped_line(&spans, lines, width, child_indent, quote_depth, None);
                 }
-                Block::List {
-                    ordered,
-                    start,
-                    loose,
-                    items,
-                } => render_list(*ordered, *start, *loose, items, lines, width, child_indent, quote_depth, cancel)?,
+                Block::List { ordered, start, loose, items } => {
+                    render_list(*ordered, *start, *loose, items, lines, width, child_indent, quote_depth, cancel)?
+                }
                 // Other containers render their children (no extra quote depth)
                 Block::Quote(children) => render_blocks(children, lines, width, child_indent, quote_depth, cancel)?,
                 // Leaf blocks (code, rules, tables, headings) are skipped
@@ -988,11 +1004,7 @@ fn render_table(
 
     let cells: Vec<Vec<Units>> = rows
         .iter()
-        .map(|row| {
-            (0..columns)
-                .map(|c| row.get(c).map(|cell| units(&plain_text(cell))).unwrap_or_default())
-                .collect()
-        })
+        .map(|row| (0..columns).map(|c| row.get(c).map(|cell| units(&plain_text(cell))).unwrap_or_default()).collect())
         .collect();
 
     let mut col_widths = vec![0usize; columns];
@@ -1398,7 +1410,8 @@ mod tests {
         let (fm, body) = try_extract_frontmatter("---\nname: test\n---\n").unwrap();
         assert_eq!((fm.as_str(), body), ("name: test", ""));
 
-        let (fm, _) = try_extract_frontmatter("---\nname: foo\ndescription: bar baz\nmodel: haiku\n---\ncontent").unwrap();
+        let (fm, _) =
+            try_extract_frontmatter("---\nname: foo\ndescription: bar baz\nmodel: haiku\n---\ncontent").unwrap();
         assert!(fm.contains("name: foo") && fm.contains("description: bar baz") && fm.contains("model: haiku"));
     }
 

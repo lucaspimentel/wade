@@ -155,7 +155,8 @@ mod tests {
         let pdf_tools = is_available("pdftopng", None, false) && is_available("pdfinfo", Some("-v"), false);
         assert_eq!(get_hint("document.pdf").is_none(), pdf_tools);
 
-        let media_tools = is_available("ffprobe", Some("-version"), true) || is_available("mediainfo", Some("--version"), false);
+        let media_tools =
+            is_available("ffprobe", Some("-version"), true) || is_available("mediainfo", Some("--version"), false);
         assert_eq!(get_hint("video.mp4").is_none(), media_tools);
         assert_eq!(get_hint("VIDEO.MP4").is_none(), media_tools, "extension case is ignored");
     }
@@ -183,7 +184,11 @@ mod tests {
 
     #[test]
     fn cancelling_a_running_tool_returns_quickly() {
-        let (file_name, args): (&str, &[&str]) = if cfg!(windows) { ("ping", &["-n", "100", "localhost"]) } else { ("sleep", &["60"]) };
+        let (file_name, args): (&str, &[&str]) = if cfg!(windows) {
+            ("ping", &["-n", "100", "localhost"])
+        } else {
+            ("sleep", &["60"])
+        };
         let cancel = CancelToken::new();
         let canceller = cancel.clone();
         let timer = std::thread::spawn(move || {

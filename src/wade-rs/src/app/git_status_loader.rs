@@ -3,8 +3,8 @@
 //! `GitStatusReadyEvent` into the pipeline.
 
 use std::collections::HashMap;
-use std::sync::mpsc::Sender;
 use std::sync::Arc;
+use std::sync::mpsc::Sender;
 
 use crate::fs::directory_contents::GitFileStatus;
 use crate::fs::git_utils::{self};

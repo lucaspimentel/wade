@@ -7,13 +7,13 @@ use crate::app::input_reader::AppAction;
 use crate::app::{App, InputMode, KeyEvent};
 use crate::fs::directory_contents::capitalize_drive_letter;
 use crate::screen::{CellStyle, Color, ScreenBuffer};
-use crate::ui::layout::Rect;
 use crate::ui::action_palette::{ActionMenuItem, ActionMenuLevel};
 use crate::ui::config_dialog::ConfigDialogState;
-use crate::ui::text_input::TextInput;
 use crate::ui::dialog_box::{self, BG_COLOR};
 use crate::ui::help_overlay;
+use crate::ui::layout::Rect;
 use crate::ui::notification::NotificationKind;
+use crate::ui::text_input::TextInput;
 
 /// Purpose of the active text-input dialog (what C# stores as an
 /// `Action<string>` completion callback). The file-operation consumers land
@@ -24,9 +24,14 @@ use crate::ui::notification::NotificationKind;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ConfirmAction {
     Dispatch(AppAction),
-    DeleteFiles { targets: Vec<String>, permanent: bool },
+    DeleteFiles {
+        targets: Vec<String>,
+        permanent: bool,
+    },
     /// `() => ExecutePaste(overwrite: true)`.
-    Paste { overwrite: bool },
+    Paste {
+        overwrite: bool,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -60,8 +65,6 @@ pub(crate) struct ModalState {
     pub context_menu: Option<crate::ui::context_menu::ContextMenuState>,
 }
 
-
-
 /// Port of `Path.GetInvalidFileNameChars`: the platform's invalid file-name
 /// characters. C# returns the full Windows set on Windows; on unix, the
 /// separator plus control characters.
@@ -74,8 +77,7 @@ pub fn is_invalid_file_name(name: &str) -> bool {
     #[cfg(windows)]
     {
         const WINDOWS_INVALID: [char; 9] = ['"', '<', '>', '|', ':', '*', '?', '\\', '/'];
-        name.chars()
-            .any(|c| WINDOWS_INVALID.contains(&c) || c.is_ascii_control())
+        name.chars().any(|c| WINDOWS_INVALID.contains(&c) || c.is_ascii_control())
     }
 
     #[cfg(not(windows))]
@@ -309,12 +311,7 @@ impl App {
     /// Shared tail of the C# search edit cases: publish the filter value,
     /// invalidate the cache, reset selection and scroll.
     fn sync_search_filter(&mut self) {
-        self.search_filter = self
-            .modal
-            .search_input
-            .as_ref()
-            .map(|i| i.value().to_string())
-            .unwrap_or_default();
+        self.search_filter = self.modal.search_input.as_ref().map(|i| i.value().to_string()).unwrap_or_default();
         self.filtered_entries = None;
         self.selected_index = 0;
         self.scroll_offset = 0;
@@ -402,7 +399,11 @@ impl App {
 
         let screen_width = self.layout.status_bar.width;
         let screen_height = self.layout.status_bar.top + self.layout.status_bar.height;
-        let menu_rect = crate::ui::context_menu::get_menu_rect(screen_width, screen_height, self.modal.context_menu.as_ref().expect("checked"));
+        let menu_rect = crate::ui::context_menu::get_menu_rect(
+            screen_width,
+            screen_height,
+            self.modal.context_menu.as_ref().expect("checked"),
+        );
 
         // Content area is inside the border (top border = row 0, items start
         // at row 1)
@@ -576,10 +577,7 @@ impl App {
             return;
         }
 
-        let link_path = std::path::Path::new(&self.current_path)
-            .join(link_name)
-            .to_string_lossy()
-            .to_string();
+        let link_path = std::path::Path::new(&self.current_path).join(link_name).to_string_lossy().to_string();
         if std::path::Path::new(&link_path).symlink_metadata().is_ok() {
             self.show_notification(&format!("'{link_name}' already exists"), NotificationKind::Error);
             return;
@@ -655,12 +653,7 @@ impl App {
                 self.modal.text_input_purpose = None;
             }
             crate::console_key::ConsoleKey::Enter => {
-                let value = self
-                    .modal
-                    .active_text_input
-                    .as_ref()
-                    .map(|i| i.value().to_string())
-                    .unwrap_or_default();
+                let value = self.modal.active_text_input.as_ref().map(|i| i.value().to_string()).unwrap_or_default();
                 let purpose = self.modal.text_input_purpose.take();
                 self.input_mode = InputMode::Normal;
                 self.modal.active_text_input = None;
@@ -672,7 +665,10 @@ impl App {
                     Some(TextInputPurpose::Commit) => {
                         let trimmed = value.trim().to_string();
                         if trimmed.is_empty() {
-                            self.show_notification("Commit message cannot be empty", crate::ui::NotificationKind::Error);
+                            self.show_notification(
+                                "Commit message cannot be empty",
+                                crate::ui::NotificationKind::Error,
+                            );
                         } else if let Some(root) = self.current_repo_root.clone() {
                             let sender = self.pipeline.sender();
                             self.git_action_runner.start_action(
@@ -791,11 +787,7 @@ impl App {
 
         match key.key {
             ConsoleKey::Escape => {
-                let has_value = self
-                    .modal
-                    .go_to_path_input
-                    .as_ref()
-                    .is_some_and(|i| !i.value().is_empty());
+                let has_value = self.modal.go_to_path_input.as_ref().is_some_and(|i| !i.value().is_empty());
                 if has_value {
                     if let Some(input) = &mut self.modal.go_to_path_input {
                         input.clear();
@@ -808,12 +800,7 @@ impl App {
                 }
             }
             ConsoleKey::Enter => {
-                let raw_path = self
-                    .modal
-                    .go_to_path_input
-                    .as_ref()
-                    .map(|i| i.value().to_string())
-                    .unwrap_or_default();
+                let raw_path = self.modal.go_to_path_input.as_ref().map(|i| i.value().to_string()).unwrap_or_default();
                 let path = if raw_path.chars().count() > 1 {
                     raw_path.trim_end_matches(['/', '\\']).to_string()
                 } else {
@@ -825,19 +812,15 @@ impl App {
                 self.navigate_to_path(&path);
             }
             ConsoleKey::Tab => {
-                let accepted = self
-                    .modal
-                    .go_to_path_suggestion
-                    .clone()
-                    .map(|accepted| {
-                        // Completing a directory appends a separator so the
-                        // next completion round descends into it
-                        if std::path::Path::new(&accepted).is_dir() {
-                            format!("{accepted}{}", std::path::MAIN_SEPARATOR)
-                        } else {
-                            accepted
-                        }
-                    });
+                let accepted = self.modal.go_to_path_suggestion.clone().map(|accepted| {
+                    // Completing a directory appends a separator so the
+                    // next completion round descends into it
+                    if std::path::Path::new(&accepted).is_dir() {
+                        format!("{accepted}{}", std::path::MAIN_SEPARATOR)
+                    } else {
+                        accepted
+                    }
+                });
 
                 if let Some(accepted) = accepted {
                     self.modal.go_to_path_input = Some(TextInput::new(&accepted));
@@ -902,12 +885,7 @@ impl App {
                 }
             }
             ConsoleKey::UpArrow => {
-                let value = self
-                    .modal
-                    .go_to_path_input
-                    .as_ref()
-                    .map(|i| i.value().to_string())
-                    .unwrap_or_default();
+                let value = self.modal.go_to_path_input.as_ref().map(|i| i.value().to_string()).unwrap_or_default();
                 if !value.is_empty() {
                     let trimmed = value.trim_end_matches(['/', '\\']).to_string();
                     if let Some(last_sep) = trimmed.rfind(['/', '\\']) {
@@ -1015,8 +993,7 @@ impl App {
                 }
                 crate::console_key::ConsoleKey::PageDown => {
                     let visible_count = filtered_count.min(18);
-                    level.selected_index =
-                        (level.selected_index + visible_count).min(filtered_count.saturating_sub(1));
+                    level.selected_index = (level.selected_index + visible_count).min(filtered_count.saturating_sub(1));
                 }
                 crate::console_key::ConsoleKey::Home => level.selected_index = 0,
                 crate::console_key::ConsoleKey::End => {
@@ -1088,9 +1065,7 @@ impl App {
         self.input_mode = InputMode::ActionPalette;
         self.modal.action_menu_stack.clear();
         let items = self.build_action_palette_items();
-        self.modal
-            .action_menu_stack
-            .push(ActionMenuLevel::new("Action Palette", items));
+        self.modal.action_menu_stack.push(ActionMenuLevel::new("Action Palette", items));
     }
 
     pub(crate) fn build_action_palette_items(&mut self) -> Vec<ActionMenuItem> {
@@ -1217,8 +1192,7 @@ impl App {
         let full = get_full_path(path);
 
         if is_directory(&full) {
-            self.selected_index_per_dir
-                .insert(self.current_path.clone(), self.selected_index);
+            self.selected_index_per_dir.insert(self.current_path.clone(), self.selected_index);
             self.current_path = capitalize_drive_letter(&full);
             self.selected_index = 0;
             self.scroll_offset = 0;
@@ -1233,13 +1207,10 @@ impl App {
                 None => return,
             };
             let file_name = file_name_of(&full);
-            self.selected_index_per_dir
-                .insert(self.current_path.clone(), self.selected_index);
+            self.selected_index_per_dir.insert(self.current_path.clone(), self.selected_index);
             self.current_path = capitalize_drive_letter(&parent);
             let entries = self.directory_contents.get_entries(&self.current_path);
-            let idx = entries
-                .iter()
-                .position(|e| e.name.eq_ignore_ascii_case(&file_name));
+            let idx = entries.iter().position(|e| e.name.eq_ignore_ascii_case(&file_name));
             self.selected_index = idx.unwrap_or(0);
             self.scroll_offset = 0;
             self.marked_paths.clear();
@@ -1456,8 +1427,8 @@ impl App {
             }
             ConsoleKey::PageDown => {
                 let visible_count = filtered.len().min(18);
-                self.modal.bookmark_selected_index = (self.modal.bookmark_selected_index + visible_count)
-                    .min(filtered.len().saturating_sub(1));
+                self.modal.bookmark_selected_index =
+                    (self.modal.bookmark_selected_index + visible_count).min(filtered.len().saturating_sub(1));
             }
             ConsoleKey::Home => self.modal.bookmark_selected_index = 0,
             ConsoleKey::End => {
@@ -1617,7 +1588,6 @@ impl App {
     }
 }
 
-
 /// Port of `RenderBookmarks` / `BookmarksDialog.Render` (App.cs).
 pub fn render_bookmarks(
     buffer: &mut ScreenBuffer,
@@ -1628,131 +1598,131 @@ pub fn render_bookmarks(
     scroll_offset: usize,
     mut input: Option<&mut TextInput>,
 ) {
-        let content_width = 70.min(width - 8);
-        let item_rows = filtered.len().min(18) as i32;
-        let content_height = item_rows + 2; // 1 row for text input + 1 separator + item rows
-        const FOOTER: &str = "[\u{2191}\u{2193}] Navigate [Enter] Open [d] Remove [1-9] Jump  [B] Add/Remove  [Esc] Close";
+    let content_width = 70.min(width - 8);
+    let item_rows = filtered.len().min(18) as i32;
+    let content_height = item_rows + 2; // 1 row for text input + 1 separator + item rows
+    const FOOTER: &str = "[\u{2191}\u{2193}] Navigate [Enter] Open [d] Remove [1-9] Jump  [B] Add/Remove  [Esc] Close";
 
-        let content = dialog_box::render(
-            buffer,
-            width,
-            height,
-            content_width.max(FOOTER.chars().count() as i32),
-            content_height.max(3),
-            Some("Bookmarks"),
-            Some(FOOTER),
-        );
+    let content = dialog_box::render(
+        buffer,
+        width,
+        height,
+        content_width.max(FOOTER.chars().count() as i32),
+        content_height.max(3),
+        Some("Bookmarks"),
+        Some(FOOTER),
+    );
 
-        // Row 0: text input with "> " prefix
-        let prefix_style = CellStyle {
-            fg: Some(Color { r: 220, g: 220, b: 100 }),
-            bg: Some(BG_COLOR),
-            ..CellStyle::default()
-        };
-        let input_style = CellStyle {
-            fg: Some(Color { r: 200, g: 200, b: 200 }),
-            bg: Some(BG_COLOR),
-            ..CellStyle::default()
-        };
-        buffer.write_string(content.top, content.left, "> ", prefix_style, i64::from(i32::MAX));
-        if let Some(input) = &mut input {
-            input.render(buffer, content.top, content.left + 2, content.width - 2, input_style);
-        }
+    // Row 0: text input with "> " prefix
+    let prefix_style = CellStyle {
+        fg: Some(Color { r: 220, g: 220, b: 100 }),
+        bg: Some(BG_COLOR),
+        ..CellStyle::default()
+    };
+    let input_style = CellStyle {
+        fg: Some(Color { r: 200, g: 200, b: 200 }),
+        bg: Some(BG_COLOR),
+        ..CellStyle::default()
+    };
+    buffer.write_string(content.top, content.left, "> ", prefix_style, i64::from(i32::MAX));
+    if let Some(input) = &mut input {
+        input.render(buffer, content.top, content.left + 2, content.width - 2, input_style);
+    }
 
-        // Row 1: separator
-        let separator_style = CellStyle {
-            fg: Some(dialog_box::BORDER_COLOR),
-            bg: Some(BG_COLOR),
-            dim: true,
-            ..CellStyle::default()
-        };
-        for c in 0..content.width {
-            buffer.put(content.top + 1, content.left + c, '\u{2500}', separator_style);
-        }
+    // Row 1: separator
+    let separator_style = CellStyle {
+        fg: Some(dialog_box::BORDER_COLOR),
+        bg: Some(BG_COLOR),
+        dim: true,
+        ..CellStyle::default()
+    };
+    for c in 0..content.width {
+        buffer.put(content.top + 1, content.left + c, '\u{2500}', separator_style);
+    }
 
-        if filtered.is_empty() {
-            let empty_style = CellStyle {
-                fg: Some(Color { r: 120, g: 120, b: 140 }),
-                bg: Some(BG_COLOR),
-                ..CellStyle::default()
-            };
-            buffer.write_string(content.top + 2, content.left + 1, "No bookmarks", empty_style, i64::from(i32::MAX));
-            return;
-        }
-
-        // Rows 2+: bookmark items
-        let normal_style = CellStyle {
-            fg: Some(Color { r: 200, g: 200, b: 200 }),
-            bg: Some(BG_COLOR),
-            ..CellStyle::default()
-        };
-        let selected_style = CellStyle {
-            fg: Some(Color { r: 20, g: 20, b: 35 }),
-            bg: Some(Color { r: 200, g: 200, b: 200 }),
-            ..CellStyle::default()
-        };
-        let number_style = CellStyle {
-            fg: Some(Color { r: 220, g: 220, b: 100 }),
-            bg: Some(BG_COLOR),
-            ..CellStyle::default()
-        };
-        let number_selected_style = CellStyle {
-            fg: Some(Color { r: 20, g: 20, b: 35 }),
-            bg: Some(Color { r: 200, g: 200, b: 200 }),
-            ..CellStyle::default()
-        };
-        let dim_style = CellStyle {
+    if filtered.is_empty() {
+        let empty_style = CellStyle {
             fg: Some(Color { r: 120, g: 120, b: 140 }),
             bg: Some(BG_COLOR),
             ..CellStyle::default()
         };
-        let dim_selected_style = CellStyle {
-            fg: Some(Color { r: 80, g: 80, b: 100 }),
-            bg: Some(Color { r: 200, g: 200, b: 200 }),
-            ..CellStyle::default()
+        buffer.write_string(content.top + 2, content.left + 1, "No bookmarks", empty_style, i64::from(i32::MAX));
+        return;
+    }
+
+    // Rows 2+: bookmark items
+    let normal_style = CellStyle {
+        fg: Some(Color { r: 200, g: 200, b: 200 }),
+        bg: Some(BG_COLOR),
+        ..CellStyle::default()
+    };
+    let selected_style = CellStyle {
+        fg: Some(Color { r: 20, g: 20, b: 35 }),
+        bg: Some(Color { r: 200, g: 200, b: 200 }),
+        ..CellStyle::default()
+    };
+    let number_style = CellStyle {
+        fg: Some(Color { r: 220, g: 220, b: 100 }),
+        bg: Some(BG_COLOR),
+        ..CellStyle::default()
+    };
+    let number_selected_style = CellStyle {
+        fg: Some(Color { r: 20, g: 20, b: 35 }),
+        bg: Some(Color { r: 200, g: 200, b: 200 }),
+        ..CellStyle::default()
+    };
+    let dim_style = CellStyle {
+        fg: Some(Color { r: 120, g: 120, b: 140 }),
+        bg: Some(BG_COLOR),
+        ..CellStyle::default()
+    };
+    let dim_selected_style = CellStyle {
+        fg: Some(Color { r: 80, g: 80, b: 100 }),
+        bg: Some(Color { r: 200, g: 200, b: 200 }),
+        ..CellStyle::default()
+    };
+
+    let visible_count = content.height - 2;
+
+    for i in 0..visible_count {
+        let item_index = scroll_offset + i as usize;
+
+        if item_index >= filtered.len() {
+            break;
+        }
+
+        let path = &filtered[item_index];
+        let is_selected = item_index == selected_index;
+        let exists = std::path::Path::new(path).is_dir() || std::path::Path::new(path).is_file();
+        let row = content.top + 2 + i;
+
+        let label_style = if is_selected {
+            if exists { selected_style } else { dim_selected_style }
+        } else if exists {
+            normal_style
+        } else {
+            dim_style
         };
 
-        let visible_count = content.height - 2;
+        let num_style = if is_selected { number_selected_style } else { number_style };
 
-        for i in 0..visible_count {
-            let item_index = scroll_offset + i as usize;
-
-            if item_index >= filtered.len() {
-                break;
-            }
-
-            let path = &filtered[item_index];
-            let is_selected = item_index == selected_index;
-            let exists = std::path::Path::new(path).is_dir() || std::path::Path::new(path).is_file();
-            let row = content.top + 2 + i;
-
-            let label_style = if is_selected {
-                if exists { selected_style } else { dim_selected_style }
-            } else if exists {
-                normal_style
-            } else {
-                dim_style
-            };
-
-            let num_style = if is_selected { number_selected_style } else { number_style };
-
-            if is_selected {
-                buffer.fill_row(row, content.left, content.width, ' ', selected_style);
-            }
-
-            // Number prefix [1]-[9] for the first 9 items
-            let mut col = content.left + 1;
-
-            if item_index < 9 {
-                let num = format!("[{}] ", item_index + 1);
-                buffer.write_string(row, col, &num, num_style, i64::from(i32::MAX));
-                col += 4;
-            } else {
-                col += 4; // align with numbered items
-            }
-
-            buffer.write_string(row, col, path, label_style, i64::from(content.width - (col - content.left) - 1));
+        if is_selected {
+            buffer.fill_row(row, content.left, content.width, ' ', selected_style);
         }
+
+        // Number prefix [1]-[9] for the first 9 items
+        let mut col = content.left + 1;
+
+        if item_index < 9 {
+            let num = format!("[{}] ", item_index + 1);
+            buffer.write_string(row, col, &num, num_style, i64::from(i32::MAX));
+            col += 4;
+        } else {
+            col += 4; // align with numbered items
+        }
+
+        buffer.write_string(row, col, path, label_style, i64::from(content.width - (col - content.left) - 1));
+    }
 }
 
 /// Port of `RenderConfigDialog` (App.cs).
@@ -1818,130 +1788,101 @@ pub fn render_config_dialog(buffer: &mut ScreenBuffer, width: i32, height: i32, 
         const LABEL_WIDTH: i32 = 34;
         buffer.write_string(row, content.left, &label, style, i64::from(LABEL_WIDTH));
         let value = state.format_value(i);
-        buffer.write_string(
-            row,
-            content.left + LABEL_WIDTH,
-            &value,
-            v_style,
-            i64::from(content.width - LABEL_WIDTH),
-        );
+        buffer.write_string(row, content.left + LABEL_WIDTH, &value, v_style, i64::from(content.width - LABEL_WIDTH));
     }
 }
 
 /// Port of `RenderSearchBar` / `SearchBar.Render` (App.cs:4558).
-    pub fn render_search_bar(
+pub fn render_search_bar(
     buffer: &mut ScreenBuffer,
     center_pane: Rect,
     active: bool,
     filter: &str,
     input: Option<&mut TextInput>,
 ) {
-        let row = center_pane.top + center_pane.height - 1;
-        let col = center_pane.left;
-        let width = center_pane.width;
+    let row = center_pane.top + center_pane.height - 1;
+    let col = center_pane.left;
+    let width = center_pane.width;
 
-        let label_style = CellStyle {
-            fg: Some(Color { r: 220, g: 220, b: 100 }),
+    let label_style = CellStyle {
+        fg: Some(Color { r: 220, g: 220, b: 100 }),
+        bg: None,
+        ..CellStyle::default()
+    };
+    buffer.put(row, col, '/', label_style);
+
+    let input_col = col + 1;
+    let input_width = width - 1;
+
+    if active && let Some(input) = input {
+        let input_style = CellStyle {
+            fg: Some(Color { r: 200, g: 200, b: 200 }),
             bg: None,
             ..CellStyle::default()
         };
-        buffer.put(row, col, '/', label_style);
-
-        let input_col = col + 1;
-        let input_width = width - 1;
-
-        if active && let Some(input) = input {
-            let input_style = CellStyle {
-                fg: Some(Color { r: 200, g: 200, b: 200 }),
-                bg: None,
-                ..CellStyle::default()
-            };
-            input.render(buffer, row, input_col, input_width, input_style);
-        } else {
-            let text_style = CellStyle {
-                fg: Some(Color { r: 200, g: 200, b: 200 }),
-                bg: None,
-                ..CellStyle::default()
-            };
-            buffer.write_string(row, input_col, filter, text_style, i64::from(input_width));
-        }
-    }
-
-/// Port of `RenderConfirmDialog` / `ConfirmDialog.Render` (App.cs:2888).
-    pub fn render_confirm_dialog(
-    buffer: &mut ScreenBuffer,
-    width: i32,
-    height: i32,
-    title: Option<&str>,
-    message: &str,
-) {
-        let lines: Vec<&str> = message.split('\n').collect();
-        let footer = "[Y/Enter] Yes  [N/Esc] No";
-        let max_line_len = lines.iter().map(|l| l.chars().count()).max().unwrap_or(0) as i32;
-
-        let content_width = max_line_len.max(footer.chars().count() as i32) + 2;
-        let content_height = i32::try_from(lines.len()).unwrap_or(0);
-
-        let content = dialog_box::render(
-            buffer,
-            width,
-            height,
-            content_width,
-            content_height,
-            title,
-            Some(footer),
-        );
-
+        input.render(buffer, row, input_col, input_width, input_style);
+    } else {
         let text_style = CellStyle {
             fg: Some(Color { r: 200, g: 200, b: 200 }),
-            bg: Some(BG_COLOR),
+            bg: None,
             ..CellStyle::default()
         };
-        let warn_style = CellStyle {
-            fg: Some(Color { r: 255, g: 100, b: 100 }),
-            bg: Some(BG_COLOR),
-            ..CellStyle::default()
-        };
-
-        for (i, line) in lines.iter().enumerate() {
-            let msg_col = content.left + (content.width - line.chars().count() as i32) / 2;
-            let style = if i > 0 { warn_style } else { text_style };
-            buffer.write_string(content.top + i as i32, msg_col, line, style, i64::from(i32::MAX));
-        }
+        buffer.write_string(row, input_col, filter, text_style, i64::from(input_width));
     }
+}
+
+/// Port of `RenderConfirmDialog` / `ConfirmDialog.Render` (App.cs:2888).
+pub fn render_confirm_dialog(buffer: &mut ScreenBuffer, width: i32, height: i32, title: Option<&str>, message: &str) {
+    let lines: Vec<&str> = message.split('\n').collect();
+    let footer = "[Y/Enter] Yes  [N/Esc] No";
+    let max_line_len = lines.iter().map(|l| l.chars().count()).max().unwrap_or(0) as i32;
+
+    let content_width = max_line_len.max(footer.chars().count() as i32) + 2;
+    let content_height = i32::try_from(lines.len()).unwrap_or(0);
+
+    let content = dialog_box::render(buffer, width, height, content_width, content_height, title, Some(footer));
+
+    let text_style = CellStyle {
+        fg: Some(Color { r: 200, g: 200, b: 200 }),
+        bg: Some(BG_COLOR),
+        ..CellStyle::default()
+    };
+    let warn_style = CellStyle {
+        fg: Some(Color { r: 255, g: 100, b: 100 }),
+        bg: Some(BG_COLOR),
+        ..CellStyle::default()
+    };
+
+    for (i, line) in lines.iter().enumerate() {
+        let msg_col = content.left + (content.width - line.chars().count() as i32) / 2;
+        let style = if i > 0 { warn_style } else { text_style };
+        buffer.write_string(content.top + i as i32, msg_col, line, style, i64::from(i32::MAX));
+    }
+}
 
 /// Port of `RenderTextInputDialog` / `TextInputDialog.Render` (App.cs:2919).
-    pub fn render_text_input_dialog(
+pub fn render_text_input_dialog(
     buffer: &mut ScreenBuffer,
     width: i32,
     height: i32,
     title: Option<&str>,
     input: Option<&mut TextInput>,
 ) {
-        let content_width = 40.min(width - 8);
-        let content_height = 1; // single row for text input
-        let footer = "[Enter] Confirm  [Esc] Cancel";
+    let content_width = 40.min(width - 8);
+    let content_height = 1; // single row for text input
+    let footer = "[Enter] Confirm  [Esc] Cancel";
 
-        let content = dialog_box::render(
-            buffer,
-            width,
-            height,
-            content_width,
-            content_height,
-            title,
-            Some(footer),
-        );
+    let content = dialog_box::render(buffer, width, height, content_width, content_height, title, Some(footer));
 
-        let input_style = CellStyle {
-            fg: Some(Color { r: 200, g: 200, b: 200 }),
-            bg: Some(BG_COLOR),
-            ..CellStyle::default()
-        };
-        if let Some(input) = input {
-            input.render(buffer, content.top, content.left, content.width, input_style);
-        }
+    let input_style = CellStyle {
+        fg: Some(Color { r: 200, g: 200, b: 200 }),
+        bg: Some(BG_COLOR),
+        ..CellStyle::default()
+    };
+    if let Some(input) = input {
+        input.render(buffer, content.top, content.left, content.width, input_style);
     }
-
+}
 
 /// Port of `RenderGoToPathDialog` / `GoToPathDialog.Render` (App.cs:2663):
 /// single-row path input with the inline ghost suggestion suffix.
@@ -1956,15 +1897,8 @@ pub fn render_go_to_path_dialog(
     let content_height = 1;
     let footer = "[Tab] Complete  [\u{2191}] Up dir  [Esc] Clear/Close  [Enter] Go";
 
-    let content = dialog_box::render(
-        buffer,
-        width,
-        height,
-        content_width,
-        content_height,
-        Some("Go to path"),
-        Some(footer),
-    );
+    let content =
+        dialog_box::render(buffer, width, height, content_width, content_height, Some("Go to path"), Some(footer));
 
     let Some(input) = input else {
         return;
@@ -2014,145 +1948,137 @@ pub fn render_go_to_path_dialog(
 }
 
 /// Port of `RenderActionPalette` / `ActionPaletteDialog.Render` (App.cs:3948).
-    pub fn render_action_palette(
+pub fn render_action_palette(
     buffer: &mut ScreenBuffer,
     width: i32,
     height: i32,
     level: &mut ActionMenuLevel,
     stack_depth: i32,
 ) {
-                let filtered: Vec<(String, String, bool)> = level
-            .get_filtered_items()
-            .into_iter()
-            .map(|item| (item.label.clone(), item.shortcut.clone(), item.is_submenu()))
-            .collect();
+    let filtered: Vec<(String, String, bool)> = level
+        .get_filtered_items()
+        .into_iter()
+        .map(|item| (item.label.clone(), item.shortcut.clone(), item.is_submenu()))
+        .collect();
 
-        let content_width = 60.min(width - 8);
-        let item_rows = filtered.len().min(18) as i32;
-        let content_height = item_rows + 2; // 1 row for text input + 1 separator + item rows
-        let footer = if stack_depth > 1 {
-            "[↑↓] Navigate  [Enter] Select  [Esc] Back"
-        } else {
-            "[↑↓] Navigate  [Enter] Select  [Esc] Cancel"
-        };
+    let content_width = 60.min(width - 8);
+    let item_rows = filtered.len().min(18) as i32;
+    let content_height = item_rows + 2; // 1 row for text input + 1 separator + item rows
+    let footer = if stack_depth > 1 {
+        "[↑↓] Navigate  [Enter] Select  [Esc] Back"
+    } else {
+        "[↑↓] Navigate  [Enter] Select  [Esc] Cancel"
+    };
 
-        let content = dialog_box::render(
-            buffer,
-            width,
-            height,
-            content_width.max(footer.chars().count() as i32),
-            content_height,
-            Some(level.title.as_str()),
-            Some(footer),
-        );
+    let content = dialog_box::render(
+        buffer,
+        width,
+        height,
+        content_width.max(footer.chars().count() as i32),
+        content_height,
+        Some(level.title.as_str()),
+        Some(footer),
+    );
 
-        // Row 0: text input with "> " prefix
-        let prefix_style = CellStyle {
-            fg: Some(Color { r: 220, g: 220, b: 100 }),
-            bg: Some(BG_COLOR),
-            ..CellStyle::default()
-        };
-        let input_style = CellStyle {
-            fg: Some(Color { r: 200, g: 200, b: 200 }),
-            bg: Some(BG_COLOR),
-            ..CellStyle::default()
-        };
-        buffer.write_string(content.top, content.left, "> ", prefix_style, i64::from(i32::MAX));
-        level
-            .filter
-            .render(buffer, content.top, content.left + 2, content.width - 2, input_style);
+    // Row 0: text input with "> " prefix
+    let prefix_style = CellStyle {
+        fg: Some(Color { r: 220, g: 220, b: 100 }),
+        bg: Some(BG_COLOR),
+        ..CellStyle::default()
+    };
+    let input_style = CellStyle {
+        fg: Some(Color { r: 200, g: 200, b: 200 }),
+        bg: Some(BG_COLOR),
+        ..CellStyle::default()
+    };
+    buffer.write_string(content.top, content.left, "> ", prefix_style, i64::from(i32::MAX));
+    level.filter.render(buffer, content.top, content.left + 2, content.width - 2, input_style);
 
-        // Row 1: separator
-        let separator_style = CellStyle {
-            fg: Some(dialog_box::BORDER_COLOR),
-            bg: Some(BG_COLOR),
-            dim: true,
-            ..CellStyle::default()
-        };
-        for c in 0..content.width {
-            buffer.put(content.top + 1, content.left + c, '─', separator_style);
+    // Row 1: separator
+    let separator_style = CellStyle {
+        fg: Some(dialog_box::BORDER_COLOR),
+        bg: Some(BG_COLOR),
+        dim: true,
+        ..CellStyle::default()
+    };
+    for c in 0..content.width {
+        buffer.put(content.top + 1, content.left + c, '─', separator_style);
+    }
+
+    // Rows 2+: filtered items
+    let normal_style = CellStyle {
+        fg: Some(Color { r: 200, g: 200, b: 200 }),
+        bg: Some(BG_COLOR),
+        ..CellStyle::default()
+    };
+    let selected_style = CellStyle {
+        fg: Some(Color { r: 20, g: 20, b: 35 }),
+        bg: Some(Color { r: 200, g: 200, b: 200 }),
+        ..CellStyle::default()
+    };
+    let shortcut_style = CellStyle {
+        fg: Some(Color { r: 120, g: 120, b: 140 }),
+        bg: Some(BG_COLOR),
+        ..CellStyle::default()
+    };
+    let shortcut_selected_style = CellStyle {
+        fg: Some(Color { r: 20, g: 20, b: 35 }),
+        bg: Some(Color { r: 200, g: 200, b: 200 }),
+        ..CellStyle::default()
+    };
+    let submenu_indicator_style = CellStyle {
+        fg: Some(Color { r: 120, g: 120, b: 140 }),
+        bg: Some(BG_COLOR),
+        ..CellStyle::default()
+    };
+    let submenu_indicator_selected_style = CellStyle {
+        fg: Some(Color { r: 20, g: 20, b: 35 }),
+        bg: Some(Color { r: 200, g: 200, b: 200 }),
+        ..CellStyle::default()
+    };
+
+    let visible_count = content.height - 2;
+
+    for i in 0..visible_count {
+        let item_index = level.scroll_offset + i as usize;
+        if item_index >= filtered.len() {
+            break;
         }
 
-        // Rows 2+: filtered items
-        let normal_style = CellStyle {
-            fg: Some(Color { r: 200, g: 200, b: 200 }),
-            bg: Some(BG_COLOR),
-            ..CellStyle::default()
-        };
-        let selected_style = CellStyle {
-            fg: Some(Color { r: 20, g: 20, b: 35 }),
-            bg: Some(Color { r: 200, g: 200, b: 200 }),
-            ..CellStyle::default()
-        };
-        let shortcut_style = CellStyle {
-            fg: Some(Color { r: 120, g: 120, b: 140 }),
-            bg: Some(BG_COLOR),
-            ..CellStyle::default()
-        };
-        let shortcut_selected_style = CellStyle {
-            fg: Some(Color { r: 20, g: 20, b: 35 }),
-            bg: Some(Color { r: 200, g: 200, b: 200 }),
-            ..CellStyle::default()
-        };
-        let submenu_indicator_style = CellStyle {
-            fg: Some(Color { r: 120, g: 120, b: 140 }),
-            bg: Some(BG_COLOR),
-            ..CellStyle::default()
-        };
-        let submenu_indicator_selected_style = CellStyle {
-            fg: Some(Color { r: 20, g: 20, b: 35 }),
-            bg: Some(Color { r: 200, g: 200, b: 200 }),
-            ..CellStyle::default()
-        };
+        let (label, shortcut, is_submenu) = &filtered[item_index];
+        let is_selected = item_index == level.selected_index;
+        let row = content.top + 2 + i;
 
-        let visible_count = content.height - 2;
+        let label_style = if is_selected { selected_style } else { normal_style };
 
-        for i in 0..visible_count {
-            let item_index = level.scroll_offset + i as usize;
-            if item_index >= filtered.len() {
-                break;
-            }
+        // Fill entire row with selected background if selected
+        if is_selected {
+            buffer.fill_row(row, content.left, content.width, ' ', selected_style);
+        }
 
-            let (label, shortcut, is_submenu) = &filtered[item_index];
-            let is_selected = item_index == level.selected_index;
-            let row = content.top + 2 + i;
-
-            let label_style = if is_selected { selected_style } else { normal_style };
-
-            // Fill entire row with selected background if selected
-            if is_selected {
-                buffer.fill_row(row, content.left, content.width, ' ', selected_style);
-            }
-
-            if *is_submenu {
-                // Submenu items show a "▸" indicator on the right
-                buffer.write_string(
-                    row,
-                    content.left + 1,
-                    label,
-                    label_style,
-                    i64::from(content.width - 4),
-                );
-                let ind_style = if is_selected {
-                    submenu_indicator_selected_style
-                } else {
-                    submenu_indicator_style
-                };
-                buffer.write_string(row, content.left + content.width - 2, "▸", ind_style, i64::from(i32::MAX));
+        if *is_submenu {
+            // Submenu items show a "▸" indicator on the right
+            buffer.write_string(row, content.left + 1, label, label_style, i64::from(content.width - 4));
+            let ind_style = if is_selected {
+                submenu_indicator_selected_style
             } else {
-                let sc_style = if is_selected { shortcut_selected_style } else { shortcut_style };
-                buffer.write_string(
-                    row,
-                    content.left + 1,
-                    label,
-                    label_style,
-                    i64::from(content.width - shortcut.chars().count() as i32 - 3),
-                );
-                let shortcut_col = content.left + content.width - shortcut.chars().count() as i32 - 1;
-                buffer.write_string(row, shortcut_col, shortcut, sc_style, i64::from(i32::MAX));
-            }
+                submenu_indicator_style
+            };
+            buffer.write_string(row, content.left + content.width - 2, "▸", ind_style, i64::from(i32::MAX));
+        } else {
+            let sc_style = if is_selected { shortcut_selected_style } else { shortcut_style };
+            buffer.write_string(
+                row,
+                content.left + 1,
+                label,
+                label_style,
+                i64::from(content.width - shortcut.chars().count() as i32 - 3),
+            );
+            let shortcut_col = content.left + content.width - shortcut.chars().count() as i32 - 1;
+            buffer.write_string(row, shortcut_col, shortcut, sc_style, i64::from(i32::MAX));
         }
     }
+}
 
 fn is_directory(path: &str) -> bool {
     std::fs::metadata(path).map(|m| m.is_dir()).unwrap_or(false)
@@ -2181,9 +2107,7 @@ pub fn get_full_path(path: &str) -> String {
         return collapse_dots(&expanded);
     }
 
-    let base = std::env::current_dir()
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_else(|_| ".".to_string());
+    let base = std::env::current_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_else(|_| ".".to_string());
     collapse_dots(&join_absolute(&base, &expanded))
 }
 
@@ -2196,10 +2120,7 @@ pub fn is_absolute_path(path: &str) -> bool {
 
     // Drive letter (Windows): "C:\..." or "C:/..."
     let bytes = path.as_bytes();
-    bytes.len() >= 3
-        && bytes[0].is_ascii_alphabetic()
-        && bytes[1] == b':'
-        && (bytes[2] == b'\\' || bytes[2] == b'/')
+    bytes.len() >= 3 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' && (bytes[2] == b'\\' || bytes[2] == b'/')
 }
 
 /// Collapse `.` and `..` segments lexically (rough `Path.GetFullPath`).
@@ -2301,8 +2222,8 @@ pub fn file_name_of(path: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::input_reader::AppAction;
     use crate::app::AppConfig;
+    use crate::app::input_reader::AppAction;
 
     #[test]
     fn text_input_editing_basics() {
@@ -2372,11 +2293,7 @@ mod tests {
             "Root",
             vec![
                 ActionMenuItem::new("Refresh", "Ctrl+R", AppAction::Refresh),
-                ActionMenuItem::submenu(
-                    "Change preview",
-                    "p",
-                    vec![ActionMenuItem::new("Text", "", AppAction::None)],
-                ),
+                ActionMenuItem::submenu("Change preview", "p", vec![ActionMenuItem::new("Text", "", AppAction::None)]),
             ],
             1,
         );
@@ -2399,15 +2316,13 @@ mod tests {
         app.show_confirm_dialog("Delete", "Sure?", ConfirmAction::Dispatch(AppAction::Refresh));
         assert_eq!(app.input_mode, InputMode::Confirm);
 
-        app.handle_confirm_key(
-            KeyEvent {
-                key: crate::console_key::ConsoleKey::Escape,
-                key_char: 0,
-                shift: false,
-                alt: false,
-                control: false,
-            },
-        );
+        app.handle_confirm_key(KeyEvent {
+            key: crate::console_key::ConsoleKey::Escape,
+            key_char: 0,
+            shift: false,
+            alt: false,
+            control: false,
+        });
         assert_eq!(app.input_mode, InputMode::Normal);
         assert!(app.modal.confirm_yes_action.is_none());
     }

@@ -115,10 +115,8 @@ fn sections(text: &str) -> Vec<(String, String)> {
 #[test]
 fn markdown_corpus_matches_markdig_golden() {
     let dir = golden_dir();
-    let mut files: Vec<PathBuf> = std::fs::read_dir(dir.join("corpus"))
-        .unwrap()
-        .map(|entry| entry.unwrap().path())
-        .collect();
+    let mut files: Vec<PathBuf> =
+        std::fs::read_dir(dir.join("corpus")).unwrap().map(|entry| entry.unwrap().path()).collect();
     files.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
 
     let mut actual = String::new();

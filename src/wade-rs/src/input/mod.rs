@@ -9,8 +9,8 @@ pub mod vt_parser;
 #[cfg(windows)]
 pub mod windows;
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::console_key::ConsoleKey;
 
@@ -275,5 +275,3 @@ pub trait InputSource: Send {
         None
     }
 }
-
-

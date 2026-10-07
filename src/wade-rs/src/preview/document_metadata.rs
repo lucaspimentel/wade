@@ -19,7 +19,10 @@ const APP_NS: &str = "http://schemas.openxmlformats.org/officeDocument/2006/exte
 const VT_NS: &str = "http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes";
 
 fn extension(path: &str) -> String {
-    std::path::Path::new(path).extension().map(|e| e.to_string_lossy().to_ascii_lowercase()).unwrap_or_default()
+    std::path::Path::new(path)
+        .extension()
+        .map(|e| e.to_string_lossy().to_ascii_lowercase())
+        .unwrap_or_default()
 }
 
 /// Decodes an XML part's bytes (BOM-aware UTF-8/UTF-16) and parses it.
@@ -31,7 +34,13 @@ fn parse_xml(bytes: &[u8]) -> Option<String> {
     let utf16 = |rest: &[u8], be: bool| -> Option<String> {
         let units: Vec<u16> = rest
             .chunks_exact(2)
-            .map(|pair| if be { u16::from_be_bytes([pair[0], pair[1]]) } else { u16::from_le_bytes([pair[0], pair[1]]) })
+            .map(|pair| {
+                if be {
+                    u16::from_be_bytes([pair[0], pair[1]])
+                } else {
+                    u16::from_le_bytes([pair[0], pair[1]])
+                }
+            })
             .collect();
         String::from_utf16(&units).ok()
     };
@@ -48,7 +57,10 @@ fn parse_xml(bytes: &[u8]) -> Option<String> {
 }
 
 fn parse_document(text: &str) -> Option<Document<'_>> {
-    let options = roxmltree::ParsingOptions { allow_dtd: true, ..roxmltree::ParsingOptions::default() };
+    let options = roxmltree::ParsingOptions {
+        allow_dtd: true,
+        ..roxmltree::ParsingOptions::default()
+    };
     Document::parse_with_options(text, options).ok()
 }
 
@@ -202,7 +214,10 @@ fn description_entries(description: &str, context: &PreviewContext) -> Vec<Metad
 
 fn single_message(message: &str, label: &str) -> MetadataResult {
     MetadataResult {
-        sections: vec![MetadataSection { header: None, entries: vec![MetadataEntry::new("", message)] }],
+        sections: vec![MetadataSection {
+            header: None,
+            entries: vec![MetadataEntry::new("", message)],
+        }],
         file_type_label: Some(label.to_string()),
     }
 }
@@ -241,7 +256,10 @@ impl MetadataProvider for OfficeMetadataProvider {
             return Some(single_message("[no document metadata found]", file_type_label));
         }
 
-        Some(MetadataResult { sections, file_type_label: Some(file_type_label.to_string()) })
+        Some(MetadataResult {
+            sections,
+            file_type_label: Some(file_type_label.to_string()),
+        })
     }
 }
 
@@ -282,7 +300,10 @@ fn add_core_properties(
 
     if let Some(description) = element_value(root, DC_NS, "description").filter(|d| !d.trim().is_empty()) {
         if !entries.is_empty() {
-            sections.push(MetadataSection { header: Some("Document Properties".to_string()), entries });
+            sections.push(MetadataSection {
+                header: Some("Document Properties".to_string()),
+                entries,
+            });
         }
 
         sections.push(MetadataSection {
@@ -296,7 +317,10 @@ fn add_core_properties(
         return Some(false);
     }
 
-    sections.push(MetadataSection { header: Some("Document Properties".to_string()), entries });
+    sections.push(MetadataSection {
+        header: Some("Document Properties".to_string()),
+        entries,
+    });
     Some(true)
 }
 
@@ -340,7 +364,10 @@ fn add_app_properties(sections: &mut Vec<MetadataSection>, path: &str, zip: &[Zi
     }
 
     if !entries.is_empty() {
-        sections.push(MetadataSection { header: Some("Statistics".to_string()), entries });
+        sections.push(MetadataSection {
+            header: Some("Statistics".to_string()),
+            entries,
+        });
     }
 
     if !parts.is_empty() {
@@ -392,7 +419,10 @@ pub fn parse_iso_date_time(value: &str) -> Option<String> {
             Some(at) => {
                 let offset = &clock[at + 1..];
                 let valid = matches!(offset.len(), 4 | 5)
-                    && offset.chars().enumerate().all(|(i, c)| c.is_ascii_digit() || (i == 2 && c == ':' && offset.len() == 5));
+                    && offset
+                        .chars()
+                        .enumerate()
+                        .all(|(i, c)| c.is_ascii_digit() || (i == 2 && c == ':' && offset.len() == 5));
                 if !valid || time.ends_with('Z') {
                     return None;
                 }
@@ -483,7 +513,10 @@ impl MetadataProvider for NuGetMetadataProvider {
         add_field(&mut main, metadata, "Tags", "Tags");
 
         if !main.is_empty() {
-            sections.push(MetadataSection { header: Some(NUGET_LABEL.to_string()), entries: main });
+            sections.push(MetadataSection {
+                header: Some(NUGET_LABEL.to_string()),
+                entries: main,
+            });
         }
 
         if let Some(description) = element_value_ignore_case(metadata, "description").filter(|d| !d.trim().is_empty()) {
@@ -494,7 +527,10 @@ impl MetadataProvider for NuGetMetadataProvider {
         }
 
         add_dependencies(&mut sections, metadata);
-        Some(MetadataResult { sections, file_type_label: Some(NUGET_LABEL.to_string()) })
+        Some(MetadataResult {
+            sections,
+            file_type_label: Some(NUGET_LABEL.to_string()),
+        })
     }
 }
 
@@ -508,12 +544,16 @@ fn children_by_local_name<'a, 'input>(node: Node<'a, 'input>, name: &'a str) -> 
 
 /// Port of `GetElementValue`: local name matched case-insensitively.
 fn element_value_ignore_case(node: Node, name: &str) -> Option<String> {
-    node.children().find(|c| c.is_element() && c.tag_name().name().eq_ignore_ascii_case(name)).map(value)
+    node.children()
+        .find(|c| c.is_element() && c.tag_name().name().eq_ignore_ascii_case(name))
+        .map(value)
 }
 
 /// `XElement.Attribute(name)` for an attribute without a namespace.
 fn attribute(node: Node, name: &str) -> Option<String> {
-    node.attributes().find(|a| a.namespace().is_none() && a.name() == name).map(|a| a.value().to_string())
+    node.attributes()
+        .find(|a| a.namespace().is_none() && a.name() == name)
+        .map(|a| a.value().to_string())
 }
 
 fn add_field(entries: &mut Vec<MetadataEntry>, metadata: Node, element_name: &str, label: &str) {
@@ -562,7 +602,10 @@ fn add_dependencies(sections: &mut Vec<MetadataSection>, metadata: Node) {
         let entries = dependency_entries(deps);
 
         if !entries.is_empty() {
-            sections.push(MetadataSection { header: Some("Dependencies".to_string()), entries });
+            sections.push(MetadataSection {
+                header: Some("Dependencies".to_string()),
+                entries,
+            });
         }
 
         return;
@@ -573,7 +616,10 @@ fn add_dependencies(sections: &mut Vec<MetadataSection>, metadata: Node) {
         let entries = dependency_entries(group);
 
         if !entries.is_empty() {
-            sections.push(MetadataSection { header: Some(format!("Dependencies ({framework})")), entries });
+            sections.push(MetadataSection {
+                header: Some(format!("Dependencies ({framework})")),
+                entries,
+            });
         }
     }
 }

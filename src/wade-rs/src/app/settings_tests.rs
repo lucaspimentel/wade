@@ -6,10 +6,10 @@
 
 use std::path::Path;
 
-use super::test_support::{app_at, fixture, frame, frame_has, row_with, select, visible_names, CURRENT_DIR};
+use super::test_support::{CURRENT_DIR, app_at, fixture, frame, frame_has, row_with, select, visible_names};
 use super::{App, AppAction, AppConfig};
-use crate::fs::directory_contents::SortMode;
 use crate::fs::DriveMediaType;
+use crate::fs::directory_contents::SortMode;
 use crate::input::InputMode;
 use crate::ui::config_dialog::ConfigDialogState;
 
@@ -20,7 +20,10 @@ fn provider_labels(app: &mut App, name: &str, metadata: bool) -> Option<Vec<&'st
     let _ = frame(app);
 
     if metadata {
-        app.preview.applicable_metadata_providers.as_ref().map(|list| list.iter().map(|p| p.label()).collect())
+        app.preview
+            .applicable_metadata_providers
+            .as_ref()
+            .map(|list| list.iter().map(|p| p.label()).collect())
     } else {
         app.preview.applicable_providers.as_ref().map(|list| list.iter().map(|p| p.label()).collect())
     }
@@ -282,7 +285,7 @@ fn pasted_symlink_is_link(app: &mut App, root: &Path) -> bool {
 #[cfg(windows)]
 fn mark_system(path: &Path) {
     use std::os::windows::ffi::OsStrExt;
-    use windows_sys::Win32::Storage::FileSystem::{SetFileAttributesW, FILE_ATTRIBUTE_SYSTEM};
+    use windows_sys::Win32::Storage::FileSystem::{FILE_ATTRIBUTE_SYSTEM, SetFileAttributesW};
 
     let wide: Vec<u16> = path.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
     assert_ne!(unsafe { SetFileAttributesW(wide.as_ptr(), FILE_ATTRIBUTE_SYSTEM) }, 0);
@@ -328,7 +331,14 @@ fn sort_mode_takes_effect_at_startup_and_from_the_dialog() {
     };
 
     let (parent, root) = fixture();
-    let mut app = app_at(AppConfig { sort_mode: SortMode::Size, sort_ascending: false, ..AppConfig::default() }, &root);
+    let mut app = app_at(
+        AppConfig {
+            sort_mode: SortMode::Size,
+            sort_ascending: false,
+            ..AppConfig::default()
+        },
+        &root,
+    );
     assert_eq!(size_order(&mut app), ["a.txt", "b.txt"], "largest first at startup");
 
     let mut app = app_at(AppConfig::default(), &root);
@@ -339,7 +349,13 @@ fn sort_mode_takes_effect_at_startup_and_from_the_dialog() {
     app.apply_config_changes();
     assert_eq!(size_order(&mut app), ["a.txt", "b.txt"], "largest first from the dialog");
 
-    let mut app = app_at(AppConfig { sort_mode: SortMode::Size, ..AppConfig::default() }, &root);
+    let mut app = app_at(
+        AppConfig {
+            sort_mode: SortMode::Size,
+            ..AppConfig::default()
+        },
+        &root,
+    );
     assert_eq!(size_order(&mut app), ["b.txt", "a.txt"], "smallest first");
     let _ = std::fs::remove_dir_all(&parent);
 }

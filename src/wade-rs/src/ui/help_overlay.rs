@@ -4,21 +4,9 @@ use crate::screen::{CellStyle, Color, ScreenBuffer};
 use crate::ui::dialog_box::{self, BG_COLOR};
 use crate::ui::layout::Rect;
 
-const KEY_COLOR: Color = Color {
-    r: 220,
-    g: 220,
-    b: 100,
-};
-const DESC_COLOR: Color = Color {
-    r: 200,
-    g: 200,
-    b: 200,
-};
-const SECTION_COLOR: Color = Color {
-    r: 180,
-    g: 180,
-    b: 220,
-};
+const KEY_COLOR: Color = Color { r: 220, g: 220, b: 100 };
+const DESC_COLOR: Color = Color { r: 200, g: 200, b: 200 };
+const SECTION_COLOR: Color = Color { r: 180, g: 180, b: 220 };
 
 pub fn render(buffer: &mut ScreenBuffer, screen_width: i32, screen_height: i32) {
     const CONTENT_WIDTH: i32 = 46;

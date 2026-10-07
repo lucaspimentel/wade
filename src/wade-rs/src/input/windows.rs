@@ -4,15 +4,13 @@
 
 use std::collections::VecDeque;
 
-use super::decode::{
-    decode_records, RawRecord, KEY_EVENT_TYPE, MOUSE_EVENT_TYPE, WINDOW_BUFFER_SIZE_EVENT_TYPE,
-};
+use super::decode::{KEY_EVENT_TYPE, MOUSE_EVENT_TYPE, RawRecord, WINDOW_BUFFER_SIZE_EVENT_TYPE, decode_records};
 use super::{CancelToken, InputEvent, InputSource};
 
 use windows_sys::Win32::Foundation::{HANDLE, WAIT_OBJECT_0};
 use windows_sys::Win32::System::Console::{
-    GetConsoleScreenBufferInfo, GetNumberOfConsoleInputEvents, GetStdHandle, ReadConsoleInputW,
-    CONSOLE_SCREEN_BUFFER_INFO, INPUT_RECORD, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
+    CONSOLE_SCREEN_BUFFER_INFO, GetConsoleScreenBufferInfo, GetNumberOfConsoleInputEvents, GetStdHandle, INPUT_RECORD,
+    ReadConsoleInputW, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
 };
 use windows_sys::Win32::System::Threading::WaitForSingleObject;
 
@@ -49,17 +47,13 @@ impl WindowsInputSource {
             records.resize_with(count as usize, INPUT_RECORD::default);
 
             let mut events_read: u32 = 0;
-            if ReadConsoleInputW(self.stdin_handle, records.as_mut_ptr(), count, &mut events_read)
-                == 0
+            if ReadConsoleInputW(self.stdin_handle, records.as_mut_ptr(), count, &mut events_read) == 0
                 || events_read == 0
             {
                 return false;
             }
 
-            let raw: Vec<RawRecord> = records[..events_read as usize]
-                .iter()
-                .map(to_raw_record)
-                .collect();
+            let raw: Vec<RawRecord> = records[..events_read as usize].iter().map(to_raw_record).collect();
             let decoded = decode_records(&raw, window.0, window.1);
             let any = !decoded.is_empty();
             self.pending.extend(decoded);
@@ -166,8 +160,6 @@ impl WindowsInputSource {
         self.pending.pop_front()
     }
 }
-
-
 
 /// Public window size for the app loop's startup dimensions.
 #[must_use]

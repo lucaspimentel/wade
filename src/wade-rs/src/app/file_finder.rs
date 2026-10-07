@@ -5,14 +5,14 @@
 //! matched characters highlighted.
 
 use std::collections::{HashMap, VecDeque};
-use std::sync::mpsc::Sender;
 use std::sync::Arc;
+use std::sync::mpsc::Sender;
 use std::time::{Duration, Instant};
 
 use crate::app::{App, InputMode, KeyEvent};
 use crate::console_key::ConsoleKey;
 use crate::fs::directory_contents::system_time_to_date_parts;
-use crate::fs::{FileSystemEntry, DRIVES_PATH};
+use crate::fs::{DRIVES_PATH, FileSystemEntry};
 use crate::input::{
     CancelToken, FileFinderPartialResultEvent, FileFinderScanCompleteEvent, FileFinderSearchResultEvent, InputEvent,
 };
@@ -209,7 +209,8 @@ impl App {
 
     /// Port of `HandleFileFinderSearchResult`.
     pub fn handle_file_finder_search_result(&mut self, event: FileFinderSearchResultEvent) {
-        if self.input_mode != InputMode::FileFinder || event.base_path != self.current_path || event.results.is_empty() {
+        if self.input_mode != InputMode::FileFinder || event.base_path != self.current_path || event.results.is_empty()
+        {
             return;
         }
 
@@ -471,8 +472,11 @@ impl App {
 
         {
             let total = state.index.count();
-            let matching =
-                if input.value().is_empty() { total } else { state.results.as_ref().map_or(0, Vec::len) };
+            let matching = if input.value().is_empty() {
+                total
+            } else {
+                state.results.as_ref().map_or(0, Vec::len)
+            };
             let display = state.display();
             let items: Vec<FinderItem<'_>> = display
                 .iter()
@@ -754,9 +758,8 @@ pub fn scan_files_for_finder(
             send_batch(batch);
         }
 
-        let _ = out.send(InputEvent::FileFinderScanComplete(FileFinderScanCompleteEvent {
-            base_path: base_path.to_string(),
-        }));
+        let _ = out
+            .send(InputEvent::FileFinderScanComplete(FileFinderScanCompleteEvent { base_path: base_path.to_string() }));
     }
 }
 
@@ -851,7 +854,7 @@ mod tests {
     use std::path::{Path, PathBuf};
     use std::time::{Duration, Instant};
 
-    use super::{render_file_finder_view, scan_files_for_finder, FinderItem, FinderView};
+    use super::{FinderItem, FinderView, render_file_finder_view, scan_files_for_finder};
     use crate::app::{App, AppConfig, InputMode, KeyEvent};
     use crate::console_key::ConsoleKey;
     use crate::fs::FileSystemEntry;
@@ -1096,11 +1099,7 @@ mod tests {
     fn display_names(app: &mut App) -> Vec<String> {
         let state = app.file_finder.as_mut().unwrap();
         state.refresh_display();
-        state
-            .display()
-            .iter()
-            .map(|&(index, _)| state.entry(index).name.clone())
-            .collect()
+        state.display().iter().map(|&(index, _)| state.entry(index).name.clone()).collect()
     }
 
     #[test]
@@ -1354,10 +1353,7 @@ mod tests {
             drive_free_space: 0,
             drive_total_size: 0,
         };
-        let items = [FinderItem {
-            entry: &entry,
-            match_positions: &[0],
-        }];
+        let items = [FinderItem { entry: &entry, match_positions: &[0] }];
         let view = FinderView {
             scanning: false,
             has_entries: true,

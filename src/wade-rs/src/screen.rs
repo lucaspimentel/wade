@@ -4,7 +4,7 @@
 //! Serialization is separated from writing (the C# side writes to stdout in
 //! `Flush`; this port exposes `serialize` only until the app layer exists).
 
-use crate::ansi::{append_move_cursor, append_set_bg, append_set_fg, RESET_ATTRIBUTES};
+use crate::ansi::{RESET_ATTRIBUTES, append_move_cursor, append_set_bg, append_set_fg};
 use crate::rune_width::rune_width;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -169,9 +169,16 @@ impl ScreenBuffer {
             return;
         }
 
-        let style = CellStyle { fg: Some(crate::imaging::kitty::id_color(image_id)), ..CellStyle::default() };
+        let style = CellStyle {
+            fg: Some(crate::imaging::kitty::id_color(image_id)),
+            ..CellStyle::default()
+        };
         let idx = (row * self.width + col) as usize;
-        self.back[idx] = Cell { ch: crate::imaging::kitty::PLACEHOLDER, style, placeholder: Some((image_row, image_col)) };
+        self.back[idx] = Cell {
+            ch: crate::imaging::kitty::PLACEHOLDER,
+            style,
+            placeholder: Some((image_row, image_col)),
+        };
         self.mark_dirty(row);
     }
 
@@ -193,14 +200,7 @@ impl ScreenBuffer {
         self.mark_dirty(row);
     }
 
-    pub fn write_string(
-        &mut self,
-        row: i32,
-        col: i32,
-        text: &str,
-        style: CellStyle,
-        max_width: i64,
-    ) {
+    pub fn write_string(&mut self, row: i32, col: i32, text: &str, style: CellStyle, max_width: i64) {
         if row < 0 || row >= self.height {
             return;
         }
@@ -275,11 +275,7 @@ impl ScreenBuffer {
                 }
 
                 if !has_style || current_style != self.back[idx].style {
-                    let old = if has_style {
-                        current_style
-                    } else {
-                        CellStyle::default()
-                    };
+                    let old = if has_style { current_style } else { CellStyle::default() };
                     append_style_diff(out, old, self.back[idx].style, has_style);
                     current_style = self.back[idx].style;
                     has_style = true;
@@ -287,7 +283,8 @@ impl ScreenBuffer {
 
                 out.push(self.back[idx].ch);
                 if let Some((image_row, image_col)) = self.back[idx].placeholder {
-                    let diacritic = |i: u16| crate::imaging::kitty::DIACRITICS.get(usize::from(i)).copied().unwrap_or('\u{0305}');
+                    let diacritic =
+                        |i: u16| crate::imaging::kitty::DIACRITICS.get(usize::from(i)).copied().unwrap_or('\u{0305}');
                     out.push(diacritic(image_row));
                     out.push(diacritic(image_col));
                 }

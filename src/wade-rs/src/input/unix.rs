@@ -4,7 +4,6 @@
 //! thread can be cancelled and joined. SIGWINCH sets a flag that becomes a
 //! `ResizeEvent` with the current window size.
 
-
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -51,11 +50,21 @@ impl UnixInputSource {
             (libc::sigaction(libc::SIGWINCH, &action, &mut previous) == 0).then_some(previous)
         };
 
-        Ok(Self { fd, buf: [0; 64], pending: VecDeque::new(), parser: VtParser::new(), previous_sigwinch })
+        Ok(Self {
+            fd,
+            buf: [0; 64],
+            pending: VecDeque::new(),
+            parser: VtParser::new(),
+            previous_sigwinch,
+        })
     }
 
     fn poll(&self, timeout_ms: i32) -> bool {
-        let mut pfd = libc::pollfd { fd: self.fd, events: libc::POLLIN, revents: 0 };
+        let mut pfd = libc::pollfd {
+            fd: self.fd,
+            events: libc::POLLIN,
+            revents: 0,
+        };
         let ready = unsafe { libc::poll(&mut pfd, 1, timeout_ms) };
         ready > 0 && pfd.revents & libc::POLLIN != 0
     }

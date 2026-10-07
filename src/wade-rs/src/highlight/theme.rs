@@ -67,7 +67,7 @@ pub const fn get_style(kind: TokenKind) -> CellStyle {
 
 #[cfg(test)]
 mod tests {
-    use super::{get_style, PLAIN};
+    use super::{PLAIN, get_style};
     use crate::highlight::TokenKind;
     use crate::screen::Color;
 

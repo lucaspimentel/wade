@@ -152,11 +152,7 @@ fn scan_css(line: &[char], start: usize, spans: &mut Vec<StyledSpan>, scan: &mut
             && let Some((hex_len, color)) = try_match_hex_color(line, pos)
         {
             spans.push(StyledSpan::new(pos, 1 + hex_len, TokenKind::HexColor));
-            matches.push(ColorMatch {
-                start: pos,
-                len: 1 + hex_len,
-                color,
-            });
+            matches.push(ColorMatch { start: pos, len: 1 + hex_len, color });
             pos += 1 + hex_len;
             continue;
         }
@@ -312,11 +308,7 @@ fn try_parse_hex_color(hex: &[char]) -> Option<Color> {
         }
         6 | 8 => {
             let byte = |i: usize| Some((nibble(hex[i])? << 4) | nibble(hex[i + 1])?);
-            Some(Color {
-                r: byte(0)?,
-                g: byte(2)?,
-                b: byte(4)?,
-            })
+            Some(Color { r: byte(0)?, g: byte(2)?, b: byte(4)? })
         }
         _ => None,
     }
@@ -440,11 +432,7 @@ fn hsl_to_rgb(hue: f64, saturation: f64, lightness: f64) -> Color {
         (value * 255.0).round() as u8
     };
 
-    Color {
-        r: f(0.0),
-        g: f(8.0),
-        b: f(4.0),
-    }
+    Color { r: f(0.0), g: f(8.0), b: f(4.0) }
 }
 
 fn named_color(lowercase: &str) -> Option<Color> {
@@ -715,21 +703,13 @@ mod tests {
 
     #[test]
     fn values_need_a_block() {
-        assert_eq!(
-            swatches(&CSS, &["a:hover #abc,", "b { color: red; }"]),
-            [vec![], vec![RED]]
-        );
+        assert_eq!(swatches(&CSS, &["a:hover #abc,", "b { color: red; }"]), [vec![], vec![RED]]);
         assert_eq!(swatches(&CSS, &["color: #abc;"]), [vec![]]);
     }
 
     #[test]
     fn nested_blocks_keep_value_positions() {
-        let lines = [
-            "@media (min-width: 600px) {",
-            "  .x { color: #abc; }",
-            "  a:hover #fff { color: red; }",
-            "}",
-        ];
+        let lines = ["@media (min-width: 600px) {", "  .x { color: #abc; }", "  a:hover #fff { color: red; }", "}"];
         assert_eq!(swatches(&CSS, &lines), [vec![], vec![ABC], vec![RED], vec![]]);
         assert_eq!(swatches(&CSS, &[".a { &:hover #abc { color: red; } }"]), [vec![RED]]);
     }
@@ -737,21 +717,13 @@ mod tests {
     #[test]
     fn values_continue_across_lines() {
         let lines = [".multi {", "  color:", "    #abc;", "  #fff", "}", "#abc"];
-        assert_eq!(
-            swatches(&CSS, &lines),
-            [vec![], vec![], vec![ABC], vec![], vec![], vec![]]
-        );
+        assert_eq!(swatches(&CSS, &lines), [vec![], vec![], vec![ABC], vec![], vec![], vec![]]);
         assert_eq!(swatches(&CSS, &["x {", "  a: 1; }", "#abc"]), [vec![], vec![], vec![]]);
     }
 
     #[test]
     fn state_tracks_depth_through_comments() {
-        let lines = [
-            ".a { /* open",
-            "still */ color: #abc;",
-            "/* x */ color: #fff; }",
-            "color: red;",
-        ];
+        let lines = [".a { /* open", "still */ color: #abc;", "/* x */ color: #fff; }", "color: red;"];
         assert_eq!(swatches(&CSS, &lines), [vec![], vec![ABC], vec![WHITE], vec![]]);
     }
 
@@ -762,10 +734,7 @@ mod tests {
         CSS.tokenize_line(&deep, &mut state);
         assert_eq!(super::depth(state), super::MAX_DEPTH);
 
-        assert_eq!(
-            swatches(&CSS, &["} }", "color: #abc;", "x { color: #abc; }"]),
-            [vec![], vec![], vec![ABC]]
-        );
+        assert_eq!(swatches(&CSS, &["} }", "color: #abc;", "x { color: #abc; }"]), [vec![], vec![], vec![ABC]]);
     }
 
     #[test]
@@ -838,21 +807,14 @@ mod tests {
     fn named_color_table_is_sorted_lowercase_css4() {
         assert_eq!(NAMED_COLORS.len(), 148);
         assert!(NAMED_COLORS.windows(2).all(|pair| pair[0].0 < pair[1].0));
-        assert!(
-            NAMED_COLORS
-                .iter()
-                .all(|(name, _)| name.chars().all(|c| c.is_ascii_lowercase()))
-        );
+        assert!(NAMED_COLORS.iter().all(|(name, _)| name.chars().all(|c| c.is_ascii_lowercase())));
     }
 
     #[test]
     fn spans_shift_past_mixed_swatches() {
         let mut state = 0u8;
         let styled = CSS.tokenize_line("x { a: #fff rgb(0 0 0) red; }", &mut state);
-        assert_eq!(
-            styled.text,
-            "x { a: #fff \u{2588}\u{2588} rgb(0 0 0) \u{2588}\u{2588} red \u{2588}\u{2588}; }"
-        );
+        assert_eq!(styled.text, "x { a: #fff \u{2588}\u{2588} rgb(0 0 0) \u{2588}\u{2588} red \u{2588}\u{2588}; }");
 
         let spans = styled.spans.unwrap();
         let text: Vec<char> = styled.text.chars().collect();
@@ -862,9 +824,7 @@ mod tests {
         assert_eq!(text[hex.start..hex.start + hex.len].iter().collect::<String>(), "#fff");
         assert!(at(TokenKind::Punctuation, '('));
         assert!(at(TokenKind::Punctuation, ';'));
-        let semicolon = spans
-            .iter()
-            .rfind(|span| span.kind == TokenKind::Punctuation && text[span.start] == ';');
+        let semicolon = spans.iter().rfind(|span| span.kind == TokenKind::Punctuation && text[span.start] == ';');
         // The original `;` at 26 moves past three 3-cell swatches
         assert_eq!(semicolon.unwrap().start, 26 + 9);
     }

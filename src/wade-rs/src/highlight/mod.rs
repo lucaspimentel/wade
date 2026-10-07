@@ -111,7 +111,7 @@ pub fn highlight(lines: &[&str], file_path: &str) -> Vec<StyledLine> {
 
 #[cfg(test)]
 mod tests {
-    use super::{highlight, TokenKind};
+    use super::{TokenKind, highlight};
 
     #[test]
     fn unknown_extension_returns_plain_lines() {

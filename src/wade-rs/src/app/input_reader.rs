@@ -210,11 +210,7 @@ pub fn map_key(key: &KeyEvent) -> AppAction {
     }
 
     if key.key == K::Delete {
-        return if key.shift {
-            A::DeletePermanently
-        } else {
-            A::Delete
-        };
+        return if key.shift { A::DeletePermanently } else { A::Delete };
     }
 
     match key.key {
@@ -232,20 +228,13 @@ pub fn map_key(key: &KeyEvent) -> AppAction {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::console_key::ConsoleKey;
 
     fn make_key(k: ConsoleKey, key_char: u16, shift: bool, alt: bool, control: bool) -> KeyEvent {
-        KeyEvent {
-            key: k,
-            key_char,
-            shift,
-            alt,
-            control,
-        }
+        KeyEvent { key: k, key_char, shift, alt, control }
     }
 
     fn keyc(k: ConsoleKey, ch: char, shift: bool, control: bool) -> KeyEvent {
@@ -281,7 +270,10 @@ mod tests {
 
     #[test]
     fn special_chars_map() {
-        assert_eq!(map_key(&keyc(ConsoleKey::Oem2 /* needs vk, char matters */, '?', false, false)), AppAction::ShowHelp);
+        assert_eq!(
+            map_key(&keyc(ConsoleKey::Oem2 /* needs vk, char matters */, '?', false, false)),
+            AppAction::ShowHelp
+        );
         assert_eq!(map_key(&keyc(ConsoleKey::Oem2, '/', false, false)), AppAction::Search);
         assert_eq!(map_key(&keyc(ConsoleKey::OemPeriod, '.', false, false)), AppAction::ToggleHiddenFiles);
         assert_eq!(map_key(&keyc(ConsoleKey::Oem4, '[', false, false)), AppAction::ToggleParentPane);

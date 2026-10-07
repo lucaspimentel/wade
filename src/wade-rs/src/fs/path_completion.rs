@@ -221,7 +221,11 @@ mod tests {
     }
 
     fn home() -> String {
-        std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")).expect("home").to_string_lossy().into_owned()
+        std::env::var_os("USERPROFILE")
+            .or_else(|| std::env::var_os("HOME"))
+            .expect("home")
+            .to_string_lossy()
+            .into_owned()
     }
 
     #[test]

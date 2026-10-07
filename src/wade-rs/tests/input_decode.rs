@@ -6,7 +6,7 @@
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-use wade::input::decode::{decode_records, RawRecord};
+use wade::input::decode::{RawRecord, decode_records};
 use wade::input::{InputEvent, MouseButton};
 
 /// Goldens are stored with LF endings but a CRLF checkout must not break
@@ -14,7 +14,6 @@ use wade::input::{InputEvent, MouseButton};
 fn normalize_lf(s: &str) -> String {
     s.replace("\u{d}\u{a}", "\u{a}")
 }
-
 
 fn golden_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/golden/input")
@@ -194,36 +193,22 @@ fn input_decode_fixtures_match_csharp_output() {
         .filter(|p| p.extension().is_some_and(|ext| ext == "scn"))
         .collect();
     fixtures.sort();
-    assert!(
-        !fixtures.is_empty(),
-        "no .scn fixtures found in {}",
-        dir.display()
-    );
+    assert!(!fixtures.is_empty(), "no .scn fixtures found in {}", dir.display());
 
     let mut compared = 0;
     for fixture_path in fixtures {
         let golden_path = fixture_path.with_extension("golden.txt");
         let expected = normalize_lf(&std::fs::read_to_string(&golden_path).unwrap_or_else(|_| {
-            panic!(
-                "missing golden file {}; generate with the C# test and WADE_UPDATE_GOLDENS=1",
-                golden_path.display()
-            )
+            panic!("missing golden file {}; generate with the C# test and WADE_UPDATE_GOLDENS=1", golden_path.display())
         }));
 
         let (records, window_width, window_height) = parse_fixture(&fixture_path);
         let events = decode_records(&records, window_width, window_height);
         let actual = format_events(&events);
 
-        assert_eq!(
-            expected, actual,
-            "golden mismatch for {}",
-            fixture_path.display()
-        );
+        assert_eq!(expected, actual, "golden mismatch for {}", fixture_path.display());
         compared += 1;
     }
 
-    assert!(
-        compared >= 5,
-        "expected at least 5 fixtures, compared {compared}"
-    );
+    assert!(compared >= 5, "expected at least 5 fixtures, compared {compared}");
 }

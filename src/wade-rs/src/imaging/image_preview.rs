@@ -77,7 +77,9 @@ pub fn load(
     }
 
     let image = match protocol {
-        ImageProtocol::Sixel => ImageData::Sixel(super::sixel::encode(rgba.as_raw(), width as usize, height as usize, 256)),
+        ImageProtocol::Sixel => {
+            ImageData::Sixel(super::sixel::encode(rgba.as_raw(), width as usize, height as usize, 256))
+        }
         ImageProtocol::Kitty => {
             let cols = super::kitty::cells_for(width as i32, cell_pixel_width, pane_width_cells);
             let rows = super::kitty::cells_for(height as i32, cell_pixel_height, pane_height_cells);
@@ -109,8 +111,8 @@ pub fn load(
 mod tests {
     //! Port of ImagePreviewTests.cs.
 
-    use super::{fit_size, is_image_file, load};
     use super::{ImageData, ImageProtocol};
+    use super::{fit_size, is_image_file, load};
     use crate::input::CancelToken;
 
     #[test]
@@ -150,7 +152,9 @@ mod tests {
     fn kitty_protocol_transmits_and_sizes_in_cells() {
         // 4x3 px at 2x2 px cells: 2x2 cells
         let result = load(&small_bmp(), 80, 24, 2, 2, ImageProtocol::Kitty, &CancelToken::new()).expect("result");
-        let ImageData::Kitty { transmit, id, cols, rows } = &result.image else { panic!("kitty") };
+        let ImageData::Kitty { transmit, id, cols, rows } = &result.image else {
+            panic!("kitty")
+        };
         assert_eq!((*cols, *rows), (2, 2));
         assert!(transmit.starts_with(&format!("\x1b_Ga=T,U=1,f=32,o=z,s=4,v=3,i={id},c=2,r=2,")), "{transmit}");
         assert_eq!((result.pixel_width, result.pixel_height), (4, 3));
@@ -187,10 +191,19 @@ mod tests {
         img.save(&path).unwrap();
 
         let start = std::time::Instant::now();
-        let result = load(&path.to_string_lossy(), 120, 40, 8, 16, ImageProtocol::Sixel, &CancelToken::new()).expect("result");
+        let result =
+            load(&path.to_string_lossy(), 120, 40, 8, 16, ImageProtocol::Sixel, &CancelToken::new()).expect("result");
         let elapsed = start.elapsed();
 
-        eprintln!("4000x3000 JPEG -> {}x{} sixel ({} bytes) in {elapsed:?}", result.pixel_width, result.pixel_height, match &result.image { ImageData::Sixel(d) => d.len(), ImageData::Kitty { transmit: d, .. } | ImageData::Iterm(d) => d.len() });
+        eprintln!(
+            "4000x3000 JPEG -> {}x{} sixel ({} bytes) in {elapsed:?}",
+            result.pixel_width,
+            result.pixel_height,
+            match &result.image {
+                ImageData::Sixel(d) => d.len(),
+                ImageData::Kitty { transmit: d, .. } | ImageData::Iterm(d) => d.len(),
+            }
+        );
         assert!(elapsed < std::time::Duration::from_millis(1500), "{elapsed:?}");
     }
 }

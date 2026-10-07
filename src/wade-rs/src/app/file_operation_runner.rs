@@ -9,8 +9,7 @@ use crate::input::{CancelToken, FileOperationCompleteEvent, InputEvent};
 /// One file operation for the runner thread: the C# runner closes over
 /// `RunPaste`/`RunDelete`; the Rust runner receives it as a closure and the
 /// App builds the appropriate one.
-pub type FileOperation =
-    Box<dyn FnOnce(&CancelToken, &Sender<InputEvent>) -> (usize, usize, bool) + Send>;
+pub type FileOperation = Box<dyn FnOnce(&CancelToken, &Sender<InputEvent>) -> (usize, usize, bool) + Send>;
 
 /// Port of `FileOperationRunner`.
 pub struct FileOperationRunner {
@@ -86,18 +85,13 @@ pub fn paste_operation(
             }
 
             let current_name = crate::app::dialogs::file_name_of(source_path);
-            let _ = progress.send(InputEvent::FileOperationProgress(
-                crate::input::FileOperationProgressEvent {
-                    index: i + 1,
-                    total,
-                    current_name: current_name.clone(),
-                },
-            ));
+            let _ = progress.send(InputEvent::FileOperationProgress(crate::input::FileOperationProgressEvent {
+                index: i + 1,
+                total,
+                current_name: current_name.clone(),
+            }));
 
-            let dest_path = std::path::Path::new(&destination)
-                .join(&current_name)
-                .to_string_lossy()
-                .to_string();
+            let dest_path = std::path::Path::new(&destination).join(&current_name).to_string_lossy().to_string();
 
             if std::path::Path::new(&dest_path).symlink_metadata().is_ok() {
                 if !overwrite {
@@ -140,19 +134,14 @@ pub fn delete_operation(paths: Vec<String>, permanent: bool) -> FileOperation {
                 break;
             }
 
-            let _ = progress.send(InputEvent::FileOperationProgress(
-                crate::input::FileOperationProgressEvent {
-                    index: i + 1,
-                    total,
-                    current_name: crate::app::dialogs::file_name_of(path),
-                },
-            ));
+            let _ = progress.send(InputEvent::FileOperationProgress(crate::input::FileOperationProgressEvent {
+                index: i + 1,
+                total,
+                current_name: crate::app::dialogs::file_name_of(path),
+            }));
 
-            let (item_success, item_errors) = file_operations::delete_paths(
-                std::slice::from_ref(path),
-                permanent,
-                cancel,
-            );
+            let (item_success, item_errors) =
+                file_operations::delete_paths(std::slice::from_ref(path), permanent, cancel);
             success += item_success;
             errors += item_errors;
         }
@@ -168,8 +157,7 @@ mod tests {
     use std::path::Path;
 
     fn temp_dir(name: &str) -> std::path::PathBuf {
-        let dir =
-            std::env::temp_dir().join(format!("wade-filerun-test-{}-{name}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("wade-filerun-test-{}-{name}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).expect("mkdir");
         dir
@@ -202,16 +190,10 @@ mod tests {
 
         let mut runner = FileOperationRunner::new();
         let pipeline = InputPipeline::new();
-        runner.begin(
-            delete_operation(vec![p(&a), p(&b), p(&dir.join("missing.txt"))], true),
-            pipeline.sender(),
-        );
+        runner.begin(delete_operation(vec![p(&a), p(&b), p(&dir.join("missing.txt"))], true), pipeline.sender());
 
         let events = collect_events(&pipeline, 4); // 3 progress + 1 completion
-        let progress_count = events
-            .iter()
-            .filter(|e| matches!(e, InputEvent::FileOperationProgress(_)))
-            .count();
+        let progress_count = events.iter().filter(|e| matches!(e, InputEvent::FileOperationProgress(_))).count();
         assert_eq!(progress_count, 3);
 
         let Some(InputEvent::FileOperationComplete(completion)) = events.last() else {
@@ -237,13 +219,7 @@ mod tests {
         let mut runner = FileOperationRunner::new();
         let pipeline = InputPipeline::new();
         runner.begin(
-            paste_operation(
-                vec![p(&src_dir.join("f.txt"))],
-                p(&dest_dir),
-                false,
-                false,
-                true,
-            ),
+            paste_operation(vec![p(&src_dir.join("f.txt"))], p(&dest_dir), false, false, true),
             pipeline.sender(),
         );
 
@@ -266,10 +242,7 @@ mod tests {
 
         let mut runner = FileOperationRunner::new();
         let pipeline = InputPipeline::new();
-        runner.begin(
-            paste_operation(vec![p(&src)], p(&dest_dir), true, false, true),
-            pipeline.sender(),
-        );
+        runner.begin(paste_operation(vec![p(&src)], p(&dest_dir), true, false, true), pipeline.sender());
 
         let _ = collect_events(&pipeline, 2);
         assert!(!src.exists());
@@ -286,10 +259,7 @@ mod tests {
 
         let mut runner = FileOperationRunner::new();
         let pipeline = InputPipeline::new();
-        runner.begin(
-            paste_operation(vec![p(&src)], p(&dir), false, false, true),
-            pipeline.sender(),
-        );
+        runner.begin(paste_operation(vec![p(&src)], p(&dir), false, false, true), pipeline.sender());
 
         let events = collect_events(&pipeline, 2);
         let Some(InputEvent::FileOperationComplete(completion)) = events.last() else {
@@ -314,10 +284,7 @@ mod tests {
 
         let mut runner = FileOperationRunner::new();
         let pipeline = InputPipeline::new();
-        runner.begin(
-            paste_operation(sources, p(&dest_dir), false, false, true),
-            pipeline.sender(),
-        );
+        runner.begin(paste_operation(sources, p(&dest_dir), false, false, true), pipeline.sender());
 
         // Wait for the first progress event, then cancel
         let cancel = CancelToken::new();
@@ -333,9 +300,7 @@ mod tests {
 
         std::thread::sleep(std::time::Duration::from_millis(150));
         assert!(
-            !pipeline
-                .try_take()
-                .is_some_and(|e| matches!(e, InputEvent::FileOperationComplete(_))),
+            !pipeline.try_take().is_some_and(|e| matches!(e, InputEvent::FileOperationComplete(_))),
             "cancelled operation must not complete"
         );
     }

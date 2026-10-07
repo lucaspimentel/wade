@@ -65,9 +65,9 @@ pub fn calculate(directory_path: &str, cancel: &CancelToken, out: &Sender<InputE
 #[cfg(test)]
 mod tests {
     use super::calculate;
+    use crate::input::CancelToken;
     use crate::input::InputEvent;
     use crate::input::input_pipeline::InputPipeline;
-    use crate::input::CancelToken;
     use std::sync::mpsc::channel;
 
     fn test_root(name: &str) -> std::path::PathBuf {

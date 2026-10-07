@@ -4,7 +4,6 @@ use crate::highlight::c_like::CLikeLanguage;
 use crate::highlight::c_like::base_try_match_string;
 use crate::highlight::{StyledSpan, TokenKind};
 
-
 /// Template literals: `...` with backslash escapes (single line). Shared
 /// with TypeScript, which inherits the C# override.
 pub(super) fn match_template_literal(line: &[char], pos: usize, spans: &mut Vec<StyledSpan>) -> Option<usize> {
@@ -33,22 +32,19 @@ pub(super) fn match_template_literal(line: &[char], pos: usize, spans: &mut Vec<
 }
 
 const KEYWORDS: &[&str] = &[
-    "async", "await", "break", "case", "catch", "class", "const", "continue", "debugger",
-    "default", "delete", "do", "else", "export", "extends", "finally", "for", "from",
-    "function", "if", "import", "in", "instanceof", "let", "new", "of", "return", "static",
-    "super", "switch", "this", "throw", "try", "typeof", "var", "void", "while", "with",
-    "yield", "get", "set",
+    "async", "await", "break", "case", "catch", "class", "const", "continue", "debugger", "default", "delete", "do",
+    "else", "export", "extends", "finally", "for", "from", "function", "if", "import", "in", "instanceof", "let",
+    "new", "of", "return", "static", "super", "switch", "this", "throw", "try", "typeof", "var", "void", "while",
+    "with", "yield", "get", "set",
 ];
 
-pub(super) const CONSTANTS: &[&str] = &[
-    "true", "false", "null", "undefined", "NaN", "Infinity",
-];
+pub(super) const CONSTANTS: &[&str] = &["true", "false", "null", "undefined", "NaN", "Infinity"];
 
 pub(super) const BUILTINS: &[&str] = &[
-    "console", "Math", "JSON", "Object", "Array", "String", "Number", "Boolean", "Symbol",
-    "Map", "Set", "WeakMap", "WeakSet", "Promise", "Error", "TypeError", "RangeError",
-    "parseInt", "parseFloat", "isNaN", "isFinite", "encodeURI", "decodeURI", "setTimeout",
-    "clearTimeout", "setInterval", "clearInterval", "fetch", "require", "module", "exports",
+    "console", "Math", "JSON", "Object", "Array", "String", "Number", "Boolean", "Symbol", "Map", "Set", "WeakMap",
+    "WeakSet", "Promise", "Error", "TypeError", "RangeError", "parseInt", "parseFloat", "isNaN", "isFinite",
+    "encodeURI", "decodeURI", "setTimeout", "clearTimeout", "setInterval", "clearInterval", "fetch", "require",
+    "module", "exports",
 ];
 
 pub struct JavaScriptLanguage;
@@ -70,7 +66,13 @@ impl CLikeLanguage for JavaScriptLanguage {
         BUILTINS
     }
 
-    fn try_match_string(&self, line: &[char], pos: usize, spans: &mut Vec<StyledSpan>, _state: &mut u8) -> Option<usize> {
+    fn try_match_string(
+        &self,
+        line: &[char],
+        pos: usize,
+        spans: &mut Vec<StyledSpan>,
+        _state: &mut u8,
+    ) -> Option<usize> {
         match_template_literal(line, pos, spans).or_else(|| base_try_match_string(line, pos, spans))
     }
 }

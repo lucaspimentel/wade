@@ -115,9 +115,10 @@ pub fn get_icon(entry: &FileSystemEntry) -> char {
 
     let ext = get_extension(&entry.name).to_ascii_lowercase();
     if !ext.is_empty()
-        && let Some(&code) = EXTENSION_ICONS.iter().find(|(e, _)| *e == ext).map(|(_, c)| c) {
-            return icon(code);
-        }
+        && let Some(&code) = EXTENSION_ICONS.iter().find(|(e, _)| *e == ext).map(|(_, c)| c)
+    {
+        return icon(code);
+    }
 
     // Special filenames without extension
     let name_lower = entry.name.to_ascii_lowercase();
@@ -207,11 +208,33 @@ mod tests {
     fn directories_drives_and_links() {
         assert_eq!(u32::from(get_icon(&entry("src", true))), 0xF114);
         assert_eq!(u32::from(get_icon(&FileSystemEntry { is_drive: true, ..entry("C:", true) })), 0xF0A0);
-        assert_eq!(u32::from(get_icon(&FileSystemEntry { link_target: Some("t".into()), ..entry("l", true) })), 0xF482);
-        assert_eq!(u32::from(get_icon(&FileSystemEntry { link_target: Some("t".into()), ..entry("l", false) })), 0xF481);
-        let junction = FileSystemEntry { link_target: Some("t".into()), is_junction_point: true, ..entry("j", true) };
+        assert_eq!(
+            u32::from(get_icon(&FileSystemEntry {
+                link_target: Some("t".into()),
+                ..entry("l", true)
+            })),
+            0xF482
+        );
+        assert_eq!(
+            u32::from(get_icon(&FileSystemEntry {
+                link_target: Some("t".into()),
+                ..entry("l", false)
+            })),
+            0xF481
+        );
+        let junction = FileSystemEntry {
+            link_target: Some("t".into()),
+            is_junction_point: true,
+            ..entry("j", true)
+        };
         assert_eq!(u32::from(get_icon(&junction)), 0xF19EE, "junction wins over symlink");
-        assert_eq!(u32::from(get_icon(&FileSystemEntry { is_app_exec_link: true, ..entry("wt.exe", false) })), 0xF0614);
+        assert_eq!(
+            u32::from(get_icon(&FileSystemEntry {
+                is_app_exec_link: true,
+                ..entry("wt.exe", false)
+            })),
+            0xF0614
+        );
     }
 
     #[test]

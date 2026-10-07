@@ -139,15 +139,9 @@ pub fn get_file_type_label(path: &str) -> Option<&'static str> {
         return Some(label);
     }
 
-    let ext = std::path::Path::new(path)
-        .extension()
-        .and_then(|e| e.to_str())
-        .map(|e| format!(".{e}"))?;
+    let ext = std::path::Path::new(path).extension().and_then(|e| e.to_str()).map(|e| format!(".{e}"))?;
 
-    EXTENSION_LABELS
-        .iter()
-        .find(|(known, _)| known.eq_ignore_ascii_case(&ext))
-        .map(|(_, label)| *label)
+    EXTENSION_LABELS.iter().find(|(known, _)| known.eq_ignore_ascii_case(&ext)).map(|(_, label)| *label)
 }
 
 #[cfg(test)]

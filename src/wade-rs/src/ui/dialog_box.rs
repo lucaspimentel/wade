@@ -3,26 +3,10 @@
 use crate::screen::{CellStyle, Color, ScreenBuffer};
 use crate::ui::layout::Rect;
 
-pub const BORDER_COLOR: Color = Color {
-    r: 100,
-    g: 100,
-    b: 120,
-};
-pub const TITLE_COLOR: Color = Color {
-    r: 80,
-    g: 160,
-    b: 255,
-};
-pub const FOOTER_COLOR: Color = Color {
-    r: 120,
-    g: 120,
-    b: 140,
-};
-pub const BG_COLOR: Color = Color {
-    r: 20,
-    g: 20,
-    b: 35,
-};
+pub const BORDER_COLOR: Color = Color { r: 100, g: 100, b: 120 };
+pub const TITLE_COLOR: Color = Color { r: 80, g: 160, b: 255 };
+pub const FOOTER_COLOR: Color = Color { r: 120, g: 120, b: 140 };
+pub const BG_COLOR: Color = Color { r: 20, g: 20, b: 35 };
 
 fn border_style() -> CellStyle {
     CellStyle {
@@ -124,7 +108,14 @@ pub fn render(
     Rect::new(content_left, content_top, content_width, content_height)
 }
 
-fn draw_horizontal_border(buffer: &mut ScreenBuffer, row: i32, left: i32, width: i32, caps: (char, char, char), style: CellStyle) {
+fn draw_horizontal_border(
+    buffer: &mut ScreenBuffer,
+    row: i32,
+    left: i32,
+    width: i32,
+    caps: (char, char, char),
+    style: CellStyle,
+) {
     let (left_cap, fill, right_cap) = caps;
     buffer.put(row, left, left_cap, style);
     for c in 1..width - 1 {

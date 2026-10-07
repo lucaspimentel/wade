@@ -13,9 +13,8 @@ use std::io::{self, BufReader, Seek, SeekFrom};
 
 const HEADER_SIZE: u32 = 0x4c;
 /// `00021401-0000-0000-C000-000000000046` in .NET's mixed-endian byte order.
-const LINK_CLSID: [u8; 16] = [
-    0x01, 0x14, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46,
-];
+const LINK_CLSID: [u8; 16] =
+    [0x01, 0x14, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46];
 
 const HAS_LINK_TARGET_ID_LIST: u32 = 0x01;
 const HAS_LINK_INFO: u32 = 0x02;
@@ -160,11 +159,7 @@ fn parse_header(reader: &mut Reader) -> Result<ShellLinkHeader> {
     reader.read_u32()?;
     reader.read_u32()?;
 
-    Ok(ShellLinkHeader {
-        link_flags,
-        show_command,
-        hot_key,
-    })
+    Ok(ShellLinkHeader { link_flags, show_command, hot_key })
 }
 
 /// Port of `LinkTargetIdList.Parse` reduced to what `GetLaunchUri` needs:
@@ -469,14 +464,18 @@ impl LnkFile {
             .as_ref()?
             .iter()
             .find(|s| {
-                starts_with_ignore_case(s, "msgamelaunch://") || starts_with_ignore_case(s, "ms-xbl-") || s.contains("://")
+                starts_with_ignore_case(s, "msgamelaunch://")
+                    || starts_with_ignore_case(s, "ms-xbl-")
+                    || s.contains("://")
             })
             .cloned()
     }
 }
 
 fn starts_with_ignore_case(text: &str, prefix: &str) -> bool {
-    text.len() >= prefix.len() && text.is_char_boundary(prefix.len()) && text[..prefix.len()].eq_ignore_ascii_case(prefix)
+    text.len() >= prefix.len()
+        && text.is_char_boundary(prefix.len())
+        && text[..prefix.len()].eq_ignore_ascii_case(prefix)
 }
 
 /// Port of `ShowCommand.ToString()`: names for defined values, else the

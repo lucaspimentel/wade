@@ -2,8 +2,8 @@
 //! with scroll support. Metadata-provider sections are a Phase 7 item; the
 //! parameter stays in the signature so Phase 7 is a drop-in.
 
-use crate::fs::directory_contents::{FileSystemEntry, GitFileStatus};
 use crate::fs::DriveMediaType;
+use crate::fs::directory_contents::{FileSystemEntry, GitFileStatus};
 use crate::fs::file_type_labels::get_file_type_label;
 use crate::screen::{CellStyle, Color, ScreenBuffer};
 use crate::ui::dialog_box::{self, BG_COLOR};
@@ -35,16 +35,7 @@ fn git_conflict_color() -> Color {
 }
 
 const LABELS: [&str; 11] = [
-    "Name",
-    "Path",
-    "Type",
-    "Target",
-    "Size",
-    "Created",
-    "Modified",
-    "Accessed",
-    "Attributes",
-    "Read-only",
+    "Name", "Path", "Type", "Target", "Size", "Created", "Modified", "Accessed", "Attributes", "Read-only",
     "Git status",
 ];
 
@@ -246,13 +237,7 @@ pub fn render(
                 );
             }
             RowKind::LabelValue => {
-                buffer.write_string(
-                    y,
-                    content.left + 2,
-                    &row.value,
-                    row.value_style,
-                    i64::from(value_max_width),
-                );
+                buffer.write_string(y, content.left + 2, &row.value, row.value_style, i64::from(value_max_width));
             }
         }
     }
@@ -261,7 +246,11 @@ pub fn render(
 }
 
 /// Port of `PropertiesOverlay.BuildValues`.
-fn build_values(entry: &FileSystemEntry, directory_size_text: Option<&str>, git_status: Option<GitFileStatus>) -> Vec<String> {
+fn build_values(
+    entry: &FileSystemEntry,
+    directory_size_text: Option<&str>,
+    git_status: Option<GitFileStatus>,
+) -> Vec<String> {
     let em_dash = "\u{2014}";
 
     let type_label = if entry.is_drive {
@@ -295,19 +284,12 @@ fn build_values(entry: &FileSystemEntry, directory_size_text: Option<&str>, git_
     } else if entry.is_directory || entry.is_drive {
         directory_size_text.unwrap_or(em_dash).to_string()
     } else {
-        format!(
-            "{} ({} bytes)",
-            format_size_string(entry.size),
-            crate::app::group_thousands(entry.size)
-        )
+        format!("{} ({} bytes)", format_size_string(entry.size), crate::app::group_thousands(entry.size))
     };
 
     let file_metadata = std::fs::symlink_metadata(&entry.full_path).ok();
 
-    let (created, accessed, mut attributes, read_only) = collect_platform_facts(
-        entry,
-        file_metadata.as_ref(),
-    );
+    let (created, accessed, mut attributes, read_only) = collect_platform_facts(entry, file_metadata.as_ref());
 
     if entry.is_app_exec_link {
         attributes = attributes.replace("ReparsePoint", "AppExecLink");
@@ -347,10 +329,7 @@ fn format_free_of_total(entry: &FileSystemEntry) -> String {
     let free = format_size_string(entry.drive_free_space);
     let total = format_size_string(entry.drive_total_size);
     let used_percent = 100.0 * (entry.drive_total_size - entry.drive_free_space) as f64 / entry.drive_total_size as f64;
-    format!(
-        "{free} free of {total} ({:.0}% used)",
-        used_percent
-    )
+    format!("{free} free of {total} ({:.0}% used)", used_percent)
 }
 
 fn format_size_string(bytes: i64) -> String {
@@ -421,10 +400,7 @@ pub fn format_date_time(parts: &crate::ui::format_helpers::DateParts) -> String 
         _ => (parts.hour - 12, "PM"),
     };
 
-    format!(
-        "{:04}-{:02}-{:02} {:02}:{:02} {}",
-        parts.year, parts.month, parts.day, hour12, parts.minute, suffix
-    )
+    format!("{:04}-{:02}-{:02} {:02}:{:02} {}", parts.year, parts.month, parts.day, hour12, parts.minute, suffix)
 }
 
 /// Port of `FormatAttributes` (+ `FormatWindowsAttributes` /
@@ -447,15 +423,11 @@ fn format_windows_attributes(entry: &FileSystemEntry, metadata: &std::fs::Metada
     use std::os::windows::ffi::OsStrExt;
 
     use windows_sys::Win32::Storage::FileSystem::{
-        GetFileAttributesW, FILE_ATTRIBUTE_ARCHIVE, FILE_ATTRIBUTE_COMPRESSED,
-        FILE_ATTRIBUTE_ENCRYPTED, FILE_ATTRIBUTE_HIDDEN, FILE_ATTRIBUTE_READONLY,
-        FILE_ATTRIBUTE_REPARSE_POINT, FILE_ATTRIBUTE_SYSTEM,
+        FILE_ATTRIBUTE_ARCHIVE, FILE_ATTRIBUTE_COMPRESSED, FILE_ATTRIBUTE_ENCRYPTED, FILE_ATTRIBUTE_HIDDEN,
+        FILE_ATTRIBUTE_READONLY, FILE_ATTRIBUTE_REPARSE_POINT, FILE_ATTRIBUTE_SYSTEM, GetFileAttributesW,
     };
 
-    let wide: Vec<u16> = std::ffi::OsStr::new(&entry.full_path)
-        .encode_wide()
-        .chain(std::iter::once(0))
-        .collect();
+    let wide: Vec<u16> = std::ffi::OsStr::new(&entry.full_path).encode_wide().chain(std::iter::once(0)).collect();
     let attrs = unsafe { GetFileAttributesW(wide.as_ptr()) };
 
     if attrs == u32::MAX {
@@ -607,11 +579,7 @@ pub fn format_git_status(status: Option<GitFileStatus>) -> String {
         labels.push("Untracked");
     }
 
-    if labels.is_empty() {
-        "\u{2014}".to_string()
-    } else {
-        labels.join(", ")
-    }
+    if labels.is_empty() { "\u{2014}".to_string() } else { labels.join(", ") }
 }
 
 /// Port of `GetGitStatusColor`.
@@ -636,9 +604,9 @@ pub fn get_git_status_color(status: GitFileStatus) -> Color {
 mod tests {
     use super::{format_git_status, get_git_status_color, git_staged_color, render};
     use crate::fs::directory_contents::{FileSystemEntry, GitFileStatus};
+    use crate::preview::{MetadataEntry, MetadataSection};
     use crate::screen::ScreenBuffer;
     use crate::ui::format_helpers::DateParts;
-    use crate::preview::{MetadataEntry, MetadataSection};
 
     fn entry(name: &str, full_path: &str, is_directory: bool, size: i64) -> FileSystemEntry {
         FileSystemEntry {
@@ -646,7 +614,15 @@ mod tests {
             full_path: full_path.to_string(),
             is_directory,
             size,
-            last_modified: DateParts { year: 2024, month: 1, day: 2, hour: 15, minute: 4, second: 0, nanosecond: 0 },
+            last_modified: DateParts {
+                year: 2024,
+                month: 1,
+                day: 2,
+                hour: 15,
+                minute: 4,
+                second: 0,
+                nanosecond: 0,
+            },
             link_target: None,
             is_broken_symlink: false,
             is_drive: false,
@@ -663,11 +639,7 @@ mod tests {
     }
 
     fn missing(name: &str) -> String {
-        std::env::temp_dir()
-            .join("wade-po-missing")
-            .join(name)
-            .to_string_lossy()
-            .into_owned()
+        std::env::temp_dir().join("wade-po-missing").join(name).to_string_lossy().into_owned()
     }
 
     fn test_root(name: &str) -> std::path::PathBuf {
@@ -712,9 +684,7 @@ mod tests {
     fn details(count: usize, label: impl Fn(usize) -> String, value: impl Fn(usize) -> String) -> Vec<MetadataSection> {
         vec![MetadataSection {
             header: Some("Details".to_string()),
-            entries: (0..count)
-                .map(|i| MetadataEntry { label: label(i), value: value(i) })
-                .collect(),
+            entries: (0..count).map(|i| MetadataEntry { label: label(i), value: value(i) }).collect(),
         }]
     }
 
@@ -742,12 +712,9 @@ mod tests {
 
     #[test]
     fn file_entry_shows_file_type_label() {
-        for (file_name, expected_type) in [
-            ("readme.md", "Markdown"),
-            ("report.pdf", "PDF"),
-            ("app.cs", "C#"),
-            ("data.unknown", "File"),
-        ] {
+        for (file_name, expected_type) in
+            [("readme.md", "Markdown"), ("report.pdf", "PDF"), ("app.cs", "C#"), ("data.unknown", "File")]
+        {
             let output = render_text(100, 30, &entry(file_name, &missing(file_name), false, 2048), None);
             assert!(output.contains(expected_type), "{file_name}: missing {expected_type:?}");
             assert!(output.contains(file_name));
@@ -764,7 +731,16 @@ mod tests {
     #[test]
     fn directory_entry_shows_directory_size_text() {
         let mut buffer = ScreenBuffer::new(100, 30);
-        render(&mut buffer, 100, 30, &entry("docs", &missing("docs"), true, 0), Some("Calculating\u{2026}"), None, None, 0);
+        render(
+            &mut buffer,
+            100,
+            30,
+            &entry("docs", &missing("docs"), true, 0),
+            Some("Calculating\u{2026}"),
+            None,
+            None,
+            0,
+        );
         assert!(flush(&mut buffer).contains("Calculating\u{2026}"));
     }
 
@@ -899,14 +875,16 @@ mod tests {
 
     #[test]
     fn shows_git_status_modified() {
-        let output = render_text(120, 30, &entry("file.cs", &missing("file.cs"), false, 100), Some(GitFileStatus::MODIFIED));
+        let output =
+            render_text(120, 30, &entry("file.cs", &missing("file.cs"), false, 100), Some(GitFileStatus::MODIFIED));
         assert!(output.contains("Git status"));
         assert!(output.contains("Modified"));
     }
 
     #[test]
     fn shows_git_status_staged() {
-        let output = render_text(120, 30, &entry("file.cs", &missing("file.cs"), false, 100), Some(GitFileStatus::STAGED));
+        let output =
+            render_text(120, 30, &entry("file.cs", &missing("file.cs"), false, 100), Some(GitFileStatus::STAGED));
         assert!(output.contains("Git status"));
         assert!(output.contains("Staged"));
     }
@@ -933,7 +911,8 @@ mod tests {
     #[test]
     fn returns_content_height() {
         let mut buffer = ScreenBuffer::new(100, 40);
-        let height = render(&mut buffer, 100, 40, &entry("test.txt", &missing("test.txt"), false, 1024), None, None, None, 0);
+        let height =
+            render(&mut buffer, 100, 40, &entry("test.txt", &missing("test.txt"), false, 1024), None, None, None, 0);
         // 11 system property rows (LABELS), no metadata
         assert_eq!(height, 11);
     }
@@ -944,8 +923,14 @@ mod tests {
         let sections = vec![MetadataSection {
             header: Some("Info".to_string()),
             entries: vec![
-                MetadataEntry { label: "Key1".to_string(), value: "Value1".to_string() },
-                MetadataEntry { label: "Key2".to_string(), value: "Value2".to_string() },
+                MetadataEntry {
+                    label: "Key1".to_string(),
+                    value: "Value1".to_string(),
+                },
+                MetadataEntry {
+                    label: "Key2".to_string(),
+                    value: "Value2".to_string(),
+                },
             ],
         }];
         let height = render(
@@ -973,7 +958,16 @@ mod tests {
     fn scrollable_footer_when_content_overflows() {
         let mut buffer = ScreenBuffer::new(100, 20);
         let sections = details(20, |i| format!("Field{i}"), |i| format!("Val{i}"));
-        render(&mut buffer, 100, 20, &entry("test.txt", &missing("test.txt"), false, 1024), None, None, Some(&sections), 0);
+        render(
+            &mut buffer,
+            100,
+            20,
+            &entry("test.txt", &missing("test.txt"), false, 1024),
+            None,
+            None,
+            Some(&sections),
+            0,
+        );
         assert!(flush(&mut buffer).contains("scroll"));
     }
 
@@ -981,7 +975,16 @@ mod tests {
     fn scroll_offset_skips_top_rows() {
         let mut buffer = ScreenBuffer::new(100, 20);
         let sections = details(20, |i| format!("Field{i:02}"), |i| format!("MetaValue{i:02}"));
-        render(&mut buffer, 100, 20, &entry("test.txt", &missing("test.txt"), false, 1024), None, None, Some(&sections), 5);
+        render(
+            &mut buffer,
+            100,
+            20,
+            &entry("test.txt", &missing("test.txt"), false, 1024),
+            None,
+            None,
+            Some(&sections),
+            5,
+        );
         let output = flush(&mut buffer);
         assert!(output.contains("Properties"));
         assert!(output.contains("MetaValue"));
@@ -993,7 +996,16 @@ mod tests {
     fn scroll_offset_is_clamped() {
         let mut buffer = ScreenBuffer::new(100, 20);
         let sections = details(20, |i| format!("Field{i:02}"), |i| format!("MetaValue{i:02}"));
-        render(&mut buffer, 100, 20, &entry("test.txt", &missing("test.txt"), false, 1024), None, None, Some(&sections), 999);
+        render(
+            &mut buffer,
+            100,
+            20,
+            &entry("test.txt", &missing("test.txt"), false, 1024),
+            None,
+            None,
+            Some(&sections),
+            999,
+        );
         // 34 rows, 12 visible: the clamped offset still shows the last entry
         assert!(flush(&mut buffer).contains("MetaValue19"));
     }

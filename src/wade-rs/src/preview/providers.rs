@@ -3,7 +3,7 @@
 //! Git diff.
 
 use super::{PreviewContext, PreviewProvider, PreviewResult};
-use crate::fs::{file_preview, git_utils, hex_preview, tar_preview, zip_preview, GitFileStatus};
+use crate::fs::{GitFileStatus, file_preview, git_utils, hex_preview, tar_preview, zip_preview};
 use crate::highlight::languages::diff::DiffLanguage;
 use crate::highlight::{self, Language, StyledLine};
 use crate::input::CancelToken;
@@ -306,7 +306,7 @@ mod tests {
     use super::{DiffPreviewProvider, NonePreviewProvider};
     use crate::fs::GitFileStatus;
     use crate::input::CancelToken;
-    use crate::preview::{test_context, PreviewContext, PreviewProvider};
+    use crate::preview::{PreviewContext, PreviewProvider, test_context};
 
     fn context(git_status: Option<GitFileStatus>, repo_root: Option<&str>) -> PreviewContext {
         PreviewContext {

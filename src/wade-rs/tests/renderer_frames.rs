@@ -8,9 +8,9 @@ use std::path::{Path, PathBuf};
 
 use wade::app::dialogs;
 use wade::app::input_reader::AppAction;
-use wade::fs::directory_contents::{FileSystemEntry, GitFileStatus, SortMode, DRIVES_PATH};
-use wade::screen::{CellStyle, Color, ScreenBuffer};
+use wade::fs::directory_contents::{DRIVES_PATH, FileSystemEntry, GitFileStatus, SortMode};
 use wade::preview::{MetadataEntry, MetadataSection};
+use wade::screen::{CellStyle, Color, ScreenBuffer};
 use wade::ui::action_palette::{ActionMenuItem, ActionMenuLevel};
 use wade::ui::format_helpers::DateParts;
 use wade::ui::help_overlay;
@@ -25,7 +25,6 @@ use wade::ui::text_input::TextInput;
 fn normalize_lf(s: &str) -> String {
     s.replace("\u{d}\u{a}", "\u{a}")
 }
-
 
 fn golden_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/golden/renderer")
@@ -43,9 +42,7 @@ fn parse_date(token: &str) -> DateParts {
     // yyyy-MM-ddTHH:mm:ss
     let bytes = token.as_bytes();
     assert_eq!(token.len(), 19, "date format: {token}");
-    let num = |a: usize, b: usize| -> i32 {
-        token[a..b].parse().expect("date component")
-    };
+    let num = |a: usize, b: usize| -> i32 { token[a..b].parse().expect("date component") };
     let _ = bytes;
     assert_eq!(&token[4..5], "-");
     assert_eq!(&token[7..8], "-");
@@ -258,7 +255,8 @@ fn run_scenario(path: &Path) -> String {
                 // dir NAME [DATE] [FLAGS...]; FLAGS: link=T broken junction appexec=T cloud
                 let pos = positional_tokens(&tokens);
                 let modified = if pos.len() > 2 { parse_date(pos[2]) } else { DateParts::default() };
-                lists.get_mut(current_list.as_ref().expect("list op first"))
+                lists
+                    .get_mut(current_list.as_ref().expect("list op first"))
                     .expect("current list")
                     .push(apply_entry_flags(make_entry(pos[1], true, 0, modified), &tokens));
             }
@@ -266,7 +264,8 @@ fn run_scenario(path: &Path) -> String {
                 let pos = positional_tokens(&tokens);
                 let size = parse_i64(pos[2]);
                 let modified = if pos.len() > 3 { parse_date(pos[3]) } else { DateParts::default() };
-                lists.get_mut(current_list.as_ref().expect("list op first"))
+                lists
+                    .get_mut(current_list.as_ref().expect("list op first"))
                     .expect("current list")
                     .push(apply_entry_flags(make_entry(pos[1], false, size, modified), &tokens));
             }
@@ -274,15 +273,23 @@ fn run_scenario(path: &Path) -> String {
                 marked_paths.insert(format!("C:\\fixture\\{}", tokens[1]));
             }
             "dirsize" => {
-                dir_sizes.get_or_insert_with(HashMap::new).insert(format!("C:\\fixture\\{}", tokens[1]), parse_i64(tokens[2]));
+                dir_sizes
+                    .get_or_insert_with(HashMap::new)
+                    .insert(format!("C:\\fixture\\{}", tokens[1]), parse_i64(tokens[2]));
             }
             "dirsizes" => {
                 dir_sizes.get_or_insert_with(HashMap::new);
             }
             "drive" => {
-                lists.get_mut(current_list.as_ref().expect("list op first"))
-                    .expect("current list")
-                    .push(make_drive_entry(tokens[1], tokens[2], &unquote(tokens[3]), parse_i64(tokens[4]), parse_i64(tokens[5])));
+                lists.get_mut(current_list.as_ref().expect("list op first")).expect("current list").push(
+                    make_drive_entry(
+                        tokens[1],
+                        tokens[2],
+                        &unquote(tokens[3]),
+                        parse_i64(tokens[4]),
+                        parse_i64(tokens[5]),
+                    ),
+                );
             }
             "endlist" => current_list = None,
             "layout" => {
@@ -373,8 +380,16 @@ fn run_scenario(path: &Path) -> String {
 
                 let branch_name_inline = extract_quoted_arg(line, "branch ");
                 let ahead_behind_inline = extract_quoted_arg(line, "aheadbehind ");
-                let branch_arg = if branch_name_inline.is_empty() { None } else { Some(branch_name_inline.as_str()) };
-                let ahead_behind_arg = if ahead_behind_inline.is_empty() { None } else { Some(ahead_behind_inline.as_str()) };
+                let branch_arg = if branch_name_inline.is_empty() {
+                    None
+                } else {
+                    Some(branch_name_inline.as_str())
+                };
+                let ahead_behind_arg = if ahead_behind_inline.is_empty() {
+                    None
+                } else {
+                    Some(ahead_behind_inline.as_str())
+                };
 
                 let buffer = buffer.as_mut().expect("size op first");
                 status_bar::render(
@@ -456,10 +471,11 @@ fn run_scenario(path: &Path) -> String {
             "pitem" => {
                 // pitem "Label" "Shortcut" [sub]
                 let spans = quoted_spans(&line["pitem ".len()..]);
-                palette_items
-                    .as_mut()
-                    .expect("palette op first")
-                    .push(ActionMenuItem::new(&spans[0], &spans[1], AppAction::None));
+                palette_items.as_mut().expect("palette op first").push(ActionMenuItem::new(
+                    &spans[0],
+                    &spans[1],
+                    AppAction::None,
+                ));
             }
             "endpalette" => {
                 let items = palette_items.take().expect("palette op first");
@@ -596,10 +612,7 @@ fn run_scenario(path: &Path) -> String {
                 let items: Vec<wade::app::file_finder::FinderItem<'_>> = entries
                     .iter()
                     .skip(scroll)
-                    .map(|(entry, positions)| wade::app::file_finder::FinderItem {
-                        entry,
-                        match_positions: positions,
-                    })
+                    .map(|(entry, positions)| wade::app::file_finder::FinderItem { entry, match_positions: positions })
                     .collect();
                 let view = wade::app::file_finder::FinderView {
                     scanning: finder_state == "scanning",
@@ -669,15 +682,23 @@ fn run_scenario(path: &Path) -> String {
             "metaimage" => {
                 // metaimage PANE: metadata header above a blank image area
                 let buffer = buffer.as_mut().expect("size op first");
-                let top = wade::app::preview::render_metadata_with_image(buffer, pane_rect(&layout, tokens[1]), &metadata_sections);
+                let top = wade::app::preview::render_metadata_with_image(
+                    buffer,
+                    pane_rect(&layout, tokens[1]),
+                    &metadata_sections,
+                );
                 buffer.write_string(0, 0, &format!("top={top}"), CellStyle::default(), 20);
             }
             "combined" => {
                 // combined PANE text|hex FILE: preview text above a blank image area
                 let lines = load_preview_lines(path, tokens[2], tokens[3]);
                 let buffer = buffer.as_mut().expect("size op first");
-                let top =
-                    wade::app::preview::render_combined_preview(buffer, pane_rect(&layout, tokens[1]), &lines, tokens[2] == "hex");
+                let top = wade::app::preview::render_combined_preview(
+                    buffer,
+                    pane_rect(&layout, tokens[1]),
+                    &lines,
+                    tokens[2] == "hex",
+                );
                 buffer.write_string(0, 0, &format!("top={top}"), CellStyle::default(), 20);
             }
             "flush" => {
@@ -686,10 +707,12 @@ fn run_scenario(path: &Path) -> String {
                 flushes.push(out.clone());
             }
             "configdlg" => {
-                config_state = Some(wade::ui::config_dialog::ConfigDialogState::from_app_config(&wade::app::AppConfig::default()));
+                config_state =
+                    Some(wade::ui::config_dialog::ConfigDialogState::from_app_config(&wade::app::AppConfig::default()));
             }
             "csel" => {
-                config_state.as_mut().expect("configdlg op first").selected_index = parse_i32(tokens[1]).max(0) as usize;
+                config_state.as_mut().expect("configdlg op first").selected_index =
+                    parse_i32(tokens[1]).max(0) as usize;
             }
             "ctoggle" => {
                 config_state.as_mut().expect("configdlg op first").toggle_selected();
@@ -713,7 +736,12 @@ fn run_scenario(path: &Path) -> String {
             }
             "configrender" => {
                 let buffer = buffer.as_mut().expect("size op first");
-                dialogs::render_config_dialog(buffer, width, height, config_state.as_ref().expect("configdlg op first"));
+                dialogs::render_config_dialog(
+                    buffer,
+                    width,
+                    height,
+                    config_state.as_ref().expect("configdlg op first"),
+                );
             }
             "bmark" => {
                 let store = bookmark_store.get_or_insert_with(|| {
@@ -743,11 +771,21 @@ fn run_scenario(path: &Path) -> String {
                 let filtered: Vec<String> = store
                     .bookmarks()
                     .iter()
-                    .filter(|bookmark| filter.is_empty() || bookmark.to_ascii_lowercase().contains(&filter.to_ascii_lowercase()))
+                    .filter(|bookmark| {
+                        filter.is_empty() || bookmark.to_ascii_lowercase().contains(&filter.to_ascii_lowercase())
+                    })
                     .cloned()
                     .collect();
                 let buffer = buffer.as_mut().expect("size op first");
-                dialogs::render_bookmarks(buffer, width, height, &filtered, bookmark_selected, bookmark_scroll, bookmark_input.as_mut());
+                dialogs::render_bookmarks(
+                    buffer,
+                    width,
+                    height,
+                    &filtered,
+                    bookmark_selected,
+                    bookmark_scroll,
+                    bookmark_input.as_mut(),
+                );
             }
             "ctxmenu" => {
                 // ctxmenu ANCHORROW ANCHORCOL
@@ -756,10 +794,11 @@ fn run_scenario(path: &Path) -> String {
             }
             "citem" => {
                 let spans = quoted_spans(&line["citem ".len()..]);
-                ctx_items
-                    .as_mut()
-                    .expect("ctxmenu op first")
-                    .push(ActionMenuItem::new(&spans[0], &spans[1], AppAction::None));
+                ctx_items.as_mut().expect("ctxmenu op first").push(ActionMenuItem::new(
+                    &spans[0],
+                    &spans[1],
+                    AppAction::None,
+                ));
             }
             "endctxmenu" => {
                 let items = ctx_items.take().expect("ctxmenu op first");
@@ -792,20 +831,13 @@ fn renderer_fixtures_match_csharp_output() {
         .filter(|p| p.extension().is_some_and(|ext| ext == "scn"))
         .collect();
     fixtures.sort();
-    assert!(
-        fixtures.len() >= MIN_FIXTURES,
-        "no .scn fixtures found in {}",
-        dir.display()
-    );
+    assert!(fixtures.len() >= MIN_FIXTURES, "no .scn fixtures found in {}", dir.display());
 
     let mut compared = 0;
     for fixture_path in fixtures {
         let golden_path = fixture_path.with_extension("golden.txt");
         let expected = normalize_lf(&std::fs::read_to_string(&golden_path).unwrap_or_else(|_| {
-            panic!(
-                "missing golden file {}; generate with the C# test and WADE_UPDATE_GOLDENS=1",
-                golden_path.display()
-            )
+            panic!("missing golden file {}; generate with the C# test and WADE_UPDATE_GOLDENS=1", golden_path.display())
         }));
 
         let actual = run_scenario(&fixture_path);
@@ -813,18 +845,11 @@ fn renderer_fixtures_match_csharp_output() {
             continue;
         }
 
-        assert_eq!(
-            expected, actual,
-            "golden mismatch for {}",
-            fixture_path.display()
-        );
+        assert_eq!(expected, actual, "golden mismatch for {}", fixture_path.display());
         compared += 1;
     }
 
-    assert!(
-        compared >= MIN_FIXTURES,
-        "expected at least {MIN_FIXTURES} fixtures, compared {compared}"
-    );
+    assert!(compared >= MIN_FIXTURES, "expected at least {MIN_FIXTURES} fixtures, compared {compared}");
 }
 
 // Suppress unused warnings for ported constants only reachable via fixtures.

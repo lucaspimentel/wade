@@ -160,10 +160,16 @@ pub fn read_headers(image: &mut Image) -> Result<PeHeaders> {
 
         for (i, directory) in directories.iter_mut().enumerate() {
             let at = fixed + i * 8;
-            *directory = Directory { rva: i32_at(&header, at), size: i32_at(&header, at + 4) };
+            *directory = Directory {
+                rva: i32_at(&header, at),
+                size: i32_at(&header, at + 4),
+            };
         }
 
-        pe_header = Some(OptionalHeader { is_pe32_plus: magic == PE32_PLUS_MAGIC, subsystem: u16_at(&header, 68) });
+        pe_header = Some(OptionalHeader {
+            is_pe32_plus: magic == PE32_PLUS_MAGIC,
+            subsystem: u16_at(&header, 68),
+        });
     }
 
     if number_of_sections < 0 {
@@ -188,12 +194,26 @@ pub fn read_headers(image: &mut Image) -> Result<PeHeaders> {
 
     let (metadata_start, metadata_size) = if is_coff_only {
         let Some(cormeta) = sections.iter().find(|s| s.name == *b".cormeta") else {
-            return Ok(PeHeaders { machine, characteristics, time_date_stamp, pe_header, metadata_start: -1, metadata_size: 0 });
+            return Ok(PeHeaders {
+                machine,
+                characteristics,
+                time_date_stamp,
+                pe_header,
+                metadata_start: -1,
+                metadata_size: 0,
+            });
         };
         (cormeta.pointer_to_raw_data, cormeta.size_of_raw_data)
     } else {
         let Some(cor_offset) = directory_offset(&sections, directories[14])? else {
-            return Ok(PeHeaders { machine, characteristics, time_date_stamp, pe_header, metadata_start: 0, metadata_size: 0 });
+            return Ok(PeHeaders {
+                machine,
+                characteristics,
+                time_date_stamp,
+                pe_header,
+                metadata_start: 0,
+                metadata_size: 0,
+            });
         };
 
         if directories[14].size < COR_HEADER_SIZE {
@@ -201,7 +221,10 @@ pub fn read_headers(image: &mut Image) -> Result<PeHeaders> {
         }
 
         let cor = image.read(cor_offset, 72)?;
-        let metadata = Directory { rva: i32_at(&cor, 8), size: i32_at(&cor, 12) };
+        let metadata = Directory {
+            rva: i32_at(&cor, 8),
+            size: i32_at(&cor, 12),
+        };
         (directory_offset(&sections, metadata)?.ok_or(BadImage)?, metadata.size)
     };
 
@@ -209,14 +232,22 @@ pub fn read_headers(image: &mut Image) -> Result<PeHeaders> {
         return Err(BadImage);
     }
 
-    Ok(PeHeaders { machine, characteristics, time_date_stamp, pe_header, metadata_start, metadata_size })
+    Ok(PeHeaders {
+        machine,
+        characteristics,
+        time_date_stamp,
+        pe_header,
+        metadata_start,
+        metadata_size,
+    })
 }
 
 /// Port of `TryGetDirectoryOffset(canCrossSectionBoundary: false)`.
 fn directory_offset(sections: &[Section], directory: Directory) -> Result<Option<i64>> {
-    let Some(section) = sections.iter().find(|s| {
-        directory.rva >= s.virtual_address && directory.rva < s.virtual_address + s.virtual_size
-    }) else {
+    let Some(section) = sections
+        .iter()
+        .find(|s| directory.rva >= s.virtual_address && directory.rva < s.virtual_address + s.virtual_size)
+    else {
         return Ok(None);
     };
 
@@ -317,7 +348,7 @@ enum Col {
 
 /// Column schema of every table up to GenericParamConstraint.
 fn schema(table: usize) -> &'static [Col] {
-    use Col::{Blob, Coded, Guid, Str, Table, U16, U32, U8x2};
+    use Col::{Blob, Coded, Guid, Str, Table, U8x2, U16, U32};
 
     match table {
         0x00 => &[U16, Str, Guid, Guid, Guid],
@@ -451,7 +482,13 @@ impl<'a> MetadataReader<'a> {
                 Col::Str => heap(0x01),
                 Col::Guid => heap(0x02),
                 Col::Blob => heap(0x04),
-                Col::Table(t) => if rows[t] <= 0xFFFF { 2 } else { 4 },
+                Col::Table(t) => {
+                    if rows[t] <= 0xFFFF {
+                        2
+                    } else {
+                        4
+                    }
+                }
                 Col::Coded((bits, targets)) => {
                     let limit = 1u32 << (16 - bits);
                     if targets.iter().all(|&t| rows[t] < limit) { 2 } else { 4 }
@@ -531,7 +568,9 @@ impl<'a> MetadataReader<'a> {
     /// `AssemblyReferences` names and versions, in table order.
     pub fn assembly_references(&self) -> Result<Vec<(String, [u16; 4])>> {
         (1..=self.rows[TABLE_ASSEMBLY_REF])
-            .map(|row| Ok((self.string(self.cell(TABLE_ASSEMBLY_REF, row, 6)?)?, self.version(TABLE_ASSEMBLY_REF, row, 0)?)))
+            .map(|row| {
+                Ok((self.string(self.cell(TABLE_ASSEMBLY_REF, row, 6)?)?, self.version(TABLE_ASSEMBLY_REF, row, 0)?))
+            })
             .collect()
     }
 

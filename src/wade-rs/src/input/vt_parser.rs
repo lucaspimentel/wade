@@ -258,7 +258,12 @@ fn parse_sgr_mouse(params: &[u8], final_byte: u8) -> InputEvent {
     };
 
     // Cx, Cy are 1-based
-    InputEvent::Mouse(MouseEvent { button, row: cy - 1, col: cx - 1, is_release: final_byte == b'm' })
+    InputEvent::Mouse(MouseEvent {
+        button,
+        row: cy - 1,
+        col: cx - 1,
+        is_release: final_byte == b'm',
+    })
 }
 
 /// Port of `CharToConsoleKey`.
@@ -375,7 +380,9 @@ mod tests {
 
     #[test]
     fn control_characters() {
-        for (b, expected) in [(0x01, ConsoleKey::A), (0x03, ConsoleKey::C), (0x04, ConsoleKey::D), (0x1A, ConsoleKey::Z)] {
+        for (b, expected) in
+            [(0x01, ConsoleKey::A), (0x03, ConsoleKey::C), (0x04, ConsoleKey::D), (0x1A, ConsoleKey::Z)]
+        {
             let key = single_key(&[b]);
             assert_eq!(key.key, expected);
             assert!(key.control);
@@ -403,7 +410,9 @@ mod tests {
 
     #[test]
     fn ss3_keys() {
-        for (b, expected) in [(b'P', ConsoleKey::F1), (b'Q', ConsoleKey::F2), (b'R', ConsoleKey::F3), (b'S', ConsoleKey::F4)] {
+        for (b, expected) in
+            [(b'P', ConsoleKey::F1), (b'Q', ConsoleKey::F2), (b'R', ConsoleKey::F3), (b'S', ConsoleKey::F4)]
+        {
             assert_eq!(single_key(&[0x1B, b'O', b]).key, expected);
         }
     }

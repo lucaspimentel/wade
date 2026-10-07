@@ -170,7 +170,16 @@ mod tests {
 
     #[test]
     fn ascii_column_maps_bytes() {
-        let cases = [(0x00, '.'), (0x01, '.'), (0x1f, '.'), (0x20, ' '), (0x41, 'A'), (0x7e, '~'), (0x7f, '.'), (0xff, '.')];
+        let cases = [
+            (0x00, '.'),
+            (0x01, '.'),
+            (0x1f, '.'),
+            (0x20, ' '),
+            (0x41, 'A'),
+            (0x7e, '~'),
+            (0x7f, '.'),
+            (0xff, '.'),
+        ];
 
         for (byte, expected) in cases {
             let lines = get_preview_lines(&hex_file(&[byte]), &CancelToken::new()).expect("lines");

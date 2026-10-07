@@ -65,15 +65,7 @@ impl Style {
 
 fn parse_color(token: &str) -> Option<Color> {
     let v: i32 = token.parse().expect("color component");
-    if v < 0 {
-        None
-    } else {
-        Some(Color {
-            r: v as u8,
-            g: 0,
-            b: 0,
-        })
-    }
+    if v < 0 { None } else { Some(Color { r: v as u8, g: 0, b: 0 }) }
 }
 
 fn parse_i32(token: &str) -> i32 {
@@ -134,10 +126,12 @@ fn run_scenario(path: &Path) -> Vec<String> {
                 }
             },
             "put" => {
-                buffer
-                    .as_mut()
-                    .expect("resize before put")
-                    .put(parse_i32(tokens[1]), parse_i32(tokens[2]), parse_char(tokens[3]), parse_style(&tokens[4..]).to_cell_style());
+                buffer.as_mut().expect("resize before put").put(
+                    parse_i32(tokens[1]),
+                    parse_i32(tokens[2]),
+                    parse_char(tokens[3]),
+                    parse_style(&tokens[4..]).to_cell_style(),
+                );
             }
             "string" => {
                 // C# WriteString's default is int.MaxValue
@@ -199,10 +193,7 @@ fn golden_frames_match_csharp_output() {
         let golden_path = scenario_path.with_extension("golden.txt");
         let actual = format_golden(&run_scenario(&scenario_path));
         let expected = normalize_lf(&std::fs::read_to_string(&golden_path).unwrap_or_else(|_| {
-            panic!(
-                "missing golden file {}; generate with the C# test and WADE_UPDATE_GOLDENS=1",
-                golden_path.display()
-            )
+            panic!("missing golden file {}; generate with the C# test and WADE_UPDATE_GOLDENS=1", golden_path.display())
         }));
         assert_eq!(expected, actual, "golden mismatch for {}", scenario_path.display());
         compared += 1;

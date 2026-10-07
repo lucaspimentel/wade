@@ -80,10 +80,8 @@ pub fn parse_app_exec_link_target(buffer: &[u8]) -> Option<String> {
         return None;
     }
 
-    let units: Vec<u16> = buffer[offset..end]
-        .chunks_exact(2)
-        .map(|pair| u16::from_le_bytes([pair[0], pair[1]]))
-        .collect();
+    let units: Vec<u16> =
+        buffer[offset..end].chunks_exact(2).map(|pair| u16::from_le_bytes([pair[0], pair[1]])).collect();
     Some(String::from_utf16_lossy(&units))
 }
 
@@ -105,9 +103,8 @@ fn find_null_terminator(buffer: &[u8], offset: usize) -> Option<usize> {
 mod windows {
     use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE};
     use windows_sys::Win32::Storage::FileSystem::{
-        CreateFileW, FileAttributeTagInfo, GetFileInformationByHandleEx, FILE_ATTRIBUTE_TAG_INFO,
-        FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT, FILE_SHARE_READ, FILE_SHARE_WRITE,
-        OPEN_EXISTING,
+        CreateFileW, FILE_ATTRIBUTE_TAG_INFO, FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT,
+        FILE_SHARE_READ, FILE_SHARE_WRITE, FileAttributeTagInfo, GetFileInformationByHandleEx, OPEN_EXISTING,
     };
     use windows_sys::Win32::System::IO::DeviceIoControl;
 
@@ -205,13 +202,9 @@ mod tests {
 
     #[test]
     fn is_junction_tag_returns_expected() {
-        for (tag, expected) in [
-            (0xA000_0003, true),
-            (0xA000_000C, false),
-            (0x8000_001B, false),
-            (0, false),
-            (0x8000_0017, false),
-        ] {
+        for (tag, expected) in
+            [(0xA000_0003, true), (0xA000_000C, false), (0x8000_001B, false), (0, false), (0x8000_0017, false)]
+        {
             assert_eq!(is_junction_tag(tag), expected, "{tag:#x}");
         }
     }

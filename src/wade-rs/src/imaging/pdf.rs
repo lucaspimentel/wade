@@ -35,9 +35,7 @@ pub fn can_convert(path: &str) -> bool {
 
 fn unique_temp_dir() -> PathBuf {
     static NEXT: AtomicU64 = AtomicU64::new(0);
-    let nanos = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| d.as_nanos());
+    let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_nanos());
     std::env::temp_dir().join(format!(
         "wade-pdf-{}-{nanos:x}-{}",
         std::process::id(),

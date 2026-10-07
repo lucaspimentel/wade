@@ -9,12 +9,7 @@ use crate::fs::directory_contents::SortMode;
 
 fn default_config_path() -> Option<PathBuf> {
     let home = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME"))?;
-    Some(
-        Path::new(&home)
-            .join(".config")
-            .join("wade")
-            .join("config.toml"),
-    )
+    Some(Path::new(&home).join(".config").join("wade").join("config.toml"))
 }
 
 /// The path `save_config` writes to: the `--config-file=` override when the
@@ -24,10 +19,7 @@ pub fn config_path(config: &AppConfig) -> PathBuf {
     config
         .config_file_path
         .as_ref()
-        .map_or_else(
-            || default_config_path().unwrap_or_else(|| PathBuf::from("config.toml")),
-            PathBuf::from,
-        )
+        .map_or_else(|| default_config_path().unwrap_or_else(|| PathBuf::from("config.toml")), PathBuf::from)
 }
 
 /// Port of `WadeConfig.Load`.
@@ -72,7 +64,9 @@ pub fn load_config(args: &[String]) -> AppConfig {
 
         match key {
             "show_icons_enabled" => config.show_icons_enabled = parse_bool(value, config.show_icons_enabled),
-            "image_previews_enabled" => config.image_previews_enabled = parse_bool(value, config.image_previews_enabled),
+            "image_previews_enabled" => {
+                config.image_previews_enabled = parse_bool(value, config.image_previews_enabled)
+            }
             "image_protocol" => {
                 if let Some(setting) = crate::imaging::ImageProtocolSetting::parse(value) {
                     config.image_protocol = setting;
@@ -86,27 +80,39 @@ pub fn load_config(args: &[String]) -> AppConfig {
                 }
             }
             "sort_ascending" => config.sort_ascending = parse_bool(value, config.sort_ascending),
-            "confirm_delete_enabled" => config.confirm_delete_enabled = parse_bool(value, config.confirm_delete_enabled),
+            "confirm_delete_enabled" => {
+                config.confirm_delete_enabled = parse_bool(value, config.confirm_delete_enabled)
+            }
             "parent_pane_enabled" => config.parent_pane_enabled = parse_bool(value, config.parent_pane_enabled),
             "preview_pane_enabled" => config.preview_pane_enabled = parse_bool(value, config.preview_pane_enabled),
             "size_column_enabled" => config.size_column_enabled = parse_bool(value, config.size_column_enabled),
             "date_column_enabled" => config.date_column_enabled = parse_bool(value, config.date_column_enabled),
-            "column_headers_enabled" => config.column_headers_enabled = parse_bool(value, config.column_headers_enabled),
+            "column_headers_enabled" => {
+                config.column_headers_enabled = parse_bool(value, config.column_headers_enabled)
+            }
             "copy_symlinks_as_links_enabled" => {
                 config.copy_symlinks_as_links_enabled = parse_bool(value, config.copy_symlinks_as_links_enabled);
             }
             "zip_preview_enabled" => config.zip_preview_enabled = parse_bool(value, config.zip_preview_enabled),
-            "terminal_title_enabled" => config.terminal_title_enabled = parse_bool(value, config.terminal_title_enabled),
+            "terminal_title_enabled" => {
+                config.terminal_title_enabled = parse_bool(value, config.terminal_title_enabled)
+            }
             "git_status_enabled" => config.git_status_enabled = parse_bool(value, config.git_status_enabled),
             "file_metadata_enabled" => config.file_metadata_enabled = parse_bool(value, config.file_metadata_enabled),
             "file_previews_enabled" => config.file_previews_enabled = parse_bool(value, config.file_previews_enabled),
-            "archive_metadata_enabled" => config.archive_metadata_enabled = parse_bool(value, config.archive_metadata_enabled),
+            "archive_metadata_enabled" => {
+                config.archive_metadata_enabled = parse_bool(value, config.archive_metadata_enabled)
+            }
             "dir_size_ssd_enabled" => config.dir_size_ssd_enabled = parse_bool(value, config.dir_size_ssd_enabled),
             "dir_size_hdd_enabled" => config.dir_size_hdd_enabled = parse_bool(value, config.dir_size_hdd_enabled),
-            "dir_size_network_enabled" => config.dir_size_network_enabled = parse_bool(value, config.dir_size_network_enabled),
+            "dir_size_network_enabled" => {
+                config.dir_size_network_enabled = parse_bool(value, config.dir_size_network_enabled)
+            }
             "pdf_preview_enabled" => config.pdf_preview_enabled = parse_bool(value, config.pdf_preview_enabled),
             "pdf_metadata_enabled" => config.pdf_metadata_enabled = parse_bool(value, config.pdf_metadata_enabled),
-            "markdown_preview_enabled" => config.markdown_preview_enabled = parse_bool(value, config.markdown_preview_enabled),
+            "markdown_preview_enabled" => {
+                config.markdown_preview_enabled = parse_bool(value, config.markdown_preview_enabled)
+            }
             "ffprobe_enabled" => config.ffprobe_enabled = parse_bool(value, config.ffprobe_enabled),
             "mediainfo_enabled" => config.mediainfo_enabled = parse_bool(value, config.mediainfo_enabled),
             "detail_columns_enabled" => {
@@ -162,7 +168,11 @@ pub fn apply_cli_args(config: &mut AppConfig, args: &[String]) {
 /// OS) while keeping a root (`/`, `C:\`).
 #[must_use]
 pub fn normalize_start_path(path: &str) -> String {
-    let expanded = if path.starts_with('~') { crate::fs::path_completion::expand_tilde(path) } else { path.to_string() };
+    let expanded = if path.starts_with('~') {
+        crate::fs::path_completion::expand_tilde(path)
+    } else {
+        path.to_string()
+    };
     let trimmed = expanded.trim_end_matches(['/', '\\']);
 
     if trimmed.is_empty() {
@@ -423,7 +433,8 @@ mediainfo_enabled = true
     fn disabled_tools_and_detail_columns_keys() {
         let config = config_with_path("legacy.toml");
         let path = config.config_file_path.clone().unwrap();
-        std::fs::write(&path, "disabled_tools = pdftopng, markdown_preview ,mediainfo\ndetail_columns_enabled = no\n").unwrap();
+        std::fs::write(&path, "disabled_tools = pdftopng, markdown_preview ,mediainfo\ndetail_columns_enabled = no\n")
+            .unwrap();
         let loaded = load_config(&[format!("--config-file={path}")]);
         assert!(!loaded.pdf_preview_enabled && !loaded.markdown_preview_enabled && !loaded.mediainfo_enabled);
         assert!(loaded.pdf_metadata_enabled && loaded.ffprobe_enabled);
@@ -433,7 +444,10 @@ mediainfo_enabled = true
 
     #[test]
     fn to_json_escapes_backslashes_only() {
-        let config = AppConfig { start_path: "C:\\a \"b\"".to_string(), ..AppConfig::default() };
+        let config = AppConfig {
+            start_path: "C:\\a \"b\"".to_string(),
+            ..AppConfig::default()
+        };
         let json = to_json(&config);
         assert!(json.starts_with("{\"show_icons_enabled\":true,"));
         assert!(json.contains("\"sort_mode\":\"name\","));
@@ -534,7 +548,11 @@ mediainfo_enabled = true
         ] {
             assert_eq!(load_text("sort", &format!("sort_mode = {text}\n")).sort_mode, expected, "{text}");
         }
-        assert_eq!(load_text("sort-bad", "sort_mode = size\nsort_mode = bogus\n").sort_mode, SortMode::Size, "invalid keeps the value");
+        assert_eq!(
+            load_text("sort-bad", "sort_mode = size\nsort_mode = bogus\n").sort_mode,
+            SortMode::Size,
+            "invalid keeps the value"
+        );
     }
 
     #[test]
@@ -558,7 +576,8 @@ mediainfo_enabled = true
     fn only_the_first_config_file_flag_counts() {
         let path = config_with_path("first.toml").config_file_path.unwrap();
         std::fs::write(&path, "show_hidden_files = true\n").unwrap();
-        let loaded = load_config(&[format!("--config-file={path}"), "--config-file=/nonexistent/second.toml".to_string()]);
+        let loaded =
+            load_config(&[format!("--config-file={path}"), "--config-file=/nonexistent/second.toml".to_string()]);
         assert!(loaded.show_hidden_files);
         let _ = std::fs::remove_file(&path);
     }
@@ -585,7 +604,11 @@ mediainfo_enabled = true
         let dir = std::env::temp_dir().join(format!("wade-config-dir-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let path = dir.join("nested").join("config.toml");
-        save_config(&AppConfig { config_file_path: Some(path.to_string_lossy().into_owned()), ..flipped }).unwrap();
+        save_config(&AppConfig {
+            config_file_path: Some(path.to_string_lossy().into_owned()),
+            ..flipped
+        })
+        .unwrap();
         assert!(path.exists(), "save creates the missing directory");
 
         let reloaded = load_config(&[format!("--config-file={}", path.display())]);
@@ -613,8 +636,16 @@ mediainfo_enabled = true
         assert_eq!(load("image_protocol = iterm\n"), Setting::Iterm);
         assert_eq!(load("image_protocol = iterm2\n"), Setting::Auto, "unknown values keep the default");
 
-        save_config(&AppConfig { image_protocol: Setting::Kitty, ..config.clone() }).unwrap();
-        assert!(std::fs::read_to_string(&path).unwrap().ends_with("mediainfo_enabled = true\nimage_protocol = kitty\n"));
+        save_config(&AppConfig {
+            image_protocol: Setting::Kitty,
+            ..config.clone()
+        })
+        .unwrap();
+        assert!(
+            std::fs::read_to_string(&path)
+                .unwrap()
+                .ends_with("mediainfo_enabled = true\nimage_protocol = kitty\n")
+        );
         assert_eq!(load(&std::fs::read_to_string(&path).unwrap()), Setting::Kitty);
 
         save_config(&config).unwrap();
@@ -625,7 +656,12 @@ mediainfo_enabled = true
 
     #[test]
     fn to_json_lists_every_key_in_order() {
-        let config = AppConfig { sort_mode: SortMode::Modified, show_hidden_files: true, start_path: "/x".to_string(), ..AppConfig::default() };
+        let config = AppConfig {
+            sort_mode: SortMode::Modified,
+            show_hidden_files: true,
+            start_path: "/x".to_string(),
+            ..AppConfig::default()
+        };
         let json = to_json(&config);
         let mut keys: Vec<&str> = bool_keys().iter().map(|(key, _, _)| *key).collect();
         keys.insert(4, "sort_mode");
@@ -634,7 +670,9 @@ mediainfo_enabled = true
         let expected_keys: Vec<String> = keys.iter().map(|key| format!("\"{key}\":")).collect();
         let mut position = 0;
         for key in &expected_keys {
-            let found = json[position..].find(key.as_str()).unwrap_or_else(|| panic!("{key} missing or out of order in {json}"));
+            let found = json[position..]
+                .find(key.as_str())
+                .unwrap_or_else(|| panic!("{key} missing or out of order in {json}"));
             position += found + key.len();
         }
         assert!(json.contains("\"show_hidden_files\":true,"));
@@ -681,7 +719,9 @@ mediainfo_enabled = true
 
     #[test]
     fn start_path_tilde_expands_to_home() {
-        let Some(home) = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")) else { return };
+        let Some(home) = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")) else {
+            return;
+        };
         let home = home.to_string_lossy().into_owned();
         for input in ["~", "~/Downloads", "~\\Downloads"] {
             let expanded = normalize_start_path(input);

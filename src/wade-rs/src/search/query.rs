@@ -166,10 +166,7 @@ mod tests {
             ("'src/Wade", "src/Wade", true),
             ("'all-lower-with-digits-123", "all-lower-with-digits-123", false),
         ] {
-            assert_eq!(
-                single(raw),
-                term(QueryMode::ExactSubstring, expected_text, expected_case_sensitive, false)
-            );
+            assert_eq!(single(raw), term(QueryMode::ExactSubstring, expected_text, expected_case_sensitive, false));
         }
     }
 

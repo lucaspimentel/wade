@@ -5,25 +5,19 @@ use crate::highlight::c_like::{base_try_match_string, end_triple_quote_string, m
 use crate::highlight::{StyledSpan, TokenKind};
 use crate::text::is_letter_or_digit;
 
-
 const KEYWORDS: &[&str] = &[
-    "abstract", "assert", "break", "case", "catch", "class", "const", "continue", "default",
-    "do", "else", "enum", "extends", "final", "finally", "for", "goto", "if", "implements",
-    "import", "instanceof", "interface", "native", "new", "package", "private", "protected",
-    "public", "record", "return", "sealed", "static", "strictfp", "super", "switch",
-    "synchronized", "this", "throw", "throws", "transient", "try", "var", "volatile", "while",
-    "yield",
+    "abstract", "assert", "break", "case", "catch", "class", "const", "continue", "default", "do", "else", "enum",
+    "extends", "final", "finally", "for", "goto", "if", "implements", "import", "instanceof", "interface", "native",
+    "new", "package", "private", "protected", "public", "record", "return", "sealed", "static", "strictfp", "super",
+    "switch", "synchronized", "this", "throw", "throws", "transient", "try", "var", "volatile", "while", "yield",
 ];
 
-const CONSTANTS: &[&str] = &[
-    "true", "false", "null",
-];
+const CONSTANTS: &[&str] = &["true", "false", "null"];
 
 const BUILTINS: &[&str] = &[
-    "boolean", "byte", "char", "double", "float", "int", "long", "short", "void", "String",
-    "Object", "Integer", "Long", "Double", "Float", "Boolean", "Character", "Byte", "Short",
-    "Number", "System", "Math", "Arrays", "Collections", "List", "Map", "Set", "ArrayList",
-    "HashMap", "HashSet", "Optional",
+    "boolean", "byte", "char", "double", "float", "int", "long", "short", "void", "String", "Object", "Integer",
+    "Long", "Double", "Float", "Boolean", "Character", "Byte", "Short", "Number", "System", "Math", "Arrays",
+    "Collections", "List", "Map", "Set", "ArrayList", "HashMap", "HashSet", "Optional",
 ];
 
 pub struct JavaLanguage;
@@ -63,7 +57,13 @@ impl CLikeLanguage for JavaLanguage {
         0
     }
 
-    fn try_match_string(&self, line: &[char], pos: usize, spans: &mut Vec<StyledSpan>, state: &mut u8) -> Option<usize> {
+    fn try_match_string(
+        &self,
+        line: &[char],
+        pos: usize,
+        spans: &mut Vec<StyledSpan>,
+        state: &mut u8,
+    ) -> Option<usize> {
         // Text blocks: """...""" (multi-line)
         if let Some(end) = match_triple_quote_string(line, pos, spans, state) {
             return Some(end);

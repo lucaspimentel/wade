@@ -7,8 +7,8 @@
 
 use windows_sys::Win32::Foundation::HANDLE;
 use windows_sys::Win32::System::Console::{
-    GetConsoleCP, GetConsoleMode, GetConsoleOutputCP, GetStdHandle, SetConsoleCP, SetConsoleMode, SetConsoleOutputCP,
-    CONSOLE_MODE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
+    CONSOLE_MODE, GetConsoleCP, GetConsoleMode, GetConsoleOutputCP, GetStdHandle, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
+    SetConsoleCP, SetConsoleMode, SetConsoleOutputCP,
 };
 
 const CP_UTF8: u32 = 65001;
@@ -62,9 +62,7 @@ impl TerminalSetup {
             // Enable VT processing on output
             SetConsoleMode(
                 stdout_handle,
-                original_output_mode
-                    | ENABLE_VIRTUAL_TERMINAL_PROCESSING
-                    | DISABLE_NEWLINE_AUTO_RETURN,
+                original_output_mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING | DISABLE_NEWLINE_AUTO_RETURN,
             );
 
             // Disable line input and echo for raw mode, but do NOT enable

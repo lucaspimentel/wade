@@ -223,7 +223,8 @@ fn read_exif(path: &str) -> Option<Vec<MetadataEntry>> {
     }
 
     if let (Some(lat), Some(lon)) = (rationals(Tag::GPSLatitude), rationals(Tag::GPSLongitude))
-        && let Some(gps) = format_gps(&lat, &lon, string(Tag::GPSLatitudeRef).as_deref(), string(Tag::GPSLongitudeRef).as_deref())
+        && let Some(gps) =
+            format_gps(&lat, &lon, string(Tag::GPSLatitudeRef).as_deref(), string(Tag::GPSLongitudeRef).as_deref())
     {
         entries.push(MetadataEntry::new("GPS", &gps));
     }
@@ -249,7 +250,10 @@ pub fn format_camera(make: Option<&str>, model: Option<&str>) -> Option<String> 
         (None, Some(model)) => Some(model.to_string()),
         (Some(make), None) => Some(make.to_string()),
         (Some(make), Some(model)) => {
-            if model.len() >= make.len() && model.is_char_boundary(make.len()) && model[..make.len()].eq_ignore_ascii_case(make) {
+            if model.len() >= make.len()
+                && model.is_char_boundary(make.len())
+                && model[..make.len()].eq_ignore_ascii_case(make)
+            {
                 Some(model.to_string())
             } else {
                 Some(format!("{make} {model}"))
@@ -309,9 +313,9 @@ mod tests {
     use exif::experimental::Writer;
     use exif::{Field, In, Rational, Tag, Value};
 
-    use super::{format_camera, format_exposure, format_gps, ImageMetadataProvider};
+    use super::{ImageMetadataProvider, format_camera, format_exposure, format_gps};
     use crate::input::CancelToken;
-    use crate::preview::{registry, test_context, test_path, MetadataProvider, MetadataResult};
+    use crate::preview::{MetadataProvider, MetadataResult, registry, test_context, test_path};
 
     fn entries(result: &MetadataResult, header: &str) -> Vec<(String, String)> {
         result
@@ -355,10 +359,16 @@ mod tests {
     fn invalid_image_returns_none_and_registry_lists_provider() {
         let path = test_path("broken.png");
         std::fs::write(&path, b"not a png").unwrap();
-        assert!(ImageMetadataProvider.get_metadata(&path.to_string_lossy(), &test_context(), &CancelToken::new()).is_none());
+        assert!(
+            ImageMetadataProvider
+                .get_metadata(&path.to_string_lossy(), &test_context(), &CancelToken::new())
+                .is_none()
+        );
 
-        let labels: Vec<&str> =
-            registry::applicable_metadata_providers("photo.png", &test_context()).iter().map(|p| p.label()).collect();
+        let labels: Vec<&str> = registry::applicable_metadata_providers("photo.png", &test_context())
+            .iter()
+            .map(|p| p.label())
+            .collect();
         assert_eq!(labels, ["File info", "Image"]);
     }
 
@@ -367,7 +377,8 @@ mod tests {
         let path = test_path("anim.gif");
         let file = std::fs::File::create(&path).unwrap();
         let mut encoder = image::codecs::gif::GifEncoder::new(file);
-        let frames = (0..3).map(|i| image::Frame::new(image::RgbaImage::from_pixel(4, 4, image::Rgba([i * 80, 0, 0, 255]))));
+        let frames =
+            (0..3).map(|i| image::Frame::new(image::RgbaImage::from_pixel(4, 4, image::Rgba([i * 80, 0, 0, 255]))));
         encoder.encode_frames(frames).unwrap();
         drop(encoder);
 
@@ -469,7 +480,10 @@ mod tests {
         assert_eq!(format_exposure(Some((0, 1)), None, Some(100)).as_deref(), Some("ISO 100"));
         assert_eq!(format_exposure(None, None, None), None);
 
-        assert_eq!(format_gps(&[1.0, 30.0, 0.0], &[2.0, 0.0, 0.0], Some("S"), Some("E")).as_deref(), Some("-1.500000, 2.000000"));
+        assert_eq!(
+            format_gps(&[1.0, 30.0, 0.0], &[2.0, 0.0, 0.0], Some("S"), Some("E")).as_deref(),
+            Some("-1.500000, 2.000000")
+        );
         assert_eq!(format_gps(&[1.0, 2.0], &[2.0, 0.0, 0.0], None, None), None);
     }
 }

@@ -4,23 +4,19 @@ use crate::highlight::c_like::CLikeLanguage;
 use crate::highlight::c_like::base_try_match_string;
 use crate::highlight::{StyledSpan, TokenKind};
 
-
 const KEYWORDS: &[&str] = &[
-    "as", "async", "await", "break", "const", "continue", "crate", "dyn", "else", "enum",
-    "extern", "false", "fn", "for", "if", "impl", "in", "let", "loop", "match", "mod", "move",
-    "mut", "pub", "ref", "return", "self", "Self", "static", "struct", "super", "trait", "true",
-    "type", "union", "unsafe", "use", "where", "while", "yield",
+    "as", "async", "await", "break", "const", "continue", "crate", "dyn", "else", "enum", "extern", "false", "fn",
+    "for", "if", "impl", "in", "let", "loop", "match", "mod", "move", "mut", "pub", "ref", "return", "self", "Self",
+    "static", "struct", "super", "trait", "true", "type", "union", "unsafe", "use", "where", "while", "yield",
 ];
 
-const CONSTANTS: &[&str] = &[
-    "true", "false", "None", "Some", "Ok", "Err",
-];
+const CONSTANTS: &[&str] = &["true", "false", "None", "Some", "Ok", "Err"];
 
 const BUILTINS: &[&str] = &[
-    "bool", "char", "f32", "f64", "i8", "i16", "i32", "i64", "i128", "isize", "str", "u8",
-    "u16", "u32", "u64", "u128", "usize", "Box", "String", "Vec", "Option", "Result", "HashMap",
-    "HashSet", "println", "print", "eprintln", "eprint", "panic", "assert", "assert_eq",
-    "assert_ne", "todo", "unimplemented", "unreachable", "format", "write", "writeln",
+    "bool", "char", "f32", "f64", "i8", "i16", "i32", "i64", "i128", "isize", "str", "u8", "u16", "u32", "u64", "u128",
+    "usize", "Box", "String", "Vec", "Option", "Result", "HashMap", "HashSet", "println", "print", "eprintln",
+    "eprint", "panic", "assert", "assert_eq", "assert_ne", "todo", "unimplemented", "unreachable", "format", "write",
+    "writeln",
 ];
 
 pub struct RustLanguage;
@@ -73,7 +69,13 @@ impl CLikeLanguage for RustLanguage {
         0
     }
 
-    fn try_match_string(&self, line: &[char], pos: usize, spans: &mut Vec<StyledSpan>, _state: &mut u8) -> Option<usize> {
+    fn try_match_string(
+        &self,
+        line: &[char],
+        pos: usize,
+        spans: &mut Vec<StyledSpan>,
+        _state: &mut u8,
+    ) -> Option<usize> {
         // Char literals ('x', '\n') but not lifetimes ('a in &'a str)
         if line[pos] == '\'' {
             if pos + 1 < line.len() && line[pos + 1] != '\\' {

@@ -5,9 +5,8 @@ pub mod config_dialog;
 pub mod context_menu;
 pub mod dialog_box;
 pub mod file_icons;
-pub mod help_overlay;
-pub mod text_input;
 pub mod format_helpers;
+pub mod help_overlay;
 pub mod layout;
 pub mod metadata_renderer;
 pub mod notification;
@@ -15,10 +14,10 @@ pub mod pane_renderer;
 pub mod progress_overlay;
 pub mod properties_overlay;
 pub mod status_bar;
+pub mod text_input;
 
 pub use layout::{Layout, Rect};
 pub use notification::{Notification, NotificationKind};
-
 
 // Shared palette, mirroring PaneRenderer's private constants (used by
 // StatusBar as well).

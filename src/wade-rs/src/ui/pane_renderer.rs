@@ -43,7 +43,15 @@ fn color(rgb: (u8, u8, u8)) -> Color {
 }
 
 fn style(fg: (u8, u8, u8), bg: Option<(u8, u8, u8)>) -> CellStyle {
-    CellStyle { fg: Some(color(fg)), bg: bg.map(color), bold: false, dim: false, inverse: false, underline: false, strikethrough: false }
+    CellStyle {
+        fg: Some(color(fg)),
+        bg: bg.map(color),
+        bold: false,
+        dim: false,
+        inverse: false,
+        underline: false,
+        strikethrough: false,
+    }
 }
 
 fn cell_style(fg: Option<(u8, u8, u8)>, bg: Option<(u8, u8, u8)>, bold: bool) -> CellStyle {
@@ -77,14 +85,27 @@ fn clamp(v: i32, min: i32, max: i32) -> i32 {
     v.max(min).min(max)
 }
 
-fn compute_column_layout(pane_width: i32, show_size: bool, show_date: bool, is_drive_view: bool, has_status_col: bool) -> ColumnLayout {
+fn compute_column_layout(
+    pane_width: i32,
+    show_size: bool,
+    show_date: bool,
+    is_drive_view: bool,
+    has_status_col: bool,
+) -> ColumnLayout {
     let mut c = ColumnLayout::default();
 
     if is_drive_view {
         let min_name = 8;
         let bar_col = DRIVE_BAR_MIN_WIDTH + GAP_WIDTH;
-        let fixed_with_label = DRIVE_LABEL_WIDTH + GAP_WIDTH + DRIVE_FORMAT_WIDTH + GAP_WIDTH
-            + SIZE_WIDTH + GAP_WIDTH + SIZE_WIDTH + GAP_WIDTH + bar_col;
+        let fixed_with_label = DRIVE_LABEL_WIDTH
+            + GAP_WIDTH
+            + DRIVE_FORMAT_WIDTH
+            + GAP_WIDTH
+            + SIZE_WIDTH
+            + GAP_WIDTH
+            + SIZE_WIDTH
+            + GAP_WIDTH
+            + bar_col;
         let fixed_full = DRIVE_FORMAT_WIDTH + GAP_WIDTH + SIZE_WIDTH + GAP_WIDTH + SIZE_WIDTH + GAP_WIDTH + bar_col;
         let fixed_medium = SIZE_WIDTH + GAP_WIDTH + SIZE_WIDTH + GAP_WIDTH + bar_col;
         let fixed_narrow = SIZE_WIDTH + GAP_WIDTH + bar_col;
@@ -95,28 +116,55 @@ fn compute_column_layout(pane_width: i32, show_size: bool, show_date: bool, is_d
             c.drive_free_width = SIZE_WIDTH;
             c.drive_size_width = SIZE_WIDTH;
             c.drive_bar_width = clamp(
-                pane_width - min_name - DRIVE_LABEL_WIDTH - GAP_WIDTH
-                    - DRIVE_FORMAT_WIDTH - GAP_WIDTH - SIZE_WIDTH - GAP_WIDTH
-                    - SIZE_WIDTH - GAP_WIDTH - GAP_WIDTH,
+                pane_width
+                    - min_name
+                    - DRIVE_LABEL_WIDTH
+                    - GAP_WIDTH
+                    - DRIVE_FORMAT_WIDTH
+                    - GAP_WIDTH
+                    - SIZE_WIDTH
+                    - GAP_WIDTH
+                    - SIZE_WIDTH
+                    - GAP_WIDTH
+                    - GAP_WIDTH,
                 DRIVE_BAR_MIN_WIDTH,
                 30,
             );
-            c.detail_width = c.drive_label_width + GAP_WIDTH + c.drive_format_width + GAP_WIDTH
-                + c.drive_free_width + GAP_WIDTH + c.drive_size_width + GAP_WIDTH
-                + c.drive_bar_width + GAP_WIDTH;
+            c.detail_width = c.drive_label_width
+                + GAP_WIDTH
+                + c.drive_format_width
+                + GAP_WIDTH
+                + c.drive_free_width
+                + GAP_WIDTH
+                + c.drive_size_width
+                + GAP_WIDTH
+                + c.drive_bar_width
+                + GAP_WIDTH;
         } else if pane_width >= min_name + fixed_full {
             c.drive_format_width = DRIVE_FORMAT_WIDTH;
             c.drive_free_width = SIZE_WIDTH;
             c.drive_size_width = SIZE_WIDTH;
             c.drive_bar_width = clamp(
-                pane_width - min_name - DRIVE_FORMAT_WIDTH - GAP_WIDTH
-                    - SIZE_WIDTH - GAP_WIDTH - SIZE_WIDTH - GAP_WIDTH - GAP_WIDTH,
+                pane_width
+                    - min_name
+                    - DRIVE_FORMAT_WIDTH
+                    - GAP_WIDTH
+                    - SIZE_WIDTH
+                    - GAP_WIDTH
+                    - SIZE_WIDTH
+                    - GAP_WIDTH
+                    - GAP_WIDTH,
                 DRIVE_BAR_MIN_WIDTH,
                 30,
             );
-            c.detail_width = c.drive_format_width + GAP_WIDTH
-                + c.drive_free_width + GAP_WIDTH + c.drive_size_width + GAP_WIDTH
-                + c.drive_bar_width + GAP_WIDTH;
+            c.detail_width = c.drive_format_width
+                + GAP_WIDTH
+                + c.drive_free_width
+                + GAP_WIDTH
+                + c.drive_size_width
+                + GAP_WIDTH
+                + c.drive_bar_width
+                + GAP_WIDTH;
         } else if pane_width >= min_name + fixed_medium {
             c.drive_free_width = SIZE_WIDTH;
             c.drive_size_width = SIZE_WIDTH;
@@ -125,14 +173,12 @@ fn compute_column_layout(pane_width: i32, show_size: bool, show_date: bool, is_d
                 DRIVE_BAR_MIN_WIDTH,
                 30,
             );
-            c.detail_width = c.drive_free_width + GAP_WIDTH + c.drive_size_width + GAP_WIDTH + c.drive_bar_width + GAP_WIDTH;
+            c.detail_width =
+                c.drive_free_width + GAP_WIDTH + c.drive_size_width + GAP_WIDTH + c.drive_bar_width + GAP_WIDTH;
         } else if pane_width >= min_name + fixed_narrow {
             c.drive_size_width = SIZE_WIDTH;
-            c.drive_bar_width = clamp(
-                pane_width - min_name - SIZE_WIDTH - GAP_WIDTH - GAP_WIDTH,
-                DRIVE_BAR_MIN_WIDTH,
-                30,
-            );
+            c.drive_bar_width =
+                clamp(pane_width - min_name - SIZE_WIDTH - GAP_WIDTH - GAP_WIDTH, DRIVE_BAR_MIN_WIDTH, 30);
             c.detail_width = c.drive_size_width + GAP_WIDTH + c.drive_bar_width + GAP_WIDTH;
         } else if pane_width >= min_name + bar_col {
             c.drive_bar_width = clamp(pane_width - min_name - GAP_WIDTH, DRIVE_BAR_MIN_WIDTH, 30);
@@ -209,7 +255,13 @@ impl PaneRenderer {
                     let label = "% Full";
                     let label_start = (layout.drive_bar_width - i32::try_from(label.len()).unwrap_or(0)) / 2;
                     if label_start >= 0 {
-                        buffer.write_string(row, detail_col + GAP_WIDTH + label_start, label, header_style, i64::try_from(label.len()).unwrap_or(0));
+                        buffer.write_string(
+                            row,
+                            detail_col + GAP_WIDTH + label_start,
+                            label,
+                            header_style,
+                            i64::try_from(label.len()).unwrap_or(0),
+                        );
                     }
                 }
 
@@ -239,7 +291,9 @@ impl PaneRenderer {
                     buffer.write_string(row, detail_col + GAP_WIDTH + offset, "Date", header_style, 4);
                 }
 
-                if show_size && layout.detail_width > (if layout.date_width > 0 { layout.date_width + GAP_WIDTH } else { 0 }) {
+                if show_size
+                    && layout.detail_width > (if layout.date_width > 0 { layout.date_width + GAP_WIDTH } else { 0 })
+                {
                     detail_col -= GAP_WIDTH + SIZE_WIDTH;
                     buffer.write_string(row, detail_col + GAP_WIDTH + (SIZE_WIDTH - 4), "Size", header_style, 4);
                 }
@@ -326,7 +380,11 @@ impl PaneRenderer {
             } else if is_marked && entry.is_cloud_placeholder {
                 marked_cloud_style
             } else if is_marked {
-                get_marked_git_style(git_status, entry.is_directory).unwrap_or(if entry.is_directory { marked_dir_style } else { marked_style })
+                get_marked_git_style(git_status, entry.is_directory).unwrap_or(if entry.is_directory {
+                    marked_dir_style
+                } else {
+                    marked_style
+                })
             } else if entry.is_broken_symlink {
                 broken_symlink_style
             } else if entry.is_symlink() {
@@ -334,7 +392,11 @@ impl PaneRenderer {
             } else if entry.is_cloud_placeholder {
                 if entry.is_directory { cloud_dir_style } else { cloud_file_style }
             } else {
-                get_git_style(git_status, entry.is_directory).unwrap_or(if entry.is_directory { dir_style } else { file_style })
+                get_git_style(git_status, entry.is_directory).unwrap_or(if entry.is_directory {
+                    dir_style
+                } else {
+                    file_style
+                })
             };
 
             let detail_style = if is_selected || is_marked { style } else { detail_style_default };
@@ -358,7 +420,13 @@ impl PaneRenderer {
                 let max_name = name_width - name_start;
                 let name_len = (i32::try_from(entry.name.len()).unwrap_or(i32::MAX)).min(max_name);
                 if i32::try_from(entry.name.len()).unwrap_or(i32::MAX) > max_name && max_name >= 2 {
-                    buffer.write_string(screen_row, entry_col + name_start, &entry.name, style, i64::from(max_name - 1));
+                    buffer.write_string(
+                        screen_row,
+                        entry_col + name_start,
+                        &entry.name,
+                        style,
+                        i64::from(max_name - 1),
+                    );
                     buffer.put(screen_row, entry_col + name_start + max_name - 1, '\u{2026}', style);
                 } else {
                     buffer.write_string(screen_row, entry_col + name_start, &entry.name, style, i64::from(max_name));
@@ -393,7 +461,13 @@ impl PaneRenderer {
                 let mut remaining = name_width - name_chars_used;
                 if remaining > 4 {
                     // need room for at least " → X"
-                    let suffix_style = if is_selected { style } else if entry.is_broken_symlink { broken_symlink_style } else { detail_style_default };
+                    let suffix_style = if is_selected {
+                        style
+                    } else if entry.is_broken_symlink {
+                        broken_symlink_style
+                    } else {
+                        detail_style_default
+                    };
                     let arrow = " \u{2192} ";
                     let suffix_col = entry_col + name_chars_used;
                     buffer.write_string(screen_row, suffix_col, arrow, suffix_style, i64::from(remaining));
@@ -401,10 +475,27 @@ impl PaneRenderer {
                     if remaining > 0 {
                         let target_len = i32::try_from(link_target.chars().count()).unwrap_or(i32::MAX);
                         if target_len > remaining && remaining >= 2 {
-                            buffer.write_string(screen_row, suffix_col + i32::try_from(arrow.chars().count()).unwrap_or(0), link_target, suffix_style, i64::from(remaining - 1));
-                            buffer.put(screen_row, suffix_col + i32::try_from(arrow.chars().count()).unwrap_or(0) + remaining - 1, '\u{2026}', suffix_style);
+                            buffer.write_string(
+                                screen_row,
+                                suffix_col + i32::try_from(arrow.chars().count()).unwrap_or(0),
+                                link_target,
+                                suffix_style,
+                                i64::from(remaining - 1),
+                            );
+                            buffer.put(
+                                screen_row,
+                                suffix_col + i32::try_from(arrow.chars().count()).unwrap_or(0) + remaining - 1,
+                                '\u{2026}',
+                                suffix_style,
+                            );
                         } else {
-                            buffer.write_string(screen_row, suffix_col + i32::try_from(arrow.chars().count()).unwrap_or(0), link_target, suffix_style, i64::from(remaining));
+                            buffer.write_string(
+                                screen_row,
+                                suffix_col + i32::try_from(arrow.chars().count()).unwrap_or(0),
+                                link_target,
+                                suffix_style,
+                                i64::from(remaining),
+                            );
                         }
                     }
                 }
@@ -421,7 +512,11 @@ impl PaneRenderer {
                     let cloud_icon_style = if is_selected {
                         style
                     } else {
-                        cell_style(Some(ui::CLOUD_PLACEHOLDER_COLOR), if is_marked { Some(ui::MARKED_BG) } else { None }, false)
+                        cell_style(
+                            Some(ui::CLOUD_PLACEHOLDER_COLOR),
+                            if is_marked { Some(ui::MARKED_BG) } else { None },
+                            false,
+                        )
                     };
                     buffer.put(screen_row, entry_col + name_width, file_icons::get_cloud_icon(), cloud_icon_style);
                 }
@@ -437,7 +532,8 @@ impl PaneRenderer {
                         detail_col -= GAP_WIDTH + drive_bar_width;
 
                         if entry.drive_total_size > 0 {
-                            let fraction = (entry.drive_total_size - entry.drive_free_space) as f64 / entry.drive_total_size as f64;
+                            let fraction = (entry.drive_total_size - entry.drive_free_space) as f64
+                                / entry.drive_total_size as f64;
 
                             // Reserve first char as a spacer so the bar doesn't
                             // blend with the selection background color.
@@ -463,7 +559,11 @@ impl PaneRenderer {
                                 let is_filled = c < bar.filled_count;
 
                                 let char_style = if is_label {
-                                    cell_style(Some((0, 0, 0)), Some(if is_filled { bar_color } else { DRIVE_BAR_EMPTY }), false)
+                                    cell_style(
+                                        Some((0, 0, 0)),
+                                        Some(if is_filled { bar_color } else { DRIVE_BAR_EMPTY }),
+                                        false,
+                                    )
                                 } else if is_filled {
                                     cell_style(Some(bar_color), None, false)
                                 } else {
@@ -489,7 +589,13 @@ impl PaneRenderer {
                                 }
                             }
 
-                            buffer.write_string(screen_row, detail_col + GAP_WIDTH, &size_buf.iter().collect::<String>(), detail_style, i64::from(SIZE_WIDTH));
+                            buffer.write_string(
+                                screen_row,
+                                detail_col + GAP_WIDTH,
+                                &size_buf.iter().collect::<String>(),
+                                detail_style,
+                                i64::from(SIZE_WIDTH),
+                            );
                         }
                     }
 
@@ -507,7 +613,13 @@ impl PaneRenderer {
                                 }
                             }
 
-                            buffer.write_string(screen_row, detail_col + GAP_WIDTH, &size_buf.iter().collect::<String>(), detail_style, i64::from(SIZE_WIDTH));
+                            buffer.write_string(
+                                screen_row,
+                                detail_col + GAP_WIDTH,
+                                &size_buf.iter().collect::<String>(),
+                                detail_style,
+                                i64::from(SIZE_WIDTH),
+                            );
                         }
                     }
 
@@ -517,7 +629,13 @@ impl PaneRenderer {
 
                         if let Some(fmt) = &entry.drive_format {
                             let fmt_len = fmt.len().min(drive_format_width as usize);
-                            buffer.write_string(screen_row, detail_col + GAP_WIDTH, &fmt[..fmt_len], detail_style, i64::try_from(fmt_len).unwrap_or(0));
+                            buffer.write_string(
+                                screen_row,
+                                detail_col + GAP_WIDTH,
+                                &fmt[..fmt_len],
+                                detail_style,
+                                i64::try_from(fmt_len).unwrap_or(0),
+                            );
                         }
                     }
 
@@ -527,7 +645,13 @@ impl PaneRenderer {
 
                         if let Some(label) = &entry.drive_label {
                             let lbl_len = label.len().min(drive_label_width as usize);
-                            buffer.write_string(screen_row, detail_col + GAP_WIDTH, &label[..lbl_len], detail_style, i64::try_from(lbl_len).unwrap_or(0));
+                            buffer.write_string(
+                                screen_row,
+                                detail_col + GAP_WIDTH,
+                                &label[..lbl_len],
+                                detail_style,
+                                i64::try_from(lbl_len).unwrap_or(0),
+                            );
                         }
                     }
                 } else {
@@ -536,7 +660,13 @@ impl PaneRenderer {
                         detail_col -= GAP_WIDTH + date_width;
                         let mut date_buf = vec![' '; FULL_DATE_WIDTH as usize];
                         let date_len = format_date(&mut date_buf, entry.last_modified, date_width as usize);
-                        buffer.write_string(screen_row, detail_col + GAP_WIDTH, &date_buf[..date_len].iter().collect::<String>(), detail_style, i64::from(date_width));
+                        buffer.write_string(
+                            screen_row,
+                            detail_col + GAP_WIDTH,
+                            &date_buf[..date_len].iter().collect::<String>(),
+                            detail_style,
+                            i64::from(date_width),
+                        );
                     }
 
                     // Size column
@@ -558,13 +688,25 @@ impl PaneRenderer {
                                 }
                             }
 
-                            buffer.write_string(screen_row, detail_col + GAP_WIDTH, &size_buf.iter().collect::<String>(), detail_style, i64::from(SIZE_WIDTH));
+                            buffer.write_string(
+                                screen_row,
+                                detail_col + GAP_WIDTH,
+                                &size_buf.iter().collect::<String>(),
+                                detail_style,
+                                i64::from(SIZE_WIDTH),
+                            );
                         } else if entry.is_directory && dir_sizes.is_some() {
                             // Directory size is loading — show indicator right-aligned
                             let mut size_buf = vec![' '; SIZE_WIDTH as usize];
                             let last = SIZE_WIDTH as usize - 1;
                             size_buf[last] = '\u{2026}';
-                            buffer.write_string(screen_row, detail_col + GAP_WIDTH, &size_buf.iter().collect::<String>(), detail_style, i64::from(SIZE_WIDTH));
+                            buffer.write_string(
+                                screen_row,
+                                detail_col + GAP_WIDTH,
+                                &size_buf.iter().collect::<String>(),
+                                detail_style,
+                                i64::from(SIZE_WIDTH),
+                            );
                         }
                     }
                 }
@@ -610,11 +752,33 @@ impl PaneRenderer {
             let content_width = pane.width - line_num_width;
 
             if let Some(char_styles) = &styled_line.char_styles {
-                Self::render_per_char_content(buffer, pane.top + row, content_col, content_width, &styled_line.text, char_styles, default_style);
+                Self::render_per_char_content(
+                    buffer,
+                    pane.top + row,
+                    content_col,
+                    content_width,
+                    &styled_line.text,
+                    char_styles,
+                    default_style,
+                );
             } else if let Some(spans) = styled_line.spans.as_ref().filter(|spans| !spans.is_empty()) {
-                Self::render_styled_content(buffer, pane.top + row, content_col, content_width, &styled_line.text, spans, default_style);
+                Self::render_styled_content(
+                    buffer,
+                    pane.top + row,
+                    content_col,
+                    content_width,
+                    &styled_line.text,
+                    spans,
+                    default_style,
+                );
             } else {
-                buffer.write_string(pane.top + row, content_col, &styled_line.text, default_style, i64::from(content_width));
+                buffer.write_string(
+                    pane.top + row,
+                    content_col,
+                    &styled_line.text,
+                    default_style,
+                    i64::from(content_width),
+                );
             }
         }
     }
@@ -693,7 +857,13 @@ impl PaneRenderer {
     }
 
     /// Port of `RenderBorders`.
-    pub fn render_borders(buffer: &mut ScreenBuffer, layout: &Layout, _terminal_height: i32, preview_pane_enabled: bool, parent_pane_enabled: bool) {
+    pub fn render_borders(
+        buffer: &mut ScreenBuffer,
+        layout: &Layout,
+        _terminal_height: i32,
+        preview_pane_enabled: bool,
+        parent_pane_enabled: bool,
+    ) {
         let style = style(ui::BORDER_COLOR, None);
         // Rust: the pane rows (below the tab bar when it is shown)
         let rows = layout.center_pane.top..layout.center_pane.top + layout.center_pane.height;
@@ -776,4 +946,3 @@ fn get_git_icon_style(status: GitFileStatus, is_marked: bool) -> CellStyle {
         cell_style(Some(ui::FILE_COLOR), bg, false)
     }
 }
-

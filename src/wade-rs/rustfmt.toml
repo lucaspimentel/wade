@@ -1,0 +1,10 @@
+# Tuned to stay close to the hand formatting the port started with.
+max_width = 120
+fn_call_width = 120
+attr_fn_like_width = 120
+array_width = 100
+chain_width = 100
+struct_lit_width = 40
+single_line_if_else_max_width = 80
+single_line_let_else_max_width = 80
+short_array_element_width_threshold = 20
