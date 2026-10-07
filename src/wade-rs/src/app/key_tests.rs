@@ -1293,14 +1293,15 @@ fn switching_tabs_from_search_mode_keeps_the_filter() {
 
 // --- Expanded preview -------------------------------------------------------
 
-#[test]
-fn enter_opens_the_full_screen_preview_with_the_right_pane_hidden() {
+/// Enter, Right arrow and `l` all map to Open: each opens the full-screen
+/// preview with the right pane hidden, for whichever file is selected.
+fn opens_the_full_screen_preview_with_the_right_pane_hidden(open: crate::input::KeyEvent) {
     let (mut app, parent, _) = app();
     app.dispatch(AppAction::TogglePreviewPane);
     assert!(!app.preview_pane_enabled);
 
     select(&mut app, "readme.md");
-    press(&mut app, key(K::Enter));
+    press(&mut app, open);
     assert_eq!(app.input_mode, InputMode::ExpandedPreview);
     pump_until(&mut app, "the readme preview", |app| app.preview.cached_styled_lines.is_some());
     assert!(frame_has(&mut app, "Title"));
@@ -1313,12 +1314,27 @@ fn enter_opens_the_full_screen_preview_with_the_right_pane_hidden() {
 
     // The next file gets its own preview, not the readme's
     select(&mut app, "a.txt");
-    press(&mut app, key(K::Enter));
+    press(&mut app, open);
     assert_eq!(app.input_mode, InputMode::ExpandedPreview);
     pump_until(&mut app, "the a.txt preview", |app| app.preview.cached_styled_lines.is_some());
     assert!(frame_has(&mut app, "aaaaaaaaaa"));
     assert!(!frame_has(&mut app, "Title"));
     let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn enter_opens_the_full_screen_preview_with_the_right_pane_hidden() {
+    opens_the_full_screen_preview_with_the_right_pane_hidden(key(K::Enter));
+}
+
+#[test]
+fn right_arrow_opens_the_full_screen_preview_with_the_right_pane_hidden() {
+    opens_the_full_screen_preview_with_the_right_pane_hidden(key(K::RightArrow));
+}
+
+#[test]
+fn l_opens_the_full_screen_preview_with_the_right_pane_hidden() {
+    opens_the_full_screen_preview_with_the_right_pane_hidden(ch('l'));
 }
 
 #[test]
