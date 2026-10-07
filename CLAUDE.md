@@ -13,7 +13,7 @@ dotnet run --project src/Wade [path]
 ## Rust port
 
 - A Rust port lives in `src/wade-rs`. Deviations from C# go in `src/wade-rs/KNOWN_DEVIATIONS.md`; plan and status are in `docs/rust-port-plan.md`. Rust does not have to match C# where a Rust-idiomatic choice differs (e.g. extension sort case folding, stable vs unstable sort ties).
-- Validate Rust changes (in `src/wade-rs`) with `cargo test`, `cargo clippy --all-targets` and `cargo clippy --all-targets --target x86_64-pc-windows-gnu` (compiles `cfg(windows)` code; nothing runs). Don't run tests under Wine: CI's `rust (windows-latest)` job runs `cargo test --locked` on real Windows, so wait for the CI workflow's jobs after pushing.
+- Validate Rust changes (in `src/wade-rs`) with `cargo fmt` (config in `src/wade-rs/rustfmt.toml`; CI runs `cargo fmt --check`), `cargo test`, `cargo clippy --all-targets` and `cargo clippy --all-targets --target x86_64-pc-windows-gnu` (compiles `cfg(windows)` code; nothing runs). Don't run tests under Wine: CI's `rust (windows-latest)` job runs `cargo test --locked` on real Windows, so wait for the CI workflow's jobs after pushing.
 - Parity is checked with temporary differential dumpers (C# xUnit and Rust integration tests, diffed). Run the C# side with `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1`: the shipping app sets `InvariantGlobalization`, so `P0` formats as "68 %" while unit tests on a normal culture print "68%".
 - Windows: deleting a directory symlink needs `remove_dir`, not `remove_file`, and Rust `symlink_metadata().is_dir()` is false for symlinks and junctions (use `std::fs::metadata` to follow links).
 

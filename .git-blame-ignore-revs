@@ -1,0 +1,5 @@
+# Bulk formatting commits; use with `git blame --ignore-revs-file .git-blame-ignore-revs`
+# (GitHub applies this file automatically).
+
+# Format the Rust port with cargo fmt
+7d1c229fd52fdaaf956316d61acae4e53f80d721
