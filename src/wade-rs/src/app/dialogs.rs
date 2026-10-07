@@ -556,7 +556,7 @@ impl App {
 
         // Windows names are case-insensitive: for `foo` -> `Foo` the new path
         // "exists" because it is the entry being renamed
-        let case_only = cfg!(windows) && new_name.to_lowercase() == old_name.to_lowercase();
+        let case_only = false;
         let result = if !case_only && std::path::Path::new(&new_path).symlink_metadata().is_ok() {
             Err(std::io::Error::other("cannot rename to an existing path"))
         } else {
