@@ -96,8 +96,15 @@ backlog.
     `mediainfo` are installed on this machine)
 - [ ] Optional: a ConPTY smoke harness (launch wade, send keys, read the
   screen) to automate the checks above
-- [ ] macOS is untested (CI covers only Linux and Windows): clipboard via
-  `osascript`, open via `open`, `notify` file watcher, drive detection
+- [x] macOS in CI: the `rust (macos-latest)` job (Apple Silicon) runs the
+  suite. Added for macOS: per-volume case handling, drive type and SSD
+  detection (`statfs`, `diskutil`), Trash on delete, Terminal/iTerm for
+  "open terminal here" and `/Volumes` as the drive list; fixed the watcher
+  missing the removal of a directory reached through a symlink
+- [ ] Manual macOS checks (need a real terminal): keyboard and Option-key
+  input, mouse, resize, kitty/iTerm2/Sixel images, clipboard round trip with
+  Finder, open with the default app, Trash and Terminal/iTerm launch, the
+  `/Volumes` drive list with an external disk
 - [ ] Delete the merged remote branches (`phase-9a` to `phase-9g`, `phase-10a`,
   `install-local-rust`, `todo-*`, `palette-settings-label`, the temporary
   `mut-no-file-retry`, `mut-no-tree-retry` and `mut-no-case-skip` mutation

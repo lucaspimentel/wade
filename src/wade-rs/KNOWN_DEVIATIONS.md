@@ -326,3 +326,25 @@ None. Phase 9 closed the last temporary entries.
     it.
   - The settings-dialog renderer test drops this item before comparing with
     the C# frames, since an extra item shifts the scrolled list on Windows.
+- **macOS support (Rust-only).** C# was never run on macOS; Rust is tested
+  by CI's `rust (macos-latest)` job (Apple Silicon) and adds:
+  - Case-insensitive volumes (`pathconf(_PC_CASE_SENSITIVE)`, the APFS
+    default) get the Windows case handling: a case-only rename is not a
+    conflict, and paste's same-folder and own-subtree checks ignore case.
+    Case-sensitive volumes keep exact matching.
+  - Drive type comes from `statfs` (smbfs/nfs/afpfs/webdav are Network)
+    and SSD/HDD and removable media from `diskutil info -plist` (cached per
+    volume), so inline directory sizes follow the SSD/HDD settings. C# uses
+    `DriveInfo`, which reports Fixed and no media type there.
+  - Delete without Shift moves items to the Trash (NSFileManager via
+    `osascript`, one item per call, C#'s success/error accounting) and the
+    confirmation drops "This cannot be undone!"; C# deletes permanently on
+    every Unix.
+  - "Open terminal here" runs `open -a Terminal <dir>` (`iTerm` when
+    `TERM_PROGRAM` is `iTerm.app`) instead of starting `$SHELL` detached.
+  - The drive list shows the volumes under `/Volumes`: name is the mount
+    point (`/` for the boot volume, listed first), label the volume name,
+    plus format, free and total space and media type. A volume mounted
+    under `/Volumes` is its own drive root, so going up from it (or from
+    `/`) opens the list. C# lists every mount `DriveInfo` reports. Linux
+    keeps the empty list.
