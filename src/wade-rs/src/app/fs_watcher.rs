@@ -128,11 +128,11 @@ impl Drop for FileSystemWatcherManager {
     }
 }
 
-/// Case-insensitive path equality on every platform (C# compares with
-/// `StringComparison.OrdinalIgnoreCase` regardless of OS).
+/// Same watched directory: equal, or another spelling on a
+/// case-insensitive volume (C# folds case on every OS).
 #[must_use]
 fn paths_equal(a: &str, b: &str) -> bool {
-    a.eq_ignore_ascii_case(b)
+    crate::fs::file_operations::same_dir_path(a, b)
 }
 
 /// Port of `OnFileSystemEvent`'s `.git` filter: ignore changes to the .git
@@ -471,8 +471,9 @@ mod tests {
     }
 
     #[test]
-    fn path_equality_ignores_case() {
-        assert!(paths_equal("C:\\Data", "c:\\data"));
+    fn path_equality_follows_the_volume_case_rule() {
+        // Windows paths are case-insensitive; elsewhere these are two paths
+        assert_eq!(paths_equal("C:\\Data", "c:\\data"), cfg!(windows));
         assert!(!paths_equal("C:\\Data", "C:\\Data2"));
     }
 

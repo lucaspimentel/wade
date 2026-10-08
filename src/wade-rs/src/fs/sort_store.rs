@@ -20,9 +20,9 @@ impl Default for SortStore {
     }
 }
 
-/// Map key for a path: case-insensitive on Windows, like `BookmarkStore`.
+/// Map key for a path: the shared store key, like `BookmarkStore`.
 fn key(path: &str) -> String {
-    if cfg!(windows) { path.to_lowercase() } else { path.to_string() }
+    super::path_key(path).into_owned()
 }
 
 fn mode_name(mode: SortMode) -> &'static str {

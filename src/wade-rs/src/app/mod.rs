@@ -863,7 +863,7 @@ impl App {
             self.refresh_git_status();
             let drive_entries = self.directory_contents.get_entries(DRIVES_PATH);
             let root = drive_root(&old_path).map(|r| drive_name(&r)).unwrap_or_default();
-            let idx = drive_entries.iter().position(|e| e.name.eq_ignore_ascii_case(&root));
+            let idx = find_name(drive_entries.iter().map(|e| e.name.as_str()), &root, Path::new(&old_path));
             self.selected_index = idx.unwrap_or(0);
         } else if let Some(parent) = Path::new(&self.current_path).parent() {
             let parent_path = capitalize_drive_letter(&parent.to_string_lossy());
@@ -873,7 +873,8 @@ impl App {
             let parent_entries = self.directory_contents.get_entries(&self.current_path);
             let old_name =
                 Path::new(&old_path).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
-            let idx = parent_entries.iter().position(|e| e.name.eq_ignore_ascii_case(&old_name));
+            let idx =
+                find_name(parent_entries.iter().map(|e| e.name.as_str()), &old_name, Path::new(&self.current_path));
             self.selected_index =
                 idx.unwrap_or_else(|| *self.selected_index_per_dir.get(&self.current_path).unwrap_or(&0));
         }
@@ -1205,7 +1206,7 @@ impl App {
 
     /// Port of `HandleFileSystemChanged` (App.cs:1531).
     pub fn handle_file_system_changed(&mut self, event: crate::input::FileSystemChangedEvent) {
-        if !paths_equal_ignore_case(&event.directory_path, &self.current_path) {
+        if !same_dir_path(&event.directory_path, &self.current_path) {
             return; // Stale event for a directory we've navigated away from
         }
 
@@ -1225,7 +1226,7 @@ impl App {
         let mut selected_survived = false;
 
         if let Some(name) = selected_name.as_ref().filter(|_| !new_entries.is_empty()) {
-            match new_entries.iter().position(|entry| names_equal_ignore_case(&entry.name, name)) {
+            match find_name(new_entries.iter().map(|entry| entry.name.as_str()), name, Path::new(&self.current_path)) {
                 Some(index) => {
                     self.selected_index = index;
                     selected_survived = true;
@@ -1744,7 +1745,8 @@ impl App {
         };
 
         let parent_selected =
-            parent_entries.iter().position(|e| e.name.eq_ignore_ascii_case(&current_name)).unwrap_or(0);
+            find_name(parent_entries.iter().map(|e| e.name.as_str()), &current_name, Path::new(&self.current_path))
+                .unwrap_or(0);
 
         let mut left_pane = self.layout.left_pane;
         if self.config.column_headers_enabled && left_pane.height > 2 {
@@ -1908,11 +1910,10 @@ impl App {
         };
 
         let parent_entries = self.directory_contents.get_entries(&parent_key);
-        let mut parent_selected = parent_entries
-            .iter()
-            .position(|e| e.name.eq_ignore_ascii_case(&current_name))
-            .map(|i| i as i32)
-            .unwrap_or(-1);
+        let mut parent_selected =
+            find_name(parent_entries.iter().map(|e| e.name.as_str()), &current_name, Path::new(&self.current_path))
+                .map(|i| i as i32)
+                .unwrap_or(-1);
 
         if parent_selected < 0 {
             parent_selected = 0;
@@ -2038,6 +2039,7 @@ impl App {
 }
 
 use crate::fs::directory_contents::{capitalize_drive_letter, drive_name, drive_root};
+use crate::fs::file_operations::{find_name, same_dir_path};
 use crate::ui::layout::Rect as Rect2;
 
 /// Port of `Process.Start(path) { UseShellExecute = true }` (App.cs:3143).
@@ -2125,19 +2127,27 @@ fn is_executable_file(path: &str) -> bool {
 
 #[cfg(unix)]
 fn find_program(program: &str) -> Option<std::path::PathBuf> {
+    find_program_in(program, std::env::var_os("PATH").as_deref())
+}
+
+/// `find_program` against an explicit PATH value (tests pass their own).
+#[cfg(unix)]
+fn find_program_in(program: &str, path_var: Option<&std::ffi::OsStr>) -> Option<std::path::PathBuf> {
     if program.contains('/') {
         return is_executable_file(program).then(|| program.into());
     }
 
-    std::env::var_os("PATH").and_then(|paths| {
-        std::env::split_paths(&paths)
+    path_var.and_then(|paths| {
+        std::env::split_paths(paths)
             .map(|dir| dir.join(program))
             .find(|candidate| is_executable_file(&candidate.to_string_lossy()))
     })
 }
 
 /// Port of `OpenTerminalHere` (App.cs:979-1010): wt.exe with cmd fallback on
-/// Windows, $SHELL on unix. The child is not waited on.
+/// Windows; Terminal or iTerm on macOS and a terminal emulator on other
+/// unixes (Rust-only; C# starts a detached $SHELL, which competes with wade
+/// for the TTY). The child is not waited on.
 fn open_terminal(working_directory: &str) -> std::io::Result<()> {
     #[cfg(windows)]
     {
@@ -2169,9 +2179,70 @@ fn open_terminal(working_directory: &str) -> std::io::Result<()> {
 
     #[cfg(not(any(windows, target_os = "macos")))]
     {
-        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
-        std::process::Command::new(shell).current_dir(working_directory).spawn().map(|_| ())
+        let candidates = linux_terminal_candidates(std::env::var("TERMINAL").ok().as_deref());
+        launch_terminal(working_directory, &candidates, std::env::var_os("PATH").as_deref())
     }
+}
+
+/// Terminal emulators to try for "open terminal here" on Linux and other
+/// unixes, in order: `$TERMINAL` (split on whitespace, so it may carry
+/// arguments), the Debian `x-terminal-emulator` alternative, then common
+/// emulators. All open in the spawning process's working directory except
+/// wezterm, which is told explicitly.
+#[cfg_attr(any(windows, target_os = "macos"), allow(dead_code))]
+#[must_use]
+pub(crate) fn linux_terminal_candidates(terminal_env: Option<&str>) -> Vec<Vec<String>> {
+    const KNOWN: [&str; 9] = [
+        "x-terminal-emulator",
+        "gnome-terminal",
+        "konsole",
+        "kitty",
+        "alacritty",
+        "wezterm",
+        "foot",
+        "xfce4-terminal",
+        "xterm",
+    ];
+
+    let from_env = terminal_env
+        .map(|value| value.split_whitespace().map(str::to_string).collect::<Vec<_>>())
+        .filter(|command| !command.is_empty());
+    from_env.into_iter().chain(KNOWN.iter().map(|program| vec![(*program).to_string()])).collect()
+}
+
+/// Starts the first installed candidate in `working_directory`, detached
+/// from wade's terminal (own process group, no stdio).
+#[cfg(all(unix, not(target_os = "macos")))]
+fn launch_terminal(
+    working_directory: &str,
+    candidates: &[Vec<String>],
+    path_var: Option<&std::ffi::OsStr>,
+) -> std::io::Result<()> {
+    use std::os::unix::process::CommandExt;
+    use std::process::{Command, Stdio};
+
+    let Some((program, args)) = candidates.iter().find_map(|command| {
+        let (name, args) = command.split_first()?;
+        find_program_in(name, path_var).map(|program| (program, args))
+    }) else {
+        return Err(std::io::Error::new(std::io::ErrorKind::NotFound, "No terminal emulator found (set $TERMINAL)"));
+    };
+
+    let mut command = Command::new(&program);
+    command.args(args);
+    if program.file_name().is_some_and(|name| name == "wezterm") && args.is_empty() {
+        // A running wezterm mux ignores the inherited working directory
+        command.args(["start", "--cwd", working_directory]);
+    }
+
+    command
+        .current_dir(working_directory)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .process_group(0)
+        .spawn()
+        .map(|_| ())
 }
 
 /// The app `open -a` launches for "open terminal here" on macOS: iTerm when
@@ -2184,19 +2255,6 @@ pub(crate) fn macos_terminal_app(term_program: Option<&str>) -> &'static str {
         _ => "Terminal",
     }
 }
-/// Case-insensitive path comparison on every platform (C#
-/// `OrdinalIgnoreCase` paths, regardless of OS).
-#[must_use]
-pub(crate) fn paths_equal_ignore_case(a: &str, b: &str) -> bool {
-    a.eq_ignore_ascii_case(b)
-}
-
-/// Case-insensitive file-name comparison (C# `OrdinalIgnoreCase` names).
-#[must_use]
-fn names_equal_ignore_case(a: &str, b: &str) -> bool {
-    paths_equal_ignore_case(a, b)
-}
-
 /// C# `"{value:N0}"` invariant format: thousands-grouped with commas.
 #[must_use]
 pub(crate) fn group_thousands(value: i64) -> String {
@@ -2325,6 +2383,57 @@ mod tests {
     use super::{App, AppAction, AppConfig, InputMode};
     use crate::fs::DriveMediaType;
     use crate::input::FileSystemChangedEvent;
+
+    #[test]
+    fn linux_terminal_candidates_put_terminal_env_first() {
+        let names = |candidates: Vec<Vec<String>>| candidates.into_iter().map(|c| c.join(" ")).collect::<Vec<_>>();
+        let defaults = names(super::linux_terminal_candidates(None));
+        assert_eq!(defaults[0], "x-terminal-emulator");
+        assert!(defaults.contains(&"kitty".to_string()) && defaults.last().unwrap() == "xterm");
+
+        let with_env = names(super::linux_terminal_candidates(Some("  kitty --single-instance ")));
+        assert_eq!(with_env[0], "kitty --single-instance");
+        assert_eq!(with_env[1..], defaults[..]);
+        assert_eq!(names(super::linux_terminal_candidates(Some("   "))), defaults, "blank $TERMINAL is ignored");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn launch_terminal_starts_the_first_installed_candidate_in_the_directory() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let root = std::env::temp_dir().join(format!("wade-terminal-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let bin = root.join("bin");
+        let work = root.join("work dir");
+        std::fs::create_dir_all(&bin).unwrap();
+        std::fs::create_dir_all(&work).unwrap();
+        let marker = root.join("marker.txt");
+        let script = bin.join("x-terminal-emulator");
+        std::fs::write(
+            &script,
+            format!("#!/bin/sh\npwd > '{}'\necho \"$@\" >> '{}'\n", marker.display(), marker.display()),
+        )
+        .unwrap();
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        let candidates = super::linux_terminal_candidates(Some("missing-terminal --flag"));
+        super::launch_terminal(&work.to_string_lossy(), &candidates, Some(bin.as_os_str())).expect("launched");
+
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while !marker.exists() && std::time::Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        let recorded = std::fs::read_to_string(&marker).expect("the fake terminal ran");
+        assert_eq!(recorded.lines().next(), Some(work.to_string_lossy().as_ref()), "started in the directory");
+        assert_eq!(recorded.lines().nth(1), Some(""), "no arguments for a plain candidate");
+
+        let error = super::launch_terminal(&work.to_string_lossy(), &candidates, Some(root.join("empty").as_os_str()))
+            .expect_err("nothing installed");
+        assert_eq!(error.to_string(), "No terminal emulator found (set $TERMINAL)");
+        let _ = std::fs::remove_dir_all(&root);
+    }
 
     #[test]
     fn macos_terminal_app_follows_term_program() {
@@ -2631,18 +2740,21 @@ mod tests {
     }
 
     #[test]
-    fn file_system_changed_matches_directory_case_insensitively() {
+    fn file_system_changed_matches_the_directory_by_the_volume_case_rule() {
         let root = test_root("fsc-case");
         let mut app = app_at(&root, &["b.txt"]);
         let _ = app.get_visible_entries();
 
         std::fs::write(root.join("a.txt"), "x").unwrap();
+        app.request_full_redraw = false;
         app.handle_file_system_changed(FileSystemChangedEvent {
             directory_path: app.current_path.to_uppercase(),
             full_refresh: false,
         });
 
-        assert!(app.request_full_redraw);
+        // Another spelling is the same directory only on a case-insensitive
+        // volume; on Linux it is a stale event for another directory
+        assert_eq!(app.request_full_redraw, cfg!(any(windows, target_os = "macos")));
         let _ = std::fs::remove_dir_all(&root);
     }
 

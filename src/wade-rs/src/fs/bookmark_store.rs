@@ -3,16 +3,11 @@
 
 use std::path::{Path, PathBuf};
 
-/// Case-insensitive path comparison on Windows, ordinal elsewhere (matches
-/// the C# `BookmarkStore.PathComparison`).
-#[cfg(windows)]
+/// Path equality by the shared store key (case-insensitive on Windows,
+/// matching the C# `BookmarkStore.PathComparison`, with full Unicode case
+/// folding where C# folds ordinally).
 fn paths_equal(a: &str, b: &str) -> bool {
-    a.eq_ignore_ascii_case(b)
-}
-
-#[cfg(not(windows))]
-fn paths_equal(a: &str, b: &str) -> bool {
-    a == b
+    super::path_key(a) == super::path_key(b)
 }
 
 /// Port of `BookmarkStore`.
@@ -130,7 +125,7 @@ mod tests {
         let lower = dir.join("dir").to_string_lossy().into_owned();
         let other = dir.join("other").to_string_lossy().into_owned();
 
-        let mut s = store("case.txt");
+        let mut s = store("duplicates.txt");
         std::fs::write(&s.file_path, format!("{lower}\n{other}\n{stored}\n{other}\n")).unwrap();
         s.load();
 

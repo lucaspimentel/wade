@@ -360,3 +360,21 @@ None. Phase 9 closed the last temporary entries.
   same comparison: case-insensitive on Windows, exact on Linux, and on
   macOS after respelling with the on-disk case. The file is rewritten on
   the next save.
+- **Open terminal here on Linux and other unixes (Rust-only).** C# starts
+  `$SHELL` detached in wade's own terminal, where it competes with wade for
+  the TTY. Rust launches a terminal emulator in the directory: `$TERMINAL`
+  (may carry arguments), then `x-terminal-emulator`, then the first
+  installed of gnome-terminal, konsole, kitty, alacritty, wezterm (`start
+  --cwd`), foot, xfce4-terminal and xterm, in its own process group with no
+  stdio. With none installed it reports "No terminal emulator found (set
+  $TERMINAL)". macOS opens Terminal or iTerm (see the macOS entry).
+- **Names and paths match by the volume's case rule (Rust-only).** C#
+  compares with `OrdinalIgnoreCase` on every OS when it re-selects an entry
+  (after a refresh, create/rename, going up, go-to-path on a file), picks
+  the left-pane highlight, or checks a file-system event's directory. Rust
+  prefers the exact name and folds case (Unicode) only where the volume is
+  case-insensitive, so on Linux `a.txt` and `A.txt` stay distinct.
+- **One path key for bookmarks and saved sorts (Rust-only).** Both compare
+  paths with full Unicode case folding on Windows and exactly elsewhere;
+  C#'s bookmarks fold ordinally (ASCII-style), so non-ASCII bookmarks that
+  differ only in case now match on Windows.

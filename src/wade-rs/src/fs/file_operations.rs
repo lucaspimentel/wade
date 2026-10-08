@@ -124,6 +124,38 @@ pub fn names_case_insensitive(dir: &Path) -> bool {
     }
 }
 
+/// Index of `wanted` among `names` (entries of `dir`): the exact name
+/// first, then, where `dir`'s volume is case-insensitive, the first name
+/// equal under Unicode case folding. On Linux `a.txt` and `A.txt` stay
+/// distinct; an exact hit needs no volume check.
+#[must_use]
+pub fn find_name<'a>(names: impl IntoIterator<Item = &'a str>, wanted: &str, dir: &Path) -> Option<usize> {
+    find_name_with(names, wanted, || names_case_insensitive(dir))
+}
+
+fn find_name_with<'a>(
+    names: impl IntoIterator<Item = &'a str>,
+    wanted: &str,
+    case_insensitive: impl FnOnce() -> bool,
+) -> Option<usize> {
+    let names: Vec<&str> = names.into_iter().collect();
+    names.iter().position(|name| *name == wanted).or_else(|| {
+        if !case_insensitive() {
+            return None;
+        }
+
+        let folded = wanted.to_lowercase();
+        names.iter().position(|name| name.to_lowercase() == folded)
+    })
+}
+
+/// True when `a` and `b` name the same directory path: equal, or equal
+/// under case folding on a case-insensitive volume.
+#[must_use]
+pub fn same_dir_path(a: &str, b: &str) -> bool {
+    a == b || (a.to_lowercase() == b.to_lowercase() && names_case_insensitive(Path::new(a)))
+}
+
 /// macOS (Rust-only): `path` with each existing component spelled as it is
 /// stored on disk, so a path typed as `/users/me/src` becomes
 /// `/Users/me/src` on a case-insensitive volume and lookups keyed by path
@@ -665,6 +697,25 @@ mod tests {
             typed("dir/FILE.TXT")
         };
         assert_eq!(on_disk_case(&typed("dir/FILE.TXT")), expected);
+    }
+
+    #[test]
+    fn find_name_prefers_the_exact_name_and_folds_only_on_insensitive_volumes() {
+        let names = ["a.txt", "A.txt", "Äpfel"];
+        let sensitive = || false;
+        let insensitive = || true;
+        assert_eq!(find_name_with(names, "A.txt", sensitive), Some(1));
+        assert_eq!(find_name_with(names, "A.txt", insensitive), Some(1), "exact wins over the folded a.txt");
+        assert_eq!(find_name_with(names, "A.TXT", sensitive), None);
+        assert_eq!(find_name_with(names, "A.TXT", insensitive), Some(0));
+        assert_eq!(find_name_with(names, "äpfel", insensitive), Some(2), "Unicode folding");
+        assert_eq!(find_name_with(names, "b.txt", insensitive), None);
+
+        let dir = temp_dir("find-name");
+        let expected = if cfg!(any(windows, target_os = "macos")) { Some(0) } else { None };
+        assert_eq!(find_name(names, "A.TXT", &dir), expected, "the volume rule");
+        assert!(same_dir_path(&p(&dir), &p(&dir)));
+        assert_eq!(same_dir_path(&p(&dir), &p(&dir).to_uppercase()), cfg!(any(windows, target_os = "macos")));
     }
 
     #[test]

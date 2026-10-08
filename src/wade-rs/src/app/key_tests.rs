@@ -550,6 +550,40 @@ fn f2_onto_an_existing_name_keeps_both_files() {
     let _ = std::fs::remove_dir_all(&parent);
 }
 
+/// Linux: names differing only in case are distinct entries, so selection
+/// follows the exact name (C# folds case on every OS).
+#[cfg(target_os = "linux")]
+#[test]
+fn selection_keeps_the_exact_name_when_another_differs_only_in_case() {
+    let (mut app, parent, root) = app();
+    std::fs::write(root.join("A.txt"), "upper").unwrap();
+    std::fs::write(root.join("X"), "upper").unwrap();
+    app.directory_contents.invalidate_all();
+
+    // A refresh keeps A.txt selected, not a.txt
+    select(&mut app, "A.txt");
+    std::fs::write(root.join("c.txt"), "c").unwrap();
+    let directory_path = app.current_path.clone();
+    app.handle_file_system_changed(crate::input::FileSystemChangedEvent { directory_path, full_refresh: false });
+    assert_eq!(selected_name(&mut app), "A.txt");
+
+    // A new file x next to X is the one selected
+    press(&mut app, ch('n'));
+    type_text(&mut app, "x");
+    press(&mut app, key(K::Enter));
+    assert!(root.join("x").is_file());
+    assert_eq!(selected_name(&mut app), "x");
+
+    // Going up selects the directory we came from, not a case variant
+    std::fs::create_dir_all(root.join("Sub")).unwrap();
+    app.directory_contents.invalidate_all();
+    select(&mut app, "sub");
+    press(&mut app, key(K::Enter));
+    press(&mut app, ch('h'));
+    assert_eq!(selected_name(&mut app), "sub");
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
 #[test]
 fn n_and_shift_n_with_an_existing_name_change_nothing() {
     let (mut app, parent, root) = app();

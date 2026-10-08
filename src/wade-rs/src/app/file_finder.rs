@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 
 use crate::app::{App, InputMode, KeyEvent};
 use crate::console_key::ConsoleKey;
-use crate::fs::directory_contents::system_time_to_date_parts;
+use crate::fs::directory_contents::{is_hidden_entry, is_system_entry, system_time_to_date_parts};
 use crate::fs::{DRIVES_PATH, FileSystemEntry};
 use crate::input::{
     CancelToken, FileFinderPartialResultEvent, FileFinderScanCompleteEvent, FileFinderSearchResultEvent, InputEvent,
@@ -701,11 +701,11 @@ pub fn scan_files_for_finder(
                 return;
             }
 
-            if !show_system && cfg!(windows) && has_attribute(&item.metadata, FILE_ATTRIBUTE_SYSTEM) {
+            if !show_system && is_system_entry(Some(&item.metadata)) {
                 continue;
             }
 
-            if !show_hidden && (has_attribute(&item.metadata, FILE_ATTRIBUTE_HIDDEN) || item.name.starts_with('.')) {
+            if !show_hidden && is_hidden_entry(&item.name, Some(&item.metadata)) {
                 continue;
             }
 
@@ -724,11 +724,11 @@ pub fn scan_files_for_finder(
                 continue;
             }
 
-            if !show_hidden && (item.name.starts_with('.') || has_attribute(&item.metadata, FILE_ATTRIBUTE_HIDDEN)) {
+            if !show_hidden && is_hidden_entry(&item.name, Some(&item.metadata)) {
                 continue;
             }
 
-            if !show_system && cfg!(windows) && has_attribute(&item.metadata, FILE_ATTRIBUTE_SYSTEM) {
+            if !show_system && is_system_entry(Some(&item.metadata)) {
                 continue;
             }
 
@@ -762,9 +762,6 @@ pub fn scan_files_for_finder(
             .send(InputEvent::FileFinderScanComplete(FileFinderScanCompleteEvent { base_path: base_path.to_string() }));
     }
 }
-
-const FILE_ATTRIBUTE_HIDDEN: u32 = 0x0002;
-const FILE_ATTRIBUTE_SYSTEM: u32 = 0x0004;
 
 struct WalkItem {
     name: String,
@@ -806,19 +803,6 @@ fn list_directory(dir: &std::path::Path) -> (Vec<WalkItem>, Vec<WalkItem>) {
     }
 
     (files, dirs)
-}
-
-#[cfg(windows)]
-fn has_attribute(metadata: &std::fs::Metadata, attribute: u32) -> bool {
-    use std::os::windows::fs::MetadataExt;
-    metadata.file_attributes() & attribute != 0
-}
-
-/// Unix has no attribute bits; .NET's Hidden is the dot prefix, checked by
-/// the callers.
-#[cfg(not(windows))]
-fn has_attribute(_metadata: &std::fs::Metadata, _attribute: u32) -> bool {
-    false
 }
 
 fn make_entry(item: &WalkItem, is_directory: bool) -> FileSystemEntry {

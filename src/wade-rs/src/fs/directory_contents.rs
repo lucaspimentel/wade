@@ -263,26 +263,15 @@ pub fn load_entries(
             Err(_) => continue,
         };
 
+        if !show_system && is_system_entry(Some(&metadata)) {
+            continue;
+        }
+        if !show_hidden && is_hidden_entry(&name, Some(&metadata)) {
+            continue;
+        }
+
         #[cfg(windows)]
         let attributes = metadata.file_attributes();
-        #[cfg(windows)]
-        {
-            const FILE_ATTRIBUTE_SYSTEM: u32 = 0x0004;
-            const FILE_ATTRIBUTE_HIDDEN: u32 = 0x0002;
-            if !show_system && attributes & FILE_ATTRIBUTE_SYSTEM != 0 {
-                continue;
-            }
-            if !show_hidden && (attributes & FILE_ATTRIBUTE_HIDDEN != 0 || name.starts_with('.')) {
-                continue;
-            }
-        }
-        #[cfg(not(windows))]
-        {
-            let _ = show_system;
-            if !show_hidden && name.starts_with('.') {
-                continue;
-            }
-        }
 
         // .NET EnumerateDirectories lists directory symlinks and junctions:
         // on Windows by FILE_ATTRIBUTE_DIRECTORY, on unix by the link's
@@ -494,6 +483,37 @@ pub fn get_drive_entries() -> Vec<FileSystemEntry> {
     }
 
     list
+}
+
+/// Hidden as wade lists it: a dot prefix, or the Windows HIDDEN attribute.
+/// Shared by the listing, the file finder and path completion.
+#[must_use]
+pub fn is_hidden_entry(name: &str, metadata: Option<&std::fs::Metadata>) -> bool {
+    if name.starts_with('.') {
+        return true;
+    }
+
+    #[cfg(windows)]
+    if let Some(metadata) = metadata {
+        const FILE_ATTRIBUTE_HIDDEN: u32 = 0x0002;
+        return metadata.file_attributes() & FILE_ATTRIBUTE_HIDDEN != 0;
+    }
+
+    let _ = metadata;
+    false
+}
+
+/// The Windows SYSTEM attribute; never set on other platforms.
+#[must_use]
+pub fn is_system_entry(metadata: Option<&std::fs::Metadata>) -> bool {
+    #[cfg(windows)]
+    if let Some(metadata) = metadata {
+        const FILE_ATTRIBUTE_SYSTEM: u32 = 0x0004;
+        return metadata.file_attributes() & FILE_ATTRIBUTE_SYSTEM != 0;
+    }
+
+    let _ = metadata;
+    false
 }
 
 #[cfg(windows)]

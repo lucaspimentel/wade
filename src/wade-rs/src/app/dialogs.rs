@@ -690,11 +690,14 @@ impl App {
         }
     }
 
-    /// The re-select-by-name shared by the create/rename callbacks
-    /// (OrdinalIgnoreCase on Windows, matching C#).
+    /// The re-select-by-name shared by the create/rename callbacks: the
+    /// exact name first, case-folded only on case-insensitive volumes.
     fn select_entry_by_name(&mut self, name: &str) {
         let entries = self.get_visible_entries();
-        if let Some(index) = entries.iter().position(|entry| entry.name.eq_ignore_ascii_case(name)) {
+        let names = entries.iter().map(|entry| entry.name.as_str());
+        if let Some(index) =
+            crate::fs::file_operations::find_name(names, name, std::path::Path::new(&self.current_path))
+        {
             self.selected_index = index;
         }
     }
@@ -1292,7 +1295,11 @@ impl App {
             self.selected_index_per_dir.insert(self.current_path.clone(), self.selected_index);
             self.current_path = capitalize_drive_letter(&parent);
             let entries = self.directory_contents.get_entries(&self.current_path);
-            let idx = entries.iter().position(|e| e.name.eq_ignore_ascii_case(&file_name));
+            let idx = crate::fs::file_operations::find_name(
+                entries.iter().map(|e| e.name.as_str()),
+                &file_name,
+                std::path::Path::new(&self.current_path),
+            );
             self.selected_index = idx.unwrap_or(0);
             self.scroll_offset = 0;
             self.marked_paths.clear();

@@ -76,7 +76,7 @@ pub fn get_suggestion(input: &str, show_hidden: bool, show_system_files: bool) -
 
     // If the user is typing a dot-prefixed name, don't filter hidden entries
     let skip_hidden = !show_hidden && !partial.starts_with('.');
-    let skip_system = !show_system_files && cfg!(windows);
+    let skip_system = !show_system_files;
 
     let Ok(entries) = std::fs::read_dir(parent_dir) else {
         return None;
@@ -85,11 +85,11 @@ pub fn get_suggestion(input: &str, show_hidden: bool, show_system_files: bool) -
     for entry in entries.flatten() {
         let name = entry.file_name().to_string_lossy().to_string();
         let metadata = entry.metadata().ok();
-        if skip_hidden && is_hidden(&name, metadata.as_ref()) {
+        if skip_hidden && super::directory_contents::is_hidden_entry(&name, metadata.as_ref()) {
             continue;
         }
 
-        if skip_system && metadata.is_some_and(|m| is_system(&m)) {
+        if skip_system && super::directory_contents::is_system_entry(metadata.as_ref()) {
             continue;
         }
 
@@ -102,7 +102,7 @@ pub fn get_suggestion(input: &str, show_hidden: bool, show_system_files: bool) -
 }
 
 fn first_entry(dir_path: &str, show_hidden: bool, show_system_files: bool) -> Option<String> {
-    let skip_system = !show_system_files && cfg!(windows);
+    let skip_system = !show_system_files;
 
     let Ok(entries) = std::fs::read_dir(dir_path) else {
         return None;
@@ -111,11 +111,11 @@ fn first_entry(dir_path: &str, show_hidden: bool, show_system_files: bool) -> Op
     for entry in entries.flatten() {
         let name = entry.file_name().to_string_lossy().to_string();
         let metadata = entry.metadata().ok();
-        if !show_hidden && is_hidden(&name, metadata.as_ref()) {
+        if !show_hidden && super::directory_contents::is_hidden_entry(&name, metadata.as_ref()) {
             continue;
         }
 
-        if skip_system && metadata.is_some_and(|m| is_system(&m)) {
+        if skip_system && super::directory_contents::is_system_entry(metadata.as_ref()) {
             continue;
         }
 
@@ -123,34 +123,6 @@ fn first_entry(dir_path: &str, show_hidden: bool, show_system_files: bool) -> Op
     }
 
     None
-}
-
-fn is_hidden(name: &str, metadata: Option<&std::fs::Metadata>) -> bool {
-    if name.starts_with('.') {
-        return true;
-    }
-
-    #[cfg(windows)]
-    if let Some(metadata) = metadata {
-        use std::os::windows::fs::MetadataExt;
-        const FILE_ATTRIBUTE_HIDDEN: u32 = 0x2;
-        return metadata.file_attributes() & FILE_ATTRIBUTE_HIDDEN != 0;
-    }
-
-    let _ = metadata;
-    false
-}
-
-#[cfg(windows)]
-fn is_system(metadata: &std::fs::Metadata) -> bool {
-    use std::os::windows::fs::MetadataExt;
-    const FILE_ATTRIBUTE_SYSTEM: u32 = 0x4;
-    metadata.file_attributes() & FILE_ATTRIBUTE_SYSTEM != 0
-}
-
-#[cfg(not(windows))]
-fn is_system(_metadata: &std::fs::Metadata) -> bool {
-    false
 }
 
 #[cfg(test)]
