@@ -39,7 +39,7 @@ pub fn delete_paths(paths: &[String], permanent: bool, cancel: &CancelToken) -> 
             #[cfg(windows)]
             let trashed = recycle_files(std::slice::from_ref(path)) == 0;
             #[cfg(target_os = "macos")]
-            let trashed = trash_item(path).is_some();
+            let trashed = trash_item(path);
             #[cfg(not(any(windows, target_os = "macos")))]
             let trashed = false;
 
@@ -58,28 +58,25 @@ pub fn delete_paths(paths: &[String], permanent: bool, cancel: &CancelToken) -> 
     (success, errors)
 }
 
-/// macOS: moves `argv[0]` to the Trash with NSFileManager and prints where
-/// it landed. The path is a script argument, never part of the source.
+/// macOS: moves `argv[0]` to the Trash with NSFileManager. The path is a
+/// script argument, never part of the source. (JXA `Ref()` out-parameters
+/// crash osascript here, so neither the new location nor the NSError is
+/// read back.)
 #[cfg(target_os = "macos")]
 const MACOS_TRASH: &str = "function run(argv) { ObjC.import('Foundation'); \
-    var landed = Ref(); var error = Ref(); \
     var ok = $.NSFileManager.defaultManager.trashItemAtURLResultingItemURLError( \
-        $.NSURL.fileURLWithPath(argv[0]), landed, error); \
-    if (!ok) { return 'error: ' + (error[0] ? ObjC.unwrap(error[0].localizedDescription) : 'unknown'); } \
-    return landed[0] ? ObjC.unwrap(landed[0].path) : 'error: no resulting path'; }";
+        $.NSURL.fileURLWithPath(argv[0]), null, null); \
+    return ok ? 'ok' : 'fail'; }";
 
-/// Moves `path` (a link itself, not its target) to the Trash; returns the
-/// item's new path, or None when the move failed.
+/// Moves `path` (a link itself, not its target) to the Trash.
 #[cfg(target_os = "macos")]
-fn trash_item(path: &str) -> Option<String> {
-    let output = std::process::Command::new("osascript")
+fn trash_item(path: &str) -> bool {
+    std::process::Command::new("osascript")
         .args(["-l", "JavaScript", "-e", MACOS_TRASH, path])
         .stdin(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .output()
-        .ok()?;
-    let landed = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    (output.status.success() && landed.starts_with('/')).then_some(landed)
+        .is_ok_and(|output| output.status.success() && String::from_utf8_lossy(&output.stdout).trim() == "ok")
 }
 
 /// Delete a single path with the C# symlink-first rules: a symlink (file or
@@ -588,33 +585,18 @@ mod tests {
         let dir = temp_dir("trash");
         let name = format!("wade-trash-test-{}.txt", std::process::id());
         let file = dir.join(&name);
+        let trash = Path::new(&std::env::var("HOME").expect("HOME")).join(".Trash");
+        let trashed = trash.join(&name);
+        let _ = std::fs::remove_file(&trashed);
         std::fs::write(&file, b"x").expect("write");
 
-        let landed = trash_item(&p(&file)).unwrap_or_else(|| {
-            let output = std::process::Command::new("osascript")
-                .args(["-l", "JavaScript", "-e", MACOS_TRASH, &p(&file)])
-                .output()
-                .expect("osascript");
-            panic!(
-                "not moved to the Trash: status {:?}, stdout {:?}, stderr {:?}",
-                output.status,
-                String::from_utf8_lossy(&output.stdout),
-                String::from_utf8_lossy(&output.stderr)
-            )
-        });
-        assert!(!file.exists(), "gone from its folder");
-        assert!(Path::new(&landed).is_file(), "in the Trash at {landed}");
-        assert!(landed.contains("/.Trash/"), "{landed}");
-        let _ = std::fs::remove_file(&landed);
-
-        // Through delete_paths, with the C# accounting
-        std::fs::write(&file, b"x").expect("write");
+        // delete_paths with C#'s accounting: one moved, one missing
         let missing = dir.join("missing.txt");
         let (success, errors) = delete_paths(&[p(&file), p(&missing)], false, &CancelToken::new());
-        assert_eq!((success, errors), (1, 1));
-        assert!(!file.exists());
-        let home = std::env::var("HOME").expect("HOME");
-        let _ = std::fs::remove_file(Path::new(&home).join(".Trash").join(&name));
+        assert_eq!((success, errors), (1, 1), "Trash at {} exists: {}", trash.display(), trash.is_dir());
+        assert!(!file.exists(), "gone from its folder");
+        assert!(trashed.is_file(), "in the Trash at {}", trashed.display());
+        let _ = std::fs::remove_file(&trashed);
     }
 
     #[test]
