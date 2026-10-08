@@ -324,3 +324,5 @@ None. Phase 9 closed the last temporary entries.
     under "Show File Previews" in the settings dialog. Like the other
     Rust-only keys, it is saved only when changed, and `--show-config` lists
     it.
+  - The settings-dialog renderer test drops this item before comparing with
+    the C# frames, since an extra item shifts the scrolled list on Windows.

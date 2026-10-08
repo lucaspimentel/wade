@@ -707,8 +707,11 @@ fn run_scenario(path: &Path) -> String {
                 flushes.push(out.clone());
             }
             "configdlg" => {
-                config_state =
-                    Some(wade::ui::config_dialog::ConfigDialogState::from_app_config(&wade::app::AppConfig::default()));
+                let mut state =
+                    wade::ui::config_dialog::ConfigDialogState::from_app_config(&wade::app::AppConfig::default());
+                // Rust-only items would shift the list against the C# frames
+                state.items.retain(|item| item.field != wade::ui::config_dialog::ConfigField::CsvPreview);
+                config_state = Some(state);
             }
             "csel" => {
                 config_state.as_mut().expect("configdlg op first").selected_index =
