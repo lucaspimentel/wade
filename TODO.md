@@ -138,7 +138,7 @@ backlog.
   and `CliToolTests.Run_CancellationDuringExecution_ReturnsQuickly` each failed once
   at their 5-6 s limits and passed on the next run
 - [ ] Two weeks of daily use on the Rust binary
-- [ ] Cutover: delete `src/Wade*` and `install-local-csharp.ps1`, remove
+- [ ] Cutover: delete `src/Wade*` and `install-local-csharp.ps1`/`.sh`, remove
   dual-build CI, update README/CLAUDE.md/CHANGELOG
 
 ## Features

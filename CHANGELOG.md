@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Added
+- Add `install-local.sh`, `install-local-csharp.sh` and `install-remote.sh`, POSIX shell versions of the PowerShell install scripts (no PowerShell needed on Linux or macOS); `install-remote.sh` keeps an existing install if the download fails
+
 ### Changed
 - Release binaries and `install-local.ps1` now use the Rust port (`src/wade-rs`): a static Linux build (musl) and a Windows build with no Visual C++ runtime dependency; `install-local-csharp.ps1` installs the C# version until it is removed
 

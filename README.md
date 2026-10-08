@@ -79,11 +79,21 @@ scoop install wade
 ./install-remote.ps1
 ```
 
+```sh
+./install-remote.sh
+```
+
 Or as a one-liner:
 
 ```powershell
 irm https://raw.githubusercontent.com/lucaspimentel/wade/main/install-remote.ps1 | iex
 ```
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/lucaspimentel/wade/main/install-remote.sh | sh
+```
+
+Release binaries are published for Windows x64 and Linux x64; on other platforms, build from source.
 
 ### From source
 
@@ -93,7 +103,11 @@ Requires the [Rust toolchain](https://rustup.rs).
 ./install-local.ps1
 ```
 
-Until the C# version (`src/Wade`) is removed, `./install-local-csharp.ps1` installs it instead, which requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
+```sh
+./install-local.sh
+```
+
+Until the C# version (`src/Wade`) is removed, `./install-local-csharp.ps1` (or `./install-local-csharp.sh`) installs it instead, which requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 
 All scripts install to `~/.local/bin/wade`. Ensure that directory is in your `PATH`.
 
