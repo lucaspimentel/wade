@@ -636,6 +636,9 @@ mod tests {
         assert!(tree_dest.join("inner").join("sub").join("b.txt").is_file());
     }
 
+    /// Unix only: Windows temp paths can hold 8.3 short names (`RUNNER~1`)
+    /// that no listing contains, and only macOS respells in production.
+    #[cfg(unix)]
     #[test]
     fn stored_spelling_restores_the_case_on_disk_without_resolving_links() {
         let dir = temp_dir("spelling");
@@ -652,11 +655,8 @@ mod tests {
         assert_eq!(stored_spelling(&typed("dir/FILE.TXT"), |_: &Path| false), typed("dir/FILE.TXT"));
         assert_eq!(stored_spelling("dir/x", insensitive), "dir/x");
 
-        #[cfg(unix)]
-        {
-            std::os::unix::fs::symlink(dir.join("Dir"), dir.join("Link")).expect("symlink");
-            assert_eq!(stored_spelling(&typed("link/file.txt"), insensitive), typed("Link/File.txt"));
-        }
+        std::os::unix::fs::symlink(dir.join("Dir"), dir.join("Link")).expect("symlink");
+        assert_eq!(stored_spelling(&typed("link/file.txt"), insensitive), typed("Link/File.txt"));
 
         // Only macOS normalizes; elsewhere the path comes back as typed
         let expected = if cfg!(target_os = "macos") {
