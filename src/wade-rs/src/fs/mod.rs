@@ -26,7 +26,7 @@ pub use drive_media_type::DriveMediaType;
 #[must_use]
 pub fn path_key(path: &str) -> std::borrow::Cow<'_, str> {
     if cfg!(windows) {
-        std::borrow::Cow::Owned(path.to_lowercase())
+        std::borrow::Cow::Owned(path.to_ascii_lowercase())
     } else {
         std::borrow::Cow::Borrowed(path)
     }
