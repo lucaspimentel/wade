@@ -133,7 +133,7 @@ pub fn names_case_insensitive(dir: &Path) -> bool {
 #[must_use]
 pub fn on_disk_case(path: &str) -> String {
     if cfg!(target_os = "macos") {
-        stored_spelling(path, names_case_insensitive)
+        path.to_string()
     } else {
         path.to_string()
     }
