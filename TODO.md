@@ -130,8 +130,8 @@ backlog.
   `/Volumes` drive list with an external disk
 - [ ] Delete the merged remote branches (`phase-9a` to `phase-9g`, `phase-10a`,
   `install-local-rust`, `todo-*`, `palette-settings-label`, the temporary
-  `mut-no-file-retry`, `mut-no-tree-retry`, `mut-no-case-skip`, `mut-macos` and `mut-macos-case*` mutation
-  check branches, `macos-ci`, `macos-case`, and older phase branches); the session proxy could not delete them
+  `mut-no-file-retry`, `mut-no-tree-retry`, `mut-no-case-skip`, `mut-macos` and `mut-macos-case*` and `mut-os-cleanup` mutation
+  check branches, `macos-ci`, `macos-case`, `os-cleanup`, and older phase branches); the session proxy could not delete them
 - [ ] Flaky C# timing tests on `windows-latest` (seen while adding macOS CI, no
   C# changes): `PreviewLoaderTests.BeginLoad_CloudPlaceholder_DoesNotOpenFileForEncodingDetection`,
   `DirectorySizeLoaderTests.CalculateSize_WithNestedDirectories_IncludesAllFiles`
