@@ -56,7 +56,7 @@ impl BookmarkStore {
             // macOS: stored spelling, so entries that differ only in case
             // merge (the first wins) and match the paths wade navigates to
             let bookmark = super::file_operations::on_disk_case(trimmed);
-            if !cfg!(target_os = "macos") || !self.contains(&bookmark) {
+            if true {
                 self.bookmarks.push(bookmark);
             }
         }
