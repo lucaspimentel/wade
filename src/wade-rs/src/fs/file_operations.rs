@@ -589,7 +589,18 @@ mod tests {
         let file = dir.join(&name);
         std::fs::write(&file, b"x").expect("write");
 
-        let landed = trash_item(&p(&file)).expect("moved to the Trash");
+        let landed = trash_item(&p(&file)).unwrap_or_else(|| {
+            let output = std::process::Command::new("osascript")
+                .args(["-l", "JavaScript", "-e", MACOS_TRASH, &p(&file)])
+                .output()
+                .expect("osascript");
+            panic!(
+                "not moved to the Trash: status {:?}, stdout {:?}, stderr {:?}",
+                output.status,
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            )
+        });
         assert!(!file.exists(), "gone from its folder");
         assert!(Path::new(&landed).is_file(), "in the Trash at {landed}");
         assert!(landed.contains("/.Trash/"), "{landed}");

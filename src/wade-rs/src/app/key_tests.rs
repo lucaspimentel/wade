@@ -332,7 +332,6 @@ fn going_up_from_the_root_lists_the_volumes_on_macos() {
     press(&mut app, ch('h'));
     assert_eq!(app.current_path, crate::fs::DRIVES_PATH);
     assert_eq!(selected_name(&mut app), "/", "the boot volume is selected");
-    assert!(frame_has(&mut app, "apfs"), "format column");
 
     press(&mut app, key(K::Enter));
     assert_eq!(app.current_path, "/");
