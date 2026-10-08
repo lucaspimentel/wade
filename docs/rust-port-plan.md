@@ -74,8 +74,8 @@ done (syntax highlighting), Phase 7 done (7a preview core and text family,
 and capabilities, 8b Sixel image previews, 8c image metadata, 8d PDF),
 Phase 9 done (9a file-system facts, 9b clipboard, 9c executable metadata,
 9d Office/NuGet/media metadata, 9e MSI, 9f unix watcher/terminal/input,
-9g CLI parity and close-out), Phase 10a done (golden sweep), native Windows verification done. Next: Phase 10b
-(install scripts switched to the Rust binary), then the cutover.
+9g CLI parity and close-out), Phase 10a done (golden sweep), native Windows verification done, Phase 10b done (install scripts and
+releases switched to the Rust binary). Next: two weeks of daily use, then the cutover.
 
 ### Phase 0 — Scaffold + golden-frame harness
 
@@ -209,6 +209,13 @@ Phase 9 done (9a file-system facts, 9b clipboard, 9c executable metadata,
   differences are recorded in
   `KNOWN_DEVIATIONS.md`. Checks that need a real console (input, resize, Sixel, the
   `wd` wrapper) stay open in `TODO.md`.
+- **10b done as**: `install-local.ps1` builds the Rust port (the old
+  `install-local-rust.ps1`), and the C# installer moved to `install-local-csharp.ps1`
+  until the cutover. `release.yml` tests with `cargo test` and publishes the Rust binary
+  under the same asset names (so `install-remote.ps1` and the Scoop manifest are
+  unchanged): a static musl build for Linux and a static-CRT build for Windows, each
+  smoke-checked with `--version`. A `dry_run` dispatch input builds and uploads the
+  archives without creating a release.
 
 ## Retirement trigger
 

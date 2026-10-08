@@ -87,17 +87,13 @@ irm https://raw.githubusercontent.com/lucaspimentel/wade/main/install-remote.ps1
 
 ### From source
 
-Requires [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
+Requires the [Rust toolchain](https://rustup.rs).
 
 ```powershell
 ./install-local.ps1
 ```
 
-To try the Rust port (`src/wade-rs`) instead, which requires the [Rust toolchain](https://rustup.rs):
-
-```powershell
-./install-local-rust.ps1
-```
+Until the C# version (`src/Wade`) is removed, `./install-local-csharp.ps1` installs it instead, which requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 
 All scripts install to `~/.local/bin/wade`. Ensure that directory is in your `PATH`.
 

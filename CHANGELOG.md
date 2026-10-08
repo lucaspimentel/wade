@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Changed
+- Release binaries and `install-local.ps1` now use the Rust port (`src/wade-rs`): a static Linux build (musl) and a Windows build with no Visual C++ runtime dependency; `install-local-csharp.ps1` installs the C# version until it is removed
+
 ## [1.14.0] - 2026-05-08
 
 ### Added

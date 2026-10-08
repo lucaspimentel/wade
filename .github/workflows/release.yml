@@ -7,9 +7,14 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g., 1.0.0)'
-        required: true
+        description: 'Version to release (e.g., 1.0.0); not needed for a dry run'
+        required: false
         type: string
+      dry_run:
+        description: 'Build, test and upload the archives without creating a release'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -21,35 +26,67 @@ jobs:
         include:
           - os: windows-latest
             rid: win-x64
+            target: x86_64-pc-windows-msvc
+            exe: wade.exe
             archive: zip
+            rustflags: -C target-feature=+crt-static
           - os: ubuntu-latest
             rid: linux-x64
+            target: x86_64-unknown-linux-musl
+            exe: wade
             archive: tar.gz
+            rustflags: ''
 
     runs-on: ${{ matrix.os }}
 
     steps:
+    - name: Check inputs
+      if: github.event_name == 'workflow_dispatch' && !inputs.dry_run && inputs.version == ''
+      run: |
+        echo "A version is required unless dry_run is set."
+        exit 1
+
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
       with:
-        dotnet-version: 10.0.x
+        targets: ${{ matrix.target }}
 
-    - name: Restore dependencies
-      run: dotnet restore Wade.slnx
+    - name: Install musl tools
+      if: runner.os == 'Linux'
+      run: sudo apt-get update && sudo apt-get install -y musl-tools
 
     - name: Test
-      run: dotnet test Wade.slnx -c Release --verbosity normal
+      working-directory: src/wade-rs
+      run: cargo test --locked
 
-    - name: Publish
-      run: dotnet publish src/Wade/Wade.csproj -c Release -r ${{ matrix.rid }} -o dist --self-contained
+    - name: Build
+      working-directory: src/wade-rs
+      env:
+        RUSTFLAGS: ${{ matrix.rustflags }}
+      run: cargo build --release --locked --target ${{ matrix.target }}
 
-    - name: Copy documentation
+    - name: Copy binary and documentation
       shell: pwsh
       run: |
+        New-Item -ItemType Directory -Path dist | Out-Null
+        Copy-Item src/wade-rs/target/${{ matrix.target }}/release/${{ matrix.exe }} dist/
         Copy-Item LICENSE dist/ -ErrorAction SilentlyContinue
         Copy-Item README.md dist/
+
+    - name: Check binary
+      shell: pwsh
+      run: |
+        $version = & ./dist/${{ matrix.exe }} --version
+        if ($LASTEXITCODE -ne 0) { throw "--version failed with exit code $LASTEXITCODE" }
+        Write-Host "wade --version: $version"
+        if ($version -notmatch '^wade \d+\.\d+\.\d+\+[0-9a-f]{40}$') { throw "Unexpected version: $version" }
+        if ($IsLinux) {
+          $info = file dist/${{ matrix.exe }}
+          Write-Host $info
+          if ($info -notmatch 'statically linked|static-pie linked') { throw "Linux binary is not statically linked" }
+        }
 
     - name: Create archive (Windows)
       if: matrix.archive == 'zip'
@@ -80,6 +117,7 @@ jobs:
 
   release:
     needs: build
+    if: github.event_name == 'push' || !inputs.dry_run
     runs-on: ubuntu-latest
 
     steps:

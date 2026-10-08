@@ -52,7 +52,7 @@ $rid = if ($IsWindows) {
     'linux-x64'
 } else {
     Write-Host "Error: Unsupported platform. Only Windows (win-x64) and Linux (linux-x64) are supported." -ForegroundColor Red
-    Write-Host "To build from source on other platforms, use: ./install-local.ps1" -ForegroundColor Cyan
+    Write-Host "To build from source on other platforms, install the Rust toolchain (https://rustup.rs) and run: ./install-local.ps1" -ForegroundColor Cyan
     exit 1
 }
 

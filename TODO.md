@@ -12,9 +12,9 @@ backlog.
 - [x] Phase 10a: golden sweep (all goldens regenerated from C# with no diff;
   renderer scenarios 041-045 for link/junction/app-alias/cloud/marked rows,
   inline directory sizes and pane borders; `--version` matches C#)
-- [ ] Phase 10b: switch `install-local.ps1` and `release.yml`/`install-remote.ps1`
-  to the Rust binary (meanwhile `install-local-rust.ps1` installs the Rust
-  build for the trial)
+- [x] Phase 10b: `install-local.ps1` and `release.yml` build the Rust binary
+  (same release asset names, so `install-remote.ps1` and Scoop are unchanged);
+  `install-local-csharp.ps1` installs the C# build until the cutover
 - [x] Run the test suites natively on Windows (the port was developed on
   Linux with Wine): `cargo test` and
   `dotnet test Wade.slnx` pass, including the three Wine-only symlink/git
@@ -80,7 +80,7 @@ backlog.
   - the tab title returns to the pre-wade title on exit and when
     `terminal_title_enabled` is turned off
 - [ ] Windows follow-ups from the verification pass:
-  - run `install-local-rust.ps1` for real (it overwrites `~/.local/bin/wade.exe`)
+  - run `install-local.ps1` for real (it overwrites `~/.local/bin/wade.exe`)
   - opening a file with an unknown extension reports success while Windows
     shows the "Open with" dialog; check whether C# behaves the same
 - [x] Windows file-system edge cases, now `#[cfg(windows)]` tests run by
@@ -103,8 +103,8 @@ backlog.
   `mut-no-file-retry`, `mut-no-tree-retry` and `mut-no-case-skip` mutation
   check branches, and older phase branches); the session proxy could not delete them
 - [ ] Two weeks of daily use on the Rust binary
-- [ ] Cutover: delete `src/Wade*`, remove dual-build CI, update
-  README/CLAUDE.md/CHANGELOG
+- [ ] Cutover: delete `src/Wade*` and `install-local-csharp.ps1`, remove
+  dual-build CI, update README/CLAUDE.md/CHANGELOG
 
 ## Features
 

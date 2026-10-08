@@ -3,11 +3,14 @@
 
 <#
 .SYNOPSIS
-    Builds and installs wade from source.
+    Builds and installs the C# version of wade from source.
 
 .DESCRIPTION
-    This script builds the wade TUI file browser from source and installs it
-    to ~/.local/bin/wade (or ~/.local/bin/wade.exe on Windows).
+    This script builds the C# version of the wade TUI file browser
+    (src/Wade) and installs it to ~/.local/bin/wade (or
+    ~/.local/bin/wade.exe on Windows), replacing any existing install.
+    Run ./install-local.ps1 to switch back to the Rust build. This script
+    is removed when the C# version is retired.
 
     Requirements:
     - PowerShell 7.0+
@@ -20,17 +23,17 @@
     Pull the latest changes from the remote before building.
 
 .EXAMPLE
-    ./install-local.ps1
+    ./install-local-csharp.ps1
 
     Builds and installs wade to ~/.local/bin
 
 .EXAMPLE
-    ./install-local.ps1 -Force
+    ./install-local-csharp.ps1 -Force
 
     Builds and installs, overwriting any existing installation.
 
 .EXAMPLE
-    ./install-local.ps1 -Update -Force
+    ./install-local-csharp.ps1 -Update -Force
 
     Pull latest changes, then build and install.
 #>
