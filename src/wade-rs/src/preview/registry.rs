@@ -2,6 +2,7 @@
 //! providers that apply to a file, in priority order (the first preview
 //! provider is the default; every metadata provider contributes).
 
+use super::csv::{CsvMetadataProvider, CsvTablePreviewProvider};
 use super::document_metadata::{NuGetMetadataProvider, OfficeMetadataProvider};
 use super::executable_metadata::ExecutableMetadataProvider;
 use super::image_metadata::ImageMetadataProvider;
@@ -16,14 +17,16 @@ use super::providers::{
 };
 use super::{MetadataProvider, PreviewContext, PreviewProvider};
 
-/// C# order: Image, PDF, Markdown, Zip, MSI, Tar, Text, Diff, None, Hex.
-static PREVIEW_PROVIDERS: [&dyn PreviewProvider; 10] = [
+/// C# order: Image, PDF, Markdown, Zip, MSI, Tar, Text, Diff, None, Hex;
+/// Rust adds Table (CSV/TSV) before Text.
+static PREVIEW_PROVIDERS: [&dyn PreviewProvider; 11] = [
     &ImagePreviewProvider,
     &PdfPreviewProvider,
     &MarkdigMarkdownPreviewProvider,
     &ZipContentsPreviewProvider,
     &MsiPreviewProvider,
     &TarContentsPreviewProvider,
+    &CsvTablePreviewProvider,
     &TextPreviewProvider,
     &DiffPreviewProvider,
     &NonePreviewProvider,
@@ -31,9 +34,10 @@ static PREVIEW_PROVIDERS: [&dyn PreviewProvider; 10] = [
 ];
 
 /// C# order: File, Image, Executable, Office, Media, NuGet, MSI, Shortcut,
-/// Archive, PDF.
-static METADATA_PROVIDERS: [&dyn MetadataProvider; 10] = [
+/// Archive, PDF; Rust adds Table info (CSV/TSV) after File.
+static METADATA_PROVIDERS: [&dyn MetadataProvider; 11] = [
     &FileMetadataProvider,
+    &CsvMetadataProvider,
     &ImageMetadataProvider,
     &ExecutableMetadataProvider,
     &OfficeMetadataProvider,

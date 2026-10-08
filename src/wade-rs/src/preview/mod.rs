@@ -6,6 +6,7 @@
 //! from the registries (KNOWN_DEVIATIONS.md).
 
 pub mod cli_tool_hints;
+pub mod csv;
 pub mod document_metadata;
 pub mod executable_metadata;
 pub mod image_metadata;
@@ -38,6 +39,8 @@ pub struct PreviewContext {
     pub pdf_preview_enabled: bool,
     pub pdf_metadata_enabled: bool,
     pub markdown_preview_enabled: bool,
+    /// Rust only: the CSV/TSV table preview.
+    pub csv_preview_enabled: bool,
     pub ffprobe_enabled: bool,
     pub mediainfo_enabled: bool,
     pub zip_preview_enabled: bool,
@@ -119,7 +122,7 @@ pub fn truncation_marker(limits: PreviewLimits, truncation: Truncation) -> Style
     StyledLine::with_spans(&text, vec![crate::highlight::StyledSpan::new(0, len, crate::highlight::TokenKind::Comment)])
 }
 
-fn group_thousands(value: u64) -> String {
+pub(crate) fn group_thousands(value: u64) -> String {
     let digits = value.to_string();
     let mut out = String::new();
     for (i, ch) in digits.chars().enumerate() {
@@ -210,6 +213,7 @@ pub(crate) fn test_context() -> PreviewContext {
         pdf_preview_enabled: true,
         pdf_metadata_enabled: true,
         markdown_preview_enabled: true,
+        csv_preview_enabled: true,
         ffprobe_enabled: true,
         mediainfo_enabled: true,
         zip_preview_enabled: true,

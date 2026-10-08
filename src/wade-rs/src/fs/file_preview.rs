@@ -316,6 +316,43 @@ fn read_lines(
     }
 }
 
+/// The decoded text of a non-binary file (BOM skipped), up to `byte_limit`
+/// bytes read, and whether bytes remained. `None` for binary or unreadable
+/// files. A character cut by the limit is dropped.
+#[must_use]
+pub fn read_text(path: &str, byte_limit: u64) -> Option<(String, bool)> {
+    let metadata = detect_file_metadata(path);
+    if metadata.is_binary {
+        return None;
+    }
+
+    let mut file = std::fs::File::open(path).ok()?;
+    let file_len = file.metadata().map_or(0, |meta| meta.len());
+    let mut decoder = Decoder::new(&metadata.encoding);
+    let mut text = String::new();
+    let mut chunk = vec![0u8; 64 * 1024];
+    let mut bytes_read: u64 = 0;
+
+    loop {
+        let remaining = byte_limit.saturating_sub(bytes_read);
+        let want = usize::try_from(remaining).unwrap_or(usize::MAX).min(chunk.len());
+        let n = if want == 0 { 0 } else { file.read(&mut chunk[..want]).ok()? };
+        bytes_read += n as u64;
+
+        if n > 0 {
+            text.extend(decoder.decode(&chunk[..n]));
+            continue;
+        }
+
+        let more = remaining == 0 && file_len > byte_limit;
+        if !more {
+            text.extend(decoder.finish());
+        }
+
+        return Some((text, more));
+    }
+}
+
 fn take_line(current: &mut Vec<char>) -> String {
     let line: String = current.drain(..).collect();
     line.replace('\t', "    ")

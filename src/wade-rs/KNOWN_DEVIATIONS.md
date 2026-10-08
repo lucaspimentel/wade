@@ -303,3 +303,24 @@ None. Phase 9 closed the last temporary entries.
     line number. Archive listings keep their "... and N more entries" line.
   - The archive golden test reads plain `.gz` files with C#'s 30 lines and
     4 KB to stay comparable.
+- **CSV/TSV table preview (Rust-only).** C# shows `.csv` and `.tsv` as plain
+  text. Rust adds a "Table" preview for `.csv`, `.tsv` and `.tab`, ahead of
+  Text (which stays available through `p`).
+  - Separators: tab for `.tsv` and `.tab`; comma for `.csv`, unless the first
+    20 records are more consistently split by `;` or `|`.
+  - Parsing follows RFC 4180: quoted fields, `""` escapes, separators inside
+    quotes, and line breaks inside quotes shown as `↵`. Blank lines are
+    skipped and a UTF-8 BOM is ignored.
+  - Layout: the first record is a bold header followed by a `─` rule; each
+    column is as wide as its widest loaded cell, up to 30 cells, with `…` on
+    longer cells; a dim `│` separates columns; numbers are right-aligned;
+    record numbers sit in a dim gutter (the header is not counted). It
+    uses the preview limits (the right pane's height, or
+    `preview_max_lines` in full-screen, with the truncation marker).
+  - File details gain a "Table" section: Rows (data rows; `N+` when
+    `preview_max_bytes` stopped the count), Columns, and Separator when
+    sniffing picked one other than the extension's.
+  - Setting: `csv_preview_enabled` (default on), "Show CSV/TSV Tables"
+    under "Show File Previews" in the settings dialog. Like the other
+    Rust-only keys, it is saved only when changed, and `--show-config` lists
+    it.

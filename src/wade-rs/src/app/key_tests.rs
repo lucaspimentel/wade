@@ -1385,3 +1385,51 @@ fn the_right_pane_reads_its_height_and_full_screen_reads_the_config_limit() {
     pump_until(&mut app, "the right pane preview again", |app| loaded(app) == Some(pane_height));
     let _ = std::fs::remove_dir_all(&parent);
 }
+
+// --- CSV/TSV table preview -----------------------------------------------------
+
+#[test]
+fn a_csv_file_previews_as_a_table_and_p_switches_to_text() {
+    let (mut app, parent, root) = app();
+    std::fs::write(root.join("people.csv"), "name,age\nAda,36\n\"Smith, J\",7\n").unwrap();
+    app.directory_contents.invalidate(&app.current_path.clone());
+
+    select(&mut app, "people.csv");
+    frame(&mut app);
+    pump_until(&mut app, "the table preview", |app| app.preview.cached_styled_lines.is_some());
+    assert!(frame_has(&mut app, "name     \u{2502} age"), "aligned header");
+    assert!(frame_has(&mut app, "Smith, J \u{2502}   7"), "quoted comma kept, number right-aligned");
+    assert!(frame_has(&mut app, "Columns"), "table details");
+
+    // The menu lists Table first (active) then Text; pick Text
+    press(&mut app, ch('p'));
+    let labels: Vec<String> =
+        app.modal.action_menu_stack.last().unwrap().items.iter().map(|item| item.label.clone()).collect();
+    assert_eq!(labels[..2], ["\u{25cf} Table", "  Text"]);
+    press(&mut app, key(K::DownArrow));
+    press(&mut app, key(K::Enter));
+    pump_until(&mut app, "the text preview", |app| {
+        app.preview
+            .cached_styled_lines
+            .as_ref()
+            .is_some_and(|lines| lines.first().is_some_and(|l| l.text == "name,age"))
+    });
+    assert!(frame_has(&mut app, "\"Smith, J\",7"), "raw text");
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn enter_opens_a_csv_table_full_screen() {
+    let (mut app, parent, root) = app();
+    std::fs::write(root.join("t.tsv"), "k\tv\na\t1\n").unwrap();
+    app.directory_contents.invalidate(&app.current_path.clone());
+
+    select(&mut app, "t.tsv");
+    frame(&mut app);
+    pump_until(&mut app, "the right pane table", |app| app.preview.cached_styled_lines.is_some());
+    press(&mut app, key(K::Enter));
+    assert_eq!(app.input_mode, InputMode::ExpandedPreview);
+    pump_until(&mut app, "the full-screen table", |app| app.preview.cached_styled_lines.is_some());
+    assert!(frame_has(&mut app, "   1 a \u{2502} 1"));
+    let _ = std::fs::remove_dir_all(&parent);
+}

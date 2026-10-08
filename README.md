@@ -29,7 +29,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 
 ### Preview & Metadata
 
-- **File preview** — text (with syntax highlighting), hex, git diff, archive contents (zip, tar, gzip), images (Sixel or kitty graphics), PDF (via `pdftopng`), MSI file listing, and Markdown (built-in Markdig renderer with YAML frontmatter support); multiple modes per file switchable via `p`; CSS/SCSS/Sass previews show inline color swatches for hex literals
+- **File preview** — text (with syntax highlighting), hex, git diff, archive contents (zip, tar, gzip), images (Sixel or kitty graphics), PDF (via `pdftopng`), MSI file listing, and Markdown (built-in Markdig renderer with YAML frontmatter support); the Rust build adds a CSV/TSV table view (aligned columns, header row, right-aligned numbers; `;`/`|` separators detected); multiple modes per file switchable via `p`; CSS/SCSS/Sass previews show inline color swatches for hex literals
 - **Expanded preview** — Right/Enter expands to full width; scrollable
 - **Image preview** — Sixel graphics (Windows Terminal 1.22+, WezTerm, etc.); the Rust build also supports the kitty graphics protocol (kitty, Ghostty) and iTerm2 inline images (iTerm2, WezTerm), chosen with `image_protocol = auto|kitty|iterm|sixel`
 - **File metadata** — structured metadata above preview and in properties overlay (`i`); format-specific providers for images (EXIF), executables (PE/.NET), Office docs, NuGet packages, archives, PDF, media files, MSI installers, and Windows shortcuts (`.lnk`)
@@ -141,6 +141,7 @@ zip_preview_enabled = true
 pdf_preview_enabled = true
 pdf_metadata_enabled = true
 markdown_preview_enabled = true
+csv_preview_enabled = true       # Rust build: CSV/TSV table preview
 ffprobe_enabled = true
 mediainfo_enabled = true
 preview_max_lines = 10000        # Rust build: full-screen preview line limit (min 100)

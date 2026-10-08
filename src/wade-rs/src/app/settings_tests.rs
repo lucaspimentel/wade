@@ -175,6 +175,18 @@ fn settings() -> Vec<Setting> {
                     .is_some_and(|labels| labels.contains(&"Rendered markdown (built-in)"))
             },
         },
+        Setting {
+            name: "csv_preview_enabled",
+            config: |c, v| c.csv_preview_enabled = v,
+            dialog: |d, v| d.csv_preview = v,
+            probe: |app, _| {
+                let current = app.current_path.clone();
+                std::fs::write(std::path::Path::new(&current).join("data.csv"), "a,b\n1,2\n").unwrap();
+                app.directory_contents.invalidate(&current);
+                app.invalidate_filtered_entries();
+                provider_labels(app, "data.csv", false).is_some_and(|labels| labels.first() == Some(&"Table"))
+            },
+        },
         // The PDF and media providers also need external tools, so these
         // check the flag the App hands to the providers
         Setting {

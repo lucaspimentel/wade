@@ -158,6 +158,7 @@ fn contexts(repo_root: &str) -> Vec<(&'static str, PreviewContext)> {
         pdf_preview_enabled: true,
         pdf_metadata_enabled: true,
         markdown_preview_enabled: true,
+        csv_preview_enabled: true,
         ffprobe_enabled: true,
         mediainfo_enabled: true,
         zip_preview_enabled: true,

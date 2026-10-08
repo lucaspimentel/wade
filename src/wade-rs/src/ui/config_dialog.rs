@@ -25,6 +25,7 @@ pub enum ConfigField {
     PdfPreview,
     PdfMetadata,
     MarkdownPreview,
+    CsvPreview,
     Ffprobe,
     Mediainfo,
     CopySymlinksAsLinks,
@@ -81,6 +82,7 @@ pub struct ConfigDialogState {
     pub pdf_preview: bool,
     pub pdf_metadata: bool,
     pub markdown_preview: bool,
+    pub csv_preview: bool,
     pub ffprobe: bool,
     pub mediainfo: bool,
     pub copy_symlinks_as_links: bool,
@@ -118,6 +120,7 @@ impl ConfigDialogState {
             pdf_preview: config.pdf_preview_enabled,
             pdf_metadata: config.pdf_metadata_enabled,
             markdown_preview: config.markdown_preview_enabled,
+            csv_preview: config.csv_preview_enabled,
             ffprobe: config.ffprobe_enabled,
             mediainfo: config.mediainfo_enabled,
             copy_symlinks_as_links: config.copy_symlinks_as_links_enabled,
@@ -158,6 +161,7 @@ impl ConfigDialogState {
         config.pdf_preview_enabled = self.pdf_preview;
         config.pdf_metadata_enabled = self.pdf_metadata;
         config.markdown_preview_enabled = self.markdown_preview;
+        config.csv_preview_enabled = self.csv_preview;
         config.ffprobe_enabled = self.ffprobe;
         config.mediainfo_enabled = self.mediainfo;
         config.copy_symlinks_as_links_enabled = self.copy_symlinks_as_links;
@@ -234,6 +238,8 @@ impl ConfigDialogState {
                 ConfigField::MarkdownPreview,
                 ConfigGate::FilePreviews,
             ),
+            // Rust only
+            ConfigItem::new("Show CSV/TSV Tables", 1, ConfigField::CsvPreview, ConfigGate::FilePreviews),
         ]);
 
         self.items = items;
@@ -329,6 +335,7 @@ impl ConfigDialogState {
             ConfigField::PdfPreview => self.pdf_preview = !self.pdf_preview,
             ConfigField::PdfMetadata => self.pdf_metadata = !self.pdf_metadata,
             ConfigField::MarkdownPreview => self.markdown_preview = !self.markdown_preview,
+            ConfigField::CsvPreview => self.csv_preview = !self.csv_preview,
             ConfigField::Ffprobe => self.ffprobe = !self.ffprobe,
             ConfigField::Mediainfo => self.mediainfo = !self.mediainfo,
             ConfigField::CopySymlinksAsLinks => self.copy_symlinks_as_links = !self.copy_symlinks_as_links,
@@ -388,6 +395,7 @@ impl ConfigDialogState {
             ConfigField::PdfPreview => self.pdf_preview,
             ConfigField::PdfMetadata => self.pdf_metadata,
             ConfigField::MarkdownPreview => self.markdown_preview,
+            ConfigField::CsvPreview => self.csv_preview,
             ConfigField::Ffprobe => self.ffprobe,
             ConfigField::Mediainfo => self.mediainfo,
             ConfigField::CopySymlinksAsLinks => self.copy_symlinks_as_links,
@@ -482,6 +490,7 @@ mod tests {
             "Show PDF Previews (pdftopng)",
             "Show Archive Contents",
             "Show Markdown Preview (built-in)",
+            "Show CSV/TSV Tables",
         ];
         assert_eq!(labels, expected);
     }
@@ -544,7 +553,7 @@ mod tests {
         state.size_column = false;
         state.selected_index = 0; // Show Icons (enabled)
         state.move_up();
-        // Wraps to the last item (Show Markdown Preview, enabled)
+        // Wraps to the last item (Show CSV/TSV Tables, enabled)
         assert_eq!(state.selected_index, state.items.len() - 1);
     }
 
@@ -643,6 +652,7 @@ mod tests {
             "Show PDF Previews (pdftopng)",
             "Show Archive Contents",
             "Show Markdown Preview (built-in)",
+            "Show CSV/TSV Tables",
         ];
         let enabled = |state: &ConfigDialogState, labels: &[&str]| {
             labels.iter().map(|l| state.is_enabled(index_of(state, l))).collect::<Vec<_>>()
@@ -655,11 +665,11 @@ mod tests {
         state.preview_pane = false;
         assert_eq!(enabled(&state, &details), [false; 4]);
 
-        assert_eq!(enabled(&state, &previews), [true; 4], "previews do not depend on the right pane");
+        assert_eq!(enabled(&state, &previews), [true; 5], "previews do not depend on the right pane");
         state.file_previews = false;
-        assert_eq!(enabled(&state, &previews), [false; 4]);
+        assert_eq!(enabled(&state, &previews), [false; 5]);
         state.file_previews = true;
-        assert_eq!(enabled(&state, &previews), [true; 4]);
+        assert_eq!(enabled(&state, &previews), [true; 5]);
     }
 
     #[test]

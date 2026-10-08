@@ -70,6 +70,7 @@ pub fn load_config(args: &[String]) -> AppConfig {
             }
             // Rust-only keys: invalid values keep the default, small ones
             // are raised to the minimum
+            "csv_preview_enabled" => config.csv_preview_enabled = parse_bool(value, config.csv_preview_enabled),
             "preview_max_lines" => {
                 if let Ok(lines) = value.parse::<usize>() {
                     config.preview_max_lines = lines.max(PreviewLimits::MIN_MAX_LINES);
@@ -251,6 +252,7 @@ pub fn to_json(config: &AppConfig) -> String {
 
     // Rust-only key
     json.push_str(&format!("\"image_protocol\":\"{}\",", config.image_protocol.name()));
+    json.push_str(&format!("\"csv_preview_enabled\":{},", flag(config.csv_preview_enabled)));
     json.push_str(&format!("\"preview_max_lines\":{},", config.preview_max_lines));
     json.push_str(&format!("\"preview_max_bytes\":{},", config.preview_max_bytes));
     // C# escapes only backslashes in the start path
@@ -332,6 +334,10 @@ pub fn save_config(config: &AppConfig) -> std::io::Result<()> {
     let mut content = content;
     if config.image_protocol != crate::imaging::ImageProtocolSetting::Auto {
         content.push_str(&format!("image_protocol = {}\n", config.image_protocol.name()));
+    }
+
+    if !config.csv_preview_enabled {
+        content.push_str("csv_preview_enabled = false\n");
     }
 
     if config.preview_max_lines != PreviewLimits::DEFAULT_MAX_LINES {
@@ -678,6 +684,34 @@ mediainfo_enabled = true
     }
 
     #[test]
+    fn csv_preview_parses_and_is_saved_only_when_off() {
+        let config = config_with_path("csv-preview.txt");
+        let path = config_path(&config);
+        let load = |text: &str| {
+            std::fs::write(&path, text).unwrap();
+            load_config(&[format!("--config-file={}", path.display())]).csv_preview_enabled
+        };
+
+        assert!(load(""));
+        assert!(!load("csv_preview_enabled = false\n"));
+        assert!(load("csv_preview_enabled = maybe\n"), "invalid values keep the default");
+
+        save_config(&AppConfig {
+            csv_preview_enabled: false,
+            ..config.clone()
+        })
+        .unwrap();
+        let saved = std::fs::read_to_string(&path).unwrap();
+        assert!(saved.ends_with("mediainfo_enabled = true\ncsv_preview_enabled = false\n"), "{saved}");
+        assert!(!load(&saved));
+
+        save_config(&config).unwrap();
+        assert!(!std::fs::read_to_string(&path).unwrap().contains("csv_preview"), "on keeps the C# layout");
+        assert!(to_json(&config).contains("\"csv_preview_enabled\":true,"));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
     fn preview_limits_parse_clamp_and_are_saved_only_when_set() {
         let config = config_with_path("preview-limits.txt");
         let path = config_path(&config);
@@ -720,6 +754,7 @@ mediainfo_enabled = true
         let mut keys: Vec<&str> = bool_keys().iter().map(|(key, _, _)| *key).collect();
         keys.insert(4, "sort_mode");
         keys.push("image_protocol");
+        keys.push("csv_preview_enabled");
         keys.push("preview_max_lines");
         keys.push("preview_max_bytes");
         keys.push("start_path");

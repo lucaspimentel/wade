@@ -133,6 +133,7 @@ impl App {
             pdf_preview_enabled: self.config.pdf_preview_enabled,
             pdf_metadata_enabled: self.config.pdf_metadata_enabled,
             markdown_preview_enabled: self.config.markdown_preview_enabled,
+            csv_preview_enabled: self.config.csv_preview_enabled,
             ffprobe_enabled: self.config.ffprobe_enabled,
             mediainfo_enabled: self.config.mediainfo_enabled,
             zip_preview_enabled: self.config.zip_preview_enabled,

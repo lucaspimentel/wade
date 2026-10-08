@@ -252,9 +252,9 @@ Investigate enabling `ENABLE_VIRTUAL_TERMINAL_INPUT` on Windows Terminal (detect
 
 - [x] Allow opening the full-screen (expanded) file preview even when the right pane (`Show Right Pane`) is disabled.
 
-### CSV preview
+### ~~CSV preview~~ (Done in Rust)
 
-- [ ] File preview for CSV (and TSV) files, e.g. with aligned columns.
+- [x] File preview for CSV (and TSV) files, e.g. with aligned columns.
 
 ### Keyboard shortcut convention audit
 
