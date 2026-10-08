@@ -315,6 +315,30 @@ fn comma_opens_the_config_dialog_and_enter_saves_a_toggled_item() {
     let _ = std::fs::remove_dir_all(&parent);
 }
 
+/// macOS (Rust-only): going up from "/" lists the mounted volumes with the
+/// boot volume selected.
+#[cfg(target_os = "macos")]
+#[test]
+fn going_up_from_the_root_lists_the_volumes_on_macos() {
+    let (mut app, parent, _root) = app();
+    for _ in 0..30 {
+        if app.current_path == "/" {
+            break;
+        }
+        press(&mut app, ch('h'));
+    }
+    assert_eq!(app.current_path, "/");
+
+    press(&mut app, ch('h'));
+    assert_eq!(app.current_path, crate::fs::DRIVES_PATH);
+    assert_eq!(selected_name(&mut app), "/", "the boot volume is selected");
+    assert!(frame_has(&mut app, "apfs"), "format column");
+
+    press(&mut app, key(K::Enter));
+    assert_eq!(app.current_path, "/");
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
 #[test]
 fn shift_b_bookmarks_the_directory_and_b_lists_it() {
     let (mut app, parent, root) = app();
@@ -327,7 +351,10 @@ fn shift_b_bookmarks_the_directory_and_b_lists_it() {
     press(&mut app, key(K::Enter));
     press(&mut app, ch('b'));
     assert_eq!(app.input_mode, InputMode::Bookmarks);
-    assert!(frame_has(&mut app, crate::app::test_support::CURRENT_DIR));
+    // Long paths (macOS temp dirs) are clipped at the dialog edge, so look
+    // for the start of the entry
+    let shown: String = current.chars().take(40).collect();
+    assert!(frame_has(&mut app, &format!("[1] {shown}")), "bookmark listed");
     press(&mut app, key(K::Enter));
     assert_eq!(app.current_path, current, "Enter navigates to the bookmark");
 
@@ -408,7 +435,8 @@ fn f2_rejects_a_name_with_a_separator() {
     let _ = std::fs::remove_dir_all(&parent);
 }
 
-#[cfg(windows)]
+/// On a case-insensitive volume (Windows, macOS by default) the new name
+/// "exists" because it is the entry itself; elsewhere it is a plain rename.
 #[test]
 fn f2_changes_only_the_case_of_a_file_and_a_directory() {
     let (mut app, parent, root) = app();
@@ -428,6 +456,23 @@ fn f2_changes_only_the_case_of_a_file_and_a_directory() {
     assert_eq!(notification(&app), "Renamed to 'Sub'");
     assert!(on_disk("Sub") && !on_disk("sub"));
     assert_eq!(selected_name(&mut app), "Sub");
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn f2_to_another_entry_differing_only_in_case_is_refused_on_case_sensitive_volumes() {
+    let (mut app, parent, root) = app();
+    std::fs::write(root.join("B.txt"), "other").unwrap();
+    if crate::fs::file_operations::names_case_insensitive(&root) {
+        // The write above went to b.txt itself: only one entry exists
+        assert_eq!(std::fs::read_to_string(root.join("b.txt")).unwrap(), "other");
+    } else {
+        app.directory_contents.invalidate_all();
+        rename(&mut app, "b.txt", "B.txt");
+        assert_eq!(notification(&app), "Rename failed: cannot rename to an existing path");
+        assert_eq!(std::fs::read_to_string(root.join("B.txt")).unwrap(), "other");
+        assert!(root.join("b.txt").is_file());
+    }
     let _ = std::fs::remove_dir_all(&parent);
 }
 

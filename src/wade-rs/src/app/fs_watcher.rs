@@ -413,13 +413,20 @@ fn spawn_watch_thread(
         return Err(());
     }
 
+    // FSEvents (macOS) reports resolved paths, e.g. /private/var for /var
     let watched = path.to_path_buf();
+    let watched_resolved = std::fs::canonicalize(path).unwrap_or_else(|_| watched.clone());
     let mut watcher = notify::recommended_watcher(move |result: notify::Result<notify::Event>| {
         let signal = match result {
             Err(_) => Some(true),
             Ok(event) if event.need_rescan() => Some(true),
             // The watched directory itself went away (C# raises Error)
-            Ok(event) if matches!(event.kind, EventKind::Remove(_)) && event.paths.contains(&watched) => Some(true),
+            Ok(event)
+                if matches!(event.kind, EventKind::Remove(_))
+                    && (event.paths.contains(&watched) || event.paths.contains(&watched_resolved)) =>
+            {
+                Some(true)
+            }
             Ok(event) => {
                 let relevant = matches!(
                     event.kind,

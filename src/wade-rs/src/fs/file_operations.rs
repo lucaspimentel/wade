@@ -13,8 +13,14 @@ pub fn is_symlink(path: &str) -> bool {
     std::fs::symlink_metadata(path).is_ok_and(|meta| meta.file_type().is_symlink())
 }
 
-/// Port of `FileOperations.Delete`: deletes the paths; on Windows with
-/// permanent=false, sends them to the Recycle Bin via SHFileOperation.
+/// Whether a non-permanent delete has somewhere to go: the Recycle Bin on
+/// Windows, the Trash on macOS (Rust-only). Elsewhere every delete is
+/// permanent, as in C#.
+pub const HAS_TRASH: bool = cfg!(any(windows, target_os = "macos"));
+
+/// Port of `FileOperations.Delete`: deletes the paths; with
+/// permanent=false, sends them to the Recycle Bin via SHFileOperation on
+/// Windows, or to the Trash on macOS.
 /// Returns (successCount, errorCount) using the C# runner's accounting.
 pub fn delete_paths(paths: &[String], permanent: bool, cancel: &CancelToken) -> (usize, usize) {
     if paths.is_empty() {
@@ -29,19 +35,18 @@ pub fn delete_paths(paths: &[String], permanent: bool, cancel: &CancelToken) -> 
             break;
         }
 
-        if !permanent && cfg!(windows) {
+        if !permanent && HAS_TRASH {
             #[cfg(windows)]
-            {
-                if recycle_files(std::slice::from_ref(path)) == 0 {
-                    success += 1;
-                } else {
-                    errors += 1;
-                }
-            }
+            let trashed = recycle_files(std::slice::from_ref(path)) == 0;
+            #[cfg(target_os = "macos")]
+            let trashed = trash_item(path).is_some();
+            #[cfg(not(any(windows, target_os = "macos")))]
+            let trashed = false;
 
-            #[cfg(not(windows))]
-            {
-                let _ = path;
+            if trashed {
+                success += 1;
+            } else {
+                errors += 1;
             }
         } else if delete_one(path) {
             success += 1;
@@ -51,6 +56,29 @@ pub fn delete_paths(paths: &[String], permanent: bool, cancel: &CancelToken) -> 
     }
 
     (success, errors)
+}
+
+/// macOS: moves `argv[0]` to the Trash with NSFileManager and prints where
+/// it landed. The path is a script argument, never part of the source.
+#[cfg(target_os = "macos")]
+const MACOS_TRASH: &str = "function run(argv) { ObjC.import('Foundation'); \
+    var landed = Ref(); \
+    var ok = $.NSFileManager.defaultManager.trashItemAtURLResultingItemURLError( \
+        $.NSURL.fileURLWithPath(argv[0]), landed, null); \
+    return ok ? landed[0].path.js : ''; }";
+
+/// Moves `path` (a link itself, not its target) to the Trash; returns the
+/// item's new path, or None when the move failed.
+#[cfg(target_os = "macos")]
+fn trash_item(path: &str) -> Option<String> {
+    let output = std::process::Command::new("osascript")
+        .args(["-l", "JavaScript", "-e", MACOS_TRASH, path])
+        .stdin(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .output()
+        .ok()?;
+    let landed = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    (output.status.success() && !landed.is_empty()).then_some(landed)
 }
 
 /// Delete a single path with the C# symlink-first rules: a symlink (file or
@@ -70,11 +98,39 @@ fn delete_one(path: &str) -> bool {
     }
 }
 
-/// Canonical form of `path` for location comparisons; lowercase on Windows,
-/// where names are case-insensitive.
+/// True when the volume holding `dir` matches names case-insensitively:
+/// always on Windows, per volume on macOS (APFS and HFS+ are
+/// case-insensitive unless formatted otherwise), never elsewhere.
+#[must_use]
+pub fn names_case_insensitive(dir: &Path) -> bool {
+    #[cfg(windows)]
+    {
+        let _ = dir;
+        true
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        use std::os::unix::ffi::OsStrExt;
+        let Ok(path) = std::ffi::CString::new(dir.as_os_str().as_bytes()) else {
+            return false;
+        };
+        // 0 = case-insensitive, 1 = case-sensitive, -1 = unknown
+        unsafe { libc::pathconf(path.as_ptr(), libc::_PC_CASE_SENSITIVE) == 0 }
+    }
+
+    #[cfg(not(any(windows, target_os = "macos")))]
+    {
+        let _ = dir;
+        false
+    }
+}
+
+/// Canonical form of `path` for location comparisons; lowercase where the
+/// volume's names are case-insensitive.
 fn location_key(path: &Path) -> Option<std::path::PathBuf> {
     let canonical = std::fs::canonicalize(path).ok()?;
-    if cfg!(windows) {
+    if names_case_insensitive(&canonical) {
         Some(std::path::PathBuf::from(canonical.to_string_lossy().to_lowercase()))
     } else {
         Some(canonical)
@@ -356,9 +412,11 @@ mod tests {
         std::fs::create_dir_all(dir.join("sub2")).expect("mkdir");
         assert!(!is_within(&p(&dir.join("sub2")), &p(&sub)));
 
-        if cfg!(windows) {
+        // Windows always, macOS on its default (case-insensitive) volumes
+        assert_eq!(names_case_insensitive(&dir), cfg!(any(windows, target_os = "macos")));
+        if names_case_insensitive(&dir) {
             let upper = p(&sub).to_uppercase();
-            assert!(is_within(&p(&sub.join("deeper")), &upper), "case-insensitive on Windows");
+            assert!(is_within(&p(&sub.join("deeper")), &upper), "case-insensitive volume");
             assert!(same_location(&p(&dir.join("F.TXT")), &p(&dir).to_uppercase()));
         }
     }
@@ -521,6 +579,30 @@ mod tests {
         let cancel = CancelToken::new();
         let (success, errors) = delete_paths(&[p(&file)], true, &cancel);
         assert_eq!((success, errors), (1, 0));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn delete_moves_items_to_the_trash_on_macos() {
+        let dir = temp_dir("trash");
+        let name = format!("wade-trash-test-{}.txt", std::process::id());
+        let file = dir.join(&name);
+        std::fs::write(&file, b"x").expect("write");
+
+        let landed = trash_item(&p(&file)).expect("moved to the Trash");
+        assert!(!file.exists(), "gone from its folder");
+        assert!(Path::new(&landed).is_file(), "in the Trash at {landed}");
+        assert!(landed.contains("/.Trash/"), "{landed}");
+        let _ = std::fs::remove_file(&landed);
+
+        // Through delete_paths, with the C# accounting
+        std::fs::write(&file, b"x").expect("write");
+        let missing = dir.join("missing.txt");
+        let (success, errors) = delete_paths(&[p(&file), p(&missing)], false, &CancelToken::new());
+        assert_eq!((success, errors), (1, 1));
+        assert!(!file.exists());
+        let home = std::env::var("HOME").expect("HOME");
+        let _ = std::fs::remove_file(Path::new(&home).join(".Trash").join(&name));
     }
 
     #[test]

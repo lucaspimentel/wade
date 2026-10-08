@@ -6,6 +6,10 @@
 //! on Windows and, on Linux, the mount's file-system type (a reduced
 //! version of .NET's table: network, RAM and optical file systems are
 //! recognised, everything else is Fixed).
+//!
+//! macOS (Rust-only): `statfs` gives the file-system type and
+//! `diskutil info -plist` the SolidState and removable-media flags; the
+//! diskutil answer is cached per volume because it costs a process launch.
 
 /// Port of `DriveMediaType`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -67,7 +71,17 @@ pub fn drive_type(root: &str) -> DriveType {
     {
         linux_mount_entry(root).map_or(DriveType::Fixed, |(_, fs_type)| drive_type_from_fs_type(&fs_type))
     }
-    #[cfg(not(any(windows, target_os = "linux")))]
+    #[cfg(target_os = "macos")]
+    {
+        match macos::volume_stats(root).map(|stats| drive_type_from_fs_type(&stats.fs_type)) {
+            Some(DriveType::Fixed) if macos::diskutil_info(root).is_some_and(|info| info.removable) => {
+                DriveType::Removable
+            }
+            Some(drive_type) => drive_type,
+            None => DriveType::Fixed,
+        }
+    }
+    #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
     {
         let _ = root;
         DriveType::Fixed
@@ -83,11 +97,64 @@ fn detect_fixed(root: &str) -> DriveMediaType {
     {
         detect_linux_media_type(root)
     }
-    #[cfg(not(any(windows, target_os = "linux")))]
+    #[cfg(target_os = "macos")]
+    {
+        match macos::diskutil_info(root).and_then(|info| info.solid_state) {
+            Some(true) => DriveMediaType::Ssd,
+            Some(false) => DriveMediaType::Hdd,
+            None => DriveMediaType::Unknown,
+        }
+    }
+    #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
     {
         let _ = root;
         DriveMediaType::Unknown
     }
+}
+
+/// The flags `detect` needs from `diskutil info -plist <volume>` (macOS).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct DiskutilInfo {
+    /// `SolidState`; absent for disk images and some network volumes.
+    pub solid_state: Option<bool>,
+    /// `RemovableMedia` or `Removable`: USB sticks and card readers, not
+    /// external SSDs or hard disks (those are Fixed, as on Windows).
+    pub removable: bool,
+}
+
+/// Reads the top-level dictionary of a `diskutil info -plist` answer.
+#[must_use]
+pub fn parse_diskutil_plist(xml: &str) -> Option<DiskutilInfo> {
+    // diskutil's plist carries a DOCTYPE, which roxmltree refuses by default
+    let options = roxmltree::ParsingOptions {
+        allow_dtd: true,
+        ..roxmltree::ParsingOptions::default()
+    };
+    let document = roxmltree::Document::parse_with_options(xml, options).ok()?;
+    let dict = document.root_element().children().find(|node| node.has_tag_name("dict"))?;
+    let mut info = DiskutilInfo::default();
+    let mut key = None;
+
+    for node in dict.children().filter(roxmltree::Node::is_element) {
+        if node.has_tag_name("key") {
+            key = node.text();
+            continue;
+        }
+
+        let value = match node.tag_name().name() {
+            "true" => Some(true),
+            "false" => Some(false),
+            _ => None,
+        };
+
+        match (key.take(), value) {
+            (Some("SolidState"), value) => info.solid_state = value,
+            (Some("RemovableMedia" | "Removable"), Some(true)) => info.removable = true,
+            _ => {}
+        }
+    }
+
+    Some(info)
 }
 
 /// Port of `ParseRotationalValue`.
@@ -146,7 +213,9 @@ pub fn drive_type_from_fs_type(fs_type: &str) -> DriveType {
         | "securityfs" | "pstore" | "mqueue" | "hugetlbfs" | "tracefs" | "configfs" | "bpf" | "fusectl" => {
             DriveType::Ram
         }
-        "iso9660" | "udf" => DriveType::CDRom,
+        // macOS: Apple Filing Protocol, WebDAV and FTP mounts
+        "afpfs" | "webdav" | "ftp" => DriveType::Network,
+        "iso9660" | "udf" | "cd9660" => DriveType::CDRom,
         _ => DriveType::Fixed,
     }
 }
@@ -187,6 +256,72 @@ fn detect_linux_media_type(root: &str) -> DriveMediaType {
 
     std::fs::read_to_string(format!("/sys/block/{device}/queue/rotational"))
         .map_or(DriveMediaType::Unknown, |content| parse_rotational_value(Some(content.trim())))
+}
+
+/// macOS volume facts: `statfs`/`statvfs` and the cached `diskutil` answer.
+#[cfg(target_os = "macos")]
+pub(crate) mod macos {
+    use super::{DiskutilInfo, parse_diskutil_plist};
+    use std::collections::HashMap;
+    use std::ffi::CString;
+    use std::os::unix::ffi::OsStrExt;
+    use std::sync::{Mutex, OnceLock};
+
+    /// What `statfs` reports for the volume holding a path.
+    pub(crate) struct VolumeStats {
+        pub(crate) fs_type: String,
+        pub(crate) mount_point: String,
+        pub(crate) free_bytes: u64,
+        pub(crate) total_bytes: u64,
+    }
+
+    fn c_path(path: &str) -> Option<CString> {
+        CString::new(std::path::Path::new(path).as_os_str().as_bytes()).ok()
+    }
+
+    fn c_text(chars: &[libc::c_char]) -> String {
+        // The fixed-size fields are NUL-terminated within their length
+        let bytes: Vec<u8> = chars.iter().take_while(|&&c| c != 0).map(|&c| c as u8).collect();
+        String::from_utf8_lossy(&bytes).into_owned()
+    }
+
+    pub(crate) fn volume_stats(path: &str) -> Option<VolumeStats> {
+        let path = c_path(path)?;
+        let mut stats: libc::statfs = unsafe { std::mem::zeroed() };
+        if unsafe { libc::statfs(path.as_ptr(), &mut stats) } != 0 {
+            return None;
+        }
+
+        let block = u64::from(stats.f_bsize);
+        Some(VolumeStats {
+            fs_type: c_text(&stats.f_fstypename),
+            mount_point: c_text(&stats.f_mntonname),
+            free_bytes: stats.f_bavail.saturating_mul(block),
+            total_bytes: stats.f_blocks.saturating_mul(block),
+        })
+    }
+
+    /// `diskutil info -plist <root>`, cached per volume (None when the tool
+    /// fails, e.g. for some network mounts).
+    pub(crate) fn diskutil_info(root: &str) -> Option<DiskutilInfo> {
+        static CACHE: OnceLock<Mutex<HashMap<String, Option<DiskutilInfo>>>> = OnceLock::new();
+        let cache = CACHE.get_or_init(Mutex::default);
+
+        if let Some(cached) = cache.lock().ok()?.get(root) {
+            return *cached;
+        }
+
+        let info = std::process::Command::new("diskutil")
+            .args(["info", "-plist", root])
+            .stderr(std::process::Stdio::null())
+            .output()
+            .ok()
+            .filter(|output| output.status.success())
+            .and_then(|output| parse_diskutil_plist(&String::from_utf8_lossy(&output.stdout)));
+
+        cache.lock().ok()?.insert(root.to_string(), info);
+        info
+    }
 }
 
 #[cfg(windows)]
@@ -342,6 +477,12 @@ mod tests {
         assert_eq!(drive_type_from_fs_type("nfs4"), DriveType::Network);
         assert_eq!(drive_type_from_fs_type("tmpfs"), DriveType::Ram);
         assert_eq!(drive_type_from_fs_type("iso9660"), DriveType::CDRom);
+        // macOS names
+        assert_eq!(drive_type_from_fs_type("apfs"), DriveType::Fixed);
+        assert_eq!(drive_type_from_fs_type("smbfs"), DriveType::Network);
+        assert_eq!(drive_type_from_fs_type("afpfs"), DriveType::Network);
+        assert_eq!(drive_type_from_fs_type("webdav"), DriveType::Network);
+        assert_eq!(drive_type_from_fs_type("cd9660"), DriveType::CDRom);
         assert_eq!(DriveType::CDRom.name(), "CDRom");
     }
 
@@ -349,5 +490,57 @@ mod tests {
     fn detect_does_not_panic_for_current_root() {
         let root = if cfg!(windows) { "C:\\" } else { "/" };
         let _ = detect(root);
+    }
+
+    fn plist(entries: &str) -> String {
+        format!(
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \
+             \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n{entries}\n</dict>\n</plist>\n"
+        )
+    }
+
+    #[test]
+    fn parse_diskutil_plist_reads_solid_state_and_removable_media() {
+        // An internal APFS volume, trimmed from real `diskutil info -plist /` output
+        let internal = plist(
+            "<key>APFSContainerFree</key><integer>123</integer>\n<key>Ejectable</key><false/>\n\
+             <key>FilesystemType</key><string>apfs</string>\n<key>Internal</key><true/>\n\
+             <key>Removable</key><false/>\n<key>RemovableMedia</key><false/>\n<key>SolidState</key><true/>\n\
+             <key>Stack</key><array><dict><key>SolidState</key><false/></dict></array>",
+        );
+        assert_eq!(
+            parse_diskutil_plist(&internal),
+            Some(DiskutilInfo {
+                solid_state: Some(true),
+                removable: false
+            })
+        );
+
+        let usb_stick = plist("<key>RemovableMedia</key><true/>\n<key>SolidState</key><false/>");
+        assert_eq!(
+            parse_diskutil_plist(&usb_stick),
+            Some(DiskutilInfo {
+                solid_state: Some(false),
+                removable: true
+            })
+        );
+
+        // A disk image or network share without the key
+        let image = plist("<key>Ejectable</key><true/>\n<key>VolumeName</key><string>SolidState</string>");
+        assert_eq!(parse_diskutil_plist(&image), Some(DiskutilInfo { solid_state: None, removable: false }));
+
+        assert_eq!(parse_diskutil_plist("Could not find disk: /nope"), None);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn the_macos_boot_volume_is_a_fixed_ssd() {
+        // GitHub's macOS runners (and every current Mac) boot from APFS on SSD
+        assert_eq!(drive_type("/"), DriveType::Fixed);
+        assert_eq!(detect("/"), DriveMediaType::Ssd);
+        let stats = macos::volume_stats("/").expect("statfs /");
+        assert_eq!(stats.fs_type, "apfs");
+        assert_eq!(stats.mount_point, "/");
+        assert!(stats.total_bytes > 0 && stats.free_bytes <= stats.total_bytes);
     }
 }

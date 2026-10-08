@@ -862,7 +862,7 @@ impl App {
             self.update_terminal_title();
             self.refresh_git_status();
             let drive_entries = self.directory_contents.get_entries(DRIVES_PATH);
-            let root = drive_root(&old_path).map(|r| r.trim_end_matches(['\\', '/']).to_string()).unwrap_or_default();
+            let root = drive_root(&old_path).map(|r| drive_name(&r)).unwrap_or_default();
             let idx = drive_entries.iter().position(|e| e.name.eq_ignore_ascii_case(&root));
             self.selected_index = idx.unwrap_or(0);
         } else if let Some(parent) = Path::new(&self.current_path).parent() {
@@ -1566,7 +1566,7 @@ impl App {
                 };
 
                 let permanent = action == A::DeletePermanently;
-                let is_permanent = permanent || !cfg!(windows);
+                let is_permanent = permanent || !crate::fs::file_operations::HAS_TRASH;
                 let title = if is_permanent { "Permanently Delete" } else { "Delete" };
                 let warning = if is_permanent { "\nThis cannot be undone!" } else { "" };
 
@@ -1696,12 +1696,7 @@ impl App {
 
         // The left pane shows the parent directory (see render_left_pane)
         let (parent_key, _) = if DirectoryContents::is_drive_root(&self.current_path) {
-            (
-                DRIVES_PATH.to_string(),
-                drive_root(&self.current_path)
-                    .map(|r| r.trim_end_matches(['\\', '/']).to_string())
-                    .unwrap_or_default(),
-            )
+            (DRIVES_PATH.to_string(), drive_root(&self.current_path).map(|r| drive_name(&r)).unwrap_or_default())
         } else {
             match Path::new(&self.current_path).parent() {
                 Some(parent) => (parent.to_string_lossy().to_string(), file_name_of(&self.current_path)),
@@ -1740,12 +1735,7 @@ impl App {
     /// `calculate_scroll(parent_selected, ...)` in `render_left_pane`).
     fn mouse_left_pane_scroll(&self, parent_entries: &[FileSystemEntry]) -> i32 {
         let (_, current_name) = if DirectoryContents::is_drive_root(&self.current_path) {
-            (
-                DRIVES_PATH.to_string(),
-                drive_root(&self.current_path)
-                    .map(|r| r.trim_end_matches(['\\', '/']).to_string())
-                    .unwrap_or_default(),
-            )
+            (DRIVES_PATH.to_string(), drive_root(&self.current_path).map(|r| drive_name(&r)).unwrap_or_default())
         } else {
             match Path::new(&self.current_path).parent() {
                 Some(parent) => (parent.to_string_lossy().to_string(), file_name_of(&self.current_path)),
@@ -1909,12 +1899,7 @@ impl App {
         }
 
         let (parent_key, current_name) = if DirectoryContents::is_drive_root(&self.current_path) {
-            (
-                DRIVES_PATH.to_string(),
-                drive_root(&self.current_path)
-                    .map(|r| r.trim_end_matches(['\\', '/']).to_string())
-                    .unwrap_or_default(),
-            )
+            (DRIVES_PATH.to_string(), drive_root(&self.current_path).map(|r| drive_name(&r)).unwrap_or_default())
         } else {
             match Path::new(&self.current_path).parent() {
                 Some(parent) => (parent.to_string_lossy().to_string(), file_name_of(&self.current_path)),
@@ -2052,7 +2037,7 @@ impl App {
     }
 }
 
-use crate::fs::directory_contents::{capitalize_drive_letter, drive_root};
+use crate::fs::directory_contents::{capitalize_drive_letter, drive_name, drive_root};
 use crate::ui::layout::Rect as Rect2;
 
 /// Port of `Process.Start(path) { UseShellExecute = true }` (App.cs:3143).
@@ -2170,10 +2155,33 @@ fn open_terminal(working_directory: &str) -> std::io::Result<()> {
         }
     }
 
-    #[cfg(not(windows))]
+    // macOS (Rust-only): a new window of the terminal app in use
+    #[cfg(target_os = "macos")]
+    {
+        let app = macos_terminal_app(std::env::var("TERM_PROGRAM").ok().as_deref());
+        let status = std::process::Command::new("open").args(["-a", app, working_directory]).status()?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err(std::io::Error::other(format!("open -a {app} failed")))
+        }
+    }
+
+    #[cfg(not(any(windows, target_os = "macos")))]
     {
         let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
         std::process::Command::new(shell).current_dir(working_directory).spawn().map(|_| ())
+    }
+}
+
+/// The app `open -a` launches for "open terminal here" on macOS: iTerm when
+/// wade runs in iTerm (`TERM_PROGRAM`), Terminal otherwise.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+#[must_use]
+pub(crate) fn macos_terminal_app(term_program: Option<&str>) -> &'static str {
+    match term_program {
+        Some("iTerm.app") => "iTerm",
+        _ => "Terminal",
     }
 }
 /// Case-insensitive path comparison on every platform (C#
@@ -2317,6 +2325,14 @@ mod tests {
     use super::{App, AppAction, AppConfig, InputMode};
     use crate::fs::DriveMediaType;
     use crate::input::FileSystemChangedEvent;
+
+    #[test]
+    fn macos_terminal_app_follows_term_program() {
+        assert_eq!(super::macos_terminal_app(Some("iTerm.app")), "iTerm");
+        assert_eq!(super::macos_terminal_app(Some("Apple_Terminal")), "Terminal");
+        assert_eq!(super::macos_terminal_app(Some("WezTerm")), "Terminal");
+        assert_eq!(super::macos_terminal_app(None), "Terminal");
+    }
 
     #[test]
     fn should_compute_inline_dir_sizes_matches_csharp_theory() {

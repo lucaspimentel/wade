@@ -554,9 +554,10 @@ impl App {
         };
         let new_path = std::path::Path::new(&parent).join(new_name).to_string_lossy().to_string();
 
-        // Windows names are case-insensitive: for `foo` -> `Foo` the new path
-        // "exists" because it is the entry being renamed
-        let case_only = cfg!(windows) && new_name.to_lowercase() == old_name.to_lowercase();
+        // On a case-insensitive volume (Windows, macOS by default) the new
+        // path of `foo` -> `Foo` "exists" because it is the entry being renamed
+        let case_only = new_name.to_lowercase() == old_name.to_lowercase()
+            && crate::fs::file_operations::names_case_insensitive(std::path::Path::new(&parent));
         let result = if !case_only && std::path::Path::new(&new_path).symlink_metadata().is_ok() {
             Err(std::io::Error::other("cannot rename to an existing path"))
         } else {

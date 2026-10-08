@@ -177,7 +177,8 @@ impl DirectoryContents {
                 let root = drive_root(path);
                 root.is_some_and(|r| r == full)
             }
-            _ => full == "/",
+            // Unix: "/", or (macOS) a volume mounted under /Volumes
+            _ => full == "/" || drive_root(path).is_some_and(|root| root == full),
         }
     }
 
@@ -211,10 +212,31 @@ pub fn drive_root(path: &str) -> Option<String> {
     None
 }
 
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "macos")))]
 #[must_use]
 pub fn drive_root(_path: &str) -> Option<String> {
     if Path::new(_path).is_absolute() { Some("/".to_string()) } else { None }
+}
+
+/// macOS (Rust-only): a volume mounted under /Volumes is its own root, as
+/// it is its own entry in the drive list; everything else is under "/".
+#[cfg(target_os = "macos")]
+#[must_use]
+pub fn drive_root(path: &str) -> Option<String> {
+    if !Path::new(path).is_absolute() {
+        return None;
+    }
+
+    let mount_point = super::drive_media_type::macos::volume_stats(path).map(|stats| stats.mount_point);
+    Some(mount_point.filter(|mount| mount.starts_with("/Volumes/")).unwrap_or_else(|| "/".to_string()))
+}
+
+/// The drive-list name of a drive root: "C:\" -> "C:" (C# trims the
+/// separator), while a Unix root keeps its path ("/", "/Volumes/USB").
+#[must_use]
+pub fn drive_name(root: &str) -> String {
+    let trimmed = root.trim_end_matches(['\\', '/']);
+    if trimmed.is_empty() { root.to_string() } else { trimmed.to_string() }
 }
 
 /// Port of `LoadEntries`: enumerate, filter, sort.
@@ -489,9 +511,74 @@ pub const fn is_cloud_placeholder_attributes(attribute_bits: u32) -> bool {
     attribute_bits & (RECALL_ON_DATA_ACCESS | RECALL_ON_OPEN) != 0
 }
 
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "macos")))]
 pub fn get_drive_entries() -> Vec<FileSystemEntry> {
     Vec::new()
+}
+
+/// macOS (Rust-only): the volumes mounted under /Volumes, boot volume
+/// first. Name is the mount point, label the volume name.
+#[cfg(target_os = "macos")]
+pub fn get_drive_entries() -> Vec<FileSystemEntry> {
+    use super::drive_media_type::{detect, macos::volume_stats};
+
+    volume_mounts(Path::new("/Volumes"))
+        .into_iter()
+        .filter_map(|(label, mount_point)| {
+            let stats = volume_stats(&mount_point)?;
+            // A plain folder under /Volumes (a stale mount point) is not a volume
+            if stats.mount_point != mount_point {
+                return None;
+            }
+
+            Some(FileSystemEntry {
+                name: drive_name(&mount_point),
+                full_path: mount_point.clone(),
+                is_directory: true,
+                size: 0,
+                last_modified: super::super::ui::format_helpers::DateParts::default(),
+                link_target: None,
+                is_broken_symlink: false,
+                is_drive: true,
+                is_cloud_placeholder: false,
+                is_junction_point: false,
+                is_app_exec_link: false,
+                app_exec_link_target: None,
+                drive_media_type: detect(&mount_point),
+                drive_format: Some(stats.fs_type),
+                drive_label: Some(label),
+                drive_free_space: i64::try_from(stats.free_bytes).unwrap_or(i64::MAX),
+                drive_total_size: i64::try_from(stats.total_bytes).unwrap_or(i64::MAX),
+            })
+        })
+        .collect()
+}
+
+/// The (volume name, resolved mount point) pairs listed in a /Volumes-like
+/// directory: links are resolved (the boot volume's link points at "/"),
+/// hidden entries skipped, the volume at "/" first and the rest by name.
+#[cfg(unix)]
+#[must_use]
+pub fn volume_mounts(volumes_dir: &Path) -> Vec<(String, String)> {
+    let Ok(read_dir) = std::fs::read_dir(volumes_dir) else {
+        return Vec::new();
+    };
+
+    let mut mounts: Vec<(String, String)> = read_dir
+        .filter_map(Result::ok)
+        .filter_map(|entry| {
+            let label = entry.file_name().to_string_lossy().into_owned();
+            if label.starts_with('.') {
+                return None;
+            }
+
+            let resolved = std::fs::canonicalize(entry.path()).ok()?;
+            resolved.is_dir().then(|| (label, resolved.to_string_lossy().into_owned()))
+        })
+        .collect();
+
+    mounts.sort_by(|a, b| (a.1 != "/").cmp(&(b.1 != "/")).then_with(|| a.0.to_lowercase().cmp(&b.0.to_lowercase())));
+    mounts
 }
 
 /// Port of `PathCompletion.CapitalizeDriveLetter` (the pieces the spine
@@ -525,6 +612,54 @@ mod tests {
         ] {
             assert_eq!(is_cloud_placeholder_attributes(bits), expected, "{bits:#x}");
         }
+    }
+
+    #[test]
+    fn drive_name_trims_separators_but_keeps_a_bare_root() {
+        assert_eq!(drive_name("C:\\"), "C:");
+        assert_eq!(drive_name("/"), "/");
+        assert_eq!(drive_name("/Volumes/USB"), "/Volumes/USB");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn volume_mounts_resolve_links_and_put_the_root_volume_first() {
+        let volumes = std::env::temp_dir().join(format!("wade-volumes-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&volumes);
+        std::fs::create_dir_all(volumes.join("zeta")).unwrap();
+        std::fs::create_dir_all(volumes.join("Alpha")).unwrap();
+        std::fs::create_dir_all(volumes.join(".hidden")).unwrap();
+        std::fs::write(volumes.join("file.txt"), "x").unwrap();
+        std::os::unix::fs::symlink("/", volumes.join("Macintosh HD")).unwrap();
+        let resolved = |name: &str| std::fs::canonicalize(volumes.join(name)).unwrap().to_string_lossy().into_owned();
+
+        assert_eq!(
+            volume_mounts(&volumes),
+            [
+                ("Macintosh HD".to_string(), "/".to_string()),
+                ("Alpha".to_string(), resolved("Alpha")),
+                ("zeta".to_string(), resolved("zeta")),
+            ]
+        );
+        assert!(volume_mounts(&volumes.join("missing")).is_empty());
+        let _ = std::fs::remove_dir_all(&volumes);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_drive_list_starts_with_the_boot_volume() {
+        let drives = get_drive_entries();
+        let boot = drives.first().expect("at least the boot volume");
+        assert_eq!((boot.name.as_str(), boot.full_path.as_str()), ("/", "/"));
+        assert!(boot.is_drive && boot.is_directory);
+        assert_eq!(boot.drive_format.as_deref(), Some("apfs"));
+        assert!(boot.drive_label.as_deref().is_some_and(|label| !label.is_empty()));
+        assert!(boot.drive_total_size > 0 && boot.drive_free_space <= boot.drive_total_size);
+        assert_eq!(boot.drive_media_type, super::super::DriveMediaType::Ssd);
+
+        assert!(DirectoryContents::is_drive_root("/"));
+        assert_eq!(drive_root("/Users"), Some("/".to_string()));
+        assert!(!DirectoryContents::is_drive_root("/Users"));
     }
 
     #[cfg(unix)]
