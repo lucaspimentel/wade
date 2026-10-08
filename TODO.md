@@ -101,6 +101,12 @@ backlog.
   detection (`statfs`, `diskutil`), Trash on delete, Terminal/iTerm for
   "open terminal here" and `/Volumes` as the drive list; fixed the watcher
   missing the removal of a directory reached through a symlink
+- [ ] Linux Trash on delete (Rust-only): non-permanent delete is permanent on
+  Linux (C# behavior), while Windows uses the Recycle Bin and macOS the
+  Trash. Implement the freedesktop.org Trash spec (move into
+  `$XDG_DATA_HOME/Trash/files`, write `Trash/info/<name>.trashinfo` with the
+  original path and deletion date; per-volume `.Trash-$UID` for other
+  mounts), then make `HAS_TRASH` true on Linux
 - [ ] Case-sensitivity detection beyond macOS (`names_case_insensitive` is the
   single switch; deferred from the macOS pass):
   - Linux treats every volume as case-sensitive. FAT/exFAT and most SMB
