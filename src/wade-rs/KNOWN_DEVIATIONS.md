@@ -332,6 +332,12 @@ None. Phase 9 closed the last temporary entries.
     default) get the Windows case handling: a case-only rename is not a
     conflict, and paste's same-folder and own-subtree checks ignore case.
     Case-sensitive volumes keep exact matching.
+  - Paths entering wade (start path, go to path, bookmarks and saved sorts
+    on load, git status paths) are respelled as stored on disk on
+    case-insensitive volumes, so path-keyed state matches whatever case was
+    typed. Bookmarks and sort lines that differ only in case merge on load
+    (first bookmark, last sort line wins). Links are not resolved. C# keeps
+    the typed spelling and compares ordinally on macOS.
   - Drive type comes from `statfs` (smbfs/nfs/afpfs/webdav are Network)
     and SSD/HDD and removable media from `diskutil info -plist` (cached per
     volume), so inline directory sizes follow the SSD/HDD settings. C# uses

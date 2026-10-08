@@ -53,7 +53,12 @@ impl BookmarkStore {
                 continue;
             }
 
-            self.bookmarks.push(trimmed.to_string());
+            // macOS: stored spelling, so entries that differ only in case
+            // merge (the first wins) and match the paths wade navigates to
+            let bookmark = super::file_operations::on_disk_case(trimmed);
+            if !cfg!(target_os = "macos") || !self.contains(&bookmark) {
+                self.bookmarks.push(bookmark);
+            }
         }
     }
 
@@ -109,6 +114,30 @@ mod tests {
         let path = std::env::temp_dir().join(format!("wade-bookmarks-test-{}-{name}", std::process::id()));
         let _ = std::fs::remove_file(&path);
         BookmarkStore::new(Some(path))
+    }
+
+    /// macOS: entries are respelled as stored on disk, so spellings that
+    /// differ only in case merge (the first wins); elsewhere both stay.
+    #[test]
+    fn load_merges_spellings_of_one_directory_on_macos() {
+        let dir = std::env::temp_dir().join(format!("wade-bookmarks-case-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("Dir")).unwrap();
+        let stored = dir.join("Dir").to_string_lossy().into_owned();
+        let lower = dir.join("dir").to_string_lossy().into_owned();
+        let other = dir.join("other").to_string_lossy().into_owned();
+
+        let mut s = store("case.txt");
+        std::fs::write(&s.file_path, format!("{lower}\n{other}\n{stored}\n")).unwrap();
+        s.load();
+
+        if cfg!(target_os = "macos") {
+            assert_eq!(s.bookmarks(), [stored.clone(), other]);
+            assert!(s.contains(&stored));
+        } else {
+            assert_eq!(s.bookmarks(), [lower, other, stored]);
+        }
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

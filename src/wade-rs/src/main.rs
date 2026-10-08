@@ -35,7 +35,13 @@ fn main() -> ExitCode {
 
     // Validate the start path before entering the TUI
     let full_start_path = wade::app::dialogs::get_full_path(&config.start_path);
-    let full = Path::new(&full_start_path);
+    // macOS: the stored spelling, so path-keyed state (bookmarks, saved
+    // sorts, git status) matches; unchanged elsewhere
+    let stored = wade::fs::file_operations::on_disk_case(&full_start_path);
+    if stored != full_start_path {
+        config.start_path.clone_from(&stored);
+    }
+    let full = Path::new(&stored);
 
     if full.is_file() {
         // Path points to a file: open its parent directory and select the file

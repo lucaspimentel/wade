@@ -101,6 +101,19 @@ backlog.
   detection (`statfs`, `diskutil`), Trash on delete, Terminal/iTerm for
   "open terminal here" and `/Volumes` as the drive list; fixed the watcher
   missing the removal of a directory reached through a symlink
+- [ ] Case-sensitivity detection beyond macOS (`names_case_insensitive` is the
+  single switch; deferred from the macOS pass):
+  - Linux treats every volume as case-sensitive. FAT/exFAT and most SMB
+    mounts are not (case-only rename refused as a conflict, other spellings
+    not matched). Detect by the mount's file-system type, or ext4/f2fs
+    per-directory casefold (`FS_CASEFOLD_FL`)
+  - Windows treats every directory as case-insensitive. NTFS directories
+    with per-directory case sensitivity (WSL-created, or
+    `fsutil file setCaseSensitiveInfo`) are not; detect with
+    `GetFileInformationByHandleEx(FileCaseSensitiveInfo)`
+  - `on_disk_case` matches names by case only; APFS also ignores Unicode
+    normalization (NFC vs NFD), so differently normalized names are not
+    matched
 - [ ] Manual macOS checks (need a real terminal): keyboard and Option-key
   input, mouse, resize, kitty/iTerm2/Sixel images, clipboard round trip with
   Finder, open with the default app, Trash and Terminal/iTerm launch, the

@@ -225,7 +225,9 @@ pub fn query_status(repo_root: &str, cancel: &CancelToken) -> Option<HashMap<Str
         cancel,
         LOCAL_TIMEOUT_MS,
     ) {
-        Ok(stdout) => Some(parse_porcelain_output(&stdout, repo_root)),
+        // macOS: git reports the index's spelling, which can differ from the
+        // disk's (a case-only rename without `git mv`); key by the disk's
+        Ok(stdout) => Some(parse_porcelain_output_with(&stdout, repo_root, crate::fs::file_operations::on_disk_case)),
         Err(_) => None,
     }
 }
@@ -374,6 +376,17 @@ fn run_git_args_owned(
 /// aggregates into parent directories.
 #[must_use]
 pub fn parse_porcelain_output(output: &str, repo_root: &str) -> HashMap<String, GitFileStatus> {
+    parse_porcelain_output_with(output, repo_root, str::to_string)
+}
+
+/// `parse_porcelain_output` with each file's full path passed through
+/// `respell` before the directories are aggregated (macOS: on-disk case).
+#[must_use]
+pub fn parse_porcelain_output_with(
+    output: &str,
+    repo_root: &str,
+    respell: impl Fn(&str) -> String,
+) -> HashMap<String, GitFileStatus> {
     let mut statuses: HashMap<String, GitFileStatus> = HashMap::new();
 
     for line in output.lines() {
@@ -435,7 +448,7 @@ pub fn parse_porcelain_output(output: &str, repo_root: &str) -> HashMap<String, 
         // Convert relative path (using /) to full path with platform
         // separators
         let full_path = std::path::Path::new(repo_root).join(relative_path.replace('/', std::path::MAIN_SEPARATOR_STR));
-        let full_path = normalize_full_path(&full_path.to_string_lossy());
+        let full_path = respell(&normalize_full_path(&full_path.to_string_lossy()));
 
         match statuses.get(&full_path) {
             Some(existing) => {
@@ -850,6 +863,17 @@ mod tests {
     }
 
     #[test]
+    fn respelled_paths_key_files_and_their_directories() {
+        let root = test_root();
+        let respell = |path: &str| path.replace("lower", "Lower");
+        let statuses = parse_porcelain_output_with(" M lower/file.txt\n", &root, respell);
+        let full = |tail: &str| normalize_full_path(&std::path::Path::new(&root).join(tail).to_string_lossy());
+        assert_eq!(statuses.get(&full("Lower/file.txt")), Some(&GitFileStatus::MODIFIED));
+        assert_eq!(statuses.get(&full("Lower")), Some(&GitFileStatus::MODIFIED));
+        assert!(!statuses.contains_key(&full("lower/file.txt")));
+    }
+
+    #[test]
     fn statuses_get_case_insensitive_on_windows() {
         let mut map = HashMap::new();
         map.insert(r"C:\Repo\File.txt".to_string(), GitFileStatus::MODIFIED);
@@ -920,6 +944,20 @@ mod integration {
         run_git(&repo, &["add", "test.txt"]);
         run_git(&repo, &["commit", "-q", "-m", "initial"]);
         Some(repo)
+    }
+
+    /// macOS: after a case-only rename without `git mv`, git still reports
+    /// the index's spelling; the status is keyed by the disk's.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn status_follows_a_case_only_rename_on_disk() {
+        let Some(repo) = committed_repo("case-rename") else { return };
+        std::fs::rename(repo.join("test.txt"), repo.join("Test.txt")).expect("rename");
+        std::fs::write(repo.join("Test.txt"), "changed\n").expect("write");
+
+        let statuses = query_status(&p(&repo), &CancelToken::new()).expect("status");
+        assert_eq!(statuses_get(&statuses, &p(&repo.join("Test.txt"))), Some(GitFileStatus::MODIFIED), "{statuses:?}");
+        let _ = std::fs::remove_dir_all(&repo);
     }
 
     #[test]

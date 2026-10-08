@@ -338,6 +338,32 @@ fn going_up_from_the_root_lists_the_volumes_on_macos() {
     let _ = std::fs::remove_dir_all(&parent);
 }
 
+/// macOS: a path typed with another case lands on the stored spelling, so
+/// the directory's bookmark (and other path-keyed state) applies.
+#[cfg(target_os = "macos")]
+#[test]
+fn go_to_path_with_another_case_finds_the_directory_state() {
+    let (mut app, parent, root) = app();
+    std::fs::create_dir_all(root.join("Docs")).unwrap();
+    std::fs::write(root.join("Docs").join("a.txt"), "a").unwrap();
+    std::fs::write(root.join("Docs").join("b.txt"), "b").unwrap();
+    app.directory_contents.invalidate_all();
+    let stored = root.join("Docs").to_string_lossy().into_owned();
+
+    select(&mut app, "Docs");
+    press(&mut app, key(K::Enter));
+    assert_eq!(app.current_path, stored);
+    press(&mut app, ch('B'));
+    press(&mut app, ch('h'));
+
+    press(&mut app, ctrl(K::G));
+    type_text(&mut app, &root.join("docs").to_string_lossy());
+    press(&mut app, key(K::Enter));
+    assert_eq!(app.current_path, stored, "the stored spelling");
+    assert!(app.bookmark_store.contains(&app.current_path), "the bookmark applies");
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
 #[test]
 fn shift_b_bookmarks_the_directory_and_b_lists_it() {
     let (mut app, parent, root) = app();

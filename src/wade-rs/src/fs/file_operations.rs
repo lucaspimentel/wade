@@ -124,6 +124,74 @@ pub fn names_case_insensitive(dir: &Path) -> bool {
     }
 }
 
+/// macOS (Rust-only): `path` with each existing component spelled as it is
+/// stored on disk, so a path typed as `/users/me/src` becomes
+/// `/Users/me/src` on a case-insensitive volume and lookups keyed by path
+/// stay exact. Links are not resolved; components that do not exist (and
+/// everything after them) keep their typed spelling. Unchanged on other
+/// platforms and on case-sensitive volumes.
+#[must_use]
+pub fn on_disk_case(path: &str) -> String {
+    if cfg!(target_os = "macos") {
+        stored_spelling(path, names_case_insensitive)
+    } else {
+        path.to_string()
+    }
+}
+
+/// `on_disk_case` with the volume check injected, so it is testable on
+/// every platform.
+fn stored_spelling(path: &str, case_insensitive: impl Fn(&Path) -> bool) -> String {
+    use std::path::Component;
+
+    let original = Path::new(path);
+    if !original.is_absolute() {
+        return path.to_string();
+    }
+
+    let mut resolved = std::path::PathBuf::new();
+    let mut components = original.components();
+
+    for component in components.by_ref() {
+        let Component::Normal(name) = component else {
+            resolved.push(component);
+            continue;
+        };
+
+        if !case_insensitive(&resolved) {
+            // Case-sensitive from here down: the typed spelling is the stored one
+            resolved.push(name);
+            break;
+        }
+
+        let wanted = name.to_string_lossy();
+        let stored = std::fs::read_dir(&resolved).ok().and_then(|entries| {
+            let mut folded = None;
+            for entry in entries.filter_map(Result::ok) {
+                let candidate = entry.file_name();
+                if candidate == name {
+                    return Some(candidate);
+                }
+                if folded.is_none() && candidate.to_string_lossy().to_lowercase() == wanted.to_lowercase() {
+                    folded = Some(candidate);
+                }
+            }
+            folded
+        });
+
+        match stored {
+            Some(stored) => resolved.push(stored),
+            None => {
+                resolved.push(name);
+                break;
+            }
+        }
+    }
+
+    resolved.extend(components);
+    resolved.to_string_lossy().into_owned()
+}
+
 /// Canonical form of `path` for location comparisons; lowercase where the
 /// volume's names are case-insensitive.
 fn location_key(path: &Path) -> Option<std::path::PathBuf> {
@@ -566,6 +634,37 @@ mod tests {
         copy_path(&p(&tree), &p(&tree_dest), false).expect("copy tree");
         assert!(!is_symlink(&p(&tree_dest.join("inner"))));
         assert!(tree_dest.join("inner").join("sub").join("b.txt").is_file());
+    }
+
+    #[test]
+    fn stored_spelling_restores_the_case_on_disk_without_resolving_links() {
+        let dir = temp_dir("spelling");
+        std::fs::create_dir_all(dir.join("Dir")).expect("mkdir");
+        std::fs::write(dir.join("Dir").join("File.txt"), b"x").expect("write");
+        let typed = |tail: &str| p(&tail.split('/').fold(dir.clone(), |path, part| path.join(part)));
+        let insensitive = |_: &Path| true;
+
+        assert_eq!(stored_spelling(&typed("dir/FILE.TXT"), insensitive), typed("Dir/File.txt"));
+        assert_eq!(stored_spelling(&typed("Dir/File.txt"), insensitive), typed("Dir/File.txt"));
+        // A missing component and everything after it keep their spelling
+        assert_eq!(stored_spelling(&typed("DIR/nope/MORE"), insensitive), typed("Dir/nope/MORE"));
+        // Case-sensitive volumes and relative paths are left alone
+        assert_eq!(stored_spelling(&typed("dir/FILE.TXT"), |_: &Path| false), typed("dir/FILE.TXT"));
+        assert_eq!(stored_spelling("dir/x", insensitive), "dir/x");
+
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(dir.join("Dir"), dir.join("Link")).expect("symlink");
+            assert_eq!(stored_spelling(&typed("link/file.txt"), insensitive), typed("Link/File.txt"));
+        }
+
+        // Only macOS normalizes; elsewhere the path comes back as typed
+        let expected = if cfg!(target_os = "macos") {
+            typed("Dir/File.txt")
+        } else {
+            typed("dir/FILE.TXT")
+        };
+        assert_eq!(on_disk_case(&typed("dir/FILE.TXT")), expected);
     }
 
     #[test]

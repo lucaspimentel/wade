@@ -87,6 +87,9 @@ impl SortStore {
         };
 
         for (path, mode, ascending) in text.lines().filter_map(parse_line) {
+            // macOS: stored spelling, so lines that differ only in case merge
+            // (the later wins) and match the paths wade navigates to
+            let path = super::file_operations::on_disk_case(&path);
             self.sorts.insert(key(&path), (mode, ascending));
         }
     }
@@ -136,6 +139,33 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("wade-sort-store-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         dir.join("nested").join("sorts")
+    }
+
+    /// macOS: keys are respelled as stored on disk, so lines that differ
+    /// only in case merge (the later wins) and match the stored spelling.
+    #[test]
+    fn load_merges_spellings_of_one_directory_on_macos() {
+        let file = test_file("case");
+        let dir = file.parent().unwrap().to_path_buf();
+        std::fs::create_dir_all(dir.join("Dir")).unwrap();
+        let stored = dir.join("Dir").to_string_lossy().into_owned();
+        let lower = dir.join("dir").to_string_lossy().into_owned();
+        std::fs::write(&file, format!("size desc {lower}\nextension asc {stored}\n")).unwrap();
+
+        let mut store = SortStore::new(Some(file.clone()));
+        store.load();
+
+        if cfg!(target_os = "macos") {
+            assert_eq!(store.sorts.len(), 1);
+            assert_eq!(store.get(&stored), Some((SortMode::Extension, true)));
+        } else if cfg!(windows) {
+            // Windows folds case in the key instead
+            assert_eq!(store.get(&lower), Some((SortMode::Extension, true)));
+        } else {
+            assert_eq!(store.get(&lower), Some((SortMode::Size, false)));
+            assert_eq!(store.get(&stored), Some((SortMode::Extension, true)));
+        }
+        let _ = std::fs::remove_dir_all(dir.parent().unwrap());
     }
 
     #[test]

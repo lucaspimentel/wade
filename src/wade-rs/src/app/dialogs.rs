@@ -1269,7 +1269,9 @@ impl App {
 
         // C# Path.GetFullPath resolves relative paths against the process
         // working directory, not the pane's current path.
-        let full = get_full_path(path);
+        // macOS: the stored spelling, so path-keyed state (bookmarks, saved
+        // sorts, selection memory, git status) matches
+        let full = crate::fs::file_operations::on_disk_case(&get_full_path(path));
 
         if is_directory(&full) {
             self.selected_index_per_dir.insert(self.current_path.clone(), self.selected_index);
