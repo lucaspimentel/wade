@@ -62,10 +62,11 @@ pub fn delete_paths(paths: &[String], permanent: bool, cancel: &CancelToken) -> 
 /// it landed. The path is a script argument, never part of the source.
 #[cfg(target_os = "macos")]
 const MACOS_TRASH: &str = "function run(argv) { ObjC.import('Foundation'); \
-    var landed = Ref(); \
+    var landed = Ref(); var error = Ref(); \
     var ok = $.NSFileManager.defaultManager.trashItemAtURLResultingItemURLError( \
-        $.NSURL.fileURLWithPath(argv[0]), landed, null); \
-    return ok ? landed[0].path.js : ''; }";
+        $.NSURL.fileURLWithPath(argv[0]), landed, error); \
+    if (!ok) { return 'error: ' + (error[0] ? ObjC.unwrap(error[0].localizedDescription) : 'unknown'); } \
+    return landed[0] ? ObjC.unwrap(landed[0].path) : 'error: no resulting path'; }";
 
 /// Moves `path` (a link itself, not its target) to the Trash; returns the
 /// item's new path, or None when the move failed.
@@ -78,7 +79,7 @@ fn trash_item(path: &str) -> Option<String> {
         .output()
         .ok()?;
     let landed = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    (output.status.success() && !landed.is_empty()).then_some(landed)
+    (output.status.success() && landed.starts_with('/')).then_some(landed)
 }
 
 /// Delete a single path with the C# symlink-first rules: a symlink (file or
