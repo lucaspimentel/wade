@@ -227,7 +227,7 @@ pub fn query_status(repo_root: &str, cancel: &CancelToken) -> Option<HashMap<Str
     ) {
         // macOS: git reports the index's spelling, which can differ from the
         // disk's (a case-only rename without `git mv`); key by the disk's
-        Ok(stdout) => Some(parse_porcelain_output_with(&stdout, repo_root, crate::fs::file_operations::on_disk_case)),
+        Ok(stdout) => Some(parse_porcelain_output_with(&stdout, repo_root, str::to_string)),
         Err(_) => None,
     }
 }
