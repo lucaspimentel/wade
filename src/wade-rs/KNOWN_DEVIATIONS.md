@@ -336,7 +336,7 @@ None. Phase 9 closed the last temporary entries.
     on load, git status paths) are respelled as stored on disk on
     case-insensitive volumes, so path-keyed state matches whatever case was
     typed. Bookmarks and sort lines that differ only in case merge on load
-    (first bookmark, last sort line wins). Links are not resolved. C# keeps
+    (first bookmark, last sort line wins; see also the bookmark entry). Links are not resolved. C# keeps
     the typed spelling and compares ordinally on macOS.
   - Drive type comes from `statfs` (smbfs/nfs/afpfs/webdav are Network)
     and SSD/HDD and removable media from `diskutil info -plist` (cached per
@@ -354,3 +354,9 @@ None. Phase 9 closed the last temporary entries.
     under `/Volumes` is its own drive root, so going up from it (or from
     `/`) opens the list. C# lists every mount `DriveInfo` reports. Linux
     keeps the empty list.
+- **Duplicate bookmarks merge on load (Rust-only).** C#'s `BookmarkStore.Load`
+  keeps every line, although `Contains`/`Remove` already treat equal paths
+  as one bookmark. Rust drops later entries equal to an earlier one by the
+  same comparison: case-insensitive on Windows, exact on Linux, and on
+  macOS after respelling with the on-disk case. The file is rewritten on
+  the next save.

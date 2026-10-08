@@ -53,10 +53,12 @@ impl BookmarkStore {
                 continue;
             }
 
-            // macOS: stored spelling, so entries that differ only in case
-            // merge (the first wins) and match the paths wade navigates to
+            // macOS: stored spelling, so the entry matches the paths wade
+            // navigates to. Entries equal by `paths_equal` (case-insensitive
+            // on Windows, exact elsewhere) merge, the first wins: C# keeps
+            // them, though Contains/Remove already treat them as one.
             let bookmark = super::file_operations::on_disk_case(trimmed);
-            if !cfg!(target_os = "macos") || !self.contains(&bookmark) {
+            if !self.contains(&bookmark) {
                 self.bookmarks.push(bookmark);
             }
         }
@@ -116,10 +118,11 @@ mod tests {
         BookmarkStore::new(Some(path))
     }
 
-    /// macOS: entries are respelled as stored on disk, so spellings that
-    /// differ only in case merge (the first wins); elsewhere both stay.
+    /// Duplicates merge on load (the first wins): exact ones everywhere,
+    /// spellings that differ only in case on Windows (case-insensitive
+    /// compare) and macOS (respelled as stored on disk); Linux keeps both.
     #[test]
-    fn load_merges_spellings_of_one_directory_on_macos() {
+    fn load_merges_duplicate_entries() {
         let dir = std::env::temp_dir().join(format!("wade-bookmarks-case-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("Dir")).unwrap();
@@ -128,11 +131,14 @@ mod tests {
         let other = dir.join("other").to_string_lossy().into_owned();
 
         let mut s = store("case.txt");
-        std::fs::write(&s.file_path, format!("{lower}\n{other}\n{stored}\n")).unwrap();
+        std::fs::write(&s.file_path, format!("{lower}\n{other}\n{stored}\n{other}\n")).unwrap();
         s.load();
 
         if cfg!(target_os = "macos") {
             assert_eq!(s.bookmarks(), [stored.clone(), other]);
+            assert!(s.contains(&stored));
+        } else if cfg!(windows) {
+            assert_eq!(s.bookmarks(), [lower, other]);
             assert!(s.contains(&stored));
         } else {
             assert_eq!(s.bookmarks(), [lower, other, stored]);
