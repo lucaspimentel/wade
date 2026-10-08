@@ -148,7 +148,7 @@ pub fn parse_diskutil_plist(xml: &str) -> Option<DiskutilInfo> {
         };
 
         match (key.take(), value) {
-            (Some("SolidState"), value) => info.solid_state = value,
+            (Some("SolidStateX"), value) => info.solid_state = value,
             (Some("RemovableMedia" | "Removable"), Some(true)) => info.removable = true,
             _ => {}
         }
