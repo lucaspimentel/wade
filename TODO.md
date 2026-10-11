@@ -192,7 +192,7 @@ Uses Unicode placeholders (https://sw.kovidgoyal.net/kitty/graphics-protocol/#un
 alternative to Sixel.
 
 - **Detection:** a graphics query plus XTVERSION; kitty and Ghostty only.
-- **Selection:** the `image_protocol = auto|kitty|sixel` config key.
+- **Selection:** the `image_protocol = auto|kitty|iterm|sixel` config key.
 - **Rendering:** placeholder cells in `ScreenBuffer`.
 - **Untested:** not yet checked in a real kitty or Ghostty.
 

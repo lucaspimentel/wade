@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/lucaspimentel/wade/actions/workflows/ci.yml/badge.svg)](https://github.com/lucaspimentel/wade/actions/workflows/ci.yml) [![Release](https://github.com/lucaspimentel/wade/actions/workflows/release.yml/badge.svg)](https://github.com/lucaspimentel/wade/actions/workflows/release.yml)
 
-A terminal file browser with Miller columns, written in C#.
+A terminal file browser with Miller columns, written in C# and ported to Rust (release binaries are built from the Rust port in `src/wade-rs`).
 
 Pre-built binaries support Windows and Linux. macOS (tested in CI on Apple Silicon) is supported when built from source.
 
@@ -245,6 +245,15 @@ In the Rust build, `s` and `S` sort the current directory only. The sort is reme
 In the Rust build, tabs keep their own directory, selection, marks and filter. The tab bar appears at the top once a second tab is open; click a tab to switch. Tabs are not saved between runs.
 
 ## Building
+
+The release binaries are built from the Rust port:
+
+```bash
+cargo build --release --locked --manifest-path src/wade-rs/Cargo.toml
+cargo test --locked --manifest-path src/wade-rs/Cargo.toml
+```
+
+The C# version (`src/Wade`) can still be built and tested with:
 
 ```bash
 dotnet build Wade.slnx
