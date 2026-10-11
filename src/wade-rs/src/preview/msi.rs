@@ -40,11 +40,14 @@ fn open_database(path: &str) -> Option<Package> {
     msi::Package::open(File::open(path).ok()?).ok()
 }
 
-/// `MsiRecordGetString` of a column: null cells read as "".
+/// `MsiRecordGetString` of a column: null cells read as "". The tables
+/// wade queries hold only strings and ints; a binary stream column (new in
+/// msi 0.10) also reads as "", like null.
 fn cell_string(value: &msi::Value) -> String {
     match value {
         msi::Value::Str(text) => text.clone(),
         msi::Value::Int(number) => number.to_string(),
+        msi::Value::Binary => String::new(),
         msi::Value::Null => String::new(),
     }
 }

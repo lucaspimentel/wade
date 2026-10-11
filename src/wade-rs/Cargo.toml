@@ -9,7 +9,7 @@ chrono = { version = "0.4", default-features = false, features = ["clock"] }
 flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "gif", "bmp", "webp", "tga", "tiff", "pnm"] }
 kamadak-exif = "0.6.1"
-msi = "0.8"
+msi = "0.10"
 pulldown-cmark = { version = "0.13.4", default-features = false }
 roxmltree = "0.21"
 serde_json = { version = "1", features = ["raw_value"] }
