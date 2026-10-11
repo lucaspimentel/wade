@@ -79,10 +79,13 @@ backlog.
   - filesystem auto-refresh on screen
   - the tab title returns to the pre-wade title on exit and when
     `terminal_title_enabled` is turned off
-- [ ] Windows follow-ups from the verification pass:
-  - run `install-local.ps1` for real (it overwrites `~/.local/bin/wade.exe`)
-  - opening a file with an unknown extension reports success while Windows
-    shows the "Open with" dialog; check whether C# behaves the same
+- [x] Windows follow-ups from the verification pass:
+  - [x] run `install-local.ps1` for real (it overwrites `~/.local/bin/wade.exe`)
+  - [x] opening a file with an unknown extension reports success while Windows
+    shows the "Open with" dialog; C# behaves the same (probed both: .NET
+    `Process.Start` and `ShellExecuteExW` with `SEE_MASK_FLAG_NO_UI` both return
+    success and spawn the `OpenWith` dialog, so this is shell behavior, not a
+    port deviation; `NO_UI` does not suppress that dialog)
 - [x] Windows file-system edge cases, now `#[cfg(windows)]` tests run by
   CI's `rust (windows-latest)` job: case-only rename, reserved names and
   trailing dots or spaces, locked, read-only and access-denied files
