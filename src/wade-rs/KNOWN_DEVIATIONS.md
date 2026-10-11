@@ -178,6 +178,15 @@ None. Phase 9 closed the last temporary entries.
   right pane blank. Its `ClearPreviewCache` drops the preview context and
   the empty metadata provider list that the message branch checks, and Rust
   keeps them.
+- **The preview pane says why a preview is missing (Rust-only).**
+  - With `file_previews_enabled` off, a dim `[file previews off]` line shows
+    below the metadata, or alone when metadata is off too (C# showed only
+    the metadata, or a blank pane with both off). `[broken symlink]` and
+    `[cloud file – not downloaded]` still win.
+  - Placeholder previews with text (`[empty file]`, `[binary file]`,
+    `[access denied]`, `[error: …]`, `[empty installer]`) show below the
+    metadata without line numbers; C# hid them behind the metadata. The
+    None provider's empty placeholder still shows metadata only.
 - **Kitty graphics and iTerm2 inline images for image previews (Rust-only addition).**
   - **Detection.** On Unix, startup also sends a kitty graphics query (`a=q`) and XTVERSION (`CSI > q`). Kitty is
     used only when the terminal answers `OK` and calls itself kitty or Ghostty. WezTerm and Konsole answer the query

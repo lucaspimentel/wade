@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+- The preview pane shows `[file previews off]` when file previews are turned off (below the file details, or alone when details are off too, where the pane was blank)
+- Read errors, empty files and binary files forced into the text preview show their message below the file details instead of only the details
+
 ### Removed
 - Remove the C# implementation (`src/Wade`, `src/Wade.Search`); the Rust port in `src/wade-rs` is the only build, and the `install-local-csharp` scripts are gone
 

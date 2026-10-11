@@ -30,6 +30,22 @@ const META_SEPARATOR_STYLE: CellStyle = CellStyle {
     strikethrough: false,
 };
 
+/// Rust-only: shown in place of a preview when `file_previews_enabled` is off.
+const PREVIEWS_OFF_MESSAGE: &str = "[file previews off]";
+
+/// `PREVIEWS_OFF_MESSAGE` in the dim message color of `render_message`.
+fn previews_off_line() -> StyledLine {
+    let style = CellStyle {
+        fg: Some(Color { r: 100, g: 100, b: 100 }),
+        ..META_SEPARATOR_STYLE
+    };
+    StyledLine {
+        text: PREVIEWS_OFF_MESSAGE.to_string(),
+        spans: None,
+        char_styles: Some(vec![style; PREVIEWS_OFF_MESSAGE.chars().count()]),
+    }
+}
+
 /// The App's preview cache (C# `_cachedPreview*`, `_applicable*`, ...).
 #[derive(Default)]
 pub struct PreviewState {
@@ -538,7 +554,9 @@ impl App {
             self.set_applicable_providers(path, pane.width, pane.height);
 
             let no_previews = self.preview.applicable_providers.as_ref().is_some_and(Vec::is_empty);
-            if no_previews && self.preview.applicable_metadata_providers.as_ref().is_some_and(Vec::is_empty) {
+            // Rust-only: metadata turned off (None) counts as no metadata, so
+            // the message below shows instead of a blank pane
+            if no_previews && self.preview.applicable_metadata_providers.as_ref().is_none_or(Vec::is_empty) {
                 // Rust-only: keep the context and the (empty) metadata list the
                 // message below needs; C# ClearPreviewCache drops them and the
                 // pane stays blank
@@ -561,14 +579,21 @@ impl App {
 
         let state = &self.preview;
 
+        let context = state.active_context.as_ref();
+        let is_broken_symlink = context.is_some_and(|c| c.is_broken_symlink);
+        let is_cloud_placeholder = context.is_some_and(|c| c.is_cloud_placeholder);
+        // Rust-only: say why there is no preview (the specific reasons win)
+        let previews_off = !self.config.file_previews_enabled && !is_broken_symlink && !is_cloud_placeholder;
+
         if state.applicable_providers.as_ref().is_some_and(Vec::is_empty)
-            && state.applicable_metadata_providers.as_ref().is_some_and(Vec::is_empty)
+            && state.applicable_metadata_providers.as_ref().is_none_or(Vec::is_empty)
         {
-            let context = state.active_context.as_ref();
-            let message = if context.is_some_and(|c| c.is_broken_symlink) {
+            let message = if is_broken_symlink {
                 "[broken symlink]"
-            } else if context.is_some_and(|c| c.is_cloud_placeholder) {
+            } else if is_cloud_placeholder {
                 "[cloud file \u{2013} not downloaded]"
+            } else if previews_off {
+                PREVIEWS_OFF_MESSAGE
             } else {
                 crate::preview::cli_tool_hints::get_hint(path).unwrap_or("[no preview available]")
             };
@@ -579,21 +604,26 @@ impl App {
             !state.loading
                 && !state.is_image_preview
                 && !state.is_combined_preview
-                && (state.cached_styled_lines.is_none() || state.is_placeholder)
+                && state.cached_styled_lines.as_ref().is_none_or(|lines| state.is_placeholder && lines.is_empty())
         }) {
-            // Metadata only (no preview provider, or a placeholder preview)
-            let metadata_lines = metadata_renderer::render(sections, pane.width);
-            PaneRenderer::render_preview(buffer, pane, &metadata_lines, 0, false);
+            // Metadata only (no preview provider, or an empty placeholder such
+            // as the None provider's)
+            if previews_off {
+                render_metadata_with_text(buffer, pane, sections, &[previews_off_line()], true);
+            } else {
+                let metadata_lines = metadata_renderer::render(sections, pane.width);
+                PaneRenderer::render_preview(buffer, pane, &metadata_lines, 0, false);
+            }
         } else if let (Some(sections), true, true) =
             (&state.cached_metadata_sections, state.is_image_preview, state.cached_image.is_some())
         {
             // Metadata above the image
             let image_top = render_metadata_with_image(buffer, pane, sections);
             self.draw_image_area(buffer, pane, image_top, false);
-        } else if let (Some(sections), Some(lines), false) =
-            (&state.cached_metadata_sections, &state.cached_styled_lines, state.is_placeholder)
-        {
-            render_metadata_with_text(buffer, pane, sections, lines, state.is_rendered);
+        } else if let (Some(sections), Some(lines)) = (&state.cached_metadata_sections, &state.cached_styled_lines) {
+            // Rust-only: placeholder messages ("[empty file]", "[error: ...]")
+            // show below the metadata, without line numbers; C# hid them
+            render_metadata_with_text(buffer, pane, sections, lines, state.is_rendered || state.is_placeholder);
         } else if let (true, Some(lines), true) =
             (state.is_combined_preview, &state.cached_styled_lines, state.cached_image.is_some())
         {
@@ -833,6 +863,98 @@ mod tests {
         assert_eq!(app.preview.cached_encoding.as_deref(), Some("UTF-8"));
         assert_eq!(app.preview.cached_line_ending.as_deref(), Some("LF"));
         assert_eq!(app.preview.cached_metadata_sections.as_ref().unwrap()[0].header.as_deref(), Some("a.rs"));
+    }
+
+    /// The right pane's rows after a render.
+    fn right_pane_rows(app: &mut App) -> Vec<String> {
+        let mut buffer = ScreenBuffer::new(80, 25);
+        app.render(&mut buffer);
+        let pane = app.layout.right_pane;
+        (pane.top..pane.top + pane.height)
+            .map(|row| {
+                let text: String =
+                    buffer.row_text(row).chars().skip(pane.left as usize).take(pane.width as usize).collect();
+                text.trim_end().to_string()
+            })
+            .collect()
+    }
+
+    fn is_separator(row: &str) -> bool {
+        !row.is_empty() && row.chars().all(|c| c == '\u{2500}')
+    }
+
+    fn metadata_loaded(app: &App) -> bool {
+        !app.preview.loading && app.preview.cached_metadata_sections.is_some()
+    }
+
+    #[test]
+    fn previews_off_shows_the_notice_below_the_metadata() {
+        let (mut app, _root) = app_with("app-previews-off", &[("a.txt", "hello\n")]);
+        app.config.file_previews_enabled = false;
+        render(&mut app);
+        pump(&mut app, metadata_loaded);
+
+        let rows = right_pane_rows(&mut app);
+        assert!(rows.iter().any(|row| row.contains("a.txt")), "{rows:#?}");
+        let notice = rows.iter().position(|row| row.trim_start() == "[file previews off]").expect("notice");
+        assert!(is_separator(&rows[notice - 1]), "{rows:#?}");
+    }
+
+    #[test]
+    fn previews_and_metadata_off_shows_the_notice() {
+        let (mut app, _root) = app_with("app-previews-meta-off", &[("a.txt", "hello\n")]);
+        app.config.file_previews_enabled = false;
+        app.config.file_metadata_enabled = false;
+
+        let rows = right_pane_rows(&mut app);
+        assert_eq!(rows[0].trim_start(), "[file previews off]", "{rows:#?}");
+        // Marked current, so later frames don't re-query the providers
+        assert!(app.preview.pending_path.as_deref().is_some_and(|path| path.ends_with("a.txt")));
+        assert!(!app.preview.loading);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn broken_symlink_message_wins_over_the_previews_off_notice() {
+        let (mut app, root) = app_with("app-previews-off-link", &[]);
+        std::os::unix::fs::symlink(root.join("missing"), root.join("link")).unwrap();
+        app.config.file_previews_enabled = false;
+
+        let rows = right_pane_rows(&mut app);
+        assert_eq!(rows[0].trim_start(), "[broken symlink]", "{rows:#?}");
+    }
+
+    #[test]
+    fn enter_on_a_file_with_previews_off_stays_in_the_list() {
+        let (mut app, _root) = app_with("app-previews-off-enter", &[("a.txt", "hello\n")]);
+        app.config.file_previews_enabled = false;
+        render(&mut app);
+
+        app.dispatch(AppAction::Open);
+        assert_eq!(app.input_mode, InputMode::Normal);
+    }
+
+    #[test]
+    fn placeholder_shows_below_the_metadata_without_a_line_number() {
+        let (mut app, _root) = app_with("app-empty-file", &[("a.txt", "")]);
+        render(&mut app);
+        pump(&mut app, |app| metadata_loaded(app) && app.preview.cached_styled_lines.is_some());
+        assert!(app.preview.is_placeholder);
+
+        let rows = right_pane_rows(&mut app);
+        let message = rows.iter().position(|row| row.trim_start() == "[empty file]").expect("placeholder");
+        assert!(is_separator(&rows[message - 1]), "{rows:#?}");
+    }
+
+    #[test]
+    fn binary_file_with_the_none_preview_shows_metadata_only() {
+        let (mut app, _root) = app_with("app-binary-none", &[("a.bin", "\0\x01\x02binary")]);
+        render(&mut app);
+        pump(&mut app, |app| metadata_loaded(app) && app.preview.cached_styled_lines.is_some());
+
+        let rows = right_pane_rows(&mut app);
+        assert!(rows.iter().any(|row| row.contains("a.bin")), "{rows:#?}");
+        assert!(!rows.iter().any(|row| is_separator(row)), "{rows:#?}");
     }
 
     #[test]
