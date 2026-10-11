@@ -16,43 +16,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        include:
-          - os: windows-latest
-            rid: win-x64
-          - os: ubuntu-latest
-            rid: linux-x64
-
-    runs-on: ${{ matrix.os }}
-
-    steps:
-    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-    - name: Setup .NET
-      uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
-      with:
-        dotnet-version: 10.0.x
-
-    - name: Restore dependencies
-      run: dotnet restore Wade.slnx
-
-    - name: Build
-      run: dotnet build Wade.slnx -c Release --no-restore
-
-    - name: Test
-      run: dotnet test Wade.slnx -c Release --no-build --verbosity normal
-
-    - name: Publish
-      run: dotnet publish src/Wade/Wade.csproj -c Release -r ${{ matrix.rid }} -o publish
-
-    - name: Upload artifacts
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-      with:
-        name: wade-${{ matrix.rid }}
-        path: publish/
-
   rust:
     strategy:
       fail-fast: false
