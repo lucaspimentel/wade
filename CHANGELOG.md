@@ -3,10 +3,56 @@
 ## [Unreleased]
 
 ### Added
+- Add tabs — `t` opens a tab at the current directory (up to 9), `{`/`}` and `1`-`9` switch, `w` closes; each tab keeps its own path, selection, scroll, marks and filter (#17)
+- Add per-directory sort — `s`/`S` change only the current directory's sort, which is remembered (`~/.config/wade/sorts`) and marked with `*` in the status bar; "Reset sort for this directory" in the action palette forgets it
+- Add fzf-style query syntax to the file finder — space-separated terms are combined, `^foo` matches the start of a path segment, `foo$` the end of the path, `!foo` excludes; smart case now applies to fuzzy terms too
+- Add query memory to the file finder — `Ctrl+F` reopens with the last query for the rest of the session
+- Add `Ctrl+C` to clear the input in the file finder, the `/` filter, the action palette and the bookmarks list
+- Add kitty graphics and iTerm2 inline image previews (kitty, Ghostty, iTerm2, WezTerm), chosen automatically ahead of Sixel; the `image_protocol` config key (`auto`, `kitty`, `iterm`, `sixel`) forces one
+- Add a table preview for CSV and TSV files (`.csv`, `.tsv`, `.tab`) — aligned columns with a bold header, right-aligned numbers and row numbers; the separator is detected (`,`, `;`, `|`), and file details show the row and column counts. Turn it off with "Show CSV/TSV Tables" in settings (`csv_preview_enabled`)
+- Add longer full-screen previews — up to `preview_max_lines` lines (default 10,000) and `preview_max_bytes` bytes (default 4 MiB) of text, gzip content or archive entries, ending with a "preview limited to …" line when cut off
+- Add the full-screen preview with the right pane hidden — `Enter` on a file now opens it
+- Add system clipboard file copy/paste on Linux (`wl-copy` or `xclip`) and macOS, so files copied in wade paste into the file manager and the other way around
+- Add MSI installer preview and metadata on Linux and macOS (previously Windows only)
+- Add `rgb()`, `rgba()`, `hsl()`, `hsla()` and named-color swatches in CSS/SCSS previews
+- Add TOML highlighting for `Cargo.lock`, `poetry.lock`, `uv.lock` and `pdm.lock`
+- Add the item count and current file name to the file-operation progress overlay
+- Add macOS support (build from source with `install-local.sh`) — Trash on delete, "Open terminal here" in Terminal or iTerm, the volumes under `/Volumes` as the drive list, SSD/HDD and network drive detection, and case-insensitive volume handling
 - Add `install-local.sh`, `install-local-csharp.sh` and `install-remote.sh`, POSIX shell versions of the PowerShell install scripts (no PowerShell needed on Linux or macOS); `install-remote.sh` keeps an existing install if the download fails
 
 ### Changed
 - Release binaries and `install-local.ps1` now use the Rust port (`src/wade-rs`): a static Linux build (musl) and a Windows build with no Visual C++ runtime dependency; `install-local-csharp.ps1` installs the C# version until it is removed
+- The right pane now reads only as many lines or archive entries as it can show
+- Markdown previews are parsed with pulldown-cmark instead of Markdig; output is the same except for rare edge cases
+- "Open terminal here" on Linux now opens a terminal emulator (`$TERMINAL`, `x-terminal-emulator`, then common emulators) instead of starting a shell inside wade's own terminal; "No terminal emulator found (set $TERMINAL)" is shown when none is installed
+- The help overlay lists Settings (`,`) and Help (`?`); the file finder is labeled "Find files (Search)" and the settings entry "Settings (Configuration)" in the action palette
+
+### Fixed
+- Fix copy-pasting an item into the folder it came from deleting it when Overwrite was confirmed; it now makes a copy (`a - Copy.txt`), and a cut pasted there does nothing
+- Fix pasting a directory into itself or its own subfolder copying until the path became too long; it is now refused
+- Fix deleting or overwriting read-only files on Windows
+- Fix renaming a file to change only its case on Windows (reported as "already exists")
+- Fix new file, new directory, symlink and rename accepting Windows device names (`CON`, `NUL`, `COM1`, ...) and names ending in a dot or space; rename also checks for invalid characters
+- Fix the terminal tab title not being restored on exit, or when `terminal_title_enabled` is turned off
+- Fix git unstage failing in a repository with no commits
+- Fix stage, unstage and commit sometimes failing with "Unable to create index.lock" while the background git status ran
+- Fix files with non-ASCII names showing no git status
+- Fix EFS-encrypted files shown as cloud placeholders, and some OneDrive placeholders not detected
+- Fix "Download cloud file" not downloading online-only OneDrive files
+- Fix the file finder crashing on terminals narrower than 78 columns
+- Fix file finder results sometimes staying hidden until the next batch of results arrived
+- Fix emoji and other characters outside the Basic Multilingual Plane drawn as broken halves in file finder rows
+- Fix non-ASCII text pasted on Linux and macOS arriving garbled
+- Fix files that another program has open for writing (such as logs) previewed as binary
+- Fix the preview staying on "[loading…]" when returning to a file before another file's preview finished
+- Fix the preview staying on "[loading…]" for Office/NuGet files with malformed XML and for tar archives with GNU sparse entries
+- Fix broken symlinks leaving the right pane blank; it now shows "[broken symlink]"
+- Fix the directory size of a deleted directory staying on "Calculating…", and properties of a deleted entry showing made-up dates and attributes
+- Fix a full refresh being skipped when the watcher overflowed and another change followed within 300 ms
+- Fix PDF previews leaving temporary directories behind
+- Fix CSS swatches drawn for colors in selectors (such as `#id`) instead of only in property values
+- Fix files whose names differ only in case (such as `a.txt` and `A.txt`) being confused on Linux when wade re-selected an entry
+- Fix duplicate bookmarks kept on load, and bookmarks with non-ASCII paths that differ only in case not matching on Windows
 
 ## [1.14.0] - 2026-05-08
 
