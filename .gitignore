@@ -3,17 +3,8 @@
 .idea/
 .vscode/
 
-# build artifacts
-artifacts/
-BenchmarkDotNet.Artifacts/
-
 # user settings
-*.user
-*.suo
 .claude/*.local.*
-
-# SixLabors license
-sixlabors.lic
 
 # Rust build artifacts
 src/wade-rs/target/

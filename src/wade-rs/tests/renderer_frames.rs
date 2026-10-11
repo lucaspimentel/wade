@@ -840,7 +840,7 @@ fn renderer_fixtures_match_csharp_output() {
     for fixture_path in fixtures {
         let golden_path = fixture_path.with_extension("golden.txt");
         let expected = normalize_lf(&std::fs::read_to_string(&golden_path).unwrap_or_else(|_| {
-            panic!("missing golden file {}; generate with the C# test and WADE_UPDATE_GOLDENS=1", golden_path.display())
+            panic!("missing golden file {}; C#-generated fixtures are frozen, see CLAUDE.md", golden_path.display())
         }));
 
         let actual = run_scenario(&fixture_path);

@@ -193,7 +193,7 @@ fn golden_frames_match_csharp_output() {
         let golden_path = scenario_path.with_extension("golden.txt");
         let actual = format_golden(&run_scenario(&scenario_path));
         let expected = normalize_lf(&std::fs::read_to_string(&golden_path).unwrap_or_else(|_| {
-            panic!("missing golden file {}; generate with the C# test and WADE_UPDATE_GOLDENS=1", golden_path.display())
+            panic!("missing golden file {}; C#-generated fixtures are frozen, see CLAUDE.md", golden_path.display())
         }));
         assert_eq!(expected, actual, "golden mismatch for {}", scenario_path.display());
         compared += 1;

@@ -1,6 +1,5 @@
 #!/bin/sh
 # Builds wade (src/wade-rs) from source and installs it to ~/.local/bin/wade.
-# Until the C# version is removed, ./install-local-csharp.sh installs the C# build instead.
 #
 # Requirements: Rust toolchain (cargo)
 #

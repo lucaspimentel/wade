@@ -8,8 +8,6 @@
 .DESCRIPTION
     This script builds the wade TUI file browser (src/wade-rs) and installs
     it to ~/.local/bin/wade (or ~/.local/bin/wade.exe on Windows).
-    Until the C# version is removed, ./install-local-csharp.ps1 installs the
-    C# build instead.
 
     Requirements:
     - PowerShell 7.0+
