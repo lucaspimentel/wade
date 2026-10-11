@@ -2,9 +2,8 @@
 
 ## Rust port (src/wade-rs)
 
-The C# TUI is being ported to Rust in `src/wade-rs`, following
-`docs/rust-port-plan.md` (progress tracked there). The C# tree is
-feature-frozen during the port; the items below the port checklist are the
+The port to Rust is complete and the C# tree was deleted on 2026-10-11 (see
+`docs/rust-port-plan.md` for history). The unchecked items below are the
 backlog.
 
 - [x] Phases 0-9: every C# feature ported; `src/wade-rs/KNOWN_DEVIATIONS.md`
@@ -109,7 +108,7 @@ backlog.
   `directory_contents::is_hidden_entry` (shared by the listing, the file
   finder and path completion)
 - [ ] Linux Trash on delete (Rust-only): non-permanent delete is permanent on
-  Linux (C# behavior), while Windows uses the Recycle Bin and macOS the
+  Linux, while Windows uses the Recycle Bin and macOS the
   Trash. Implement the freedesktop.org Trash spec (move into
   `$XDG_DATA_HOME/Trash/files`, write `Trash/info/<name>.trashinfo` with the
   original path and deletion date; per-volume `.Trash-$UID` for other
@@ -133,14 +132,9 @@ backlog.
   `/Volumes` drive list with an external disk
 - [x] Deleted the merged remote branches and the temporary mutation-check
   branches; only `main` remains
-- [ ] Flaky C# timing tests on `windows-latest` (seen while adding macOS CI, no
-  C# changes): `PreviewLoaderTests.BeginLoad_CloudPlaceholder_DoesNotOpenFileForEncodingDetection`,
-  `DirectorySizeLoaderTests.CalculateSize_WithNestedDirectories_IncludesAllFiles`
-  and `CliToolTests.Run_CancellationDuringExecution_ReturnsQuickly` each failed once
-  at their 5-6 s limits and passed on the next run
-- [ ] Two weeks of daily use on the Rust binary
-- [ ] Cutover: delete `src/Wade*` and `install-local-csharp.ps1`/`.sh`, remove
-  dual-build CI, update README/CLAUDE.md/CHANGELOG
+- [ ] Two weeks of daily use on the Rust binary (ongoing verification, not a gate)
+- [x] Cutover: deleted `src/Wade*` and `install-local-csharp.ps1`/`.sh`, removed
+  the dual-build CI and updated README/CLAUDE.md/CHANGELOG (2026-10-11)
 
 ## Features
 

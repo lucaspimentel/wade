@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Removed
+- Remove the C# implementation (`src/Wade`, `src/Wade.Search`); the Rust port in `src/wade-rs` is the only build, and the `install-local-csharp` scripts are gone
+
 ## [2.0.0] - 2026-10-11
 
 ### Added

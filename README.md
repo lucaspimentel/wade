@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/lucaspimentel/wade/actions/workflows/ci.yml/badge.svg)](https://github.com/lucaspimentel/wade/actions/workflows/ci.yml) [![Release](https://github.com/lucaspimentel/wade/actions/workflows/release.yml/badge.svg)](https://github.com/lucaspimentel/wade/actions/workflows/release.yml)
 
-A terminal file browser with Miller columns, written in C# and ported to Rust (release binaries are built from the Rust port in `src/wade-rs`).
+A terminal file browser with Miller columns, written in Rust.
 
 Pre-built binaries support Windows and Linux. macOS (tested in CI on Apple Silicon) is supported when built from source.
 
@@ -22,16 +22,16 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Sort order** — by name, date, size, or extension (`s` to cycle, `S` to reverse)
 - **Filter** — `/` to narrow entries in real-time
 - **Go-to-path** — `Ctrl+G` with Tab autocomplete
-- **File finder** — `Ctrl+F` recursive breadth-first search with fuzzy matching, exact-substring queries via a leading `'`, and highlighted results. The Rust build also accepts fzf-style syntax: space-separated terms (all must match), `^prefix`, `suffix$` and `!exclude`, with smart case
+- **File finder** — `Ctrl+F` recursive breadth-first search with fuzzy matching, exact-substring queries via a leading `'`, and highlighted results. It also accepts fzf-style syntax: space-separated terms (all must match), `^prefix`, `suffix$` and `!exclude`, with smart case
 - **Bookmarks** — `b` to open, `B` to toggle; persists in MRU order
-- **Tabs** (Rust build) — `t` opens a tab, `{`/`}` or `1`–`9` switch, `w` closes
+- **Tabs** — `t` opens a tab, `{`/`}` or `1`–`9` switch, `w` closes
 - **Hidden files** — `.` to toggle; separate system files toggle on Windows
 
 ### Preview & Metadata
 
-- **File preview** — text (with syntax highlighting), hex, git diff, archive contents (zip, tar, gzip), images (Sixel or kitty graphics), PDF (via `pdftopng`), MSI file listing, and Markdown (built-in Markdig renderer with YAML frontmatter support); the Rust build adds a CSV/TSV table view (aligned columns, header row, right-aligned numbers; `;`/`|` separators detected); multiple modes per file switchable via `p`; CSS/SCSS/Sass previews show inline color swatches for hex literals
+- **File preview** — text (with syntax highlighting), hex, git diff, archive contents (zip, tar, gzip), images (Sixel or kitty graphics), PDF (via `pdftopng`), MSI file listing, and Markdown (built-in Markdig renderer with YAML frontmatter support); a CSV/TSV table view (aligned columns, header row, right-aligned numbers; `;`/`|` separators detected); multiple modes per file switchable via `p`; CSS/SCSS/Sass previews show inline color swatches for hex literals
 - **Expanded preview** — Right/Enter expands to full width; scrollable
-- **Image preview** — Sixel graphics (Windows Terminal 1.22+, WezTerm, etc.); the Rust build also supports the kitty graphics protocol (kitty, Ghostty) and iTerm2 inline images (iTerm2, WezTerm), chosen with `image_protocol = auto|kitty|iterm|sixel`
+- **Image preview** — Sixel graphics (Windows Terminal 1.22+, WezTerm, etc.); also supports the kitty graphics protocol (kitty, Ghostty) and iTerm2 inline images (iTerm2, WezTerm), chosen with `image_protocol = auto|kitty|iterm|sixel`
 - **File metadata** — structured metadata above preview and in properties overlay (`i`); format-specific providers for images (EXIF), executables (PE/.NET), Office docs, NuGet packages, archives, PDF, media files, MSI installers, and Windows shortcuts (`.lnk`)
 - **File properties** — `i` for scrollable overlay with timestamps, attributes, git status, and extracted metadata
 
@@ -107,9 +107,7 @@ Requires the [Rust toolchain](https://rustup.rs).
 ./install-local.sh
 ```
 
-Until the C# version (`src/Wade`) is removed, `./install-local-csharp.ps1` (or `./install-local-csharp.sh`) installs it instead, which requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
-
-All scripts install to `~/.local/bin/wade`. Ensure that directory is in your `PATH`.
+Both scripts install to `~/.local/bin/wade`. Ensure that directory is in your `PATH`.
 
 ## Usage
 
@@ -146,16 +144,16 @@ dir_size_hdd_enabled = false
 dir_size_network_enabled = false
 file_previews_enabled = true
 image_previews_enabled = true
-image_protocol = auto            # Rust build: auto, kitty, iterm, sixel
+image_protocol = auto            # auto, kitty, iterm, sixel
 zip_preview_enabled = true
 pdf_preview_enabled = true
 pdf_metadata_enabled = true
 markdown_preview_enabled = true
-csv_preview_enabled = true       # Rust build: CSV/TSV table preview
+csv_preview_enabled = true       # CSV/TSV table preview
 ffprobe_enabled = true
 mediainfo_enabled = true
-preview_max_lines = 10000        # Rust build: full-screen preview line limit (min 100)
-preview_max_bytes = 4194304      # Rust build: full-screen preview byte limit (min 65536)
+preview_max_lines = 10000        # full-screen preview line limit (min 100)
+preview_max_bytes = 4194304      # full-screen preview byte limit (min 65536)
 ```
 
 ### CLI flags
@@ -235,29 +233,20 @@ Then use `wd` instead of `wade` to browse. Press `q` to quit and cd to the last 
 | ? | Show help |
 | q / Escape | Quit |
 | Q | Quit without cd |
-| t | New tab (Rust build) |
-| { / } | Previous / next tab (Rust build) |
-| 1–9 | Go to tab N (Rust build) |
-| w | Close tab; quits on the last tab (Rust build) |
+| t | New tab |
+| { / } | Previous / next tab |
+| 1–9 | Go to tab N |
+| w | Close tab; quits on the last tab |
 
-In the Rust build, `s` and `S` sort the current directory only. The sort is remembered for that directory in `~/.config/wade/sorts` and shown with a `*` after the sort marker; "Reset sort for this directory" in the action palette goes back to the configured default.
+`s` and `S` sort the current directory only. The sort is remembered for that directory in `~/.config/wade/sorts` and shown with a `*` after the sort marker; "Reset sort for this directory" in the action palette goes back to the configured default.
 
-In the Rust build, tabs keep their own directory, selection, marks and filter. The tab bar appears at the top once a second tab is open; click a tab to switch. Tabs are not saved between runs.
+Tabs keep their own directory, selection, marks and filter. The tab bar appears at the top once a second tab is open; click a tab to switch. Tabs are not saved between runs.
 
 ## Building
-
-The release binaries are built from the Rust port:
 
 ```bash
 cargo build --release --locked --manifest-path src/wade-rs/Cargo.toml
 cargo test --locked --manifest-path src/wade-rs/Cargo.toml
-```
-
-The C# version (`src/Wade`) can still be built and tested with:
-
-```bash
-dotnet build Wade.slnx
-dotnet test Wade.slnx
 ```
 
 ## License

@@ -1,5 +1,7 @@
 # Rust Port Plan
 
+> **Complete.** The port is finished and the C# tree was deleted on 2026-10-11 (see the cutover commit). The rest of this document is historical; forward-looking lines such as "Next: two weeks of daily use, then the cutover" describe the plan as it was.
+
 Phased plan for porting wade (C#/.NET 10) to Rust. The Rust implementation lives in
 `src/wade-rs` and grows module by module on `main`; the C# build stays green throughout.
 The C# code is the behavioral spec until cutover.
