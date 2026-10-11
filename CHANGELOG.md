@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [2.0.0] - 2026-10-11
 
 ### Added
 - Add tabs — `t` opens a tab at the current directory (up to 9), `{`/`}` and `1`-`9` switch, `w` closes; each tab keeps its own path, selection, scroll, marks and filter (#17)

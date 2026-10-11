@@ -1,5 +1,5 @@
 //! Embeds the commit SHA for `--version`, matching the C# informational
-//! version (`1.14.0+<full sha>`). Builds outside a git checkout leave
+//! version (`2.0.0+<full sha>`). Builds outside a git checkout leave
 //! `WADE_COMMIT` unset and print the bare version, as .NET does without
 //! source-control information.
 
