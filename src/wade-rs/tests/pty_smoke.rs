@@ -21,7 +21,9 @@ const ESC: &str = "\x1b";
 const BACKSPACE_DEL: &str = "\x7f";
 const BACKSPACE_BS: &str = "\x08";
 #[cfg(unix)]
-const QUIT_HINT: &str = "Press q to quit";
+/// The start of "Press q to quit": a long temp path in the status bar can
+/// cut the rest off.
+const QUIT_HINT: &str = "Press q";
 
 fn temp_dir(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("wade-pty-{}-{name}", std::process::id()));
@@ -139,6 +141,15 @@ impl Session {
         for (bytes, delay_ms) in parts {
             self.send(bytes);
             std::thread::sleep(Duration::from_millis(*delay_ms));
+        }
+    }
+
+    /// Keys one at a time, as typed. On Windows several printable keys in
+    /// one read are taken as a paste (no bracketed paste there), and a paste
+    /// does nothing in the file list.
+    fn send_keys(&mut self, keys: &str) {
+        for c in keys.chars() {
+            self.send_split(&[(c.encode_utf8(&mut [0; 4]), 30)]);
         }
     }
 
@@ -355,7 +366,7 @@ fn escape_alone_and_split_sequences_follow_the_wait() {
 #[cfg(unix)]
 fn start_renaming_notes(wade: &mut Session) {
     wade.wait_for_text("inside_alpha.txt");
-    wade.send("jj");
+    wade.send_keys("jj");
     wade.wait_for_text("hello from notes");
     wade.send("r");
     wade.send(&BACKSPACE_DEL.repeat("notes.txt".len()));
@@ -448,7 +459,7 @@ fn filter_narrows_the_list_and_escape_clears_it() {
     let mut wade = Session::start(&home, &root, &[]);
     wade.wait_for_text("inside_alpha.txt");
 
-    wade.send("/not");
+    wade.send_keys("/not");
     wade.wait_for("only notes.txt", |screen| {
         screen.contents().contains("hello from notes") && !screen.contents().contains("alpha")
     });
@@ -465,7 +476,7 @@ fn rename_notes_with(backspace: &str, name: &str) {
     let mut wade = Session::start(&home, &root, &[]);
     wade.wait_for_text("inside_alpha.txt");
 
-    wade.send("jj");
+    wade.send_keys("jj");
     wade.wait_for_text("hello from notes");
     wade.send("r");
     wade.send(&backspace.repeat("notes.txt".len()));

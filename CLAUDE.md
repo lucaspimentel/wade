@@ -40,6 +40,7 @@ When an intentional behavior change breaks a frozen fixture, move it to Rust own
 - ConPTY asks for the cursor position (`ESC[6n`) at startup and holds all output until it is answered; the harness replies.
 - Prefer checks that don't depend on the temp path: long paths get cut off in the status bar.
 - Send Esc with `Session::escape()`, not `send(ESC)`: ESC followed by a key within 50ms is read as Alt+key.
+- Send file-list keys with `Session::send_keys()`: on Windows several printable keys in one read are taken as a paste (`decode.rs` paste burst), which the file list ignores.
 - Text longer than a text box scrolls out of view; check it through a result instead (a rename's file name on disk).
 
 ## Shipping
