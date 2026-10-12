@@ -442,8 +442,12 @@ None. Phase 9 closed the last temporary entries.
     are the same file.
   - Saved paths (bookmarks, sorts) are still respelled as stored on disk
     only on macOS, and only per volume there.
-  - APFS also ignores Unicode normalization (NFC vs NFD); names that
-    differ only in normalization are still not matched.
+  - macOS also matches names across Unicode normalization (NFC `café` and
+    NFD `café`, as HFS+ stores it and some apps type it), on every volume,
+    since APFS and HFS+ treat both spellings as one file: re-selection, the
+    case-only rename check, paste's location checks and the respelling of
+    saved paths. Windows and Linux compare normalizations as different
+    names, as their file systems do.
 - **One path key for bookmarks and saved sorts (Rust-only).** Both compare
   paths with full Unicode case folding on Windows and exactly elsewhere;
   C#'s bookmarks fold ordinally (ASCII-style), so non-ASCII bookmarks that

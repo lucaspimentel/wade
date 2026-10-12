@@ -273,42 +273,91 @@ mod linux_case {
 /// distinct; an exact hit needs no volume check.
 #[must_use]
 pub fn find_name<'a>(names: impl IntoIterator<Item = &'a str>, wanted: &str, dir: &Path) -> Option<usize> {
-    find_name_with(names, wanted, || names_case_insensitive(dir))
+    find_name_with(names, wanted, || NameRule::of(dir))
+}
+
+/// How a folder matches names besides exactly: by case (case-insensitive
+/// volumes) and by Unicode normalization (macOS: APFS and HFS+ treat NFC
+/// and NFD spellings of a name as one, case-sensitive volumes included).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct NameRule {
+    pub fold_case: bool,
+    pub normalize: bool,
+}
+
+impl NameRule {
+    /// The rule for names in `dir`.
+    #[must_use]
+    pub fn of(dir: &Path) -> Self {
+        Self {
+            fold_case: names_case_insensitive(dir),
+            normalize: cfg!(target_os = "macos"),
+        }
+    }
+
+    /// True when names can match other than exactly.
+    #[must_use]
+    pub const fn is_loose(self) -> bool {
+        self.fold_case || self.normalize
+    }
+
+    /// The form two names share when the folder treats them as one.
+    #[must_use]
+    pub fn key<'a>(self, name: &'a str) -> std::borrow::Cow<'a, str> {
+        use unicode_normalization::UnicodeNormalization;
+
+        let mut key = std::borrow::Cow::Borrowed(name);
+        if self.normalize && !unicode_normalization::is_nfc(name) {
+            key = std::borrow::Cow::Owned(name.nfc().collect());
+        }
+        if self.fold_case {
+            key = std::borrow::Cow::Owned(key.to_lowercase());
+        }
+        key
+    }
+
+    /// True when `a` and `b` name the same entry under this rule.
+    #[must_use]
+    pub fn same(self, a: &str, b: &str) -> bool {
+        a == b || (self.is_loose() && self.key(a) == self.key(b))
+    }
 }
 
 fn find_name_with<'a>(
     names: impl IntoIterator<Item = &'a str>,
     wanted: &str,
-    case_insensitive: impl FnOnce() -> bool,
+    rule: impl FnOnce() -> NameRule,
 ) -> Option<usize> {
     let names: Vec<&str> = names.into_iter().collect();
     names.iter().position(|name| *name == wanted).or_else(|| {
-        if !case_insensitive() {
+        let rule = rule();
+        if !rule.is_loose() {
             return None;
         }
 
-        let folded = wanted.to_lowercase();
-        names.iter().position(|name| name.to_lowercase() == folded)
+        let key = rule.key(wanted);
+        names.iter().position(|name| rule.key(name) == key)
     })
 }
 
 /// True when `a` and `b` name the same directory path: equal, or equal
-/// under case folding on a case-insensitive volume.
+/// under the volume's name rule (case, normalization).
 #[must_use]
 pub fn same_dir_path(a: &str, b: &str) -> bool {
-    a == b || (a.to_lowercase() == b.to_lowercase() && names_case_insensitive(Path::new(a)))
+    a == b || NameRule::of(Path::new(a)).same(a, b)
 }
 
 /// macOS (Rust-only): `path` with each existing component spelled as it is
 /// stored on disk, so a path typed as `/users/me/src` becomes
-/// `/Users/me/src` on a case-insensitive volume and lookups keyed by path
+/// `/Users/me/src` on a case-insensitive volume (and an NFC `café` the
+/// NFD `café` stored on disk, on any volume) and lookups keyed by path
 /// stay exact. Links are not resolved; components that do not exist (and
 /// everything after them) keep their typed spelling. Unchanged on other
 /// platforms and on case-sensitive volumes.
 #[must_use]
 pub fn on_disk_case(path: &str) -> String {
     if cfg!(target_os = "macos") {
-        stored_spelling(path, names_case_insensitive)
+        stored_spelling(path, NameRule::of)
     } else {
         path.to_string()
     }
@@ -316,7 +365,7 @@ pub fn on_disk_case(path: &str) -> String {
 
 /// `on_disk_case` with the volume check injected, so it is testable on
 /// every platform.
-fn stored_spelling(path: &str, case_insensitive: impl Fn(&Path) -> bool) -> String {
+fn stored_spelling(path: &str, rule_of: impl Fn(&Path) -> NameRule) -> String {
     use std::path::Component;
 
     let original = Path::new(path);
@@ -333,13 +382,21 @@ fn stored_spelling(path: &str, case_insensitive: impl Fn(&Path) -> bool) -> Stri
             continue;
         };
 
-        if !case_insensitive(&resolved) {
-            // Case-sensitive from here down: the typed spelling is the stored one
+        let rule = rule_of(&resolved);
+        if !rule.is_loose() {
+            // Exact from here down: the typed spelling is the stored one
             resolved.push(name);
             break;
         }
 
         let wanted = name.to_string_lossy();
+        if !rule.fold_case && wanted.is_ascii() {
+            // Only normalization differs, and ASCII has one form
+            resolved.push(name);
+            continue;
+        }
+
+        let key = rule.key(&wanted).into_owned();
         let stored = std::fs::read_dir(&resolved).ok().and_then(|entries| {
             let mut folded = None;
             for entry in entries.filter_map(Result::ok) {
@@ -347,7 +404,7 @@ fn stored_spelling(path: &str, case_insensitive: impl Fn(&Path) -> bool) -> Stri
                 if candidate == name {
                     return Some(candidate);
                 }
-                if folded.is_none() && candidate.to_string_lossy().to_lowercase() == wanted.to_lowercase() {
+                if folded.is_none() && rule.key(&candidate.to_string_lossy()) == key {
                     folded = Some(candidate);
                 }
             }
@@ -367,12 +424,13 @@ fn stored_spelling(path: &str, case_insensitive: impl Fn(&Path) -> bool) -> Stri
     resolved.to_string_lossy().into_owned()
 }
 
-/// Canonical form of `path` for location comparisons; lowercase where the
-/// volume's names are case-insensitive.
+/// Canonical form of `path` for location comparisons, in the volume's name
+/// rule's key form (lowercase, NFC on macOS).
 fn location_key(path: &Path) -> Option<std::path::PathBuf> {
     let canonical = std::fs::canonicalize(path).ok()?;
-    if names_case_insensitive(&canonical) {
-        Some(std::path::PathBuf::from(canonical.to_string_lossy().to_lowercase()))
+    let rule = NameRule::of(&canonical);
+    if rule.is_loose() {
+        Some(std::path::PathBuf::from(rule.key(&canonical.to_string_lossy()).into_owned()))
     } else {
         Some(canonical)
     }
@@ -836,14 +894,14 @@ mod tests {
         std::fs::create_dir_all(dir.join("Dir")).expect("mkdir");
         std::fs::write(dir.join("Dir").join("File.txt"), b"x").expect("write");
         let typed = |tail: &str| p(&tail.split('/').fold(dir.clone(), |path, part| path.join(part)));
-        let insensitive = |_: &Path| true;
+        let insensitive = |_: &Path| NameRule { fold_case: true, normalize: false };
 
         assert_eq!(stored_spelling(&typed("dir/FILE.TXT"), insensitive), typed("Dir/File.txt"));
         assert_eq!(stored_spelling(&typed("Dir/File.txt"), insensitive), typed("Dir/File.txt"));
         // A missing component and everything after it keep their spelling
         assert_eq!(stored_spelling(&typed("DIR/nope/MORE"), insensitive), typed("Dir/nope/MORE"));
         // Case-sensitive volumes and relative paths are left alone
-        assert_eq!(stored_spelling(&typed("dir/FILE.TXT"), |_: &Path| false), typed("dir/FILE.TXT"));
+        assert_eq!(stored_spelling(&typed("dir/FILE.TXT"), |_: &Path| NameRule::default()), typed("dir/FILE.TXT"));
         assert_eq!(stored_spelling("dir/x", insensitive), "dir/x");
 
         std::os::unix::fs::symlink(dir.join("Dir"), dir.join("Link")).expect("symlink");
@@ -856,6 +914,60 @@ mod tests {
             typed("dir/FILE.TXT")
         };
         assert_eq!(on_disk_case(&typed("dir/FILE.TXT")), expected);
+
+        // NFD on disk, NFC typed: respelled where normalization is ignored,
+        // whatever the case rule
+        std::fs::create_dir_all(dir.join(NFD_CAFE)).expect("mkdir");
+        let normalize = |_: &Path| NameRule { fold_case: false, normalize: true };
+        assert_eq!(stored_spelling(&typed(NFC_CAFE), normalize), typed(NFD_CAFE));
+        assert_eq!(stored_spelling(&typed(NFC_CAFE), insensitive), typed(NFC_CAFE), "case folding alone");
+        assert_eq!(stored_spelling(&typed("dir/FILE.TXT"), normalize), typed("dir/FILE.TXT"), "ASCII: one form");
+        let expected = if cfg!(target_os = "macos") { NFD_CAFE } else { NFC_CAFE };
+        assert_eq!(on_disk_case(&typed(NFC_CAFE)), typed(expected));
+    }
+
+    /// `café` precomposed (NFC) and decomposed (NFD, as HFS+ stores it)
+    const NFC_CAFE: &str = "caf\u{e9}";
+    const NFD_CAFE: &str = "cafe\u{301}";
+
+    /// macOS: the volume treats NFC and NFD spellings as one file, and
+    /// wade finds the stored spelling from either.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_matches_names_across_normalizations() {
+        let dir = temp_dir("nfd");
+        std::fs::write(dir.join(NFD_CAFE), b"stored").expect("write");
+        assert_eq!(std::fs::read(dir.join(NFC_CAFE)).expect("same file"), b"stored");
+
+        let listed: Vec<String> = std::fs::read_dir(&dir)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(find_name(listed.iter().map(String::as_str), NFC_CAFE, &dir), Some(0));
+        assert_eq!(on_disk_case(&p(&dir.join(NFC_CAFE))), p(&dir.join(&listed[0])));
+        assert!(same_location(&p(&dir.join(NFC_CAFE).join("x")), &p(&dir.join(NFD_CAFE))));
+    }
+
+    #[test]
+    fn name_rule_keys_fold_case_and_normalize() {
+        let rule = |fold_case, normalize| NameRule { fold_case, normalize };
+        assert!(rule(false, true).same(NFC_CAFE, NFD_CAFE));
+        assert!(!rule(true, false).same(NFC_CAFE, NFD_CAFE));
+        assert!(!rule(false, true).same("CAF\u{c9}", NFD_CAFE), "case still counts");
+        assert!(rule(true, true).same("CAF\u{c9}", NFD_CAFE));
+        assert!(!NameRule::default().same("a", "A"));
+        assert!(matches!(rule(false, true).key("plain"), std::borrow::Cow::Borrowed(_)), "NFC names are not copied");
+
+        let names = ["cafe\u{301}.txt", "Other"];
+        assert_eq!(find_name_with(names, "caf\u{e9}.txt", || rule(false, true)), Some(0));
+        assert_eq!(find_name_with(names, "caf\u{e9}.txt", || rule(true, false)), None);
+        assert_eq!(find_name_with(names, "CAF\u{c9}.TXT", || rule(true, true)), Some(0));
+
+        // The platform rule: macOS ignores normalization on every volume
+        let dir = temp_dir("name-rule");
+        assert_eq!(NameRule::of(&dir).normalize, cfg!(target_os = "macos"));
+        let expected = cfg!(target_os = "macos").then_some(0);
+        assert_eq!(find_name(names, "caf\u{e9}.txt", &dir), expected);
     }
 
     #[cfg(target_os = "linux")]
@@ -931,8 +1043,8 @@ mod tests {
     #[test]
     fn find_name_prefers_the_exact_name_and_folds_only_on_insensitive_volumes() {
         let names = ["a.txt", "A.txt", "Äpfel"];
-        let sensitive = || false;
-        let insensitive = || true;
+        let sensitive = NameRule::default;
+        let insensitive = || NameRule { fold_case: true, normalize: false };
         assert_eq!(find_name_with(names, "A.txt", sensitive), Some(1));
         assert_eq!(find_name_with(names, "A.txt", insensitive), Some(1), "exact wins over the folded a.txt");
         assert_eq!(find_name_with(names, "A.TXT", sensitive), None);

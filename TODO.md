@@ -143,9 +143,9 @@ backlog.
   Linux checks the casefold flag, then looks an entry up under swapped
   case, then the file-system type. CI mounts a FAT volume on Linux and
   sets a case-sensitive folder with `fsutil` on Windows
-- [ ] APFS ignores Unicode normalization (NFC vs NFD); `on_disk_case` and
-  `find_name` match by case only, so differently normalized names are not
-  matched
+- [x] macOS Unicode normalization: `NameRule` (case folding where the
+  volume ignores case, NFC on macOS) drives `find_name`, `same_dir_path`,
+  `on_disk_case`, paste's location checks and the case-only rename check
 - [ ] Manual macOS checks (need a real terminal): keyboard and Option-key
   input, mouse, resize, kitty/iTerm2/Sixel images, clipboard round trip with
   Finder, open with the default app, Trash and Terminal/iTerm launch, the
