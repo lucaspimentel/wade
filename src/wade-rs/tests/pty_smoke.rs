@@ -1001,10 +1001,17 @@ fn long_names_are_cut_with_an_ellipsis() {
     let mut wade = Session::start(&home, &root, &[]);
     wade.wait_for_text("inside_alpha.txt");
 
+    // After a resize the emulator keeps the old frame until wade redraws:
+    // wait for the pane borders to move before checking the cut
+    let mut previous: Option<Vec<u16>> = None;
     for cols in [COLS, 60] {
         wade.resize(ROWS, cols);
+        let stale = previous.clone();
         wade.wait_for("the long name cut", |screen| {
             let header = borders(screen, 0);
+            if stale.as_ref() == Some(&header) {
+                return false;
+            }
             // A short prefix: the cut can fall anywhere after it
             let row = (2..ROWS).find(|&row| screen.contents_between(row, 0, row, cols).contains("a_very"));
             row.is_some_and(|row| {
@@ -1012,6 +1019,7 @@ fn long_names_are_cut_with_an_ellipsis() {
                 line.contains('…') && !line.contains("_end.txt") && borders(screen, row) == header
             })
         });
+        previous = Some(borders(wade.parser.lock().unwrap().screen(), 0));
     }
     wade.send("q");
     wade.wait_for_exit();
