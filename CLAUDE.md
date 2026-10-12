@@ -33,6 +33,13 @@ Suites under `src/wade-rs/tests/` compare against two fixture sets:
 
 When an intentional behavior change breaks a frozen fixture, move it to Rust ownership, following the CSS pattern in `src/wade-rs/tests/highlight_golden.rs`.
 
+## PTY tests
+
+`src/wade-rs/tests/pty_smoke.rs` runs the built binary in a pseudo-terminal (`portable-pty`: a Unix PTY, or ConPTY on Windows), writes key bytes and reads the screen through `vt100`. It covers what the in-process App tests (`src/app/test_support.rs`) skip: terminal setup and restore, raw input decoding, resize, the main loop and exit. It runs in all three CI jobs. Notes:
+
+- ConPTY asks for the cursor position (`ESC[6n`) at startup and holds all output until it is answered; the harness replies.
+- Prefer checks that don't depend on the temp path: long paths get cut off in the status bar.
+
 ## Shipping
 
 `.ship.yml` version-files is `src/wade-rs/Cargo.toml`; keep `Cargo.lock` in sync in the same commit.

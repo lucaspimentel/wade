@@ -64,7 +64,12 @@ backlog.
   pull --rebase, force-with-lease, fetch, ahead/behind) are tested against
   a local bare remote, including palette push clearing the status bar's
   ahead count
-- [ ] Still untested: terminal setup and raw input on both OSes, the real
+- [x] PTY smoke tests (`src/wade-rs/tests/pty_smoke.rs`, `portable-pty` +
+  `vt100`): run the binary in a PTY or ConPTY on all three CI jobs and cover
+  terminal setup and restore, raw key input, resize, `--cwd-file` and
+  typeahead. They found two bugs, both fixed: the main loop dropped all but
+  the last queued key, and macOS hung at startup (`poll()` on `/dev/tty`)
+- [ ] Still untested: mouse and bracketed paste through the PTY, the real
   launchers (open with default app, open terminal, cloud download), the
   combined text+image preview event and macOS paths
 - [ ] Manual Windows Terminal checks (need a real console; none are
@@ -96,8 +101,8 @@ backlog.
     properties overlay on real data
   - PDF and Sixel previews end to end (`pdftopng`, `pdfinfo`, `ffprobe` and
     `mediainfo` are installed on this machine)
-- [ ] Optional: a ConPTY smoke harness (launch wade, send keys, read the
-  screen) to automate the checks above
+- [x] ConPTY smoke harness: `tests/pty_smoke.rs` runs on the Windows CI job
+  too. More scenarios can move from the manual list above into it
 - [x] macOS in CI: the `rust (macos-latest)` job (Apple Silicon) runs the
   suite. Added for macOS: per-volume case handling, drive type and SSD
   detection (`statfs`, `diskutil`), Trash on delete, Terminal/iTerm for

@@ -420,3 +420,14 @@ None. Phase 9 closed the last temporary entries.
   paths with full Unicode case folding on Windows and exactly elsewhere;
   C#'s bookmarks fold ordinally (ASCII-style), so non-ASCII bookmarks that
   differ only in case now match on Windows.
+- **Every queued input event is handled (Rust-only).** C#'s main loop
+  drains the queue after each wait and keeps only the last key, mouse,
+  paste or resize event, so typeahead and fast typing are lost (Down and
+  Enter arriving in one read opened the first entry). Rust handles them in
+  order before the next render, up to 256 per frame (`MAX_EVENTS_PER_FRAME`,
+  so a flood can't starve rendering); a quit stops the batch.
+- **Unix waits on `/dev/tty` with `select()` (Rust-only).** macOS `poll()`
+  does not support `/dev/tty` (it reports `POLLNVAL` at once), so the
+  capability query blocked in `read()` and the input reader never saw
+  input. `input::unix::wait_readable` uses `select()` on every Unix; C#
+  blocked in `read()` with VMIN=1.
