@@ -1005,7 +1005,8 @@ fn long_names_are_cut_with_an_ellipsis() {
         wade.resize(ROWS, cols);
         wade.wait_for("the long name cut", |screen| {
             let header = borders(screen, 0);
-            let row = (2..ROWS).find(|&row| screen.contents_between(row, 0, row, cols).contains("a_very_long"));
+            // A short prefix: the cut can fall anywhere after it
+            let row = (2..ROWS).find(|&row| screen.contents_between(row, 0, row, cols).contains("a_very"));
             row.is_some_and(|row| {
                 let line = screen.contents_between(row, 0, row, cols);
                 line.contains('…') && !line.contains("_end.txt") && borders(screen, row) == header
