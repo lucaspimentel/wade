@@ -74,6 +74,20 @@ struct Session {
 
 impl Session {
     fn start(home: &Path, root: &Path, extra_args: &[String]) -> Self {
+        Self::start_with(home, root, extra_args, &[], None)
+    }
+
+    /// `env` is added to wade's environment; `query_reply` answers wade's
+    /// startup capability queries (DA1 `ESC[c`) the way a terminal would.
+    /// Variables that select an image protocol are cleared first, so the
+    /// runner's own terminal never leaks in.
+    fn start_with(
+        home: &Path,
+        root: &Path,
+        extra_args: &[String],
+        env: &[(&str, &str)],
+        query_reply: Option<&'static [u8]>,
+    ) -> Self {
         let pair = native_pty_system()
             .openpty(PtySize {
                 rows: ROWS,
@@ -93,6 +107,12 @@ impl Session {
         cmd.env("HOME", home);
         cmd.env("USERPROFILE", home);
         cmd.env("TERM", "xterm-256color");
+        for name in ["TMUX", "TERM_PROGRAM", "KITTY_WINDOW_ID", "WT_SESSION"] {
+            cmd.env_remove(name);
+        }
+        for (name, value) in env {
+            cmd.env(name, value);
+        }
 
         let child = pair.slave.spawn_command(cmd).expect("spawn wade");
         drop(pair.slave);
@@ -116,6 +136,13 @@ impl Session {
                 if chunk.windows(4).any(|w| w == b"\x1b[6n") {
                     let mut writer = replies.lock().unwrap();
                     let _ = writer.write_all(b"\x1b[1;1R");
+                    let _ = writer.flush();
+                }
+                if let Some(reply) = query_reply
+                    && chunk.windows(3).any(|w| w == b"\x1b[c")
+                {
+                    let mut writer = replies.lock().unwrap();
+                    let _ = writer.write_all(reply);
                     let _ = writer.flush();
                 }
             }
@@ -756,6 +783,182 @@ fn wide_names_keep_the_pane_borders_aligned() {
         for row in 2..6 {
             assert_eq!(borders(&screen, row), header, "row {row} after {step:?}; {}", wade.screen_text());
         }
+    }
+    wade.send("q");
+    wade.wait_for_exit();
+}
+
+/// A file created and then deleted by another program shows up and goes
+/// away without a key press (inotify, FSEvents, ReadDirectoryChangesW).
+#[test]
+fn files_changed_outside_wade_appear_and_disappear() {
+    let (home, root) = fixture("watch");
+    let mut wade = Session::start(&home, &root, &[]);
+    wade.wait_for_text("inside_alpha.txt");
+
+    std::fs::write(root.join("from_outside.txt"), "x").unwrap();
+    wade.wait_for_text("from_outside.txt");
+    std::fs::remove_file(root.join("from_outside.txt")).unwrap();
+    wade.wait_for("from_outside.txt gone", |screen| !screen.contents().contains("from_outside.txt"));
+    wade.send("q");
+    wade.wait_for_exit();
+}
+
+fn git(dir: &Path, args: &[&str]) -> bool {
+    std::process::Command::new("git")
+        .args(["-c", "user.name=wade", "-c", "user.email=wade@example.com"])
+        .args(args)
+        .current_dir(dir)
+        .output()
+        .is_ok_and(|output| output.status.success())
+}
+
+/// Git status icons: modified for a changed tracked file, untracked for a
+/// new one. Skipped without git.
+#[test]
+fn git_status_icons_show_modified_and_untracked_files() {
+    let (home, root) = fixture("git");
+    if !git(&root, &["init", "-q"]) {
+        eprintln!("git unavailable; skipped");
+        return;
+    }
+    assert!(git(&root, &["add", "."]) && git(&root, &["commit", "-q", "-m", "init"]));
+    std::fs::write(root.join("notes.txt"), "changed\n").unwrap();
+    std::fs::write(root.join("new.txt"), "new\n").unwrap();
+
+    let mut wade = Session::start(&home, &root, &[]);
+    let modified = |screen: &vt100::Screen, name: &str, icon: char| {
+        screen.contents().lines().any(|line| line.contains(name) && line.contains(icon))
+    };
+    wade.wait_for("the modified and untracked icons", |screen| {
+        modified(screen, "notes.txt", '\u{F06D7}') && modified(screen, "new.txt", '\u{EB90}')
+    });
+    wade.send("q");
+    wade.wait_for_exit();
+}
+
+/// A 16x16 PNG next to the fixture's other files.
+fn write_png(root: &Path) {
+    let image = image::RgbImage::from_fn(16, 16, |x, y| image::Rgb([(x * 16) as u8, (y * 16) as u8, 128]));
+    image.save(root.join("pixels.png")).unwrap();
+}
+
+/// Opens the fixture with a PNG selected; returns wade's output once the
+/// preview has had time to load.
+#[cfg(unix)]
+fn image_output(name: &str, query_reply: Option<&'static [u8]>, expected: &str) -> String {
+    let (home, root) = fixture(name);
+    write_png(&root);
+    let mut wade = Session::start_with(&home, &root.join("pixels.png"), &[], &[], query_reply);
+    wade.wait_for_text("pixels.png");
+    if !expected.is_empty() {
+        wade.wait_for_output(expected);
+    }
+    std::thread::sleep(Duration::from_millis(500));
+    wade.send("q");
+    wade.wait_for_exit();
+    wade.raw_text()
+}
+
+/// What each image protocol's data starts with (kitty: transmit and show)
+#[cfg(unix)]
+const KITTY: &str = "a=T";
+#[cfg(unix)]
+const SIXEL: &str = "\x1bPq";
+#[cfg(unix)]
+const ITERM: &str = "\x1b]1337;File=";
+
+/// The image protocol follows the terminal's answers to the startup
+/// queries; with no answers there is no image data.
+#[cfg(unix)]
+#[test]
+fn image_previews_follow_the_terminal_capabilities() {
+    let sixel = image_output("img-sixel", Some(b"\x1b[?62;4c"), SIXEL);
+    assert!(!sixel.contains(ITERM) && !sixel.contains(KITTY), "sixel only");
+
+    let kitty = image_output("img-kitty", Some(b"\x1b_Gi=31;OK\x1b\\\x1bP>|kitty(0.35.2)\x1b\\\x1b[?62c"), KITTY);
+    assert!(!kitty.contains(SIXEL) && !kitty.contains(ITERM), "kitty only");
+
+    let iterm = image_output("img-iterm", Some(b"\x1bP>|iTerm2 3.5.0\x1b\\\x1b[?62c"), ITERM);
+    assert!(!iterm.contains(SIXEL) && !iterm.contains(KITTY), "iTerm2 only");
+
+    let none = image_output("img-none", None, "");
+    for protocol in [SIXEL, ITERM, KITTY] {
+        assert!(!none.contains(protocol), "no {protocol:?} without answers");
+    }
+}
+
+/// Windows has no capability queries: `WT_SESSION` (Windows Terminal)
+/// selects Sixel. ConPTY may drop the image data on its way out, so this
+/// only checks that wade keeps running and exits cleanly.
+#[cfg(windows)]
+#[test]
+fn image_preview_under_windows_terminal_does_not_hang() {
+    let (home, root) = fixture("img-wt");
+    write_png(&root);
+    let mut wade = Session::start_with(&home, &root.join("pixels.png"), &[], &[("WT_SESSION", "1")], None);
+    wade.wait_for_text("pixels.png");
+    std::thread::sleep(Duration::from_millis(1000));
+    wade.send_keys("k");
+    wade.wait_for_text("hello from notes");
+    wade.send("q");
+    assert!(wade.wait_for_exit().success());
+}
+
+/// A name wider than its pane ends with "…" and never spills into the
+/// next pane, also after the window narrows.
+#[test]
+fn long_names_are_cut_with_an_ellipsis() {
+    let (home, root) = fixture("long-names");
+    let long = format!("{}_end.txt", "a_very_long_file_name".repeat(4));
+    std::fs::write(root.join(&long), "x").unwrap();
+    let mut wade = Session::start(&home, &root, &[]);
+    wade.wait_for_text("inside_alpha.txt");
+
+    for cols in [COLS, 60] {
+        wade.resize(ROWS, cols);
+        wade.wait_for("the long name cut", |screen| {
+            let header = borders(screen, 0);
+            let row = (2..ROWS).find(|&row| screen.contents_between(row, 0, row, cols).contains("a_very_long"));
+            row.is_some_and(|row| {
+                let line = screen.contents_between(row, 0, row, cols);
+                line.contains('…') && !line.contains("_end.txt") && borders(screen, row) == header
+            })
+        });
+    }
+    wade.send("q");
+    wade.wait_for_exit();
+}
+
+/// `D` then `y` deletes for good; on Linux `d` then `y` moves the file to
+/// the Trash under `XDG_DATA_HOME`, with its `.trashinfo`.
+#[test]
+fn delete_asks_first_then_deletes() {
+    let (home, root) = fixture("delete");
+    let data_home = home.join("data");
+    let data = data_home.display().to_string();
+    let mut wade = Session::start_with(&home, &root, &[], &[("XDG_DATA_HOME", &data)], None);
+    wade.wait_for_text("inside_alpha.txt");
+
+    wade.send_keys("jj");
+    wade.wait_for_text("hello from notes");
+    wade.send_keys("D");
+    wade.wait_for_text("cannot be undone");
+    wade.send_keys("y");
+    wade.wait_for("notes.txt gone", |_| !root.join("notes.txt").exists());
+    assert!(!data_home.join("Trash").join("files").join("notes.txt").exists());
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        wade.wait_for("beta selected", |screen| counter(screen, "2/2"));
+        wade.send_keys("d");
+        wade.wait_for_text("Delete");
+        wade.send_keys("y");
+        let trashed = data_home.join("Trash").join("files").join("beta");
+        wade.wait_for("beta in the Trash", |_| trashed.join("inside_beta.txt").is_file());
+        assert!(!root.join("beta").exists());
+        let info = std::fs::read_to_string(data_home.join("Trash").join("info").join("beta.trashinfo")).unwrap();
+        assert!(info.contains(&format!("Path={}", root.join("beta").display())), "{info}");
     }
     wade.send("q");
     wade.wait_for_exit();
