@@ -39,9 +39,10 @@ fn fixture(name: &str) -> (PathBuf, PathBuf) {
 
 struct Session {
     master: Box<dyn MasterPty + Send>,
-    writer: Box<dyn Write + Send>,
+    writer: Arc<Mutex<Box<dyn Write + Send>>>,
     child: Box<dyn Child + Send + Sync>,
     parser: Arc<Mutex<vt100::Parser>>,
+    raw: Arc<Mutex<Vec<u8>>>,
 }
 
 impl Session {
@@ -71,47 +72,70 @@ impl Session {
 
         let parser = Arc::new(Mutex::new(vt100::Parser::new(ROWS, COLS, 0)));
         let mut reader = pair.master.try_clone_reader().unwrap();
-        let sink = Arc::clone(&parser);
+        let writer = Arc::new(Mutex::new(pair.master.take_writer().unwrap()));
+        let raw = Arc::new(Mutex::new(Vec::new()));
+        let (sink, replies, log) = (Arc::clone(&parser), Arc::clone(&writer), Arc::clone(&raw));
         std::thread::spawn(move || {
             let mut buf = [0u8; 8192];
             while let Ok(n) = reader.read(&mut buf) {
                 if n == 0 {
                     break;
                 }
-                sink.lock().unwrap().process(&buf[..n]);
+                let chunk = &buf[..n];
+                log.lock().unwrap().extend_from_slice(chunk);
+                sink.lock().unwrap().process(chunk);
+                // ConPTY (started with INHERIT_CURSOR) asks for the cursor
+                // position and holds all output until it gets an answer
+                if chunk.windows(4).any(|w| w == b"\x1b[6n") {
+                    let mut writer = replies.lock().unwrap();
+                    let _ = writer.write_all(b"\x1b[1;1R");
+                    let _ = writer.flush();
+                }
             }
         });
 
-        let writer = pair.master.take_writer().unwrap();
         Self {
             master: pair.master,
             writer,
             child,
             parser,
+            raw,
         }
     }
 
     fn send(&mut self, bytes: &str) {
-        self.writer.write_all(bytes.as_bytes()).unwrap();
-        self.writer.flush().unwrap();
+        let mut writer = self.writer.lock().unwrap();
+        writer.write_all(bytes.as_bytes()).unwrap();
+        writer.flush().unwrap();
     }
 
     fn screen_text(&self) -> String {
         self.parser.lock().unwrap().screen().contents()
     }
 
-    fn wait_for(&self, what: &str, done: impl Fn(&vt100::Screen) -> bool) {
+    /// What a failed wait reports: the exit status, the output size, its
+    /// tail and the screen.
+    fn diagnostics(&mut self) -> String {
+        let status = self.child.try_wait();
+        let raw = self.raw.lock().unwrap();
+        let tail = String::from_utf8_lossy(&raw[raw.len().saturating_sub(600)..]).escape_debug().to_string();
+        format!("exit: {status:?}; {} bytes; tail: {tail}\nscreen:\n{}", raw.len(), self.screen_text())
+    }
+
+    fn wait_for(&mut self, what: &str, done: impl Fn(&vt100::Screen) -> bool) {
         let start = Instant::now();
         loop {
             if done(self.parser.lock().unwrap().screen()) {
                 return;
             }
-            assert!(start.elapsed() < TIMEOUT, "timed out waiting for {what}; screen:\n{}", self.screen_text());
+            if start.elapsed() >= TIMEOUT {
+                panic!("timed out waiting for {what}; {}", self.diagnostics());
+            }
             std::thread::sleep(Duration::from_millis(20));
         }
     }
 
-    fn wait_for_text(&self, text: &str) {
+    fn wait_for_text(&mut self, text: &str) {
         self.wait_for(text, |screen| screen.contents().contains(text));
     }
 
@@ -133,7 +157,9 @@ impl Session {
             if let Some(status) = self.child.try_wait().unwrap() {
                 return status;
             }
-            assert!(start.elapsed() < TIMEOUT, "wade did not exit; screen:\n{}", self.screen_text());
+            if start.elapsed() >= TIMEOUT {
+                panic!("wade did not exit; {}", self.diagnostics());
+            }
             std::thread::sleep(Duration::from_millis(20));
         }
     }
