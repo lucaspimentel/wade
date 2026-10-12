@@ -96,11 +96,13 @@ mod tests {
             sixel_supported: true,
             kitty_graphics: true,
             iterm_images: true,
+            tmux: None,
             ..Caps::DEFAULT
         };
         let iterm_sixel = Caps {
             sixel_supported: true,
             iterm_images: true,
+            tmux: None,
             ..Caps::DEFAULT
         };
         let cases = [

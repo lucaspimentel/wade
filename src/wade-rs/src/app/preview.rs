@@ -975,6 +975,7 @@ mod tests {
             cell_pixel_height: 20,
             kitty_graphics: false,
             iterm_images: false,
+            tmux: None,
         });
         let context = app.build_preview_context(40, 20);
         assert_eq!((context.cell_pixel_width, context.cell_pixel_height), (10, 20));
@@ -999,6 +1000,7 @@ mod tests {
             cell_pixel_height: 16,
             kitty_graphics: false,
             iterm_images: false,
+            tmux: None,
         });
         (app, root)
     }
@@ -1316,6 +1318,7 @@ mod tests {
             cell_pixel_height: 16,
             kitty_graphics: true,
             iterm_images: false,
+            tmux: None,
         });
         (app, root)
     }
@@ -1521,6 +1524,7 @@ mod tests {
             cell_pixel_height: 16,
             kitty_graphics: false,
             iterm_images: true,
+            tmux: None,
         });
         (app, root)
     }

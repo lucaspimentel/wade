@@ -888,6 +888,92 @@ fn image_previews_follow_the_terminal_capabilities() {
     }
 }
 
+/// Inside tmux: a fake `tmux` on PATH reports the outer terminal
+/// (`termtype`, `features`) and `allow-passthrough`; `tmux_reply` is what
+/// tmux itself answers to the startup queries. Returns wade's output.
+#[cfg(unix)]
+fn tmux_image_output(
+    name: &str,
+    termtype: &str,
+    features: &str,
+    passthrough: &str,
+    tmux_reply: &'static [u8],
+) -> String {
+    let (home, root) = fixture(name);
+    write_png(&root);
+    let bin = home.join("bin");
+    std::fs::create_dir_all(&bin).unwrap();
+    // The pane sits at row 2, column 50 of the outer terminal
+    write_script(
+        &bin.join("tmux"),
+        &format!(
+            "case \"$1\" in\n\
+             display-message) case \"$3\" in\n\
+               *client_termtype*) printf '%s\\t%s\\t10\\t20\\t2\\t50\\toff\\tbottom\\n' '{termtype}' '{features}' ;;\n\
+               *) printf '2\\t50\\toff\\tbottom\\n' ;;\n\
+             esac ;;\n\
+             show-options) echo '{passthrough}' ;;\n\
+             *) exit 1 ;;\n\
+             esac"
+        ),
+    );
+    let path = format!("{}:/usr/bin:/bin", bin.display());
+    let env = [("PATH", path.as_str()), ("TMUX", "/tmp/tmux-fake/default,1,0"), ("TMUX_PANE", "%1")];
+    let mut wade = Session::start_with(&home, &root.join("pixels.png"), &[], &env, Some(tmux_reply));
+    wade.wait_for_text("pixels.png");
+    std::thread::sleep(Duration::from_millis(800));
+    wade.send("q");
+    wade.wait_for_exit();
+    wade.raw_text()
+}
+
+/// tmux's own reply to the startup queries: XTVERSION and a DA1 without
+/// Sixel
+#[cfg(unix)]
+const TMUX_REPLY: &[u8] = b"\x1bP>|tmux 3.5a\x1b\\\x1b[?1;2c";
+/// The start of a tmux passthrough
+#[cfg(unix)]
+const PASSTHROUGH: &str = "\x1bPtmux;";
+
+/// Inside tmux, images follow the outer terminal tmux reports and pass
+/// through to it, wrapped, when `allow-passthrough` is on; otherwise only
+/// Sixel that tmux shows itself is left, written plainly.
+#[cfg(unix)]
+#[test]
+fn image_previews_pass_through_tmux() {
+    let kitty = tmux_image_output("tmux-kitty", "kitty(0.35.2)", "RGB", "on", TMUX_REPLY);
+    assert!(kitty.contains("\x1bPtmux;\x1b\x1b_Ga=T"), "kitty transmit passed through");
+    // (wade's startup query goes to tmux itself, unwrapped)
+    assert!(!kitty.replace("\x1b\x1b_Ga=", "").contains("\x1b_Ga="), "no image command outside the passthrough");
+
+    let iterm = tmux_image_output("tmux-iterm", "iTerm2 3.5.0", "", "all", TMUX_REPLY);
+    let start = iterm.find(PASSTHROUGH).expect("iTerm2 image passed through");
+    let wrapped = &iterm[start + PASSTHROUGH.len()..];
+    let (row, col) = wrapped
+        .strip_prefix("\x1b\x1b[")
+        .and_then(|rest| rest.split_once('H'))
+        .and_then(|(position, _)| position.split_once(';'))
+        .map(|(row, col)| (row.parse::<u16>().unwrap(), col.parse::<u16>().unwrap()))
+        .expect("the cursor move goes through too");
+    assert!(row > 2 && col > 50 + COLS / 2, "offset by the pane's position: {row};{col}");
+    assert!(wrapped.contains("\x1b\x1b]1337;File="));
+
+    let sixel = tmux_image_output("tmux-sixel", "XTerm(390)", "RGB,sixel", "on", TMUX_REPLY);
+    assert!(sixel.contains("\x1bPtmux;\x1b\x1b[") && sixel.contains("\x1b\x1bPq"), "Sixel passed through");
+
+    let off = tmux_image_output("tmux-off", "kitty(0.35.2)", "RGB,sixel", "off", TMUX_REPLY);
+    for data in [PASSTHROUGH, SIXEL, ITERM, KITTY] {
+        assert!(!off.contains(data), "no {data:?} without passthrough");
+    }
+
+    // Sixel that tmux shows itself is written plainly, passthrough or not
+    for passthrough in ["off", "on"] {
+        let reply = b"\x1bP>|tmux 3.5a\x1b\\\x1b[?1;2;4c";
+        let native = tmux_image_output(&format!("tmux-native-{passthrough}"), "foot", "RGB,sixel", passthrough, reply);
+        assert!(native.contains(SIXEL) && !native.contains(PASSTHROUGH), "tmux's own Sixel, passthrough {passthrough}");
+    }
+}
+
 /// Windows has no capability queries: `WT_SESSION` (Windows Terminal)
 /// selects Sixel. ConPTY may drop the image data on its way out, so this
 /// only checks that wade keeps running and exits cleanly.

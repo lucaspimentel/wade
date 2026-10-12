@@ -111,6 +111,7 @@ impl TerminalSetup {
             sixel_supported: wt_session,
             // Rust-only: WezTerm on Windows shows iTerm2 inline images
             iterm_images: crate::terminal_caps::iterm_from_term_program(std::env::var("TERM_PROGRAM").ok().as_deref()),
+            tmux: None,
             ..TerminalCapabilities::DEFAULT
         };
 

@@ -31,7 +31,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 
 - **File preview** — text (with syntax highlighting), hex, git diff, archive contents (zip, tar, gzip), images (Sixel or kitty graphics), PDF (via `pdftopng`), MSI file listing, and Markdown (built-in Markdig renderer with YAML frontmatter support); a CSV/TSV table view (aligned columns, header row, right-aligned numbers; `;`/`|` separators detected); multiple modes per file switchable via `p`; CSS/SCSS/Sass previews show inline color swatches for hex literals
 - **Expanded preview** — Right/Enter expands to full width; scrollable
-- **Image preview** — Sixel graphics (Windows Terminal 1.22+, WezTerm, etc.); also supports the kitty graphics protocol (kitty, Ghostty) and iTerm2 inline images (iTerm2, WezTerm), chosen with `image_protocol = auto|kitty|iterm|sixel`
+- **Image preview** — Sixel graphics (Windows Terminal 1.22+, WezTerm, etc.); also supports the kitty graphics protocol (kitty, Ghostty) and iTerm2 inline images (iTerm2, WezTerm), chosen with `image_protocol = auto|kitty|iterm|sixel`; inside tmux with `set -g allow-passthrough on`
 - **File metadata** — structured metadata above preview and in properties overlay (`i`); format-specific providers for images (EXIF), executables (PE/.NET), Office docs, NuGet packages, archives, PDF, media files, MSI installers, and Windows shortcuts (`.lnk`)
 - **File properties** — `i` for scrollable overlay with timestamps, attributes, git status, and extracted metadata
 

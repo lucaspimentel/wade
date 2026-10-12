@@ -240,7 +240,15 @@ None. Phase 9 closed the last temporary entries.
     cursor in place. Like Sixel, it is written after every frame at the image position.
   - **Behaviour under dialogs.** Unlike Sixel, the uncovered part of a kitty image stays visible while a dialog is
     open. iTerm2 images are hidden under dialogs, like Sixel.
-  - **Not supported.** Windows Terminal (no kitty support) and tmux (queries do not reach the outer terminal).
+  - **tmux.** The startup queries reach tmux, not the outer terminal, so wade asks tmux instead
+    (`display-message`: `client_termtype`, `client_termfeatures`, the cell size and the pane position; tmux 3.3+).
+    With `allow-passthrough` on (or `all`), kitty and iTerm2 images follow the outer terminal's name, Sixel its
+    features, and image data is wrapped in `ESC P tmux; ... ESC \`, each kitty command separately. Sixel and iTerm2
+    images carry their cursor move through, offset by the pane's position (re-read after a resize). Sixel that tmux
+    shows itself (3.4+ built with Sixel, its own DA1 reply) is written plainly. Without passthrough, only tmux's own
+    Sixel is left. tmux does not know about passed-through Sixel and iTerm2 images, so its own redraws (switching
+    windows) can cover them until wade draws again; kitty placeholders are ordinary cells and survive.
+  - **Not supported.** Windows Terminal (no kitty support).
   - C# has Sixel only.
 - **TOML lock files are highlighted (Rust-only addition).** `Cargo.lock`,
   `poetry.lock`, `uv.lock` and `pdm.lock` use the TOML highlighter; C# shows

@@ -1,7 +1,8 @@
 //! Port of `src/Wade/Terminal/TerminalCapabilities.cs`: Sixel support and
 //! cell pixel size, with the parser for the Unix DA1 / cell-size query
 //! responses (the Unix query itself lands with the Phase 9 input work).
-//! Rust-only: kitty graphics detection (a graphics query plus XTVERSION).
+//! Rust-only: kitty graphics detection (a graphics query plus XTVERSION),
+//! and tmux passthrough (the outer terminal as tmux reports it).
 
 /// Port of `TerminalCapabilities`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -15,6 +16,140 @@ pub struct TerminalCapabilities {
     /// Rust-only: the terminal shows iTerm2 inline images (`OSC 1337`):
     /// iTerm2 or WezTerm, by XTVERSION or `TERM_PROGRAM`.
     pub iterm_images: bool,
+    /// Rust-only: inside tmux with `allow-passthrough` on, image output is
+    /// wrapped for the outer terminal (see `TmuxPassthrough`).
+    pub tmux: Option<TmuxPassthrough>,
+}
+
+/// Rust-only: how image output reaches the terminal outside tmux. Data is
+/// wrapped in `ESC P tmux; ... ESC \`; Sixel and iTerm2 images also carry
+/// their cursor move, offset by the pane's position in the tmux window.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TmuxPassthrough {
+    /// tmux itself shows Sixel (3.4+ built with Sixel): Sixel output is
+    /// written plainly, like outside tmux
+    pub native_sixel: bool,
+    /// The pane's top-left cell on the outer terminal, 0-based
+    pub pane_top: i32,
+    pub pane_left: i32,
+}
+
+/// What `tmux display-message` and `show-options` report about the client
+/// terminal and the pane.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct TmuxClient {
+    /// The outer terminal's XTVERSION name and version, such as
+    /// `kitty(0.35.2)` (`client_termtype`)
+    pub termtype: String,
+    /// The outer terminal's features as tmux detected them, comma-separated
+    /// (`client_termfeatures`)
+    pub features: String,
+    pub passthrough: bool,
+    /// (width, height) in pixels, when tmux knows them
+    pub cell_size: Option<(i32, i32)>,
+    pub pane_top: i32,
+    pub pane_left: i32,
+}
+
+/// The `tmux display-message -p` format `TmuxClient::parse` reads.
+pub const TMUX_CLIENT_FORMAT: &str = "#{client_termtype}\t#{client_termfeatures}\t#{client_cell_width}\t\
+    #{client_cell_height}\t#{pane_top}\t#{pane_left}\t#{status}\t#{status-position}";
+
+impl TmuxClient {
+    /// Parses `TMUX_CLIENT_FORMAT` output and the `allow-passthrough` value
+    /// (`on` or `all` allow it).
+    #[must_use]
+    pub fn parse(display: &str, allow_passthrough: &str) -> Self {
+        let fields: Vec<&str> = display.trim_end_matches(['\r', '\n']).split('\t').collect();
+        let field = |i: usize| fields.get(i).copied().unwrap_or_default().trim();
+        let number = |i: usize| field(i).parse::<i32>().ok();
+        let cell_size = match (number(2), number(3)) {
+            (Some(width), Some(height)) if width > 0 && height > 0 => Some((width, height)),
+            _ => None,
+        };
+        let (pane_top, pane_left) = pane_position(field(4), field(5), field(6), field(7));
+
+        Self {
+            termtype: field(0).to_string(),
+            features: field(1).to_string(),
+            passthrough: matches!(allow_passthrough.trim(), "on" | "all"),
+            cell_size,
+            pane_top,
+            pane_left,
+        }
+    }
+}
+
+/// The pane's top-left cell on the client terminal: its place in the
+/// window, below a status line shown at the top.
+#[must_use]
+pub fn pane_position(pane_top: &str, pane_left: &str, status: &str, status_position: &str) -> (i32, i32) {
+    let status_lines = match status.trim() {
+        "on" => 1,
+        "off" | "" => 0,
+        lines => lines.parse().unwrap_or(0),
+    };
+    let above = if status_position.trim() == "top" { status_lines } else { 0 };
+    (pane_top.trim().parse::<i32>().unwrap_or(0) + above, pane_left.trim().parse().unwrap_or(0))
+}
+
+impl TerminalCapabilities {
+    /// Rust-only: the capabilities inside tmux. `self` holds tmux's own
+    /// replies (Sixel when tmux shows it itself). With passthrough allowed,
+    /// kitty and iTerm2 images follow the outer terminal's name and Sixel
+    /// its features; without it only tmux's own Sixel is left.
+    #[must_use]
+    pub fn inside_tmux(self, client: &TmuxClient) -> Self {
+        let mut caps = Self {
+            kitty_graphics: false,
+            iterm_images: false,
+            tmux: None,
+            ..self
+        };
+        if caps.cell_pixel_width == Self::DEFAULT.cell_pixel_width
+            && caps.cell_pixel_height == Self::DEFAULT.cell_pixel_height
+            && let Some((width, height)) = client.cell_size
+        {
+            (caps.cell_pixel_width, caps.cell_pixel_height) = (width, height);
+        }
+
+        if client.passthrough {
+            let name = client.termtype.split(['(', ' ']).next().unwrap_or_default();
+            caps.kitty_graphics = is_placeholder_terminal(name);
+            caps.iterm_images = is_iterm_terminal(name);
+            caps.tmux = Some(TmuxPassthrough {
+                native_sixel: self.sixel_supported,
+                pane_top: client.pane_top,
+                pane_left: client.pane_left,
+            });
+            caps.sixel_supported |= client.features.split(',').any(|feature| feature.trim() == "sixel");
+        }
+
+        caps
+    }
+}
+
+/// Wraps `data` for tmux passthrough: `ESC P tmux;`, the data with every
+/// ESC doubled, `ESC \`.
+#[must_use]
+pub fn tmux_wrap(data: &str) -> String {
+    let mut out = String::with_capacity(data.len() + data.len() / 16 + 10);
+    out.push_str("\x1bPtmux;");
+    for c in data.chars() {
+        if c == '\x1b' {
+            out.push('\x1b');
+        }
+        out.push(c);
+    }
+    out.push_str("\x1b\\");
+    out
+}
+
+/// `tmux_wrap` for each `ESC \`-terminated command in `data` (the chunks
+/// of a kitty transmit), so no single passthrough grows past tmux's limit.
+#[must_use]
+pub fn tmux_wrap_each(data: &str) -> String {
+    data.split_inclusive("\x1b\\").map(tmux_wrap).collect()
 }
 
 impl TerminalCapabilities {
@@ -25,6 +160,7 @@ impl TerminalCapabilities {
         cell_pixel_height: 16,
         kitty_graphics: false,
         iterm_images: false,
+        tmux: None,
     };
 
     /// Port of `ParseQueryResponses`: DA1 (`ESC[?..c`, Sixel when a param is
@@ -229,6 +365,78 @@ mod tests {
         assert!(super::iterm_from_term_program(Some("WezTerm")));
         assert!(!super::iterm_from_term_program(Some("Apple_Terminal")));
         assert!(!super::iterm_from_term_program(None));
+    }
+
+    fn client(termtype: &str, features: &str, passthrough: bool) -> super::TmuxClient {
+        super::TmuxClient {
+            termtype: termtype.to_string(),
+            features: features.to_string(),
+            passthrough,
+            cell_size: Some((10, 20)),
+            pane_top: 3,
+            pane_left: 40,
+        }
+    }
+
+    #[test]
+    fn tmux_client_output_is_parsed() {
+        let parsed = super::TmuxClient::parse("kitty(0.35.2)\tRGB,sixel,title\t10\t20\t5\t40\ton\ttop\n", "all\n");
+        assert_eq!(
+            parsed,
+            super::TmuxClient {
+                termtype: "kitty(0.35.2)".to_string(),
+                features: "RGB,sixel,title".to_string(),
+                passthrough: true,
+                cell_size: Some((10, 20)),
+                pane_top: 6,
+                pane_left: 40,
+            }
+        );
+
+        // tmux 3.2 and older: unknown formats come back empty
+        let old = super::TmuxClient::parse("\t\t\t\t0\t0\ton\tbottom\n", "");
+        assert_eq!((old.passthrough, old.cell_size, old.pane_top), (false, None, 0));
+        assert!(!super::TmuxClient::parse("", "off").passthrough);
+
+        assert_eq!(super::pane_position("2", "7", "off", "top"), (2, 7));
+        assert_eq!(super::pane_position("2", "7", "3", "top"), (5, 7));
+        assert_eq!(super::pane_position("2", "7", "on", "bottom"), (2, 7));
+    }
+
+    #[test]
+    fn inside_tmux_images_follow_the_outer_terminal_when_passthrough_is_on() {
+        let tmux_da1 = Caps::parse_query_responses(b"\x1bP>|tmux 3.5a\x1b\\\x1b[?1;2c");
+
+        let kitty = tmux_da1.inside_tmux(&client("kitty(0.35.2)", "RGB", true));
+        assert!(kitty.kitty_graphics && !kitty.iterm_images && !kitty.sixel_supported);
+        let passthrough = kitty.tmux.expect("passthrough");
+        assert_eq!((passthrough.native_sixel, passthrough.pane_top, passthrough.pane_left), (false, 3, 40));
+        assert_eq!((kitty.cell_pixel_width, kitty.cell_pixel_height), (10, 20), "tmux's cell size");
+
+        let iterm = tmux_da1.inside_tmux(&client("iTerm2 3.5.0", "", true));
+        assert!(iterm.iterm_images && !iterm.kitty_graphics);
+        let sixel = tmux_da1.inside_tmux(&client("XTerm(390)", "RGB,sixel", true));
+        assert!(sixel.sixel_supported && sixel.tmux.is_some());
+
+        let off = tmux_da1.inside_tmux(&client("kitty(0.35.2)", "sixel", false));
+        assert!(!off.kitty_graphics && !off.sixel_supported && off.tmux.is_none(), "no passthrough: no images");
+
+        // tmux showing Sixel itself: no passthrough needed for it
+        let native = Caps::parse_query_responses(b"\x1b[?1;2;4c\x1b[6;18;9t");
+        let without = native.inside_tmux(&client("foot", "", false));
+        assert!(without.sixel_supported && without.tmux.is_none());
+        assert_eq!((without.cell_pixel_width, without.cell_pixel_height), (9, 18), "tmux's own reply wins");
+        assert!(native.inside_tmux(&client("foot", "", true)).tmux.is_some_and(|t| t.native_sixel));
+    }
+
+    #[test]
+    fn tmux_wrapping_doubles_escapes() {
+        assert_eq!(super::tmux_wrap("\x1b[1;1H\x1bPq#0\x1b\\"), "\x1bPtmux;\x1b\x1b[1;1H\x1b\x1bPq#0\x1b\x1b\\\x1b\\");
+        assert_eq!(
+            super::tmux_wrap_each("\x1b_Ga=T;AA\x1b\\\x1b_Gm=0;BB\x1b\\"),
+            "\x1bPtmux;\x1b\x1b_Ga=T;AA\x1b\x1b\\\x1b\\\x1bPtmux;\x1b\x1b_Gm=0;BB\x1b\x1b\\\x1b\\"
+        );
+        assert_eq!(super::tmux_wrap_each(""), "");
     }
 
     #[test]

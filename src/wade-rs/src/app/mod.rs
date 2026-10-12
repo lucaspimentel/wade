@@ -501,6 +501,11 @@ impl App {
             }
         }
 
+        // Rust-only: kitty commands pass through tmux one by one
+        if self.image_passthrough().is_some() {
+            out = crate::terminal_caps::tmux_wrap_each(&out);
+        }
+
         if let Some(sixel) = self.take_pending_overlay_image() {
             out.push_str(&sixel);
         }
@@ -543,7 +548,23 @@ impl App {
             );
         }
 
-        Some(format!("{}{sixel}", crate::ansi::move_cursor(row, col)))
+        // Rust-only: through tmux the cursor move goes to the outer terminal
+        // too, so it is offset by the pane's position
+        match self.image_passthrough() {
+            Some(tmux) => Some(crate::terminal_caps::tmux_wrap(&format!(
+                "{}{sixel}",
+                crate::ansi::move_cursor(row + tmux.pane_top, col + tmux.pane_left)
+            ))),
+            None => Some(format!("{}{sixel}", crate::ansi::move_cursor(row, col))),
+        }
+    }
+
+    /// Rust-only: the tmux passthrough image output takes, if any. Sixel
+    /// that tmux shows itself is written plainly.
+    fn image_passthrough(&self) -> Option<crate::terminal_caps::TmuxPassthrough> {
+        self.capabilities
+            .tmux
+            .filter(|tmux| !(tmux.native_sixel && self.image_protocol == Some(crate::imaging::ImageProtocol::Sixel)))
     }
 
     /// Applies detected terminal capabilities (App.cs:237-241).
@@ -572,6 +593,14 @@ impl App {
             buffer.resize(resize.width, resize.height);
             self.recalc_layout();
             clear_screen();
+
+            // Rust-only: a resized tmux pane may have moved
+            #[cfg(unix)]
+            if let Some(tmux) = self.capabilities.tmux.as_mut()
+                && let Some((top, left)) = crate::terminal_setup::tmux_pane_position()
+            {
+                (tmux.pane_top, tmux.pane_left) = (top, left);
+            }
 
             // Re-render the preview at the new size
             self.reload_preview_after_resize();

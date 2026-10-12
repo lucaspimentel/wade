@@ -211,11 +211,11 @@ alternative to Sixel.
 - **Rendering:** placeholder cells in `ScreenBuffer`.
 - **Untested:** not yet checked in a real kitty or Ghostty.
 
-### Image previews under tmux
+### ~~Image previews under tmux~~ (Done in Rust)
 
-Images are off inside tmux: the startup queries reach tmux, not the outer terminal. Supporting it needs DCS
-passthrough (`ESC P tmux; … ESC \`, with `allow-passthrough on`) for both the detection queries and the
-Sixel/kitty output.
+wade asks tmux about the outer terminal (`display-message`, tmux 3.3+) and wraps image data in DCS passthrough
+when `allow-passthrough` is on; tmux's own Sixel (3.4+) is used plainly. Covered by a PTY test with a fake `tmux`.
+Not yet checked in a real tmux.
 
 ### ~~iTerm2 inline image protocol for image previews~~ (Done in Rust)
 
