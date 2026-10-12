@@ -19,6 +19,7 @@ const ENTER: &str = "\r";
 const ESC: &str = "\x1b";
 /// Backspace as most terminals send it (DEL), and as some send it (BS)
 const BACKSPACE_DEL: &str = "\x7f";
+#[cfg(unix)]
 const BACKSPACE_BS: &str = "\x08";
 #[cfg(unix)]
 /// The start of "Press q to quit": a long temp path in the status bar can
@@ -155,8 +156,10 @@ impl Session {
 
     /// Esc on its own: a pause past wade's 50ms wait, so the next key is
     /// not read as Alt+key (ESC then a character is how terminals send Alt).
+    /// A slow runner can still read both at once: before the next key,
+    /// wait for Esc's effect on screen.
     fn escape(&mut self) {
-        self.send_split(&[(ESC, 150)]);
+        self.send_split(&[(ESC, 300)]);
     }
 
     /// A bracketed paste.
@@ -355,7 +358,7 @@ fn escape_alone_and_split_sequences_follow_the_wait() {
         counter(screen, "2/3") && !screen.contents().contains(QUIT_HINT)
     });
 
-    wade.send_split(&[(ESC, 200), ("j", 0)]);
+    wade.send_split(&[(ESC, 300), ("j", 0)]);
     wade.settles("Esc, then j", |screen| counter(screen, "3/3") && screen.contents().contains(QUIT_HINT));
     wade.send("q");
     wade.wait_for_exit();
@@ -425,6 +428,7 @@ fn emoji_typed_into_the_filter_arrive_intact() {
     wade.send("/😀x");
     wade.settles("the emoji in the filter", |screen| screen.contents().contains("/😀x"));
     wade.escape();
+    wade.wait_for("the filter closed", |screen| !screen.contents().contains("/😀x"));
     wade.send("q");
     wade.wait_for_exit();
 }
@@ -493,6 +497,9 @@ fn rename_with_backspace_as_del() {
     rename_notes_with(BACKSPACE_DEL, "rename-del");
 }
 
+/// Unix only: Windows Terminal sends Backspace as a key event, and ConPTY
+/// does not translate 0x08 into one.
+#[cfg(unix)]
 #[test]
 fn rename_with_backspace_as_bs() {
     rename_notes_with(BACKSPACE_BS, "rename-bs");
@@ -513,6 +520,7 @@ fn bracketed_paste_goes_into_the_filter() {
         screen.contents().contains("/not") && !screen.contents().contains("alpha")
     });
     wade.escape();
+    wade.wait_for("the filter closed", |screen| !screen.contents().contains("/not"));
     wade.send("q");
     wade.wait_for_exit();
 }
