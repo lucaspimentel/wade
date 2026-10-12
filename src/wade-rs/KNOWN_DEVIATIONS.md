@@ -178,6 +178,21 @@ None. Phase 9 closed the last temporary entries.
   right pane blank. Its `ClearPreviewCache` drops the preview context and
   the empty metadata provider list that the message branch checks, and Rust
   keeps them.
+- **Keybindings (Rust-only changes).**
+  - New: `d`/`D` delete and delete permanently, `r` rename, `T` open
+    terminal, Ctrl+T new tab (like `t`), Ctrl+L refresh (like Ctrl+R/F5).
+    C# used Ctrl+T for the terminal and Ctrl+L to create a symlink; Create
+    symlink is now palette-only.
+  - Esc in the file list clears the marks, else the filter, else shows
+    "Press q to quit"; it no longer quits. `q` always quits (C#: `q` and Esc
+    both cleared an applied filter first, then quit).
+  - Letter keys match the typed character with no Ctrl or Alt held
+    (`KeyEvent::plain_char`), in the file list, the expanded preview,
+    Properties and Settings: Shift+H/J/K/L, Alt+j, Shift+Q and Ctrl+Shift+L
+    no longer act as the plain letters. C# matched the virtual key and
+    ignored the modifiers. Ctrl+Alt counts as plain (Windows reports AltGr
+    that way), so layouts that type `[`, `{` or `/` with AltGr keep working;
+    the tab keys `{`/`}` previously rejected AltGr.
 - **Linux Trash on delete (Rust-only).** Delete without Shift moves items to
   the freedesktop.org Trash (`fs/linux_trash.rs`), and the confirmation drops
   "This cannot be undone!"; C# deletes permanently on every Unix.

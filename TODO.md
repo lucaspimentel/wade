@@ -286,7 +286,7 @@ Investigate enabling `ENABLE_VIRTUAL_TERMINAL_INPUT` on Windows Terminal (detect
 
 ### Keyboard shortcut convention audit
 
-- [ ] Review remaining keybinding consistency. Current mix: some dialogs/tools use `Ctrl+` (`Ctrl+F` finder, `Ctrl+T` terminal, `Ctrl+L` symlink, `Ctrl+R` refresh, `Ctrl+P` command palette, `Ctrl+G` go-to-path) while others use bare keys (`n`/`N` new file/dir, `b`/`B` bookmarks, `/` filter, `,` config, `?` help, `i` properties). Convention: `Ctrl+<key>` for opening tools/dialogs/overlays, bare keys for direct actions.
+- [x] Keybinding consistency. Rule: bare keys in lower/upper-case pairs; Ctrl only for the jump tools (Ctrl+P/K palette, Ctrl+F finder, Ctrl+G go to path) and browser/shell conventions (Ctrl+T new tab, Ctrl+L/Ctrl+R refresh). A strict "Ctrl for dialogs" rule is impossible: terminals cannot send Ctrl+`,`/`?`/`/`, and Ctrl+H/I/J/M/[ are Backspace/Tab/Enter/Esc. Done: `d`/`D` delete, `r` rename (Mac laptops have no forward Delete, F2 needs fn), `T` terminal, Ctrl+T new tab, Ctrl+L refresh, symlink palette-only, Esc clears marks then filter then hints at `q` (no longer quits), `q` always quits, and letter keys match the typed character without Ctrl/Alt (Shift+J or Alt+j no longer act as `j`; AltGr still types `[` `{` ...)
 
 ### ~~CSS color swatches in preview~~ (Done)
 

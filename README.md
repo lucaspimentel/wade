@@ -200,8 +200,8 @@ Then use `wd` instead of `wade` to browse. Press `q` to quit and cd to the last 
 | Left Click | Select / Open |
 | Right Click | Context menu |
 | Scroll | Navigate up/down |
-| Ctrl+R / F5 | Refresh |
-| Ctrl+T | Open terminal here |
+| Ctrl+R / Ctrl+L / F5 | Refresh |
+| T | Open terminal here |
 | . | Toggle hidden files |
 | [ | Toggle left (parent) pane |
 | ] | Toggle right (preview) pane |
@@ -211,32 +211,33 @@ Then use `wd` instead of `wade` to browse. Press `q` to quit and cd to the last 
 | b | Open bookmarks dialog |
 | B | Toggle current directory as bookmark |
 | / | Filter |
-| Esc (in filter) | Clear filter |
+| Esc | Clear marks, then the filter (shows "Press q to quit" when there is nothing to clear) |
 | Space | Toggle mark (multi-select) |
 | o | Open with default app |
-| F2 | Rename |
-| Del | Delete (Recycle Bin on Windows, Trash on macOS and Linux) |
-| Shift+Del | Delete permanently |
+| r / F2 | Rename |
+| d / Del | Delete (Recycle Bin on Windows, Trash on macOS and Linux) |
+| D / Shift+Del | Delete permanently |
 | c | Copy |
 | x | Cut |
 | v | Paste |
 | y | Copy absolute path to clipboard |
 | Y | Copy git-relative path to clipboard |
 | n | Create new file |
-| Shift+N | Create new directory |
-| Ctrl+L | Create symlink to selected item |
+| N | Create new directory |
 | p | Change preview (when multiple preview modes available) |
 | i | Properties |
 | , | Settings (Configuration) |
 | Ctrl+F | Find files (Search) |
 | Ctrl+P / Ctrl+K | Action palette |
 | ? | Show help |
-| q / Escape | Quit |
+| q | Quit |
 | Q | Quit without cd |
-| t | New tab |
+| t / Ctrl+T | New tab |
 | { / } | Previous / next tab |
 | 1–9 | Go to tab N |
 | w | Close tab; quits on the last tab |
+
+"Create symlink" is in the action palette (Ctrl+P).
 
 `s` and `S` sort the current directory only. The sort is remembered for that directory in `~/.config/wade/sorts` and shown with a `*` after the sort marker; "Reset sort for this directory" in the action palette goes back to the configured default.
 

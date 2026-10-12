@@ -7,6 +7,9 @@
 - macOS: files and folders Finder hides (`chflags hidden`, e.g. `~/Library`) are hidden unless "Show Hidden Files" is on, in the listing, the file finder and path completion; Properties lists them as Hidden
 
 ### Changed
+- Keybindings: `d`/`D` delete (to the Trash) and delete permanently, `r` renames, `T` opens a terminal, Ctrl+T opens a tab like `t`, and Ctrl+L refreshes like Ctrl+R/F5 (Create symlink moved to the action palette)
+- Esc in the file list no longer quits: it clears the marks, then the filter, then shows "Press q to quit"; `q` always quits
+- Shift, Ctrl or Alt with a letter no longer triggers that letter's action (Shift+J no longer moves down; Shift+Q no longer closes the full-screen preview)
 - The preview pane shows `[file previews off]` when file previews are turned off (below the file details, or alone when details are off too, where the pane was blank)
 - Read errors, empty files and binary files forced into the text preview show their message below the file details instead of only the details
 

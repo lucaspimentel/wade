@@ -388,8 +388,8 @@ impl App {
     pub fn build_context_menu_items(&mut self) -> Vec<ActionMenuItem> {
         let mut items = vec![
             ActionMenuItem::new("Open with default app", "o", AppAction::OpenExternal),
-            ActionMenuItem::new("Rename", "F2", AppAction::Rename),
-            ActionMenuItem::new("Delete", "Del", AppAction::Delete),
+            ActionMenuItem::new("Rename", "r", AppAction::Rename),
+            ActionMenuItem::new("Delete", "d", AppAction::Delete),
             ActionMenuItem::new("Copy", "c", AppAction::Copy),
             ActionMenuItem::new("Cut", "x", AppAction::Cut),
         ];
@@ -1155,8 +1155,8 @@ impl App {
         // Port of BuildActionPaletteItems (App.cs:2935), C# order
         let mut items = vec![
             ActionMenuItem::new("Open with default app", "o", AppAction::OpenExternal),
-            ActionMenuItem::new("Rename", "F2", AppAction::Rename),
-            ActionMenuItem::new("Delete", "Del", AppAction::Delete),
+            ActionMenuItem::new("Rename", "r", AppAction::Rename),
+            ActionMenuItem::new("Delete", "d", AppAction::Delete),
             ActionMenuItem::new("Copy", "c", AppAction::Copy),
             ActionMenuItem::new("Cut", "x", AppAction::Cut),
         ];
@@ -1168,8 +1168,8 @@ impl App {
         items.extend([
             ActionMenuItem::new("Copy absolute path", "y", AppAction::CopyAbsolutePath),
             ActionMenuItem::new("New file", "n", AppAction::NewFile),
-            ActionMenuItem::new("New directory", "Shift+N", AppAction::NewDirectory),
-            ActionMenuItem::new("Create symlink", "Ctrl+L", AppAction::CreateSymlink),
+            ActionMenuItem::new("New directory", "N", AppAction::NewDirectory),
+            ActionMenuItem::new("Create symlink", "", AppAction::CreateSymlink),
             ActionMenuItem::new("Properties", "i", AppAction::ShowProperties),
         ]);
 
@@ -1215,7 +1215,7 @@ impl App {
             ActionMenuItem::new("Go to path", "Ctrl+G", AppAction::GoToPath),
             ActionMenuItem::new("Find files (Search)", "Ctrl+F", AppAction::ShowFileFinder),
             ActionMenuItem::new("Filter", "/", AppAction::Search),
-            ActionMenuItem::new("Open terminal here", "Ctrl+T", AppAction::OpenTerminal),
+            ActionMenuItem::new("Open terminal here", "T", AppAction::OpenTerminal),
             ActionMenuItem::new("Settings (Configuration)", ",", AppAction::ShowConfig),
             ActionMenuItem::new("Help", "?", AppAction::ShowHelp),
             ActionMenuItem::new("Refresh", "Ctrl+R", AppAction::Refresh),
@@ -1630,14 +1630,15 @@ impl App {
             return;
         };
 
-        match key.key {
-            ConsoleKey::UpArrow | ConsoleKey::K => state.move_up(),
-            ConsoleKey::DownArrow | ConsoleKey::J => state.move_down(),
-            ConsoleKey::Spacebar => state.toggle_selected(),
-            ConsoleKey::Enter => self.apply_config_changes(),
-            ConsoleKey::Escape => self.input_mode = InputMode::Normal,
-            ConsoleKey::LeftArrow | ConsoleKey::H => state.cycle_prev_selected(),
-            ConsoleKey::RightArrow | ConsoleKey::L => state.cycle_next_selected(),
+        // Rust only: h/j/k/l match the typed character without Ctrl/Alt
+        match (key.key, key.plain_char()) {
+            (ConsoleKey::UpArrow, _) | (_, Some('k')) => state.move_up(),
+            (ConsoleKey::DownArrow, _) | (_, Some('j')) => state.move_down(),
+            (ConsoleKey::Spacebar, _) => state.toggle_selected(),
+            (ConsoleKey::Enter, _) => self.apply_config_changes(),
+            (ConsoleKey::Escape, _) => self.input_mode = InputMode::Normal,
+            (ConsoleKey::LeftArrow, _) | (_, Some('h')) => state.cycle_prev_selected(),
+            (ConsoleKey::RightArrow, _) | (_, Some('l')) => state.cycle_next_selected(),
             _ => {}
         }
     }

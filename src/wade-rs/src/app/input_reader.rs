@@ -68,145 +68,80 @@ pub enum AppAction {
     /// Tab number 1-9.
     SwitchTab(u8),
     CloseTab,
+    /// Rust only: Esc in the file list clears the marks, else the filter,
+    /// else hints at `q` (it no longer quits).
+    ClearOrQuitHint,
 }
 
 /// Port of `InputReader.MapKey`. `key_char` is the UTF-16 code unit from the
 /// C# `KeyEvent.KeyChar`.
+///
+/// Rust only: bare-key bindings match the typed character with no Ctrl or
+/// Alt held (`KeyEvent::plain_char`), so Shift+J or Alt+j no longer act as
+/// `j`; and the keybinding rule is bare keys in lower/upper-case pairs, with
+/// Ctrl only for the jump tools (Ctrl+P/K, Ctrl+F, Ctrl+G) and the browser
+/// and shell conventions (Ctrl+T new tab, Ctrl+L/Ctrl+R refresh).
 #[must_use]
 pub fn map_key(key: &KeyEvent) -> AppAction {
     use AppAction as A;
     use ConsoleKey as K;
 
-    let key_char = char::from_u32(u32::from(key.key_char));
+    let ctrl = key.control && !key.alt;
 
-    if (key.key == K::P || key.key == K::K) && key.control && !key.shift {
-        return A::ShowActionPalette;
+    if ctrl && !key.shift {
+        match key.key {
+            K::P | K::K => return A::ShowActionPalette,
+            K::G => return A::GoToPath,
+            K::F => return A::ShowFileFinder,
+            K::T => return A::NewTab,
+            K::L | K::R => return A::Refresh,
+            _ => {}
+        }
     }
 
-    if key_char == Some('?') {
-        return A::ShowHelp;
-    }
-
-    if key_char == Some('/') {
-        return A::Search;
-    }
-
-    if key_char == Some('.') {
-        return A::ToggleHiddenFiles;
-    }
-
-    if key_char == Some('[') {
-        return A::ToggleParentPane;
-    }
-
-    if key_char == Some(']') {
-        return A::TogglePreviewPane;
-    }
-
-    // Rust only: tabs (plain keys; Ctrl+T stays Open terminal)
-    match key_char.filter(|_| !key.control && !key.alt) {
-        Some('t') => return A::NewTab,
-        Some('}') => return A::NextTab,
-        Some('{') => return A::PrevTab,
-        Some('w') => return A::CloseTab,
-        Some(digit @ '1'..='9') => return A::SwitchTab(digit as u8 - b'0'),
-        _ => {}
-    }
-
-    if key_char == Some('s') {
-        return A::CycleSortMode;
-    }
-
-    if key_char == Some('S') {
-        return A::ToggleSortDirection;
-    }
-
-    if key_char == Some('Q') {
-        return A::QuitNoCd;
-    }
-
-    if key_char == Some('q') {
-        return A::Quit;
-    }
-
-    if key_char == Some(',') {
-        return A::ShowConfig;
-    }
-
-    if key_char == Some('i') {
-        return A::ShowProperties;
-    }
-
-    if key.key == K::G && key.control && !key.shift {
-        return A::GoToPath;
-    }
-
-    if key_char == Some('o') {
-        return A::OpenExternal;
-    }
-
-    if key_char == Some('p') {
-        return A::ShowPreviewMenu;
+    if let Some(ch) = key.plain_char() {
+        match ch {
+            '?' => return A::ShowHelp,
+            '/' => return A::Search,
+            '.' => return A::ToggleHiddenFiles,
+            '[' => return A::ToggleParentPane,
+            ']' => return A::TogglePreviewPane,
+            't' => return A::NewTab,
+            'T' => return A::OpenTerminal,
+            '}' => return A::NextTab,
+            '{' => return A::PrevTab,
+            'w' => return A::CloseTab,
+            digit @ '1'..='9' => return A::SwitchTab(digit as u8 - b'0'),
+            's' => return A::CycleSortMode,
+            'S' => return A::ToggleSortDirection,
+            'q' => return A::Quit,
+            'Q' => return A::QuitNoCd,
+            ',' => return A::ShowConfig,
+            'i' => return A::ShowProperties,
+            'o' => return A::OpenExternal,
+            'p' => return A::ShowPreviewMenu,
+            'c' => return A::Copy,
+            'x' => return A::Cut,
+            'v' => return A::Paste,
+            'y' => return A::CopyAbsolutePath,
+            'Y' => return A::CopyGitRelativePath,
+            'b' => return A::ShowBookmarks,
+            'B' => return A::ToggleBookmark,
+            'n' => return A::NewFile,
+            'N' => return A::NewDirectory,
+            'd' => return A::Delete,
+            'D' => return A::DeletePermanently,
+            'r' => return A::Rename,
+            'k' => return A::NavigateUp,
+            'j' => return A::NavigateDown,
+            'l' => return A::Open,
+            'h' => return A::Back,
+            _ => {}
+        }
     }
 
     if key.key == K::Spacebar {
         return A::ToggleMark;
-    }
-
-    if key.key == K::R && key.control {
-        return A::Refresh;
-    }
-
-    if key.key == K::T && key.control {
-        return A::OpenTerminal;
-    }
-
-    if key.key == K::L && key.control && !key.shift {
-        return A::CreateSymlink;
-    }
-
-    if key.key == K::F && key.control && !key.shift {
-        return A::ShowFileFinder;
-    }
-
-    if key_char == Some('c') {
-        return A::Copy;
-    }
-
-    if key_char == Some('x') {
-        return A::Cut;
-    }
-
-    if key_char == Some('v') {
-        return A::Paste;
-    }
-
-    if key_char == Some('y') {
-        return A::CopyAbsolutePath;
-    }
-
-    if key_char == Some('Y') {
-        return A::CopyGitRelativePath;
-    }
-
-    if key_char == Some('b') {
-        return A::ShowBookmarks;
-    }
-
-    if key_char == Some('B') {
-        return A::ToggleBookmark;
-    }
-
-    if key_char == Some('n') {
-        return A::NewFile;
-    }
-
-    if key_char == Some('N') {
-        return A::NewDirectory;
-    }
-
-    if key.key == K::F2 {
-        return A::Rename;
     }
 
     if key.key == K::Delete {
@@ -214,15 +149,16 @@ pub fn map_key(key: &KeyEvent) -> AppAction {
     }
 
     match key.key {
-        K::UpArrow | K::K => A::NavigateUp,
-        K::DownArrow | K::J => A::NavigateDown,
-        K::RightArrow | K::Enter | K::L => A::Open,
-        K::LeftArrow | K::Backspace | K::H => A::Back,
-        K::Escape => A::Quit,
+        K::UpArrow => A::NavigateUp,
+        K::DownArrow => A::NavigateDown,
+        K::RightArrow | K::Enter => A::Open,
+        K::LeftArrow | K::Backspace => A::Back,
+        K::Escape => A::ClearOrQuitHint,
         K::PageUp => A::PageUp,
         K::PageDown => A::PageDown,
         K::Home => A::Home,
         K::End => A::End,
+        K::F2 => A::Rename,
         K::F5 => A::Refresh,
         _ => A::None,
     }
@@ -261,7 +197,7 @@ mod tests {
     fn navigation_keys_map() {
         assert_eq!(map_key(&make_key(ConsoleKey::Enter, '\r' as u16, false, false, false)), AppAction::Open);
         assert_eq!(map_key(&make_key(ConsoleKey::Backspace, 8, false, false, false)), AppAction::Back);
-        assert_eq!(map_key(&make_key(ConsoleKey::Escape, 27, false, false, false)), AppAction::Quit);
+        assert_eq!(map_key(&make_key(ConsoleKey::Escape, 27, false, false, false)), AppAction::ClearOrQuitHint);
         assert_eq!(map_key(&make_key(ConsoleKey::PageUp, 0, false, false, false)), AppAction::PageUp);
         assert_eq!(map_key(&make_key(ConsoleKey::PageDown, 0, false, false, false)), AppAction::PageDown);
         assert_eq!(map_key(&make_key(ConsoleKey::Home, 0, false, false, false)), AppAction::Home);
@@ -304,8 +240,8 @@ mod tests {
         assert_eq!(map_key(&keyc(ConsoleKey::G, 'g', false, true)), AppAction::GoToPath);
         assert_eq!(map_key(&keyc(ConsoleKey::R, 'r', false, true)), AppAction::Refresh);
         assert_eq!(map_key(&make_key(ConsoleKey::F5, 0, false, false, false)), AppAction::Refresh);
-        assert_eq!(map_key(&keyc(ConsoleKey::T, 't', false, true)), AppAction::OpenTerminal);
-        assert_eq!(map_key(&keyc(ConsoleKey::L, 'l', false, true)), AppAction::CreateSymlink);
+        assert_eq!(map_key(&keyc(ConsoleKey::T, 't', false, true)), AppAction::NewTab);
+        assert_eq!(map_key(&keyc(ConsoleKey::L, 'l', false, true)), AppAction::Refresh);
         assert_eq!(map_key(&keyc(ConsoleKey::F, 'f', false, true)), AppAction::ShowFileFinder);
     }
 
@@ -327,6 +263,27 @@ mod tests {
         assert_eq!(map_key(&make_key(ConsoleKey::Delete, 0, false, false, false)), AppAction::Delete);
         assert_eq!(map_key(&make_key(ConsoleKey::Delete, 0, true, false, false)), AppAction::DeletePermanently);
         assert_eq!(map_key(&make_key(ConsoleKey::F2, 0, false, false, false)), AppAction::Rename);
+        assert_eq!(map_key(&keyc(ConsoleKey::D, 'd', false, false)), AppAction::Delete);
+        assert_eq!(map_key(&keyc(ConsoleKey::D, 'D', true, false)), AppAction::DeletePermanently);
+        assert_eq!(map_key(&keyc(ConsoleKey::R, 'r', false, false)), AppAction::Rename);
+        assert_eq!(map_key(&keyc(ConsoleKey::T, 'T', true, false)), AppAction::OpenTerminal);
+    }
+
+    #[test]
+    fn letters_need_no_ctrl_or_alt_and_case_matters() {
+        let alt = |k, c| make_key(k, u16::try_from(u32::from(c)).unwrap(), false, true, false);
+        for (k, c) in [(ConsoleKey::H, 'H'), (ConsoleKey::J, 'J'), (ConsoleKey::K, 'K'), (ConsoleKey::L, 'L')] {
+            assert_eq!(map_key(&keyc(k, c, true, false)), AppAction::None, "Shift+{c}");
+        }
+        assert_eq!(map_key(&alt(ConsoleKey::J, 'j')), AppAction::None, "Alt+j");
+        assert_eq!(map_key(&alt(ConsoleKey::D, 'd')), AppAction::None, "Alt+d");
+        assert_eq!(map_key(&make_key(ConsoleKey::D, 4, false, false, true)), AppAction::None, "Ctrl+D");
+        assert_eq!(map_key(&make_key(ConsoleKey::R, 0x12, false, false, true)), AppAction::Refresh, "Ctrl+R");
+        assert_eq!(map_key(&make_key(ConsoleKey::L, 0x0C, true, false, true)), AppAction::None, "Ctrl+Shift+L");
+        assert_eq!(map_key(&make_key(ConsoleKey::F, 6, true, false, true)), AppAction::None, "Ctrl+Shift+F");
+        // AltGr (reported as Ctrl+Alt on Windows) types characters like `[`
+        assert_eq!(map_key(&make_key(ConsoleKey::D8, u16::from(b'['), false, true, true)), AppAction::ToggleParentPane);
+        assert_eq!(map_key(&make_key(ConsoleKey::D7, u16::from(b'{'), false, true, true)), AppAction::PrevTab);
     }
 
     #[test]

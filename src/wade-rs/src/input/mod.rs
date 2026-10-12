@@ -59,6 +59,20 @@ impl KeyEvent {
     pub fn is_modifier_only(&self) -> bool {
         self.key.0 == 16 || self.key.0 == 17 || self.key.0 == 18
     }
+
+    /// Rust only: the typed character when neither Ctrl nor Alt is held
+    /// (Shift is already in the character: `K` is Shift+k). Ctrl+Alt
+    /// together counts as plain: Windows reports AltGr that way, and
+    /// layouts type `[`, `{`, `/` ... with it.
+    #[must_use]
+    pub fn plain_char(&self) -> Option<char> {
+        let altgr = self.control && self.alt;
+        if (self.control || self.alt) && !altgr {
+            return None;
+        }
+
+        char::from_u32(u32::from(self.key_char)).filter(|c| !c.is_control())
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

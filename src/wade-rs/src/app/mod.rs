@@ -659,13 +659,18 @@ impl App {
             }
             A::Home => self.selected_index = 0,
             A::End => self.selected_index = entries.len().saturating_sub(1),
-            A::Quit => {
-                if !self.search_filter.is_empty() {
+            // Rust only: q always quits; Esc (below) clears marks and the
+            // filter. C# shared one action: q/Esc cleared the filter, else quit
+            A::Quit => self.quit = true,
+            A::ClearOrQuitHint => {
+                if !self.marked_paths.is_empty() {
+                    self.marked_paths.clear();
+                } else if !self.search_filter.is_empty() {
                     self.clear_search_filter();
                     self.selected_index = 0;
                     self.scroll_offset = 0;
                 } else {
-                    self.quit = true;
+                    self.show_notification("Press q to quit", NotificationKind::Info);
                 }
             }
             A::QuitNoCd => {
@@ -1290,28 +1295,31 @@ impl App {
             app.properties_dir_size_text = None;
         };
 
-        match key.key {
-            ConsoleKey::Escape | ConsoleKey::Enter | ConsoleKey::I | ConsoleKey::Q => close(self),
-            ConsoleKey::UpArrow | ConsoleKey::K => {
+        // Rust only: k/j scroll only as typed (Shift+K closes like any other
+        // key)
+        let ch = key.plain_char();
+
+        match (key.key, ch) {
+            (ConsoleKey::UpArrow, _) | (_, Some('k')) => {
                 if self.properties_scroll_offset > 0 {
                     self.properties_scroll_offset -= 1;
                 }
             }
-            ConsoleKey::DownArrow | ConsoleKey::J => {
+            (ConsoleKey::DownArrow, _) | (_, Some('j')) => {
                 self.properties_scroll_offset += 1;
             }
-            ConsoleKey::PageUp => {
+            (ConsoleKey::PageUp, _) => {
                 let page_size = (self.properties_content_height / 2).max(1);
                 self.properties_scroll_offset = self.properties_scroll_offset.saturating_sub(page_size);
             }
-            ConsoleKey::PageDown => {
+            (ConsoleKey::PageDown, _) => {
                 let page_size = (self.properties_content_height / 2).max(1);
                 self.properties_scroll_offset = self.properties_scroll_offset.saturating_add(page_size);
             }
-            ConsoleKey::Home => {
+            (ConsoleKey::Home, _) => {
                 self.properties_scroll_offset = 0;
             }
-            ConsoleKey::End => {
+            (ConsoleKey::End, _) => {
                 self.properties_scroll_offset = usize::MAX; // clamped during render
             }
             _ => close(self),

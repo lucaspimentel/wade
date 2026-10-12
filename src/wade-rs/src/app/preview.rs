@@ -486,39 +486,43 @@ impl App {
 
         let page = usize::try_from(self.layout.expanded_pane.height).unwrap_or(0);
 
-        match key.key {
-            ConsoleKey::LeftArrow | ConsoleKey::H | ConsoleKey::Backspace | ConsoleKey::Escape | ConsoleKey::Q => {
+        // Rust only: letters match the typed character without Ctrl/Alt, so
+        // Shift+Q or Alt+j are not q or j
+        let ch = key.plain_char();
+
+        match (key.key, ch) {
+            (ConsoleKey::LeftArrow | ConsoleKey::Backspace | ConsoleKey::Escape, _) | (_, Some('h' | 'q')) => {
                 self.leave_expanded_preview();
             }
-            ConsoleKey::UpArrow | ConsoleKey::K => {
+            (ConsoleKey::UpArrow, _) | (_, Some('k')) => {
                 self.preview.expanded_scroll_offset = self.preview.expanded_scroll_offset.saturating_sub(1);
             }
-            ConsoleKey::DownArrow | ConsoleKey::J => {
+            (ConsoleKey::DownArrow, _) | (_, Some('j')) => {
                 if let Some(max_scroll) = self.expanded_max_scroll()
                     && self.preview.expanded_scroll_offset < max_scroll
                 {
                     self.preview.expanded_scroll_offset += 1;
                 }
             }
-            ConsoleKey::PageUp => {
+            (ConsoleKey::PageUp, _) => {
                 self.preview.expanded_scroll_offset = self.preview.expanded_scroll_offset.saturating_sub(page);
             }
-            ConsoleKey::PageDown => {
+            (ConsoleKey::PageDown, _) => {
                 if let Some(max_scroll) = self.expanded_max_scroll() {
                     self.preview.expanded_scroll_offset = max_scroll.min(self.preview.expanded_scroll_offset + page);
                 }
             }
-            ConsoleKey::Home => self.preview.expanded_scroll_offset = 0,
-            ConsoleKey::End => {
+            (ConsoleKey::Home, _) => self.preview.expanded_scroll_offset = 0,
+            (ConsoleKey::End, _) => {
                 if let Some(max_scroll) = self.expanded_max_scroll() {
                     self.preview.expanded_scroll_offset = max_scroll;
                 }
             }
-            _ if key.key_char == u16::from(b'y') || key.key_char == u16::from(b'Y') => {
+            (_, Some(yank @ ('y' | 'Y'))) => {
                 let preview_path = self.preview.cached_path.clone().or_else(|| self.preview.cached_image_path.clone());
 
                 if let Some(path) = preview_path {
-                    if key.key_char == u16::from(b'y') {
+                    if yank == 'y' {
                         self.copy_text_to_clipboard(&path, "Copied path to clipboard");
                     } else {
                         self.copy_git_relative_path(&path);

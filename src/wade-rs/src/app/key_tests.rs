@@ -233,12 +233,12 @@ fn slash_filters_the_listing_and_escape_clears_it() {
     assert_eq!(visible_names(&mut app), ["a.txt", "b.txt"]);
     assert!(!frame_has(&mut app, "readme.md"));
 
-    // Enter keeps the filter; q clears it before quitting
+    // Enter keeps the filter; Esc in the list clears it
     press(&mut app, key(K::Enter));
     assert_eq!(app.input_mode, InputMode::Normal);
     assert_eq!(visible_names(&mut app), ["a.txt", "b.txt"]);
-    press(&mut app, ch('q'));
-    assert!(!app.quit, "q first clears the filter");
+    press(&mut app, key(K::Escape));
+    assert!(!app.quit);
     assert!(visible_names(&mut app).contains(&"readme.md".to_string()));
 
     press(&mut app, ch('/'));
@@ -312,6 +312,34 @@ fn comma_opens_the_config_dialog_and_enter_saves_a_toggled_item() {
     press(&mut app, key(K::Spacebar));
     press(&mut app, key(K::Escape));
     assert!(app.config.show_hidden_files);
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn config_dialog_moves_with_j_k_but_not_shift_j() {
+    let (mut app, parent, _) = app();
+    press(&mut app, ch(','));
+    let selected = |app: &App| app.modal.config_state.as_ref().unwrap().selected_index;
+    let start = selected(&app);
+    press(&mut app, ch('J'));
+    assert_eq!(selected(&app), start, "Shift+J");
+    press(&mut app, ch('j'));
+    assert_ne!(selected(&app), start);
+    press(&mut app, ch('k'));
+    assert_eq!(selected(&app), start);
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn properties_scroll_with_j_and_shift_j_closes() {
+    let (mut app, parent, _) = app();
+    select(&mut app, "a.txt");
+    press(&mut app, ch('i'));
+    press(&mut app, ch('j'));
+    assert_eq!(app.input_mode, InputMode::Properties);
+    assert_eq!(app.properties_scroll_offset, 1);
+    press(&mut app, ch('J'));
+    assert_eq!(app.input_mode, InputMode::Normal, "like any other key");
     let _ = std::fs::remove_dir_all(&parent);
 }
 
@@ -624,10 +652,10 @@ fn paste_inserts_into_a_text_input() {
 
 #[cfg(unix)]
 #[test]
-fn ctrl_l_creates_a_symlink_to_the_selected_entry() {
+fn palette_creates_a_symlink_to_the_selected_entry() {
     let (mut app, parent, root) = app();
     select(&mut app, "a.txt");
-    press(&mut app, ctrl(K::L));
+    create_symlink_from_palette(&mut app);
     assert_eq!(app.input_mode, InputMode::TextInput);
     assert_eq!(app.modal.active_text_input.as_ref().map(|i| i.value().to_string()).as_deref(), Some("a.txt_link"));
     press(&mut app, key(K::Enter));
@@ -639,10 +667,10 @@ fn ctrl_l_creates_a_symlink_to_the_selected_entry() {
 
 #[cfg(unix)]
 #[test]
-fn ctrl_l_on_a_directory_creates_a_directory_link() {
+fn palette_symlink_on_a_directory_creates_a_directory_link() {
     let (mut app, parent, root) = app();
     select(&mut app, "sub");
-    press(&mut app, ctrl(K::L));
+    create_symlink_from_palette(&mut app);
     assert_eq!(app.modal.active_text_input.as_ref().map(|i| i.value().to_string()).as_deref(), Some("sub_link"));
     press(&mut app, key(K::Enter));
     let link = root.join("sub_link");
@@ -650,6 +678,114 @@ fn ctrl_l_on_a_directory_creates_a_directory_link() {
     assert!(link.join("inner.txt").is_file(), "the link resolves to the directory");
     let entry = app.get_visible_entries().into_iter().find(|e| e.name == "sub_link").expect("link listed");
     assert!(entry.is_directory && entry.is_symlink());
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+/// Create symlink has no key (Ctrl+L refreshes): run it from the palette.
+#[cfg(unix)]
+fn create_symlink_from_palette(app: &mut App) {
+    press(app, ctrl(K::P));
+    type_text(app, "create symlink");
+    press(app, key(K::Enter));
+}
+
+#[test]
+fn d_and_shift_d_ask_to_delete() {
+    let (mut app, parent, root) = app();
+    select(&mut app, "b.txt");
+    press(&mut app, ch('d'));
+    assert_eq!(app.input_mode, InputMode::Confirm);
+    assert_eq!(app.modal.confirm_title.as_deref(), Some("Delete"));
+    press(&mut app, ch('n'));
+
+    press(&mut app, ch('D'));
+    assert_eq!(app.modal.confirm_title.as_deref(), Some("Permanently Delete"));
+    press(&mut app, ch('y'));
+    finish_file_operation(&mut app);
+    assert!(!root.join("b.txt").exists());
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn r_renames_like_f2() {
+    let (mut app, parent, root) = app();
+    select(&mut app, "a.txt");
+    press(&mut app, ch('r'));
+    assert_eq!(app.input_mode, InputMode::TextInput);
+    assert_eq!(app.modal.active_text_input.as_ref().map(|i| i.value().to_string()).as_deref(), Some("a.txt"));
+    for _ in 0.."a.txt".len() {
+        press(&mut app, key(K::Backspace));
+    }
+    type_text(&mut app, "renamed.txt");
+    press(&mut app, key(K::Enter));
+    assert!(root.join("renamed.txt").is_file());
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn escape_clears_marks_then_the_filter_then_hints_at_q() {
+    let (mut app, parent, root) = app();
+    press(&mut app, ch('/'));
+    type_text(&mut app, "txt");
+    press(&mut app, key(K::Enter));
+    select(&mut app, "a.txt");
+    press(&mut app, ch(' '));
+    assert!(app.marked_paths.contains(&path_of(&root, "a.txt")));
+
+    press(&mut app, key(K::Escape));
+    assert!(app.marked_paths.is_empty(), "marks first");
+    assert_eq!(visible_names(&mut app), ["a.txt", "b.txt"], "the filter stays");
+
+    press(&mut app, key(K::Escape));
+    assert!(visible_names(&mut app).contains(&"readme.md".to_string()), "then the filter");
+
+    press(&mut app, key(K::Escape));
+    assert!(!app.quit, "Esc never quits");
+    assert_eq!(notification(&app), "Press q to quit");
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn q_quits_even_with_a_filter() {
+    let (mut app, parent, _) = app();
+    press(&mut app, ch('/'));
+    type_text(&mut app, "txt");
+    press(&mut app, key(K::Enter));
+    press(&mut app, ch('q'));
+    assert!(app.quit);
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn ctrl_t_opens_a_tab_and_ctrl_l_refreshes() {
+    let (mut app, parent, root) = app();
+    press(&mut app, ctrl(K::T));
+    assert_eq!(app.tab_count(), 2);
+
+    select(&mut app, "a.txt");
+    press(&mut app, ch(' '));
+    assert!(app.marked_paths.contains(&path_of(&root, "a.txt")));
+    press(&mut app, ctrl(K::L));
+    assert!(app.marked_paths.is_empty(), "refresh clears the marks like Ctrl+R");
+    assert_eq!(app.input_mode, InputMode::Normal, "no symlink dialog");
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn shifted_vim_keys_do_not_navigate() {
+    let (mut app, parent, _) = app();
+    select(&mut app, "a.txt");
+    for c in ['J', 'K', 'H', 'L'] {
+        press(&mut app, ch(c));
+        assert_eq!(selected_name(&mut app), "a.txt", "{c}");
+        assert_eq!(app.input_mode, InputMode::Normal, "{c}");
+    }
+    let mut alt_j = ch('j');
+    alt_j.alt = true;
+    press(&mut app, alt_j);
+    assert_eq!(selected_name(&mut app), "a.txt", "Alt+j");
+    press(&mut app, ch('j'));
+    assert_eq!(selected_name(&mut app), "b.txt");
     let _ = std::fs::remove_dir_all(&parent);
 }
 
@@ -1413,7 +1549,9 @@ fn opens_the_full_screen_preview_with_the_right_pane_hidden(open: crate::input::
     pump_until(&mut app, "the readme preview", |app| app.preview.cached_styled_lines.is_some());
     assert!(frame_has(&mut app, "Title"));
 
-    press(&mut app, key(K::Escape));
+    press(&mut app, ch('Q'));
+    assert_eq!(app.input_mode, InputMode::ExpandedPreview, "Shift+Q is not q");
+    press(&mut app, ch('q'));
     assert_eq!(app.input_mode, InputMode::Normal);
     assert!(!app.preview_pane_enabled, "the right pane stays hidden");
     assert!(app.preview.applicable_providers.is_none(), "nothing left over for the next file");
