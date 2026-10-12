@@ -60,13 +60,7 @@ impl UnixInputSource {
     }
 
     fn poll(&self, timeout_ms: i32) -> bool {
-        let mut pfd = libc::pollfd {
-            fd: self.fd,
-            events: libc::POLLIN,
-            revents: 0,
-        };
-        let ready = unsafe { libc::poll(&mut pfd, 1, timeout_ms) };
-        ready > 0 && pfd.revents & libc::POLLIN != 0
+        wait_readable(self.fd, timeout_ms)
     }
 
     fn read_into(&mut self, offset: usize) -> usize {
@@ -124,6 +118,28 @@ impl Drop for UnixInputSource {
 
             libc::close(self.fd);
         }
+    }
+}
+
+/// Waits up to `timeout_ms` for `fd` to have input. Uses `select`, not
+/// `poll`: on macOS `poll` does not support `/dev/tty` (it reports
+/// `POLLNVAL` at once), so a poll-based wait never sees input there.
+pub(crate) fn wait_readable(fd: libc::c_int, timeout_ms: i32) -> bool {
+    if fd < 0 || fd >= libc::FD_SETSIZE as libc::c_int {
+        return false;
+    }
+
+    let mut timeout = libc::timeval {
+        tv_sec: libc::time_t::from(timeout_ms / 1000),
+        tv_usec: libc::suseconds_t::from(timeout_ms % 1000 * 1000),
+    };
+
+    unsafe {
+        let mut read_fds: libc::fd_set = std::mem::zeroed();
+        libc::FD_ZERO(&mut read_fds);
+        libc::FD_SET(fd, &mut read_fds);
+        libc::select(fd + 1, &mut read_fds, std::ptr::null_mut(), std::ptr::null_mut(), &mut timeout) > 0
+            && libc::FD_ISSET(fd, &read_fds)
     }
 }
 

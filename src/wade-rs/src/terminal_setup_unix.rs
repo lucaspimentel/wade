@@ -127,13 +127,7 @@ fn detect_capabilities(tty_fd: libc::c_int) -> TerminalCapabilities {
     let mut total = 0;
 
     while total < buf.len() {
-        let mut pfd = libc::pollfd {
-            fd: tty_fd,
-            events: libc::POLLIN,
-            revents: 0,
-        };
-
-        if unsafe { libc::poll(&mut pfd, 1, 200) } <= 0 {
+        if !crate::input::unix::wait_readable(tty_fd, 200) {
             break;
         }
 

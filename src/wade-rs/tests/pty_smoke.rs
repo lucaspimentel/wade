@@ -37,6 +37,13 @@ fn fixture(name: &str) -> (PathBuf, PathBuf) {
     (home, root)
 }
 
+/// Inside `beta`: its file is selected, so the right pane's header shows
+/// the file name. While `beta` is only selected, that header is "Name"
+/// (the status bar path is no help: long temp paths get cut off).
+fn beta_opened(screen: &vt100::Screen) -> bool {
+    screen.rows(0, COLS).next().is_some_and(|row| row.contains("inside_beta.txt"))
+}
+
 struct Session {
     master: Box<dyn MasterPty + Send>,
     writer: Arc<Mutex<Box<dyn Write + Send>>>,
@@ -212,13 +219,7 @@ fn enter_opens_a_folder_and_cwd_file_records_it_on_quit() {
     wade.send(DOWN);
     wade.wait_for_text("inside_beta.txt");
     wade.send(ENTER);
-    // The status bar shows the current directory's path
-    wade.wait_for("beta opened", |screen| {
-        screen
-            .rows(0, COLS)
-            .last()
-            .is_some_and(|row| row.contains(&format!("listed{}beta", std::path::MAIN_SEPARATOR)))
-    });
+    wade.wait_for("beta opened", beta_opened);
 
     wade.send("q");
     assert!(wade.wait_for_exit().success());
@@ -246,23 +247,16 @@ fn resizing_the_terminal_redraws_at_the_new_size() {
     wade.wait_for_exit();
 }
 
-/// Keys that arrive together are all handled, in order. Fails today: the
-/// main loop drains the queue and keeps only the last key, so the Down
-/// arrow is dropped and Enter opens `alpha`.
+/// Keys that arrive in one read are all handled, in order (the main loop
+/// used to keep only the last one, so Enter opened `alpha`).
 #[test]
-#[ignore = "typeahead is dropped (src/app/mod.rs main loop keeps the last key)"]
 fn keys_sent_together_are_all_handled() {
     let (home, root) = fixture("typeahead");
     let mut wade = Session::start(&home, &root, &[]);
     wade.wait_for_text("inside_alpha.txt");
 
     wade.send(&format!("{DOWN}{ENTER}"));
-    wade.wait_for("beta opened", |screen| {
-        screen
-            .rows(0, COLS)
-            .last()
-            .is_some_and(|row| row.contains(&format!("listed{}beta", std::path::MAIN_SEPARATOR)))
-    });
+    wade.wait_for("beta opened", beta_opened);
     wade.send("q");
     wade.wait_for_exit();
 }

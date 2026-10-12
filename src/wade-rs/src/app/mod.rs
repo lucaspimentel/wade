@@ -39,6 +39,8 @@ use crate::ui::pane_renderer::PaneRenderer;
 use input_reader::{AppAction, map_key};
 
 const NOTIFICATION_DURATION_MS: i64 = 4000;
+/// Queued events handled before the next render.
+const MAX_EVENTS_PER_FRAME: usize = 256;
 
 /// Port of the 3a subset of `WadeConfig` (same config.toml keys).
 /// 3c adds the remaining `WadeConfig` settings so the config dialog can
@@ -443,41 +445,29 @@ impl App {
                 break;
             };
 
-            // Drain queued events like the C# loop, keeping the last key/
-            // mouse/paste/resize; git status ready events are handled inline
-            // exactly as C# processes them in its extra-event loop
-            let mut current = event;
-            while let Some(extra) = self.pipeline.try_take() {
-                match extra {
-                    InputEvent::Resize(_) | InputEvent::Key(_) | InputEvent::Mouse(_) | InputEvent::Paste(_) => {
-                        current = extra;
+            // Handle every queued event in order before the next render, so
+            // keys typed or pasted faster than a frame are not lost (C# kept
+            // only the last key/mouse/paste/resize of the batch). The cap
+            // keeps a flood of events from starving the render; the rest
+            // stay queued for the next pass
+            let mut next = Some(event);
+            let mut handled = 0;
+            while let Some(event) = next.take() {
+                match event {
+                    InputEvent::Resize(resize) => {
+                        self.handle_resize(resize, &mut buffer, &mut width, &mut height);
+                        self.clamp_selection_and_scroll();
                     }
-                    InputEvent::GitStatusReady(ready) => self.handle_git_status_ready(ready),
-                    InputEvent::GitActionComplete(event) => self.handle_git_action_complete(event),
-                    InputEvent::FileOperationComplete(event) => self.handle_file_operation_complete(event),
-                    InputEvent::FileOperationProgress(event) => self.handle_file_operation_progress(event),
-                    InputEvent::DirectorySizeReady(event) => self.handle_directory_size_ready(event),
-                    InputEvent::InlineDirSizeReady(event) => self.handle_inline_dir_size_ready(event),
-                    InputEvent::InlineDirSizeComplete(event) => self.handle_inline_dir_size_complete(event),
-                    InputEvent::FileSystemChanged(event) => self.handle_file_system_changed(event),
-                    InputEvent::FileFinderPartialResult(event) => self.handle_file_finder_partial_result(event),
-                    InputEvent::FileFinderScanComplete(event) => self.handle_file_finder_scan_complete(event),
-                    InputEvent::FileFinderSearchResult(event) => self.handle_file_finder_search_result(event),
-                    InputEvent::PreviewReady(event) => self.handle_preview_ready(event),
-                    InputEvent::ImagePreviewReady(event) => self.handle_image_preview_ready(event),
-                    InputEvent::CombinedPreviewReady(event) => self.handle_combined_preview_ready(event),
-                    InputEvent::MetadataReady(event) => self.handle_metadata_ready(event),
-                    InputEvent::PreviewLoadingComplete(event) => self.handle_preview_loading_complete(event),
-                    InputEvent::CloudDownloadComplete(event) => self.handle_cloud_download_complete(event),
+                    other => self.handle_event(other),
                 }
-            }
 
-            match current {
-                InputEvent::Resize(resize) => {
-                    self.handle_resize(resize, &mut buffer, &mut width, &mut height);
-                    self.clamp_selection_and_scroll();
+                handled += 1;
+
+                if self.quit || handled >= MAX_EVENTS_PER_FRAME {
+                    break;
                 }
-                other => self.handle_event(other),
+
+                next = self.pipeline.try_take();
             }
         }
 
