@@ -75,7 +75,7 @@ mod tests {
     fn key_event() -> InputEvent {
         InputEvent::Key(KeyEvent {
             key: crate::console_key::ConsoleKey::A,
-            key_char: b'a' as u16,
+            key_char: 'a',
             shift: false,
             alt: false,
             control: false,

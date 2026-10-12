@@ -93,12 +93,11 @@ fn parse_fixture(path: &Path) -> (Vec<RawRecord>, i32, i32) {
     (records, window.0, window.1)
 }
 
-fn format_char(ch: u16) -> String {
+fn format_char(ch: char) -> String {
     match ch {
-        0 => "-".to_string(),
-        c if c < 0x20 => format!("\\u{c:04X}"),
-        0x7F => "\\u007F".to_string(),
-        _ => char::from_u32(u32::from(ch)).expect("valid char").to_string(),
+        '\0' => "-".to_string(),
+        c if c < ' ' || c == '\x7f' => format!("\\u{:04X}", u32::from(c)),
+        _ => ch.to_string(),
     }
 }
 

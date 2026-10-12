@@ -842,7 +842,7 @@ mod tests {
     fn key(key: ConsoleKey) -> KeyEvent {
         KeyEvent {
             key,
-            key_char: 0,
+            key_char: '\0',
             shift: false,
             alt: false,
             control: false,

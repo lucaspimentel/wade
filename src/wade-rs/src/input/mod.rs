@@ -46,8 +46,10 @@ pub enum MouseButton {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct KeyEvent {
     pub key: ConsoleKey,
-    /// UTF-16 code unit, mirroring C# `char UnicodeChar` semantics.
-    pub key_char: u16,
+    /// The typed character, `'\0'` when the key types none. Rust only: a
+    /// `char`, not C#'s UTF-16 unit, so characters beyond U+FFFF (emoji)
+    /// arrive as one key.
+    pub key_char: char,
     pub shift: bool,
     pub alt: bool,
     pub control: bool,
@@ -71,7 +73,14 @@ impl KeyEvent {
             return None;
         }
 
-        char::from_u32(u32::from(self.key_char)).filter(|c| !c.is_control())
+        self.typed_char()
+    }
+
+    /// The typed character whatever the modifiers, `None` for control
+    /// characters (Enter, Esc, Ctrl+letter) and keys that type nothing.
+    #[must_use]
+    pub fn typed_char(&self) -> Option<char> {
+        Some(self.key_char).filter(|c| !c.is_control())
     }
 }
 

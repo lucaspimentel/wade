@@ -364,8 +364,7 @@ impl App {
                 self.sync_search_filter();
             }
             _ => {
-                if key.key_char >= 0x20
-                    && let Some(ch) = char::from_u32(u32::from(key.key_char))
+                if let Some(ch) = key.typed_char()
                     && let Some(input) = &mut self.modal.search_input
                 {
                     input.insert_char(ch);
@@ -801,8 +800,7 @@ impl App {
                 }
             }
             _ => {
-                if key.key_char >= 0x20
-                    && let Some(ch) = char::from_u32(u32::from(key.key_char))
+                if let Some(ch) = key.typed_char()
                     && let Some(input) = &mut self.modal.active_text_input
                 {
                     input.insert_char(ch);
@@ -979,8 +977,7 @@ impl App {
                 }
             }
             _ => {
-                if key.key_char >= 0x20
-                    && let Some(ch) = char::from_u32(u32::from(key.key_char))
+                if let Some(ch) = key.typed_char()
                     && let Some(input) = &mut self.modal.go_to_path_input
                 {
                     input.insert_char(ch);
@@ -1109,9 +1106,7 @@ impl App {
                         if level.selected_index + 1 < filtered_count {
                             level.selected_index += 1;
                         }
-                    } else if key.key_char >= 0x20
-                        && let Some(ch) = char::from_u32(u32::from(key.key_char))
-                    {
+                    } else if let Some(ch) = key.typed_char() {
                         level.filter.insert_char(ch);
                         level.selected_index = 0;
                         level.scroll_offset = 0;
@@ -1563,7 +1558,8 @@ impl App {
                     if self.modal.bookmark_selected_index < filtered.len().saturating_sub(1) {
                         self.modal.bookmark_selected_index += 1;
                     }
-                } else if let Some(ch) = char::from_u32(u32::from(key.key_char)) {
+                } else {
+                    let ch = key.key_char;
                     if ch == 'd' {
                         // 'd' also removes the selected bookmark
                         if !filtered.is_empty() && self.modal.bookmark_selected_index < filtered.len() {
@@ -2408,7 +2404,7 @@ mod tests {
 
         app.handle_confirm_key(KeyEvent {
             key: crate::console_key::ConsoleKey::Escape,
-            key_char: 0,
+            key_char: '\0',
             shift: false,
             alt: false,
             control: false,

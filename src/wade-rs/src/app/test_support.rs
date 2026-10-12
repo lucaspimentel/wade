@@ -104,7 +104,7 @@ pub(crate) fn ch(c: char) -> KeyEvent {
     };
     KeyEvent {
         key,
-        key_char: c as u16,
+        key_char: c,
         shift: c.is_ascii_uppercase(),
         alt: false,
         control: false,
@@ -113,11 +113,11 @@ pub(crate) fn ch(c: char) -> KeyEvent {
 
 pub(crate) fn key(key: ConsoleKey) -> KeyEvent {
     let key_char = match key {
-        ConsoleKey::Enter => 13,
-        ConsoleKey::Escape => 27,
-        ConsoleKey::Backspace => 8,
-        ConsoleKey::Spacebar => 32,
-        _ => 0,
+        ConsoleKey::Enter => '\r',
+        ConsoleKey::Escape => '\x1b',
+        ConsoleKey::Backspace => '\x08',
+        ConsoleKey::Spacebar => ' ',
+        _ => '\0',
     };
     KeyEvent {
         key,
@@ -131,7 +131,7 @@ pub(crate) fn key(key: ConsoleKey) -> KeyEvent {
 pub(crate) fn ctrl(key: ConsoleKey) -> KeyEvent {
     KeyEvent {
         key,
-        key_char: 0,
+        key_char: '\0',
         shift: false,
         alt: false,
         control: true,
@@ -141,7 +141,7 @@ pub(crate) fn ctrl(key: ConsoleKey) -> KeyEvent {
 pub(crate) fn shift(key: ConsoleKey) -> KeyEvent {
     KeyEvent {
         key,
-        key_char: 0,
+        key_char: '\0',
         shift: true,
         alt: false,
         control: false,

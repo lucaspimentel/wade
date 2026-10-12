@@ -1053,7 +1053,7 @@ fn git_commit_dialog_commits_the_index() {
 fn char_only(c: char) -> crate::input::KeyEvent {
     crate::input::KeyEvent {
         key: K::None,
-        key_char: c as u16,
+        key_char: c,
         shift: false,
         alt: false,
         control: false,
@@ -1183,7 +1183,7 @@ fn help_and_properties_stay_open_for_modifier_keys() {
                 &mut app,
                 crate::input::KeyEvent {
                     key: K(vk),
-                    key_char: 0,
+                    key_char: '\0',
                     shift: false,
                     alt: false,
                     control: false,
@@ -1200,7 +1200,7 @@ fn help_and_properties_stay_open_for_modifier_keys() {
         assert!(
             crate::input::KeyEvent {
                 key: K(vk),
-                key_char: 0,
+                key_char: '\0',
                 shift: false,
                 alt: false,
                 control: false

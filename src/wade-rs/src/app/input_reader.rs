@@ -73,8 +73,8 @@ pub enum AppAction {
     ClearOrQuitHint,
 }
 
-/// Port of `InputReader.MapKey`. `key_char` is the UTF-16 code unit from the
-/// C# `KeyEvent.KeyChar`.
+/// Port of `InputReader.MapKey`. `key_char` is the typed character (C#'s
+/// `KeyEvent.KeyChar`, a UTF-16 unit there).
 ///
 /// Rust only: bare-key bindings match the typed character with no Ctrl or
 /// Alt held (`KeyEvent::plain_char`), so Shift+J or Alt+j no longer act as
@@ -170,6 +170,7 @@ mod tests {
     use crate::console_key::ConsoleKey;
 
     fn make_key(k: ConsoleKey, key_char: u16, shift: bool, alt: bool, control: bool) -> KeyEvent {
+        let key_char = char::from_u32(u32::from(key_char)).unwrap();
         KeyEvent { key: k, key_char, shift, alt, control }
     }
 

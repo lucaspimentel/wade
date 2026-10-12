@@ -46,7 +46,8 @@ pub enum RawRecord {
 fn make_key_event(virtual_key_code: u16, unicode_char: u16, control_key_state: u32) -> KeyEvent {
     KeyEvent {
         key: ConsoleKey(virtual_key_code),
-        key_char: unicode_char,
+        // A lone surrogate (half of a pair split across reads) is no char
+        key_char: char::from_u32(u32::from(unicode_char)).unwrap_or(char::REPLACEMENT_CHARACTER),
         shift: control_key_state & SHIFT_PRESSED != 0,
         alt: control_key_state & (LEFT_ALT_PRESSED | RIGHT_ALT_PRESSED) != 0,
         control: control_key_state & (LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED) != 0,
@@ -206,7 +207,7 @@ mod tests {
             events,
             vec![InputEvent::Key(KeyEvent {
                 key: ConsoleKey(65),
-                key_char: u16::try_from(u32::from('A')).unwrap(),
+                key_char: 'A',
                 shift: false,
                 alt: false,
                 control: false,

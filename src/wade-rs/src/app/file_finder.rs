@@ -426,9 +426,7 @@ impl App {
                     if state.selected_index + 1 < count {
                         state.selected_index += 1;
                     }
-                } else if key.key_char >= 0x20
-                    && let Some(ch) = char::from_u32(u32::from(key.key_char))
-                {
+                } else if let Some(ch) = key.typed_char() {
                     state.input.insert_char(ch);
                     state.selected_index = 0;
                     state.scroll_offset = 0;
@@ -1070,7 +1068,7 @@ mod tests {
     fn key(key: ConsoleKey, ch: char) -> KeyEvent {
         KeyEvent {
             key,
-            key_char: ch as u16,
+            key_char: ch,
             shift: false,
             alt: false,
             control: false,

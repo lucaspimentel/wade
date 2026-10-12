@@ -63,8 +63,8 @@ impl UnixInputSource {
         wait_readable(self.fd, timeout_ms)
     }
 
-    fn read_into(&mut self, offset: usize) -> usize {
-        let n = unsafe { libc::read(self.fd, self.buf[offset..].as_mut_ptr().cast(), self.buf.len() - offset) };
+    fn read_into(&mut self) -> usize {
+        let n = unsafe { libc::read(self.fd, self.buf.as_mut_ptr().cast(), self.buf.len()) };
         usize::try_from(n).unwrap_or(0)
     }
 }
@@ -85,19 +85,27 @@ impl InputSource for UnixInputSource {
                 continue;
             }
 
-            let mut bytes_read = self.read_into(0);
+            let bytes_read = self.read_into();
 
             if bytes_read == 0 {
                 std::thread::sleep(std::time::Duration::from_millis(10));
                 continue;
             }
 
-            // A lone ESC: wait briefly to tell Escape from a sequence start
-            if bytes_read == 1 && self.buf[0] == 0x1B && self.poll(ESCAPE_WAIT_MS) {
-                bytes_read += self.read_into(1);
+            let mut events = self.parser.parse(&self.buf[..bytes_read]);
+
+            // A read that ends inside a sequence (or on a lone ESC): wait
+            // briefly for the rest, else decode it as it stands (Escape)
+            while self.parser.has_pending() {
+                let more = if self.poll(ESCAPE_WAIT_MS) { self.read_into() } else { 0 };
+
+                if more == 0 {
+                    events.extend(self.parser.flush());
+                } else {
+                    events.extend(self.parser.parse(&self.buf[..more]));
+                }
             }
 
-            let events = self.parser.parse(&self.buf[..bytes_read]);
             self.pending.extend(events);
         }
 

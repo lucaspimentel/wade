@@ -2567,7 +2567,7 @@ mod tests {
     fn key(key: crate::console_key::ConsoleKey) -> crate::input::InputEvent {
         crate::input::InputEvent::Key(crate::input::KeyEvent {
             key,
-            key_char: 0,
+            key_char: '\0',
             shift: false,
             alt: false,
             control: false,

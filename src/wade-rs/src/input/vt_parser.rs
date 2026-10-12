@@ -11,11 +11,16 @@ use crate::console_key::ConsoleKey;
 pub struct VtParser {
     in_bracketed_paste: bool,
     paste_buffer: Vec<u8>,
+    /// Rust only: the unfinished end of the last read (an escape sequence
+    /// or UTF-8 character cut by the read boundary, or a lone ESC), joined
+    /// with the next read.
+    pending: Vec<u8>,
 }
 
 const ESC: u8 = 0x1B;
+const PASTE_END: &[u8] = b"\x1b[201~";
 
-fn key(key: ConsoleKey, key_char: u16, shift: bool, alt: bool, control: bool) -> InputEvent {
+fn key(key: ConsoleKey, key_char: char, shift: bool, alt: bool, control: bool) -> InputEvent {
     InputEvent::Key(KeyEvent { key, key_char, shift, alt, control })
 }
 
@@ -25,110 +30,185 @@ impl VtParser {
         Self::default()
     }
 
-    /// Port of `VtParser.Parse`.
+    /// Port of `VtParser.Parse`. Rust only: bytes that may be the start of
+    /// a sequence the next read completes are held back (`has_pending`);
+    /// C# decoded each read on its own and dropped what was cut off.
     pub fn parse(&mut self, data: &[u8]) -> Vec<InputEvent> {
+        let mut bytes = std::mem::take(&mut self.pending);
+        bytes.extend_from_slice(data);
+        self.decode(&bytes, false)
+    }
+
+    /// Bytes are held back, waiting for the next read.
+    #[must_use]
+    pub fn has_pending(&self) -> bool {
+        !self.pending.is_empty()
+    }
+
+    /// No more bytes came: decodes what was held back as it stands. A lone
+    /// ESC is the Escape key; a cut-off character is U+FFFD.
+    pub fn flush(&mut self) -> Vec<InputEvent> {
+        let bytes = std::mem::take(&mut self.pending);
+        self.decode(&bytes, true)
+    }
+
+    fn decode(&mut self, bytes: &[u8], at_end: bool) -> Vec<InputEvent> {
         let mut events = Vec::new();
         let mut i = 0;
 
-        while i < data.len() {
-            let b = data[i];
-
-            // Inside bracketed paste: collect bytes until ESC[201~
-            if self.in_bracketed_paste {
-                if b == ESC && i + 5 <= data.len() && data.get(i + 1..i + 6) == Some(b"[201~".as_slice()) {
-                    let pasted = String::from_utf8_lossy(&std::mem::take(&mut self.paste_buffer)).into_owned();
-                    self.in_bracketed_paste = false;
-
-                    if !pasted.is_empty() {
-                        events.push(InputEvent::Paste(pasted));
-                    }
-
-                    i += 6;
-                } else {
-                    self.paste_buffer.push(b);
-                    i += 1;
-                }
-
-                continue;
-            }
-
-            match b {
-                ESC if data.get(i + 1) == Some(&b'[') => {
-                    i += 2;
-                    i += self.parse_csi(&data[i..], &mut events);
-                }
-                ESC if data.get(i + 1) == Some(&b'O') => {
-                    i += 2;
-
-                    if let Some(&final_byte) = data.get(i) {
-                        let ss3 = match final_byte {
-                            b'A' => ConsoleKey::UpArrow,
-                            b'B' => ConsoleKey::DownArrow,
-                            b'C' => ConsoleKey::RightArrow,
-                            b'D' => ConsoleKey::LeftArrow,
-                            b'P' => ConsoleKey::F1,
-                            b'Q' => ConsoleKey::F2,
-                            b'R' => ConsoleKey::F3,
-                            b'S' => ConsoleKey::F4,
-                            b'H' => ConsoleKey::Home,
-                            b'F' => ConsoleKey::End,
-                            _ => ConsoleKey(0),
-                        };
-
-                        if ss3 != ConsoleKey(0) {
-                            events.push(key(ss3, 0, false, false, false));
-                        }
-
-                        i += 1;
-                    }
-                }
-                ESC => {
-                    events.push(key(ConsoleKey::Escape, 0x1B, false, false, false));
-                    i += 1;
-                }
-                0x0D => {
-                    events.push(key(ConsoleKey::Enter, u16::from(b'\r'), false, false, false));
-                    i += 1;
-                }
-                0x0A => {
-                    events.push(key(ConsoleKey::Enter, u16::from(b'\n'), false, false, false));
-                    i += 1;
-                }
-                0x09 => {
-                    events.push(key(ConsoleKey::Tab, u16::from(b'\t'), false, false, false));
-                    i += 1;
-                }
-                0x7F => {
-                    events.push(key(ConsoleKey::Backspace, 0x7F, false, false, false));
-                    i += 1;
-                }
-                0x08 => {
-                    events.push(key(ConsoleKey::Backspace, 0x08, false, false, false));
-                    i += 1;
-                }
-                0x01..=0x1A => {
-                    // Ctrl+A through Ctrl+Z
-                    events.push(key(ConsoleKey(u16::from(b'A' + b - 1)), u16::from(b), false, false, true));
-                    i += 1;
-                }
-                0x20..=0x7E => {
-                    events.push(key(char_to_console_key(b), u16::from(b), false, false, false));
-                    i += 1;
-                }
-                0x80.. => {
-                    let len = utf8_sequence_length(b);
-
-                    if let Some(bytes) = data.get(i..i + len) {
-                        events.push(key(ConsoleKey(0), decode_utf8_char(bytes), false, false, false));
-                    }
-
-                    i += len;
-                }
-                _ => i += 1,
+        while i < bytes.len() {
+            if let Some(used) = self.decode_one(&bytes[i..], at_end, &mut events) {
+                i += used;
+            } else {
+                self.pending = bytes[i..].to_vec();
+                break;
             }
         }
 
         events
+    }
+
+    /// Decodes the event at the start of `data`; returns the bytes used,
+    /// or `None` when `data` ends before the event does (never when
+    /// `at_end`).
+    fn decode_one(&mut self, data: &[u8], at_end: bool, events: &mut Vec<InputEvent>) -> Option<usize> {
+        // Inside bracketed paste: collect bytes until ESC[201~
+        if self.in_bracketed_paste {
+            return self.decode_paste(data, at_end, events);
+        }
+
+        let b = data[0];
+        let incomplete = |events: &mut Vec<InputEvent>| {
+            // Cut off with nothing more to come: the ESC stands alone and
+            // the bytes after it are decoded on their own
+            at_end.then(|| {
+                events.push(key(ConsoleKey::Escape, '\x1b', false, false, false));
+                1
+            })
+        };
+
+        match b {
+            ESC if data.len() == 1 => incomplete(events),
+            ESC if data[1] == b'[' => {
+                let params_end = data[2..].iter().position(|b| !(0x20..=0x3F).contains(b));
+                if params_end.is_none() {
+                    return incomplete(events);
+                }
+                Some(2 + self.parse_csi(&data[2..], events))
+            }
+            ESC if data[1] == b'O' => {
+                let Some(&final_byte) = data.get(2) else {
+                    return incomplete(events);
+                };
+                let ss3 = match final_byte {
+                    b'A' => ConsoleKey::UpArrow,
+                    b'B' => ConsoleKey::DownArrow,
+                    b'C' => ConsoleKey::RightArrow,
+                    b'D' => ConsoleKey::LeftArrow,
+                    b'P' => ConsoleKey::F1,
+                    b'Q' => ConsoleKey::F2,
+                    b'R' => ConsoleKey::F3,
+                    b'S' => ConsoleKey::F4,
+                    b'H' => ConsoleKey::Home,
+                    b'F' => ConsoleKey::End,
+                    _ => ConsoleKey(0),
+                };
+
+                if ss3 != ConsoleKey(0) {
+                    events.push(key(ss3, '\0', false, false, false));
+                }
+
+                Some(3)
+            }
+            // Rust only: ESC before a character is Alt+that character, as
+            // terminals send it (C# decoded Escape, then the character)
+            ESC if (0x20..=0x7E).contains(&data[1]) => {
+                let c = data[1];
+                events.push(key(char_to_console_key(c), char::from(c), false, true, false));
+                Some(2)
+            }
+            ESC if data[1] == 0x7F => {
+                events.push(key(ConsoleKey::Backspace, '\x7f', false, true, false));
+                Some(2)
+            }
+            ESC if data[1] >= 0x80 => {
+                let len = utf8_sequence_length(data[1]);
+                if data.len() < 1 + len && !at_end {
+                    return None;
+                }
+                let end = (1 + len).min(data.len());
+                events.push(key(ConsoleKey(0), decode_utf8_char(&data[1..end]), false, true, false));
+                Some(end)
+            }
+            ESC => {
+                events.push(key(ConsoleKey::Escape, '\x1b', false, false, false));
+                Some(1)
+            }
+            0x0D => {
+                events.push(key(ConsoleKey::Enter, '\r', false, false, false));
+                Some(1)
+            }
+            0x0A => {
+                events.push(key(ConsoleKey::Enter, '\n', false, false, false));
+                Some(1)
+            }
+            0x09 => {
+                events.push(key(ConsoleKey::Tab, '\t', false, false, false));
+                Some(1)
+            }
+            0x7F => {
+                events.push(key(ConsoleKey::Backspace, '\x7f', false, false, false));
+                Some(1)
+            }
+            0x08 => {
+                events.push(key(ConsoleKey::Backspace, '\x08', false, false, false));
+                Some(1)
+            }
+            0x01..=0x1A => {
+                // Ctrl+A through Ctrl+Z
+                events.push(key(ConsoleKey(u16::from(b'A' + b - 1)), char::from(b), false, false, true));
+                Some(1)
+            }
+            0x20..=0x7E => {
+                events.push(key(char_to_console_key(b), char::from(b), false, false, false));
+                Some(1)
+            }
+            0x80.. => {
+                let len = utf8_sequence_length(b);
+                if data.len() < len && !at_end {
+                    return None;
+                }
+                let end = len.min(data.len());
+                events.push(key(ConsoleKey(0), decode_utf8_char(&data[..end]), false, false, false));
+                Some(end)
+            }
+            _ => Some(1),
+        }
+    }
+
+    /// Paste bytes up to `ESC[201~`. An end marker cut by the read boundary
+    /// is held back (Rust only: C# needed the whole marker in one read).
+    fn decode_paste(&mut self, data: &[u8], at_end: bool, events: &mut Vec<InputEvent>) -> Option<usize> {
+        if let Some(end) = data.windows(PASTE_END.len()).position(|w| w == PASTE_END) {
+            self.paste_buffer.extend_from_slice(&data[..end]);
+            let pasted = String::from_utf8_lossy(&std::mem::take(&mut self.paste_buffer)).into_owned();
+            self.in_bracketed_paste = false;
+
+            if !pasted.is_empty() {
+                events.push(InputEvent::Paste(pasted));
+            }
+
+            return Some(end + PASTE_END.len());
+        }
+
+        // Keep back a tail that may be the start of the end marker
+        let tail = (1..PASTE_END.len().min(data.len() + 1))
+            .rev()
+            .find(|&n| data.ends_with(&PASTE_END[..n]))
+            .unwrap_or(0);
+        let take = if at_end { data.len() } else { data.len() - tail };
+        self.paste_buffer.extend_from_slice(&data[..take]);
+        (take > 0).then_some(take)
     }
 
     /// Port of `ParseCsi`: returns the bytes consumed after `ESC [`.
@@ -168,7 +248,7 @@ impl VtParser {
             b'H' => ConsoleKey::Home,
             b'F' => ConsoleKey::End,
             b'Z' => {
-                events.push(key(ConsoleKey::Tab, 0, true, false, false));
+                events.push(key(ConsoleKey::Tab, '\0', true, false, false));
                 return i;
             }
             b'~' if param1 == 200 => {
@@ -197,7 +277,7 @@ impl VtParser {
             _ => return i,
         };
 
-        events.push(key(csi, 0, shift, alt, ctrl));
+        events.push(key(csi, '\0', shift, alt, ctrl));
         i
     }
 }
@@ -295,18 +375,26 @@ const fn utf8_sequence_length(lead: u8) -> usize {
     }
 }
 
-/// Port of `DecodeUtf8Char`: the first UTF-16 unit of the decoded text
-/// (a high surrogate for astral characters), U+FFFD when invalid.
-fn decode_utf8_char(bytes: &[u8]) -> u16 {
-    String::from_utf8_lossy(bytes).encode_utf16().next().unwrap_or(0xFFFD)
+/// Port of `DecodeUtf8Char`: the decoded character, U+FFFD when invalid
+/// or cut off. Rust only: the whole character (C# kept the first UTF-16
+/// unit, half of an emoji).
+fn decode_utf8_char(bytes: &[u8]) -> char {
+    std::str::from_utf8(bytes)
+        .ok()
+        .and_then(|s| s.chars().next())
+        .unwrap_or(char::REPLACEMENT_CHARACTER)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    /// One read with nothing after it, as the reader decodes it.
     fn parse(data: &[u8]) -> Vec<InputEvent> {
-        VtParser::new().parse(data)
+        let mut parser = VtParser::new();
+        let mut events = parser.parse(data);
+        events.extend(parser.flush());
+        events
     }
 
     fn single_key(data: &[u8]) -> KeyEvent {
@@ -336,7 +424,7 @@ mod tests {
         ] {
             let key = single_key(&[c]);
             assert_eq!(key.key, expected);
-            assert_eq!(key.key_char, u16::from(c));
+            assert_eq!(key.key_char, char::from(c));
         }
     }
 
@@ -402,10 +490,11 @@ mod tests {
 
     #[test]
     fn utf8_multibyte() {
-        assert_eq!(single_key(&[0xC3, 0xA9]).key_char, 'é' as u16);
-        assert_eq!(single_key(&[0xE2, 0x82, 0xAC]).key_char, '€' as u16);
-        // Truncated sequences are skipped
-        assert!(parse(&[0xE2, 0x82]).is_empty());
+        assert_eq!(single_key(&[0xC3, 0xA9]).key_char, 'é');
+        assert_eq!(single_key(&[0xE2, 0x82, 0xAC]).key_char, '€');
+        assert_eq!(single_key("😀".as_bytes()).key_char, '😀');
+        // A truncated sequence with nothing after it is U+FFFD
+        assert_eq!(single_key(&[0xE2, 0x82]).key_char, char::REPLACEMENT_CHARACTER);
     }
 
     #[test]
@@ -425,5 +514,77 @@ mod tests {
         assert_eq!(events.len(), 2);
         assert_eq!(events[0], InputEvent::Paste("café ok".to_string()));
         assert!(matches!(events[1], InputEvent::Key(KeyEvent { key: ConsoleKey::X, .. })));
+    }
+
+    fn keys(events: &[InputEvent]) -> Vec<(ConsoleKey, char, bool)> {
+        events
+            .iter()
+            .map(|event| match event {
+                InputEvent::Key(key) => (key.key, key.key_char, key.alt),
+                other => panic!("expected key events, got {other:?}"),
+            })
+            .collect()
+    }
+
+    #[test]
+    fn escape_before_a_character_is_alt() {
+        assert_eq!(keys(&parse(b"\x1bj")), [(ConsoleKey::J, 'j', true)]);
+        assert_eq!(keys(&parse(b"\x1bJ")), [(ConsoleKey::J, 'J', true)]);
+        assert_eq!(keys(&parse("\x1bé".as_bytes())), [(ConsoleKey(0), 'é', true)]);
+        assert_eq!(keys(&parse(b"\x1b\x7f")), [(ConsoleKey::Backspace, '\x7f', true)]);
+        // Before a control character or another ESC, Escape stands alone
+        assert_eq!(keys(&parse(b"\x1b\r")), [(ConsoleKey::Escape, '\x1b', false), (ConsoleKey::Enter, '\r', false)]);
+        assert_eq!(
+            keys(&parse(b"\x1b\x1b")),
+            [(ConsoleKey::Escape, '\x1b', false), (ConsoleKey::Escape, '\x1b', false)]
+        );
+    }
+
+    #[test]
+    fn a_lone_escape_waits_for_the_next_read() {
+        let mut parser = VtParser::new();
+        assert!(parser.parse(b"j\x1b").len() == 1 && parser.has_pending());
+        assert_eq!(keys(&parser.parse(b"[B")), [(ConsoleKey::DownArrow, '\0', false)]);
+        assert!(!parser.has_pending());
+
+        assert!(parser.parse(b"\x1b").is_empty());
+        assert_eq!(keys(&parser.flush()), [(ConsoleKey::Escape, '\x1b', false)]);
+    }
+
+    #[test]
+    fn sequences_and_characters_cut_by_a_read_are_joined() {
+        let mut parser = VtParser::new();
+        for (first, second) in [
+            (&b"\x1b["[..], &b"1;5C"[..]),
+            (b"\x1b[1;", b"5C"),
+            (b"\x1bO", b"B"),
+            (b"\x1b[<0;10", b";5M"),
+            (b"\xf0\x9f", b"\x98\x80"),
+        ] {
+            assert!(parser.parse(first).is_empty(), "{first:?} is held back");
+            assert!(parser.has_pending());
+            assert_eq!(parser.parse(second).len(), 1, "{first:?} + {second:?}");
+            assert!(!parser.has_pending());
+        }
+
+        assert!(parser.parse("é".as_bytes()[..1].as_ref()).is_empty());
+        assert_eq!(keys(&parser.parse(&"é".as_bytes()[1..])), [(ConsoleKey(0), 'é', false)]);
+    }
+
+    #[test]
+    fn an_unfinished_sequence_with_nothing_after_it_is_escape_then_text() {
+        assert_eq!(keys(&parse(b"\x1b[")), [(ConsoleKey::Escape, '\x1b', false), (ConsoleKey(0), '[', false)]);
+    }
+
+    #[test]
+    fn a_paste_end_marker_cut_by_a_read_is_joined() {
+        let mut parser = VtParser::new();
+        for cut in 1..PASTE_END.len() {
+            let events = parser.parse(&[b"\x1b[200~text".as_slice(), &PASTE_END[..cut]].concat());
+            assert!(events.is_empty(), "cut {cut}");
+            let events = parser.parse(&[&PASTE_END[cut..], b"x".as_slice()].concat());
+            assert_eq!(events.len(), 2, "cut {cut}");
+            assert_eq!(events[0], InputEvent::Paste("text".to_string()), "cut {cut}");
+        }
     }
 }
