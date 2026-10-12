@@ -84,9 +84,15 @@ backlog.
   with `WT_SESSION` only checks it doesn't hang), long names cut with `…`,
   and delete (`D`, and `d` to the Linux Trash). No bugs found. All three
   batches of `docs/pty-test-plan.md` are done
-- [ ] Still untested: the real
-  launchers (open with default app, open terminal, cloud download), the
-  combined text+image preview event and macOS paths
+- [x] Launchers and the combined preview: PTY tests run `o` on an
+  executable (runs it) and on a file (fake `xdg-open` on Linux), `T` with a
+  fake `$TERMINAL` (Linux, started in the current folder; no emulator on
+  PATH gives an error) and with a fake `%COMSPEC%` (Windows, no `wt.exe`).
+  An App test covers the combined text+image event, which no provider sends
+  yet; it found the image dropped once metadata had loaded (fixed). macOS
+  paths are covered by the macOS CI job. Still manual: the real apps
+  (`open`, `ShellExecuteEx`, Terminal/iTerm, `wt.exe`) and cloud download,
+  which needs a OneDrive placeholder
 - [ ] Manual Windows Terminal checks (need a real console; none are
   automated):
   - the `wd` wrapper (`--cwd-file`)

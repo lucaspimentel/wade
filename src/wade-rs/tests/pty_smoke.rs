@@ -963,3 +963,123 @@ fn delete_asks_first_then_deletes() {
     wade.send("q");
     wade.wait_for_exit();
 }
+
+/// Writes an executable shell script.
+#[cfg(unix)]
+fn write_script(path: &Path, body: &str) {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::write(path, format!("#!/bin/sh\n{body}\n")).unwrap();
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
+}
+
+/// Waits for `path` to hold a complete line, then returns it trimmed.
+fn wait_for_file(wade: &mut Session, path: &Path) -> String {
+    wade.wait_for(&format!("{} written", path.display()), |_| {
+        std::fs::read_to_string(path).is_ok_and(|text| text.ends_with('\n'))
+    });
+    std::fs::read_to_string(path).unwrap().trim_end().to_string()
+}
+
+/// `o` runs an executable file itself and hands anything else to the
+/// opener (xdg-open on Linux; macOS's /usr/bin/open would start a real
+/// app, so only the executable case runs there). Windows' ShellExecuteEx
+/// also starts a real app: manual check.
+#[cfg(unix)]
+#[test]
+fn open_runs_executables_and_hands_other_files_to_the_opener() {
+    let (home, root) = fixture("open");
+    let bin = home.join("bin");
+    std::fs::create_dir_all(&bin).unwrap();
+    let opened = home.join("opened.txt");
+    write_script(&bin.join("xdg-open"), &format!("echo \"$1\" > '{}'", opened.display()));
+    let ran = home.join("ran.txt");
+    write_script(&root.join("run.sh"), &format!("echo ran > '{}'", ran.display()));
+    let path = format!("{}:/usr/bin:/bin", bin.display());
+    let mut wade = Session::start_with(&home, &root, &[], &[("PATH", &path)], None);
+    wade.wait_for_text("inside_alpha.txt");
+
+    if cfg!(not(target_os = "macos")) {
+        wade.send_keys("jj");
+        wade.wait_for_text("hello from notes");
+        wade.send_keys("o");
+        assert_eq!(wait_for_file(&mut wade, &opened), root.join("notes.txt").display().to_string());
+        wade.wait_for_text("Opened 'notes.txt'");
+    }
+
+    wade.send_keys(if cfg!(target_os = "macos") { "jjj" } else { "j" });
+    wade.wait_for_text("echo ran");
+    wade.send_keys("o");
+    // The script's output is the check: on macOS the long temp path in the
+    // status bar cuts the notification off
+    assert_eq!(wait_for_file(&mut wade, &ran), "ran");
+    let opener_saw = std::fs::read_to_string(&opened).unwrap_or_default();
+    assert!(!opener_saw.contains("run.sh"), "the executable ran itself, not through the opener");
+    wade.send("q");
+    wade.wait_for_exit();
+}
+
+/// `T` starts `$TERMINAL` (with its arguments) in the current folder; with
+/// no emulator on PATH it says so. macOS starts Terminal or iTerm through
+/// `open -a`, a real app: manual check.
+#[cfg(all(unix, not(target_os = "macos")))]
+#[test]
+fn terminal_here_starts_the_terminal_emulator_in_the_folder() {
+    let (home, root) = fixture("terminal");
+    let started = home.join("terminal.txt");
+    let fake = home.join("fake-terminal");
+    write_script(&fake, &format!("echo \"$(pwd -P) $*\" > '{}'", started.display()));
+    let terminal = format!("{} --single-instance", fake.display());
+    let mut wade = Session::start_with(&home, &root, &[], &[("TERMINAL", &terminal)], None);
+    wade.wait_for_text("inside_alpha.txt");
+
+    // Into alpha: wade itself runs in the listed folder, so this checks
+    // the terminal gets the current folder, not wade's working directory
+    wade.send(ENTER);
+    wade.wait_for("alpha opened", |screen| {
+        screen.rows(0, COLS).next().is_some_and(|row| row.contains("inside_alpha.txt"))
+    });
+    wade.send_keys("T");
+    let expected = format!("{} --single-instance", root.join("alpha").canonicalize().unwrap().display());
+    assert_eq!(wait_for_file(&mut wade, &started), expected);
+    wade.wait_for_text("Opened terminal");
+    wade.send("q");
+    wade.wait_for_exit();
+
+    let empty = home.join("empty-bin");
+    std::fs::create_dir_all(&empty).unwrap();
+    let path = empty.display().to_string();
+    let mut wade = Session::start_with(&home, &root, &[], &[("TERMINAL", ""), ("PATH", &path)], None);
+    wade.wait_for_text("inside_alpha.txt");
+    wade.send_keys("T");
+    wade.wait_for_text("No terminal emulator found");
+    wade.send("q");
+    wade.wait_for_exit();
+}
+
+/// `T` without Windows Terminal on PATH falls back to `%COMSPEC%` in the
+/// current folder. (wt.exe itself opens a real window: manual check.)
+#[cfg(windows)]
+#[test]
+fn terminal_here_falls_back_to_comspec_in_the_folder() {
+    let (home, root) = fixture("terminal");
+    let started = home.join("terminal.txt");
+    let fake = home.join("fake-comspec.cmd");
+    std::fs::write(&fake, format!("@cd > \"{}\"\r\n", started.display())).unwrap();
+    let system = std::env::var("SystemRoot").unwrap_or_else(|_| r"C:\Windows".to_string());
+    let path = format!(r"{system}\System32");
+    let comspec = fake.display().to_string();
+    let mut wade = Session::start_with(&home, &root, &[], &[("PATH", &path), ("COMSPEC", &comspec)], None);
+    wade.wait_for_text("inside_alpha.txt");
+
+    // Into alpha, away from wade's own working directory
+    wade.send(ENTER);
+    wade.wait_for("alpha opened", |screen| {
+        screen.rows(0, COLS).next().is_some_and(|row| row.contains("inside_alpha.txt"))
+    });
+    wade.send_keys("T");
+    let cwd = wait_for_file(&mut wade, &started);
+    assert!(cwd.to_lowercase().ends_with(r"\listed\alpha"), "{cwd}");
+    wade.wait_for_text("Opened terminal");
+    wade.send("q");
+    wade.wait_for_exit();
+}

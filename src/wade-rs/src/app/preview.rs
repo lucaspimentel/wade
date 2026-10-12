@@ -624,15 +624,16 @@ impl App {
             // Metadata above the image
             let image_top = render_metadata_with_image(buffer, pane, sections);
             self.draw_image_area(buffer, pane, image_top, false);
+        } else if let (true, Some(lines), true) =
+            (state.is_combined_preview, &state.cached_styled_lines, state.cached_image.is_some())
+        {
+            // Before the metadata-with-text branch, which would drop the image
+            let image_top = render_combined_preview(buffer, pane, lines, state.is_rendered);
+            self.draw_image_area(buffer, pane, image_top, false);
         } else if let (Some(sections), Some(lines)) = (&state.cached_metadata_sections, &state.cached_styled_lines) {
             // Rust-only: placeholder messages ("[empty file]", "[error: ...]")
             // show below the metadata, without line numbers; C# hid them
             render_metadata_with_text(buffer, pane, sections, lines, state.is_rendered || state.is_placeholder);
-        } else if let (true, Some(lines), true) =
-            (state.is_combined_preview, &state.cached_styled_lines, state.cached_image.is_some())
-        {
-            let image_top = render_combined_preview(buffer, pane, lines, state.is_rendered);
-            self.draw_image_area(buffer, pane, image_top, false);
         } else if state.is_image_preview && state.cached_image.is_some() {
             // Claim the pane for the image (the Sixel bypasses the cells)
             fill_blank(buffer, pane, pane.top);
@@ -1055,6 +1056,55 @@ mod tests {
         let expected = app.layout.expanded_pane.center_content(8, 2);
         let sixel = app.take_pending_image_output().expect("sixel");
         assert!(sixel.starts_with(&crate::ansi::move_cursor(expected.0, expected.1)));
+    }
+
+    /// No provider sends text and an image together yet; the event is
+    /// covered here so the render path stays correct.
+    #[test]
+    fn combined_preview_draws_text_above_the_image() {
+        let (mut app, root) = sixel_app("app-combined");
+        render(&mut app);
+        pump(&mut app, |app| loaded(app) && app.preview.cached_metadata_sections.is_some());
+        let path = root.join("pic.png").to_string_lossy().into_owned();
+        let event = |path: &str| crate::input::CombinedPreviewReadyEvent {
+            path: path.to_string(),
+            styled_lines: vec![
+                crate::highlight::StyledLine::plain("combined line one"),
+                crate::highlight::StyledLine::plain("combined line two"),
+            ],
+            image: ImageData::Sixel("\x1bPqcombined\x1b\\".to_string()),
+            pixel_width: 64,
+            pixel_height: 32,
+            file_type_label: Some("Combined".to_string()),
+            is_rendered: true,
+        };
+
+        app.handle_combined_preview_ready(event("/stale"));
+        assert!(!app.preview.is_combined_preview, "other paths are ignored");
+
+        app.handle_combined_preview_ready(event(&path));
+        assert!(app.preview.is_combined_preview && !app.preview.is_image_preview);
+        assert_eq!(app.preview.cached_file_type_label.as_deref(), Some("Combined"));
+
+        let pane = app.layout.right_pane;
+        let mut buffer = ScreenBuffer::new(80, 25);
+        app.render(&mut buffer);
+        let pane_row = |row: i32| -> String {
+            buffer.row_text(row).chars().skip(pane.left as usize).take(pane.width as usize).collect()
+        };
+        assert!(pane_row(pane.top).contains("combined line one"), "{:?}", pane_row(pane.top));
+        assert!(pane_row(pane.top + 1).contains("combined line two"));
+        assert_eq!(app.preview.sixel_image_top, pane.top + 2, "the image starts below the text");
+        let sixel = app.take_pending_image_output().expect("image written");
+        assert_eq!(sixel, format!("{}\x1bPqcombined\x1b\\", crate::ansi::move_cursor(pane.top + 2, pane.left)));
+
+        // Expanded: text then image, not centered like an image-only preview
+        app.dispatch(AppAction::Open);
+        app.handle_combined_preview_ready(event(&path));
+        app.render(&mut ScreenBuffer::new(80, 25));
+        let expanded = app.layout.expanded_pane;
+        let sixel = app.take_pending_image_output().expect("expanded image written");
+        assert!(sixel.starts_with(&crate::ansi::move_cursor(expanded.top + 2, expanded.left)), "{sixel:?}");
     }
 
     #[test]
