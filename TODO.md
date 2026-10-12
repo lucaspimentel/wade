@@ -107,12 +107,10 @@ backlog.
   e.g. `~/Library`) are hidden, like Finder. `directory_contents::is_hidden_entry`
   reads `st_flags & UF_HIDDEN` (shared by the listing, the file finder, path
   completion and the Properties overlay)
-- [ ] Linux Trash on delete (Rust-only): non-permanent delete is permanent on
-  Linux, while Windows uses the Recycle Bin and macOS the
-  Trash. Implement the freedesktop.org Trash spec (move into
-  `$XDG_DATA_HOME/Trash/files`, write `Trash/info/<name>.trashinfo` with the
-  original path and deletion date; per-volume `.Trash-$UID` for other
-  mounts), then make `HAS_TRASH` true on Linux
+- [x] Linux Trash on delete (Rust-only): `fs/linux_trash.rs` implements the
+  freedesktop.org Trash spec (home trash, per-mount `.Trash/$uid` or
+  `.Trash-$uid`, no cross-device copies) and `HAS_TRASH` is true on Linux.
+  Still to check by hand: restoring from a desktop file manager's Trash
 - [ ] Case-sensitivity detection beyond macOS (`names_case_insensitive` is the
   single switch; deferred from the macOS pass):
   - Linux treats every volume as case-sensitive. FAT/exFAT and most SMB

@@ -215,7 +215,7 @@ Then use `wd` instead of `wade` to browse. Press `q` to quit and cd to the last 
 | Space | Toggle mark (multi-select) |
 | o | Open with default app |
 | F2 | Rename |
-| Del | Delete (Recycle Bin on Windows) |
+| Del | Delete (Recycle Bin on Windows, Trash on macOS and Linux) |
 | Shift+Del | Delete permanently |
 | c | Copy |
 | x | Cut |

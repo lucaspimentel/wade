@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Linux: Delete moves files and folders to the Trash (freedesktop.org spec: `~/.local/share/Trash`, or the drive's own `.Trash-$uid` on other mounts) instead of deleting them permanently; Shift+Delete still deletes permanently
 - macOS: files and folders Finder hides (`chflags hidden`, e.g. `~/Library`) are hidden unless "Show Hidden Files" is on, in the listing, the file finder and path completion; Properties lists them as Hidden
 
 ### Changed

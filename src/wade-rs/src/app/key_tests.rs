@@ -674,6 +674,9 @@ fn n_in_the_confirm_dialog_keeps_the_file() {
     let (mut app, parent, root) = app();
     select(&mut app, "b.txt");
     press(&mut app, key(K::Delete));
+    // Every OS has a Recycle Bin or Trash now, so Delete can be undone
+    assert_eq!(app.modal.confirm_title.as_deref(), Some("Delete"));
+    assert!(!app.modal.confirm_message.as_deref().unwrap_or_default().contains("cannot be undone"));
     press(&mut app, ch('n'));
     assert_eq!(app.input_mode, InputMode::Normal);
     assert!(root.join("b.txt").exists());

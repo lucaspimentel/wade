@@ -1,5 +1,5 @@
 //! Port of `src/Wade/FileSystem/FileOperations.cs` and `src/Wade/FileSystem/Shell32.cs`:
-//! recursive copy, move, delete (recycle bin on Windows), with C#'s
+//! recursive copy, move, delete (Recycle Bin or Trash), with C#'s
 //! symlink-first semantics.
 
 use crate::input::CancelToken;
@@ -14,13 +14,13 @@ pub fn is_symlink(path: &str) -> bool {
 }
 
 /// Whether a non-permanent delete has somewhere to go: the Recycle Bin on
-/// Windows, the Trash on macOS (Rust-only). Elsewhere every delete is
-/// permanent, as in C#.
-pub const HAS_TRASH: bool = cfg!(any(windows, target_os = "macos"));
+/// Windows, the Trash on macOS and the freedesktop.org Trash on Linux and
+/// other Unix (both Rust-only; C# deleted permanently outside Windows).
+pub const HAS_TRASH: bool = cfg!(any(windows, unix));
 
 /// Port of `FileOperations.Delete`: deletes the paths; with
 /// permanent=false, sends them to the Recycle Bin via SHFileOperation on
-/// Windows, or to the Trash on macOS.
+/// Windows, or to the Trash on macOS and Linux.
 /// Returns (successCount, errorCount) using the C# runner's accounting.
 pub fn delete_paths(paths: &[String], permanent: bool, cancel: &CancelToken) -> (usize, usize) {
     if paths.is_empty() {
@@ -40,7 +40,9 @@ pub fn delete_paths(paths: &[String], permanent: bool, cancel: &CancelToken) -> 
             let trashed = recycle_files(std::slice::from_ref(path)) == 0;
             #[cfg(target_os = "macos")]
             let trashed = trash_item(path);
-            #[cfg(not(any(windows, target_os = "macos")))]
+            #[cfg(all(unix, not(target_os = "macos")))]
+            let trashed = crate::fs::linux_trash::trash(path).is_ok();
+            #[cfg(not(any(windows, unix)))]
             let trashed = false;
 
             if trashed {
@@ -747,6 +749,35 @@ mod tests {
         assert!(!file.exists(), "gone from its folder");
         assert!(trashed.is_file(), "in the Trash at {}", trashed.display());
         let _ = std::fs::remove_file(&trashed);
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    #[test]
+    fn delete_moves_items_to_the_trash_on_linux() {
+        let dir = temp_dir("linux-trash");
+        let name = format!("wade-trash-test-{}.txt", std::process::id());
+        let file = dir.join(&name);
+        std::fs::write(&file, b"x").expect("write");
+
+        // delete_paths with C#'s accounting: one moved, one missing
+        let missing = dir.join("missing.txt");
+        let (success, errors) = delete_paths(&[p(&file), p(&missing)], false, &CancelToken::new());
+        assert_eq!((success, errors), (1, 1));
+        assert!(!file.exists(), "gone from its folder");
+
+        // The home trash (or, when the temp dir is on another device, that
+        // mount's trash): find it from the .trashinfo next to the item
+        let data_home = std::env::var_os("XDG_DATA_HOME")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| Path::new(&std::env::var_os("HOME").expect("HOME")).join(".local/share"));
+        let trash = data_home.join("Trash");
+        let trashed = trash.join("files").join(&name);
+        if trashed.exists() {
+            let info = trash.join("info").join(format!("{name}.trashinfo"));
+            assert!(std::fs::read_to_string(&info).expect("trashinfo").contains(&name));
+            let _ = std::fs::remove_file(&trashed);
+            let _ = std::fs::remove_file(&info);
+        }
     }
 
     #[test]

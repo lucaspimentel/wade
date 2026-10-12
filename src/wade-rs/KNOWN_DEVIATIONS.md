@@ -178,6 +178,19 @@ None. Phase 9 closed the last temporary entries.
   right pane blank. Its `ClearPreviewCache` drops the preview context and
   the empty metadata provider list that the message branch checks, and Rust
   keeps them.
+- **Linux Trash on delete (Rust-only).** Delete without Shift moves items to
+  the freedesktop.org Trash (`fs/linux_trash.rs`), and the confirmation drops
+  "This cannot be undone!"; C# deletes permanently on every Unix.
+  - Items on the home trash's device go to `$XDG_DATA_HOME/Trash` (default
+    `~/.local/share/Trash`) with an absolute `Path=`. Items on other mounts
+    (USB drives, second disks, WSL's `/mnt/c`) go to that mount's
+    `.Trash/$uid` (when `.Trash` is sticky and not a symlink) or
+    `.Trash-$uid`, with `Path=` relative to the mount's top directory.
+  - Nothing is copied across devices: when no trash on the item's device is
+    usable (read-only mount, no permission), the item stays and counts as an
+    error; Shift+Delete still deletes permanently.
+  - Duplicate names are numbered gio style (`a.2.txt`). The optional
+    `directorysizes` cache is not updated.
 - **macOS `UF_HIDDEN` files are hidden (Rust-only).** .NET treats only
   dot-prefixed names as hidden on Unix. Rust also hides entries with the
   `UF_HIDDEN` flag (`chflags hidden`), as Finder does: `~/Library`, and

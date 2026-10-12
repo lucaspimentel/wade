@@ -9,6 +9,8 @@ pub mod file_type_labels;
 pub mod git_utils;
 pub mod gzip;
 pub mod hex_preview;
+#[cfg(all(unix, not(target_os = "macos")))]
+pub mod linux_trash;
 pub mod lnk;
 pub mod path_completion;
 pub mod reparse;
