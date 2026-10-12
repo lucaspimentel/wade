@@ -353,7 +353,10 @@ fn escape_alone_and_split_sequences_follow_the_wait() {
     let mut wade = Session::start(&home, &root, &[]);
     wade.wait_for_text("inside_alpha.txt");
 
-    wade.send_split(&[(ESC, 15), ("[B", 0)]);
+    // Two writes back to back: usually two reads, joined. A fixed short
+    // pause would pass 50ms on a slow runner; the parser's unit tests
+    // cover the join without timing
+    wade.send_split(&[(ESC, 0), ("[B", 0)]);
     wade.settles("Down from a split sequence", |screen| {
         counter(screen, "2/3") && !screen.contents().contains(QUIT_HINT)
     });
