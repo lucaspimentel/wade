@@ -79,6 +79,11 @@ backlog.
   (and `terminal_title_enabled = false`), SIGTERM/SIGHUP, tiny sizes,
   mouse click and wheel (ConPTY passes SGR mouse, so Windows too) and wide
   names. Found one gap, fixed: signals left the terminal raw
+- [x] PTY Batch 3: files changed by another program, git status icons,
+  image protocol per terminal answer (kitty, Sixel, iTerm2, none; Windows
+  with `WT_SESSION` only checks it doesn't hang), long names cut with `…`,
+  and delete (`D`, and `d` to the Linux Trash). No bugs found. All three
+  batches of `docs/pty-test-plan.md` are done
 - [ ] Still untested: the real
   launchers (open with default app, open terminal, cloud download), the
   combined text+image preview event and macOS paths
@@ -90,7 +95,8 @@ backlog.
   - "Download cloud file" from the action palette on a OneDrive placeholder
   - paste into Explorer after copy/cut in wade, and copy/cut from Explorer
   - SSD inline directory sizes and the drive list on screen
-  - filesystem auto-refresh on screen
+  - filesystem auto-refresh on screen (the PTY tests cover it under
+    ConPTY; a real Windows Terminal check is still worth doing)
   - the tab title returns to the pre-wade title on exit and when
     `terminal_title_enabled` is turned off
 - [x] Windows follow-ups from the verification pass:

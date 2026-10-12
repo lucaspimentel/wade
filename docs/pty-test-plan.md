@@ -11,6 +11,11 @@ Batch 2 is done. D13 found the expected gap (signals left the terminal
 raw), now fixed with handlers. The other scenarios passed without code
 changes. C10 runs on Windows too: ConPTY passes SGR mouse input through.
 
+Batch 3 is done, with no bugs found. The harness gained environment
+variables and canned replies to the capability queries. G20 only checks
+that wade keeps running: whether ConPTY passes Sixel output through is not
+asserted. All three batches are done.
+
 ## Context
 
 `src/wade-rs/tests/pty_smoke.rs` runs the built `wade` binary in a
