@@ -991,6 +991,34 @@ fn image_preview_under_windows_terminal_does_not_hang() {
     assert!(wade.wait_for_exit().success());
 }
 
+/// The startup queries' replies set the capabilities (on Windows read with
+/// VT input on for the queries only); `WADE_TERMINAL_LOG` shows them. The
+/// replies don't reach the app as key presses.
+#[test]
+fn startup_query_replies_set_the_capabilities() {
+    let (home, root) = fixture("query-replies");
+    let log = home.join("terminal.log");
+    let log_path = log.display().to_string();
+    let reply: &[u8] = b"\x1b[6;20;10t\x1b[?62;4c";
+    let mut wade = Session::start_with(&home, &root, &[], &[("WADE_TERMINAL_LOG", &log_path)], Some(reply));
+    wade.wait_for_text("inside_alpha.txt");
+    let text = std::fs::read_to_string(&log).unwrap_or_default();
+    let queries: Vec<&str> = ["\x1b[>0q", "\x1b[16t", "\x1b[c"]
+        .into_iter()
+        .filter(|query| wade.raw_text().contains(query))
+        .collect();
+    assert!(
+        text.contains("sixel_supported: true, cell_pixel_width: 10, cell_pixel_height: 20"),
+        "log: {text:?}; queries seen by the terminal: {queries:?}"
+    );
+
+    // A stray reply read as keys would move the selection or open a dialog
+    std::thread::sleep(Duration::from_millis(500));
+    wade.settles("alpha still selected", |screen| counter(screen, "1/3"));
+    wade.send("q");
+    assert!(wade.wait_for_exit().success());
+}
+
 /// A name wider than its pane ends with "…" and never spills into the
 /// next pane, also after the window narrows.
 #[test]

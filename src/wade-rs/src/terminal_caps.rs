@@ -211,6 +211,32 @@ impl TerminalCapabilities {
     }
 }
 
+/// Rust-only: whether `data` holds a complete DA1 reply (`ESC [ ? ... c`).
+/// Every VT terminal answers DA1 and it is asked last, so the replies
+/// before it have arrived too.
+#[must_use]
+pub fn has_da1_reply(data: &[u8]) -> bool {
+    (0..data.len()).any(|start| {
+        data[start..].starts_with(b"\x1b[?")
+            && data[start + 3..].iter().find(|&&b| !(b.is_ascii_digit() || b == b';')) == Some(&b'c')
+    })
+}
+
+/// Rust-only: with `WADE_TERMINAL_LOG` set to a file path, writes the
+/// startup query replies and the capabilities read from them there (a
+/// diagnostic for terminals whose replies can't be seen otherwise).
+pub fn log_detection(replies: &[u8], caps: &TerminalCapabilities, elapsed: std::time::Duration) {
+    let Some(path) = std::env::var_os("WADE_TERMINAL_LOG").filter(|value| !value.is_empty()) else {
+        return;
+    };
+    let text = format!(
+        "replies: \"{}\"\ncapabilities: {caps:?}\nelapsed_ms: {}\n",
+        String::from_utf8_lossy(replies).escape_debug(),
+        elapsed.as_millis()
+    );
+    let _ = std::fs::write(path, text);
+}
+
 /// Terminals that answer the graphics query and also support Unicode
 /// placeholders (WezTerm and Konsole answer the query but don't).
 fn is_placeholder_terminal(name: &str) -> bool {
@@ -330,6 +356,17 @@ mod tests {
         assert_eq!((caps.sixel_supported, caps.cell_pixel_width, caps.cell_pixel_height), (true, 9, 18));
 
         assert_eq!(Caps::parse_query_responses(b"\x1b[1;2;3t"), Caps::DEFAULT);
+    }
+
+    #[test]
+    fn da1_reply_is_complete_only_at_its_final_byte() {
+        assert!(super::has_da1_reply(b"\x1b[6;20;10t\x1b[?61;4;6c"));
+        assert!(super::has_da1_reply(b"\x1b[?1;0c"));
+        assert!(!super::has_da1_reply(b"\x1b[6;20;10t\x1b[?61;4"));
+        assert!(!super::has_da1_reply(b"\x1b[6;20;10t"));
+        assert!(!super::has_da1_reply(b"\x1b[?1049h"), "a mode report is no DA1");
+        assert!(super::has_da1_reply(b"\x1b[?1049h\x1b[?62c"), "a DA1 after another reply");
+        assert!(!super::has_da1_reply(b""));
     }
 
     const KITTY_OK: &[u8] = b"\x1b_Gi=31;OK\x1b\\";

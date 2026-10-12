@@ -122,6 +122,7 @@ fn detect_capabilities(tty_fd: libc::c_int) -> TerminalCapabilities {
 
     // Rust-only: the kitty graphics query and XTVERSION go first; DA1 stays
     // last so terminals that ignore them still answer
+    let start = std::time::Instant::now();
     write_out(&["\x1b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\\x1b[>0q\x1b[c\x1b[16t"]);
     let mut buf = [0u8; 1024];
     let mut total = 0;
@@ -150,6 +151,7 @@ fn detect_capabilities(tty_fd: libc::c_int) -> TerminalCapabilities {
         caps = caps.inside_tmux(&client);
     }
 
+    crate::terminal_caps::log_detection(&buf[..total], &caps, start.elapsed());
     caps
 }
 
