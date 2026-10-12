@@ -4,6 +4,8 @@
 //! and restore, raw input decoding, resize and the process exit path.
 
 use std::io::{Read, Write};
+#[cfg(unix)]
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -180,7 +182,38 @@ impl Session {
 
     #[cfg(unix)]
     fn alive(&mut self) -> bool {
+        self.alive_any()
+    }
+
+    fn alive_any(&mut self) -> bool {
         self.child.try_wait().unwrap().is_none()
+    }
+
+    /// Everything wade has written so far, as text.
+    fn raw_text(&self) -> String {
+        String::from_utf8_lossy(&self.raw.lock().unwrap()).into_owned()
+    }
+
+    /// Waits for `text` in wade's output (escape sequences included).
+    fn wait_for_output(&mut self, text: &str) {
+        let start = Instant::now();
+        while !self.raw_text().contains(text) {
+            if start.elapsed() >= TIMEOUT {
+                panic!("timed out waiting for output {text:?}; {}", self.diagnostics());
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+
+    /// An SGR mouse press and release at a 0-based cell.
+    fn click(&mut self, row: u16, col: u16) {
+        self.send(&format!("\x1b[<0;{};{}M\x1b[<0;{};{}m", col + 1, row + 1, col + 1, row + 1));
+    }
+
+    /// SGR mouse wheel notches at a 0-based cell, all in one write.
+    fn wheel(&mut self, row: u16, col: u16, down: bool, notches: usize) {
+        let button = if down { 65 } else { 64 };
+        self.send(&format!("\x1b[<{button};{};{}M", col + 1, row + 1).repeat(notches));
     }
 
     fn screen_text(&self) -> String {
@@ -540,6 +573,193 @@ fn a_long_bracketed_paste_arrives_whole() {
     wade.send_paste(&name);
     wade.send(ENTER);
     wait_for_renamed(&mut wade, &root, &name);
+    wade.send("q");
+    wade.wait_for_exit();
+}
+
+/// The columns of the pane borders on `row`.
+fn borders(screen: &vt100::Screen, row: u16) -> Vec<u16> {
+    (0..screen.size().1)
+        .filter(|&col| screen.cell(row, col).is_some_and(|cell| cell.contents() == "│"))
+        .collect()
+}
+
+/// A listed directory with `count` files `file00.txt`, `file01.txt` ...
+fn many_files(name: &str, count: usize) -> (PathBuf, PathBuf) {
+    let home = temp_dir(name);
+    let root = home.join("listed");
+    std::fs::create_dir_all(&root).unwrap();
+    for i in 0..count {
+        std::fs::write(root.join(format!("file{i:02}.txt")), format!("file {i}")).unwrap();
+    }
+    (home, root)
+}
+
+/// Unix only: the PTY's terminal modes, read through its slave device.
+#[cfg(unix)]
+fn termios_of(slave: &std::fs::File) -> libc::termios {
+    use std::os::fd::AsRawFd;
+    let mut termios: libc::termios = unsafe { std::mem::zeroed() };
+    assert_eq!(unsafe { libc::tcgetattr(slave.as_raw_fd(), &mut termios) }, 0);
+    termios
+}
+
+/// Raw mode while wade runs; after `q` the terminal modes are back and the
+/// exit sequence turns off mouse and paste, shows the cursor, leaves the
+/// alternate screen and restores the title, in that order.
+#[cfg(unix)]
+#[test]
+fn quit_restores_raw_mode_and_sends_the_exit_sequence() {
+    let (home, root) = fixture("restore");
+    let mut wade = Session::start(&home, &root, &[]);
+    // Opened before wade exits, so the modes can still be read after
+    let tty = wade.master.tty_name().expect("pty name");
+    let slave = std::fs::OpenOptions::new().read(true).write(true).custom_flags(libc::O_NOCTTY).open(&tty).unwrap();
+    wade.wait_for_text("inside_alpha.txt");
+    let running = termios_of(&slave);
+    assert_eq!(running.c_lflag & (libc::ICANON | libc::ECHO), 0, "raw mode while running");
+
+    wade.send("q");
+    assert!(wade.wait_for_exit().success());
+    wade.wait_for("main screen", |screen| !screen.alternate_screen());
+    let after = termios_of(&slave);
+    assert_eq!(after.c_lflag & (libc::ICANON | libc::ECHO), libc::ICANON | libc::ECHO, "modes restored");
+
+    let raw = wade.raw_text();
+    let order = ["\x1b[?2004l", "\x1b[?1006l", "\x1b[?1000l", "\x1b[?25h", "\x1b[?1049l", "\x1b]0;\x07\x1b[23;0t"];
+    let positions: Vec<usize> =
+        order.iter().map(|part| raw.rfind(part).unwrap_or_else(|| panic!("{part:?} missing"))).collect();
+    assert!(positions.is_sorted(), "exit sequence order {positions:?}");
+}
+
+/// The title shows the current directory and follows navigation.
+#[test]
+fn the_title_follows_the_current_directory() {
+    let (home, root) = fixture("title");
+    let mut wade = Session::start(&home, &root, &[]);
+    wade.wait_for_text("inside_alpha.txt");
+    wade.wait_for_output(&format!("\x1b]0;wade - {}\x07", root.display()));
+
+    wade.send(DOWN);
+    wade.wait_for_text("inside_beta.txt");
+    wade.send(ENTER);
+    wade.wait_for("beta opened", beta_opened);
+    wade.wait_for_output(&format!("\x1b]0;wade - {}\x07", root.join("beta").display()));
+    wade.send("q");
+    assert!(wade.wait_for_exit().success());
+}
+
+/// With `terminal_title_enabled = false` the title is never set.
+#[test]
+fn the_title_is_left_alone_when_turned_off() {
+    let (home, root) = fixture("no-title");
+    std::fs::write(home.join("config.toml"), "terminal_title_enabled = false\n").unwrap();
+    let mut wade = Session::start(&home, &root, &[]);
+    wade.wait_for_text("inside_alpha.txt");
+    wade.send("q");
+    assert!(wade.wait_for_exit().success());
+    assert!(!wade.raw_text().contains("wade - "), "no title set");
+}
+
+/// SIGTERM and SIGHUP restore the terminal and exit with 128 + the signal.
+#[cfg(unix)]
+fn signal_restores_the_terminal(signal: libc::c_int, name: &str) {
+    let (home, root) = fixture(name);
+    let cwd_file = home.join("cwd.txt");
+    let mut wade = Session::start(&home, &root, &[format!("--cwd-file={}", cwd_file.display())]);
+    wade.wait_for_text("inside_alpha.txt");
+
+    let pid = wade.child.process_id().expect("pid");
+    assert_eq!(unsafe { libc::kill(libc::pid_t::try_from(pid).unwrap(), signal) }, 0);
+    let status = wade.wait_for_exit();
+    assert_eq!(status.exit_code(), 128 + signal.unsigned_abs(), "{status:?}");
+    wade.wait_for("main screen", |screen| !screen.alternate_screen() && !screen.hide_cursor());
+    assert!(wade.raw_text().contains("\x1b[?1000l"), "mouse reporting off");
+    assert!(!cwd_file.exists(), "no cwd file on a signal");
+}
+
+#[cfg(unix)]
+#[test]
+fn sigterm_restores_the_terminal() {
+    signal_restores_the_terminal(libc::SIGTERM, "sigterm");
+}
+
+#[cfg(unix)]
+#[test]
+fn sighup_restores_the_terminal() {
+    signal_restores_the_terminal(libc::SIGHUP, "sighup");
+}
+
+/// Tiny sizes never crash wade, and it redraws when the size comes back.
+#[test]
+fn tiny_sizes_do_not_crash() {
+    let (home, root) = fixture("tiny");
+    let mut wade = Session::start(&home, &root, &[]);
+    wade.wait_for_text("inside_alpha.txt");
+
+    for (rows, cols) in [(5, 20), (1, 1), (2, 3), (ROWS, COLS)] {
+        wade.resize(rows, cols);
+        std::thread::sleep(Duration::from_millis(200));
+        assert!(wade.alive_any(), "alive at {rows}x{cols}; {}", wade.diagnostics());
+    }
+    wade.wait_for_text("inside_alpha.txt");
+    wade.send("q");
+    assert!(wade.wait_for_exit().success());
+}
+
+/// A click in the file list selects the row; the wheel moves the selection
+/// one entry per notch, and a burst longer than one read loses no notch.
+#[test]
+fn mouse_click_and_wheel_move_the_selection() {
+    let (home, root) = fixture("mouse");
+    let mut wade = Session::start(&home, &root, &[]);
+    wade.wait_for_text("inside_alpha.txt");
+
+    // Rows 0-1 are the column headers; notes.txt is the third entry
+    let col = borders(wade.parser.lock().unwrap().screen(), 2)[0] + 4;
+    wade.click(4, col);
+    wade.wait_for_text("hello from notes");
+    wade.click(2, col);
+    wade.wait_for_text("inside_alpha.txt");
+    wade.send("q");
+    wade.wait_for_exit();
+
+    let (home, root) = many_files("wheel", 40);
+    let mut wade = Session::start(&home, &root, &[]);
+    wade.wait_for_text("file 0");
+    // 30 notches of about 12 bytes: several reads
+    wade.wheel(5, col, true, 30);
+    wade.settles("30 notches down", |screen| counter(screen, "31/40"));
+    wade.wheel(5, col, false, 10);
+    wade.settles("10 notches up", |screen| counter(screen, "21/40"));
+    wade.send("q");
+    wade.wait_for_exit();
+}
+
+/// Wide names (CJK, emoji) take two columns in wade and in the terminal,
+/// so the pane borders stay in the same columns on every row.
+#[test]
+fn wide_names_keep_the_pane_borders_aligned() {
+    let home = temp_dir("wide");
+    let root = home.join("listed");
+    std::fs::create_dir_all(root.join("日本語フォルダ")).unwrap();
+    std::fs::write(root.join("日本語フォルダ").join("中身.txt"), "x").unwrap();
+    std::fs::write(root.join("日本語.txt"), "日本語のテキスト\n").unwrap();
+    std::fs::write(root.join("😀.md"), "# 😀 title\n").unwrap();
+    std::fs::write(root.join("plain.txt"), "plain\n").unwrap();
+    let mut wade = Session::start(&home, &root, &[]);
+    wade.wait_for_text("中身.txt");
+
+    for step in ["", "j", "j", "j"] {
+        wade.send_keys(step);
+        std::thread::sleep(Duration::from_millis(300));
+        let screen = wade.parser.lock().unwrap().screen().clone();
+        let header = borders(&screen, 0);
+        assert_eq!(header.len(), 2, "two borders in the header; {}", wade.screen_text());
+        for row in 2..6 {
+            assert_eq!(borders(&screen, row), header, "row {row} after {step:?}; {}", wade.screen_text());
+        }
+    }
     wade.send("q");
     wade.wait_for_exit();
 }
