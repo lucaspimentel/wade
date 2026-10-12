@@ -211,15 +211,28 @@ impl TerminalCapabilities {
     }
 }
 
+/// Rust-only: whether `data` holds a complete `ESC [ <marker> ... <final>`
+/// reply with only digits and `;` in between.
+fn has_reply(data: &[u8], marker: &[u8], final_byte: u8) -> bool {
+    (0..data.len()).any(|start| {
+        data[start..].starts_with(b"\x1b[")
+            && data[start + 2..].starts_with(marker)
+            && data[start + 2 + marker.len()..].iter().find(|&&b| !(b.is_ascii_digit() || b == b';'))
+                == Some(&final_byte)
+    })
+}
+
 /// Rust-only: whether `data` holds a complete DA1 reply (`ESC [ ? ... c`).
-/// Every VT terminal answers DA1 and it is asked last, so the replies
-/// before it have arrived too.
 #[must_use]
 pub fn has_da1_reply(data: &[u8]) -> bool {
-    (0..data.len()).any(|start| {
-        data[start..].starts_with(b"\x1b[?")
-            && data[start + 3..].iter().find(|&&b| !(b.is_ascii_digit() || b == b';')) == Some(&b'c')
-    })
+    has_reply(data, b"?", b'c')
+}
+
+/// Rust-only: whether `data` holds a complete cell size reply
+/// (`ESC [ 6 ; ... t`).
+#[must_use]
+pub fn has_cell_size_reply(data: &[u8]) -> bool {
+    has_reply(data, b"6;", b't')
 }
 
 /// Rust-only: with `WADE_TERMINAL_LOG` set to a file path, writes the
@@ -367,6 +380,14 @@ mod tests {
         assert!(!super::has_da1_reply(b"\x1b[?1049h"), "a mode report is no DA1");
         assert!(super::has_da1_reply(b"\x1b[?1049h\x1b[?62c"), "a DA1 after another reply");
         assert!(!super::has_da1_reply(b""));
+    }
+
+    #[test]
+    fn cell_size_reply_is_complete_only_at_its_final_byte() {
+        assert!(super::has_cell_size_reply(b"\x1b[?61;6c\x1b[6;20;10t"));
+        assert!(!super::has_cell_size_reply(b"\x1b[6;20;10"));
+        assert!(!super::has_cell_size_reply(b"\x1b[?61;6c"));
+        assert!(!super::has_cell_size_reply(b"\x1b[8;24;80t"), "a window size is no cell size");
     }
 
     const KITTY_OK: &[u8] = b"\x1b_Gi=31;OK\x1b\\";

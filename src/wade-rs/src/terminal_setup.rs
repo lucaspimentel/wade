@@ -53,15 +53,12 @@ const ENABLE_QUICK_EDIT_MODE: u32 = 0x0040;
 const ENABLE_EXTENDED_FLAGS: u32 = 0x0080;
 const ENABLE_VIRTUAL_TERMINAL_INPUT: u32 = 0x0200;
 
-/// XTVERSION, cell size and DA1. DA1 goes last: every VT terminal answers
-/// it, so its reply means the others have arrived. (No kitty graphics query:
-/// no terminal with kitty placeholders runs on Windows.)
+/// XTVERSION, cell size and DA1.
 const QUERIES: &str = "\x1b[>0q\x1b[16t\x1b[c";
-/// How long to wait for the DA1 reply.
+/// How long to wait for the replies.
 const REPLY_TIMEOUT: Duration = Duration::from_millis(300);
-/// After the DA1 reply, how long input must stay quiet before reading stops
-/// (a console that answers DA1 itself can pass the other queries on to the
-/// terminal, whose replies then come later).
+/// Outside Windows Terminal, how long input must stay quiet after the DA1
+/// reply before reading stops.
 const QUIET_AFTER_DA1: Duration = Duration::from_millis(50);
 
 pub use crate::terminal_caps::TerminalCapabilities;
@@ -188,6 +185,7 @@ impl Drop for TerminalSetup {
 /// Rust-only: asks the terminal for its capabilities. Input switches to VT
 /// for the queries only, so their replies arrive as characters instead of
 /// key presses, then goes back to `input_mode` (key records) for the app.
+/// DA1 Sixel comes from the console, not the terminal, so it is no help.
 /// With no reply, Windows Terminal (`WT_SESSION`, Sixel since v1.22) still
 /// gets Sixel, and cells stay 8x16.
 fn detect_capabilities(stdin_handle: HANDLE, input_mode: CONSOLE_MODE) -> TerminalCapabilities {
@@ -196,23 +194,31 @@ fn detect_capabilities(stdin_handle: HANDLE, input_mode: CONSOLE_MODE) -> Termin
         SetConsoleMode(stdin_handle, input_mode | ENABLE_VIRTUAL_TERMINAL_INPUT);
     }
     write_out(&[QUERIES]);
-    let replies = read_replies(stdin_handle, start);
+    let wt_session = std::env::var_os("WT_SESSION").is_some();
+    let replies = read_replies(stdin_handle, start, wt_session);
     unsafe {
         SetConsoleMode(stdin_handle, input_mode);
     }
 
     let mut caps = TerminalCapabilities::parse_query_responses(&replies);
-    caps.sixel_supported |= std::env::var_os("WT_SESSION").is_some();
+    caps.sixel_supported |= wt_session;
     // Rust-only: WezTerm on Windows shows iTerm2 inline images
     caps.iterm_images |= crate::terminal_caps::iterm_from_term_program(std::env::var("TERM_PROGRAM").ok().as_deref());
     crate::terminal_caps::log_detection(&replies, &caps, start.elapsed());
     caps
 }
 
-/// Reads the characters of key-down records until the DA1 reply is in and
-/// input has been quiet for `QUIET_AFTER_DA1`, or `REPLY_TIMEOUT` passes.
-/// Other records (and keys typed meanwhile) are dropped.
-fn read_replies(stdin_handle: HANDLE, start: Instant) -> Vec<u8> {
+/// Reads the characters of key-down records until the replies are in, or
+/// `REPLY_TIMEOUT` passes. Other records (and keys typed meanwhile) are
+/// dropped.
+///
+/// The console answers DA1 itself and passes the other queries on to the
+/// terminal, so the DA1 reply comes first and doesn't mean the others are
+/// in. The cell size reply comes last from the terminal (it answers in
+/// order): reading stops there. Without it, Windows Terminal (which answers
+/// it) is waited for until the timeout; other consoles until input has been
+/// quiet for `QUIET_AFTER_DA1` after the DA1 reply.
+fn read_replies(stdin_handle: HANDLE, start: Instant, wt_session: bool) -> Vec<u8> {
     let mut units: Vec<u16> = Vec::new();
     let mut deadline = start + REPLY_TIMEOUT;
 
@@ -242,7 +248,11 @@ fn read_replies(stdin_handle: HANDLE, start: Instant) -> Vec<u8> {
             }
         }
 
-        if crate::terminal_caps::has_da1_reply(String::from_utf16_lossy(&units).as_bytes()) {
+        let text = String::from_utf16_lossy(&units);
+        if crate::terminal_caps::has_cell_size_reply(text.as_bytes()) {
+            break;
+        }
+        if !wt_session && crate::terminal_caps::has_da1_reply(text.as_bytes()) {
             deadline = deadline.min(Instant::now() + QUIET_AFTER_DA1);
         }
     }

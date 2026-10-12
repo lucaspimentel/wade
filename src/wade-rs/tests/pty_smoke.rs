@@ -78,7 +78,8 @@ impl Session {
     }
 
     /// `env` is added to wade's environment; `query_reply` answers wade's
-    /// startup capability queries (DA1 `ESC[c`) the way a terminal would.
+    /// startup capability queries (DA1 `ESC[c` or cell size `ESC[16t`) the
+    /// way a terminal would.
     /// Variables that select an image protocol are cleared first, so the
     /// runner's own terminal never leaks in.
     fn start_with(
@@ -124,6 +125,7 @@ impl Session {
         let (sink, replies, log) = (Arc::clone(&parser), Arc::clone(&writer), Arc::clone(&raw));
         std::thread::spawn(move || {
             let mut buf = [0u8; 8192];
+            let mut replied = false;
             while let Ok(n) = reader.read(&mut buf) {
                 if n == 0 {
                     break;
@@ -138,9 +140,13 @@ impl Session {
                     let _ = writer.write_all(b"\x1b[1;1R");
                     let _ = writer.flush();
                 }
+                // On Windows the console answers DA1 itself and passes only
+                // the cell size query on: answer whichever comes, once
                 if let Some(reply) = query_reply
-                    && chunk.windows(3).any(|w| w == b"\x1b[c")
+                    && !replied
+                    && (chunk.windows(3).any(|w| w == b"\x1b[c") || chunk.windows(5).any(|w| w == b"\x1b[16t"))
                 {
+                    replied = true;
                     let mut writer = replies.lock().unwrap();
                     let _ = writer.write_all(reply);
                     let _ = writer.flush();
@@ -999,8 +1005,13 @@ fn startup_query_replies_set_the_capabilities() {
     let (home, root) = fixture("query-replies");
     let log = home.join("terminal.log");
     let log_path = log.display().to_string();
-    let reply: &[u8] = b"\x1b[6;20;10t\x1b[?62;4c";
-    let mut wade = Session::start_with(&home, &root, &[], &[("WADE_TERMINAL_LOG", &log_path)], Some(reply));
+    // Windows Terminal answers the cell size query (the console answers DA1,
+    // without Sixel; WT_SESSION gives Sixel)
+    #[cfg(windows)]
+    let (reply, env): (&[u8], _) = (b"\x1b[6;20;10t", [("WADE_TERMINAL_LOG", log_path.as_str()), ("WT_SESSION", "1")]);
+    #[cfg(unix)]
+    let (reply, env): (&[u8], _) = (b"\x1b[6;20;10t\x1b[?62;4c", [("WADE_TERMINAL_LOG", log_path.as_str())]);
+    let mut wade = Session::start_with(&home, &root, &[], &env, Some(reply));
     wade.wait_for_text("inside_alpha.txt");
     let text = std::fs::read_to_string(&log).unwrap_or_default();
     let queries: Vec<&str> = ["\x1b[>0q", "\x1b[16t", "\x1b[c"]
