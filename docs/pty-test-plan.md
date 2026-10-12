@@ -136,11 +136,24 @@ Docs to update as tests land:
 - `src/wade-rs/KNOWN_DEVIATIONS.md`: an entry for each behavior change from a
   bug fix, such as how Alt+letter is read.
 
-## Open decisions
+## Decisions
 
-- [ ] Likely bugs in Batch 1 (A1, A3, A4): fix them in the same pass, or
-  record each as an ignored test and report first?
-- [ ] Signals (D13): add SIGTERM and SIGHUP handlers that restore the
-  terminal, or only record the current behavior?
-- [ ] C10 on Windows: if ConPTY drops SGR mouse input, keep it Unix-only or
-  try win32-input-mode mouse records?
+- **Bugs found in Batch 1 are fixed in the same pass:** a failing test
+  first, then the fix in its own commit.
+- **Alt+letter on Unix:** `ESC` followed by a printable character in the same
+  read (or within the 50 ms Esc wait) is one key event with `alt = true`, as
+  Windows reports it. Under the modifier rule, Alt+j then does nothing.
+- **Characters beyond U+FFFF:** `KeyEvent.key_char` widens from `u16` to
+  `char`, one event per character on every OS. Windows already turns a typed
+  surrogate pair into a paste (frozen fixture
+  `tests/golden/input/004-single-char-and-surrogate`), so its output is
+  unchanged.
+- **Input split across reads:** the Unix reader keeps an incomplete trailing
+  escape sequence or UTF-8 character and joins it with the next read.
+- **SIGTERM and SIGHUP (D13):** handlers set a flag; the main loop restores
+  the terminal (raw mode, alternate screen, title, cursor, mouse, bracketed
+  paste) and exits with 128 + the signal number.
+- **Mouse on Windows (C10):** if ConPTY drops SGR mouse input, the test stays
+  Unix-only with a comment, and Windows mouse stays in the manual checklist.
+- **Scope of this pass:** Batch 1 only (harness helpers, A1–A5, B6–B8 and the
+  fixes they need), then push, CI and report before Batch 2.
