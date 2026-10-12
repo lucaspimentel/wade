@@ -7,6 +7,10 @@ with input decoding, where three likely bugs are already visible in the code.
 and found a fourth: text boxes drew wide characters one column wide. All
 four are fixed. A3's mouse-burst case moves to C10. B9 is in Batch 3.
 
+Batch 2 is done. D13 found the expected gap (signals left the terminal
+raw), now fixed with handlers. The other scenarios passed without code
+changes. C10 runs on Windows too: ConPTY passes SGR mouse input through.
+
 ## Context
 
 `src/wade-rs/tests/pty_smoke.rs` runs the built `wade` binary in a

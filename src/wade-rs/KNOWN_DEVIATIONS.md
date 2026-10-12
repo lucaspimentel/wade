@@ -456,3 +456,9 @@ None. Phase 9 closed the last temporary entries.
   Tab, so a multi-line paste pressed Enter between lines. Rust keeps a
   line break or tab in the paste when a printable key follows it in the
   same batch; a trailing one is still a key.
+- **SIGTERM and SIGHUP end wade cleanly on Unix (Rust-only).** C# (and
+  the default action) killed the process in raw mode on the alternate
+  screen. `signals.rs` records the signal; a watcher thread cancels the
+  main loop, which restores the terminal as `q` does. wade exits with
+  128 + the signal (the shell's status for a killed process) and, like
+  Shift+Q, writes no `--cwd-file`.

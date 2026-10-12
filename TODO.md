@@ -75,7 +75,11 @@ backlog.
   Alt+letter read as Esc + letter, input cut by a read lost, characters
   beyond U+FFFF truncated, wide characters drawn one column wide in text
   boxes
-- [ ] Still untested: mouse through the PTY, the real
+- [x] PTY Batch 2: raw mode and the exit sequence after `q`, the title
+  (and `terminal_title_enabled = false`), SIGTERM/SIGHUP, tiny sizes,
+  mouse click and wheel (ConPTY passes SGR mouse, so Windows too) and wide
+  names. Found one gap, fixed: signals left the terminal raw
+- [ ] Still untested: the real
   launchers (open with default app, open terminal, cloud download), the
   combined text+image preview event and macOS paths
 - [ ] Manual Windows Terminal checks (need a real console; none are

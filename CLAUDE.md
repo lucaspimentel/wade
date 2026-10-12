@@ -42,6 +42,7 @@ When an intentional behavior change breaks a frozen fixture, move it to Rust own
 - Send Esc with `Session::escape()`, not `send(ESC)`: ESC followed by a key within 50ms is read as Alt+key.
 - Send file-list keys with `Session::send_keys()`: on Windows several printable keys in one read are taken as a paste (`decode.rs` paste burst), which the file list ignores.
 - Text longer than a text box scrolls out of view; check it through a result instead (a rename's file name on disk).
+- Read terminal modes through the master fd (`MasterPty::as_raw_fd`): macOS revokes a slave opened by the test once wade exits.
 
 ## Shipping
 
