@@ -448,3 +448,11 @@ None. Phase 9 closed the last temporary entries.
   character's second column was overwritten. Rust uses `rune_width` for
   drawing and scrolling, and leaves out a wide character that would cross
   the box's edge.
+- **Windows paste bursts keep their line breaks (Rust-only).** Without
+  VT input there is no bracketed paste, so (as in C#) two or more
+  printable key-downs in one `ReadConsoleInput` batch are a paste, which
+  the file list ignores; a person typing never batches keys, because the
+  input thread reads each as it arrives. C# ended the burst at Enter or
+  Tab, so a multi-line paste pressed Enter between lines. Rust keeps a
+  line break or tab in the paste when a printable key follows it in the
+  same batch; a trailing one is still a key.

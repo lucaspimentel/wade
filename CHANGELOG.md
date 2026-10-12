@@ -20,6 +20,7 @@
 - Linux/macOS: keys and characters cut by a terminal read (64 bytes) are no longer lost: long typed text, fast arrow-key repeats and the end of a bracketed paste
 - Linux/macOS: emoji and other characters beyond U+FFFF typed into the filter, rename and other text boxes arrive intact
 - Text boxes draw wide characters (CJK, emoji) two columns wide instead of overwriting their second half
+- Windows: pasting several lines no longer presses Enter between them (in the file list that opened the selected item); line breaks and tabs inside a paste stay part of it
 
 ### Removed
 - Remove the C# implementation (`src/Wade`, `src/Wade.Search`); the Rust port in `src/wade-rs` is the only build, and the `install-local-csharp` scripts are gone
