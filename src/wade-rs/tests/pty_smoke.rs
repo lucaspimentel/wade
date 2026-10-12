@@ -4,8 +4,6 @@
 //! and restore, raw input decoding, resize and the process exit path.
 
 use std::io::{Read, Write};
-#[cfg(unix)]
-use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -595,12 +593,14 @@ fn many_files(name: &str, count: usize) -> (PathBuf, PathBuf) {
     (home, root)
 }
 
-/// Unix only: the PTY's terminal modes, read through its slave device.
+/// Unix only: the PTY's terminal modes, read through the master side
+/// (it reports the slave's; a slave opened here is revoked on macOS once
+/// wade, the session leader, exits).
 #[cfg(unix)]
-fn termios_of(slave: &std::fs::File) -> libc::termios {
-    use std::os::fd::AsRawFd;
+fn termios_of(master: &dyn MasterPty) -> libc::termios {
+    let fd = master.as_raw_fd().expect("master fd");
     let mut termios: libc::termios = unsafe { std::mem::zeroed() };
-    assert_eq!(unsafe { libc::tcgetattr(slave.as_raw_fd(), &mut termios) }, 0);
+    assert_eq!(unsafe { libc::tcgetattr(fd, &mut termios) }, 0, "{}", std::io::Error::last_os_error());
     termios
 }
 
@@ -612,17 +612,14 @@ fn termios_of(slave: &std::fs::File) -> libc::termios {
 fn quit_restores_raw_mode_and_sends_the_exit_sequence() {
     let (home, root) = fixture("restore");
     let mut wade = Session::start(&home, &root, &[]);
-    // Opened before wade exits, so the modes can still be read after
-    let tty = wade.master.tty_name().expect("pty name");
-    let slave = std::fs::OpenOptions::new().read(true).write(true).custom_flags(libc::O_NOCTTY).open(&tty).unwrap();
     wade.wait_for_text("inside_alpha.txt");
-    let running = termios_of(&slave);
+    let running = termios_of(wade.master.as_ref());
     assert_eq!(running.c_lflag & (libc::ICANON | libc::ECHO), 0, "raw mode while running");
 
     wade.send("q");
     assert!(wade.wait_for_exit().success());
     wade.wait_for("main screen", |screen| !screen.alternate_screen());
-    let after = termios_of(&slave);
+    let after = termios_of(wade.master.as_ref());
     assert_eq!(after.c_lflag & (libc::ICANON | libc::ECHO), libc::ICANON | libc::ECHO, "modes restored");
 
     let raw = wade.raw_text();
