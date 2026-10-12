@@ -22,7 +22,7 @@ pub mod preview_loader;
 mod settings_tests;
 pub mod tabs;
 #[cfg(test)]
-mod test_support;
+pub(crate) mod test_support;
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -365,7 +365,8 @@ impl App {
         if let Some(start_file_name) = self.config.start_file_name.clone() {
             let entries = self.directory_contents.get_entries(&self.current_path);
 
-            if let Some(index) = entries.iter().position(|e| e.name.eq_ignore_ascii_case(&start_file_name)) {
+            let names = entries.iter().map(|e| e.name.as_str());
+            if let Some(index) = find_name(names, &start_file_name, Path::new(&self.current_path)) {
                 self.selected_index = index;
             }
         }
@@ -1721,8 +1722,8 @@ impl App {
             self.update_terminal_title();
             self.refresh_git_status();
             let parent_entries = self.directory_contents.get_entries(&self.current_path);
-            self.selected_index =
-                parent_entries.iter().position(|e| e.name.eq_ignore_ascii_case(&clicked.name)).unwrap_or(0);
+            let names = parent_entries.iter().map(|e| e.name.as_str());
+            self.selected_index = find_name(names, &clicked.name, Path::new(&self.current_path)).unwrap_or(0);
             self.scroll_offset = 0;
             self.marked_paths.clear();
             self.clear_search_filter();
@@ -1782,8 +1783,8 @@ impl App {
             // File in previewed directory: navigate there, select the file
             self.navigate_to_directory(&crate::fs::directory_contents::capitalize_drive_letter(&selected.full_path));
             let dir_entries = self.directory_contents.get_entries(&self.current_path);
-            self.selected_index =
-                dir_entries.iter().position(|e| e.name.eq_ignore_ascii_case(&clicked.name)).unwrap_or(0);
+            let names = dir_entries.iter().map(|e| e.name.as_str());
+            self.selected_index = find_name(names, &clicked.name, Path::new(&self.current_path)).unwrap_or(0);
         }
     }
 

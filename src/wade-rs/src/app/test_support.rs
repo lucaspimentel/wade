@@ -22,8 +22,13 @@ static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
 /// directory holds `sub/inner.txt`, `a.txt` (1234 bytes), `b.txt`,
 /// `.hidden`, `readme.md` and an empty `empty.zip`.
 pub(crate) fn fixture() -> (PathBuf, PathBuf) {
+    fixture_under(&std::env::temp_dir())
+}
+
+/// `fixture` under `base` instead of the temp directory.
+pub(crate) fn fixture_under(base: &Path) -> (PathBuf, PathBuf) {
     let id = NEXT_ID.fetch_add(1, Ordering::SeqCst);
-    let parent = std::env::temp_dir().join(format!("wade-apptest-{}-{id}", std::process::id()));
+    let parent = base.join(format!("wade-apptest-{}-{id}", std::process::id()));
     let _ = std::fs::remove_dir_all(&parent);
     let root = parent.join(CURRENT_DIR);
     std::fs::create_dir_all(root.join("sub")).unwrap();
@@ -37,6 +42,21 @@ pub(crate) fn fixture() -> (PathBuf, PathBuf) {
     zip.extend_from_slice(&[0; 18]);
     std::fs::write(root.join("empty.zip"), zip).unwrap();
     (parent, root)
+}
+
+/// Linux: a FAT volume to test case-insensitive folders on, named by
+/// `WADE_TEST_FAT_DIR` (CI's Linux job mounts one). `None` when unset,
+/// except under CI, where a missing mount fails the test.
+#[cfg(target_os = "linux")]
+pub(crate) fn linux_fat_dir() -> Option<PathBuf> {
+    match std::env::var_os("WADE_TEST_FAT_DIR") {
+        Some(dir) => Some(PathBuf::from(dir)),
+        None if std::env::var_os("CI").is_some() => panic!("CI should set WADE_TEST_FAT_DIR"),
+        None => {
+            eprintln!("WADE_TEST_FAT_DIR is not set: skipping the FAT volume checks");
+            None
+        }
+    }
 }
 
 /// An App at `root` with `config` applied as startup applies it, laid out

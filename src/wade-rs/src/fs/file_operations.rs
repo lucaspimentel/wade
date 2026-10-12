@@ -98,15 +98,20 @@ fn delete_one(path: &str) -> bool {
     }
 }
 
-/// True when the volume holding `dir` matches names case-insensitively:
-/// always on Windows, per volume on macOS (APFS and HFS+ are
-/// case-insensitive unless formatted otherwise), never elsewhere.
+/// True when names in `dir` match case-insensitively.
+/// - Windows: unless `dir` has NTFS per-directory case sensitivity (set by
+///   WSL or `fsutil file setCaseSensitiveInfo`).
+/// - macOS: per volume (APFS and HFS+ are case-insensitive unless formatted
+///   otherwise).
+/// - Linux (Rust-only): ext4/f2fs casefold directories, then a lookup of an
+///   entry under another case (FAT, exFAT, SMB and WSL's drvfs answer by
+///   behavior), then the file-system type for empty folders.
+/// - Other unixes: never.
 #[must_use]
 pub fn names_case_insensitive(dir: &Path) -> bool {
     #[cfg(windows)]
     {
-        let _ = dir;
-        true
+        windows_case_insensitive(dir)
     }
 
     #[cfg(target_os = "macos")]
@@ -119,10 +124,146 @@ pub fn names_case_insensitive(dir: &Path) -> bool {
         unsafe { libc::pathconf(path.as_ptr(), libc::_PC_CASE_SENSITIVE) == 0 }
     }
 
-    #[cfg(not(any(windows, target_os = "macos")))]
+    #[cfg(target_os = "linux")]
+    {
+        linux_case::case_insensitive(dir)
+    }
+
+    #[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
     {
         let _ = dir;
         false
+    }
+}
+
+/// Windows: case-insensitive unless the directory's case-sensitive flag is
+/// set. Folders that can't be opened or queried (FAT, network shares, older
+/// Windows) keep the default.
+#[cfg(windows)]
+fn windows_case_insensitive(dir: &Path) -> bool {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
+    use windows_sys::Win32::Storage::FileSystem::{
+        CreateFileW, FILE_CASE_SENSITIVE_INFO, FILE_FLAG_BACKUP_SEMANTICS, FILE_READ_ATTRIBUTES, FILE_SHARE_DELETE,
+        FILE_SHARE_READ, FILE_SHARE_WRITE, FileCaseSensitiveInfo, GetFileInformationByHandleEx, OPEN_EXISTING,
+    };
+    const FILE_CS_FLAG_CASE_SENSITIVE_DIR: u32 = 1;
+
+    let wide: Vec<u16> = dir.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
+    unsafe {
+        let handle = CreateFileW(
+            wide.as_ptr(),
+            FILE_READ_ATTRIBUTES,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            std::ptr::null(),
+            OPEN_EXISTING,
+            FILE_FLAG_BACKUP_SEMANTICS,
+            std::ptr::null_mut(),
+        );
+        if handle == INVALID_HANDLE_VALUE {
+            return true;
+        }
+
+        let mut info: FILE_CASE_SENSITIVE_INFO = std::mem::zeroed();
+        let ok = GetFileInformationByHandleEx(
+            handle,
+            FileCaseSensitiveInfo,
+            (&raw mut info).cast(),
+            std::mem::size_of::<FILE_CASE_SENSITIVE_INFO>() as u32,
+        ) != 0;
+        CloseHandle(handle);
+        !(ok && info.Flags & FILE_CS_FLAG_CASE_SENSITIVE_DIR != 0)
+    }
+}
+
+/// Linux: how a directory matches names, by flag, behavior, then type.
+#[cfg(target_os = "linux")]
+mod linux_case {
+    use std::ffi::{OsStr, OsString};
+    use std::os::unix::ffi::{OsStrExt, OsStringExt};
+    use std::os::unix::fs::MetadataExt;
+    use std::path::Path;
+
+    /// ext4/f2fs per-directory case folding (`chattr +F`)
+    const FS_CASEFOLD_FL: libc::c_long = 0x4000_0000;
+    /// How many entries to try before falling back to the file-system type
+    const PROBE_LIMIT: usize = 32;
+    /// statfs `f_type` of file systems that ignore case by default: vfat,
+    /// exFAT, CIFS, SMB2 and SMB1
+    const CASE_INSENSITIVE_TYPES: [i64; 5] = [0x4d44, 0x2011_bab0, 0xff53_4d42, 0xfe53_4d42, 0x517b];
+
+    pub(super) fn case_insensitive(dir: &Path) -> bool {
+        if has_casefold_flag(dir) {
+            return true;
+        }
+
+        let names = std::fs::read_dir(dir).into_iter().flatten().filter_map(Result::ok).map(|entry| entry.file_name());
+        let identity =
+            |name: &OsStr| std::fs::symlink_metadata(dir.join(name)).ok().map(|m| (m.dev(), m.ino(), m.nlink()));
+        probe(names, identity).unwrap_or_else(|| case_insensitive_type(dir))
+    }
+
+    fn has_casefold_flag(dir: &Path) -> bool {
+        let Ok(file) = std::fs::File::open(dir) else {
+            return false;
+        };
+        let mut flags: libc::c_long = 0;
+        let fd = std::os::fd::AsRawFd::as_raw_fd(&file);
+        unsafe { libc::ioctl(fd, libc::FS_IOC_GETFLAGS, &raw mut flags) == 0 && flags & FS_CASEFOLD_FL != 0 }
+    }
+
+    fn case_insensitive_type(dir: &Path) -> bool {
+        let Ok(path) = std::ffi::CString::new(dir.as_os_str().as_bytes()) else {
+            return false;
+        };
+        let mut stat: libc::statfs = unsafe { std::mem::zeroed() };
+        let ok = unsafe { libc::statfs(path.as_ptr(), &raw mut stat) } == 0;
+        // f_type is signed on some targets: compare its low 32 bits
+        ok && CASE_INSENSITIVE_TYPES.contains(&i64::from(stat.f_type as u32))
+    }
+
+    /// `name` with its ASCII letters' case swapped; `None` without letters.
+    fn swapped_case(name: &OsStr) -> Option<OsString> {
+        let bytes = name.as_bytes();
+        bytes.iter().any(u8::is_ascii_alphabetic).then(|| {
+            let swapped = bytes
+                .iter()
+                .map(|b| {
+                    if b.is_ascii_uppercase() {
+                        b.to_ascii_lowercase()
+                    } else {
+                        b.to_ascii_uppercase()
+                    }
+                })
+                .collect();
+            OsString::from_vec(swapped)
+        })
+    }
+
+    /// Looks entries up under another case: missing or another file means
+    /// case-sensitive, the same file case-insensitive. `identity` gives an
+    /// entry's (device, inode, link count); a hard-linked entry proves
+    /// nothing, as its other spelling may be another link. `None` when no
+    /// entry decides.
+    pub(super) fn probe(
+        names: impl Iterator<Item = OsString>,
+        identity: impl Fn(&OsStr) -> Option<(u64, u64, u64)>,
+    ) -> Option<bool> {
+        for name in names.take(PROBE_LIMIT) {
+            let Some(swapped) = swapped_case(&name) else {
+                continue;
+            };
+            let Some((dev, ino, links)) = identity(&name) else {
+                continue;
+            };
+            match identity(&swapped) {
+                None => return Some(false),
+                Some((other_dev, other_ino, _)) if (other_dev, other_ino) != (dev, ino) => return Some(false),
+                Some(_) if links == 1 => return Some(true),
+                Some(_) => {}
+            }
+        }
+        None
     }
 }
 
@@ -363,6 +504,22 @@ pub fn copy_directory(source: &str, destination: &str, preserve_symlinks: bool) 
 /// Port of `Directory.Move`/`File.Move` (same-directory renames and
 /// cross-directory moves).
 pub fn move_path(source: &str, dest: &str) -> Result<(), std::io::Error> {
+    std::fs::rename(source, dest)
+}
+
+/// Renames `source` to `dest`, a spelling of the same name in another
+/// case. Linux (Rust-only): `rename()` does nothing when both names are the
+/// same file, as on a FAT volume, so the entry goes through a temporary
+/// name. Windows and macOS change the case in place.
+pub fn rename_case(source: &str, dest: &str) -> Result<(), std::io::Error> {
+    if cfg!(target_os = "linux") {
+        let temp = format!("{source}.wade-rename-{}", std::process::id());
+        std::fs::rename(source, &temp)?;
+        return std::fs::rename(&temp, dest).inspect_err(|_| {
+            let _ = std::fs::rename(&temp, source);
+        });
+    }
+
     std::fs::rename(source, dest)
 }
 
@@ -699,6 +856,76 @@ mod tests {
             typed("dir/FILE.TXT")
         };
         assert_eq!(on_disk_case(&typed("dir/FILE.TXT")), expected);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_probe_decides_by_looking_up_another_case() {
+        use std::ffi::{OsStr, OsString};
+
+        // (device, inode, links) by exact name
+        let lookup = |files: &'static [(&'static str, u64, u64)]| {
+            move |name: &OsStr| {
+                files.iter().find(|(n, ..)| OsStr::new(n) == name).map(|&(_, ino, links)| (1, ino, links))
+            }
+        };
+        let names = |list: &[&str]| list.iter().map(OsString::from).collect::<Vec<_>>().into_iter();
+        let probe = super::linux_case::probe;
+
+        // Case-sensitive: the other spelling is missing, or another file
+        assert_eq!(probe(names(&["a.txt"]), lookup(&[("a.txt", 1, 1)])), Some(false));
+        assert_eq!(probe(names(&["a.txt"]), lookup(&[("a.txt", 1, 1), ("A.TXT", 2, 1)])), Some(false));
+        // Case-insensitive: the other spelling is the same file
+        assert_eq!(probe(names(&["a.txt"]), lookup(&[("a.txt", 1, 1), ("A.TXT", 1, 1)])), Some(true));
+        // Names without letters and hard links prove nothing
+        assert_eq!(probe(names(&["123", "a.txt"]), lookup(&[("123", 3, 1), ("a.txt", 1, 2), ("A.TXT", 1, 2)])), None);
+        assert_eq!(
+            probe(names(&["a.txt", "b"]), lookup(&[("a.txt", 1, 2), ("A.TXT", 1, 2), ("b", 4, 1)])),
+            Some(false),
+            "the next entry decides"
+        );
+        assert_eq!(probe(names(&[]), lookup(&[])), None);
+    }
+
+    /// Linux: a FAT volume (CI mounts one) is case-insensitive, by lookup
+    /// and, for an empty folder, by type.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_fat_volume_is_case_insensitive() {
+        let Some(fat) = crate::app::test_support::linux_fat_dir() else {
+            return;
+        };
+        let dir = fat.join(format!("case-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        assert!(names_case_insensitive(&dir), "empty folder: by file-system type");
+        std::fs::write(dir.join("Notes.txt"), "x").unwrap();
+        assert!(names_case_insensitive(&dir), "by lookup");
+        assert_eq!(find_name(["Notes.txt"], "NOTES.TXT", &dir), Some(0));
+        assert!(same_dir_path(&p(&dir), &p(&dir).to_uppercase().replace(&p(&fat).to_uppercase(), &p(&fat))));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Windows: a folder with NTFS per-directory case sensitivity holds
+    /// names that differ only in case, and they are not matched by folding.
+    #[cfg(windows)]
+    #[test]
+    fn windows_case_sensitive_folder_is_detected() {
+        let dir = temp_dir("case-sensitive-dir");
+        assert!(names_case_insensitive(&dir), "the default");
+
+        let enabled = std::process::Command::new("fsutil.exe")
+            .args(["file", "setCaseSensitiveInfo", &p(&dir), "enable"])
+            .output()
+            .expect("run fsutil");
+        assert!(enabled.status.success(), "fsutil: {}", String::from_utf8_lossy(&enabled.stdout));
+
+        assert!(!names_case_insensitive(&dir));
+        std::fs::write(dir.join("a.txt"), "lower").unwrap();
+        std::fs::write(dir.join("A.txt"), "upper").unwrap();
+        assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "lower", "two files");
+        assert_eq!(find_name(["a.txt", "A.txt"], "A.TXT", &dir), None);
+        assert_eq!(find_name(["a.txt", "A.txt"], "A.txt", &dir), Some(1));
     }
 
     #[test]

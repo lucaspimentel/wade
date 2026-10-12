@@ -138,19 +138,14 @@ backlog.
   freedesktop.org Trash spec (home trash, per-mount `.Trash/$uid` or
   `.Trash-$uid`, no cross-device copies) and `HAS_TRASH` is true on Linux.
   Still to check by hand: restoring from a desktop file manager's Trash
-- [ ] Case-sensitivity detection beyond macOS (`names_case_insensitive` is the
-  single switch; deferred from the macOS pass):
-  - Linux treats every volume as case-sensitive. FAT/exFAT and most SMB
-    mounts are not (case-only rename refused as a conflict, other spellings
-    not matched). Detect by the mount's file-system type, or ext4/f2fs
-    per-directory casefold (`FS_CASEFOLD_FL`)
-  - Windows treats every directory as case-insensitive. NTFS directories
-    with per-directory case sensitivity (WSL-created, or
-    `fsutil file setCaseSensitiveInfo`) are not; detect with
-    `GetFileInformationByHandleEx(FileCaseSensitiveInfo)`
-  - `on_disk_case` matches names by case only; APFS also ignores Unicode
-    normalization (NFC vs NFD), so differently normalized names are not
-    matched
+- [x] Case-sensitivity detection beyond macOS (`names_case_insensitive`):
+  Windows reads the NTFS per-directory flag (`FileCaseSensitiveInfo`);
+  Linux checks the casefold flag, then looks an entry up under swapped
+  case, then the file-system type. CI mounts a FAT volume on Linux and
+  sets a case-sensitive folder with `fsutil` on Windows
+- [ ] APFS ignores Unicode normalization (NFC vs NFD); `on_disk_case` and
+  `find_name` match by case only, so differently normalized names are not
+  matched
 - [ ] Manual macOS checks (need a real terminal): keyboard and Option-key
   input, mouse, resize, kitty/iTerm2/Sixel images, clipboard round trip with
   Finder, open with the default app, Trash and Terminal/iTerm launch, the

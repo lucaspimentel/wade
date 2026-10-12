@@ -512,6 +512,35 @@ fn f2_changes_only_the_case_of_a_file_and_a_directory() {
     let _ = std::fs::remove_dir_all(&parent);
 }
 
+/// Linux: on a FAT volume a case-only rename is a rename of the entry
+/// itself, and the renamed entry stays selected.
+#[cfg(target_os = "linux")]
+#[test]
+fn f2_changes_only_the_case_on_a_linux_fat_volume() {
+    let Some(fat) = super::test_support::linux_fat_dir() else {
+        return;
+    };
+    let (parent, root) = super::test_support::fixture_under(&fat);
+    let mut app = app_at(
+        AppConfig {
+            git_status_enabled: false,
+            ..AppConfig::default()
+        },
+        &root,
+    );
+    assert!(crate::fs::file_operations::names_case_insensitive(&root));
+
+    rename(&mut app, "b.txt", "B.TXT");
+    assert_eq!(notification(&app), "Renamed to 'B.TXT'");
+    let names: Vec<String> = std::fs::read_dir(&root)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert!(names.contains(&"B.TXT".to_string()) && !names.contains(&"b.txt".to_string()), "{names:?}");
+    assert_eq!(selected_name(&mut app), "B.TXT");
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
 #[test]
 fn f2_to_another_entry_differing_only_in_case_is_refused_on_case_sensitive_volumes() {
     let (mut app, parent, root) = app();

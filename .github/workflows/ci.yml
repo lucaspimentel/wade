@@ -40,6 +40,17 @@ jobs:
       working-directory: src/wade-rs
       run: cargo fmt --check
 
+    # Case-insensitive folder tests (WADE_TEST_FAT_DIR) need a FAT volume
+    - name: Mount a FAT volume
+      if: runner.os == 'Linux'
+      run: |
+        command -v mkfs.vfat || (sudo apt-get update && sudo apt-get install -y dosfstools)
+        truncate -s 32M "$RUNNER_TEMP/fat.img"
+        mkfs.vfat "$RUNNER_TEMP/fat.img"
+        mkdir "$RUNNER_TEMP/fat"
+        sudo mount -o loop,uid="$(id -u)",gid="$(id -g)" "$RUNNER_TEMP/fat.img" "$RUNNER_TEMP/fat"
+        echo "WADE_TEST_FAT_DIR=$RUNNER_TEMP/fat" >> "$GITHUB_ENV"
+
     - name: Build
       working-directory: src/wade-rs
       run: cargo build --locked

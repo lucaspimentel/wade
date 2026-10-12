@@ -557,7 +557,9 @@ impl App {
         // path of `foo` -> `Foo` "exists" because it is the entry being renamed
         let case_only = new_name.to_lowercase() == old_name.to_lowercase()
             && crate::fs::file_operations::names_case_insensitive(std::path::Path::new(&parent));
-        let result = if !case_only && std::path::Path::new(&new_path).symlink_metadata().is_ok() {
+        let result = if case_only {
+            crate::fs::file_operations::rename_case(&target, &new_path)
+        } else if std::path::Path::new(&new_path).symlink_metadata().is_ok() {
             Err(std::io::Error::other("cannot rename to an existing path"))
         } else {
             crate::fs::file_operations::move_path(&target, &new_path)

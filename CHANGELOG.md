@@ -21,6 +21,8 @@
 - Linux/macOS: emoji and other characters beyond U+FFFF typed into the filter, rename and other text boxes arrive intact
 - Text boxes draw wide characters (CJK, emoji) two columns wide instead of overwriting their second half
 - Linux/macOS: SIGTERM and SIGHUP (closing the terminal, `kill`) restore the terminal before wade exits, instead of leaving it in raw mode on the alternate screen; the exit status is 128 + the signal and no cwd file is written
+- Linux: case-insensitive folders (FAT, exFAT, SMB, WSL's `/mnt/c`, ext4 casefold) are detected: a case-only rename works instead of failing as "cannot rename to an existing path", and names match whatever case was typed
+- Windows: folders with per-directory case sensitivity (created by WSL, or `fsutil file setCaseSensitiveInfo`) are treated as case-sensitive: renaming `a.txt` to `A.txt` when both exist is refused instead of replacing the other file, and names are matched exactly
 - Windows: pasting several lines no longer presses Enter between them (in the file list that opened the selected item); line breaks and tabs inside a paste stay part of it
 
 ### Removed

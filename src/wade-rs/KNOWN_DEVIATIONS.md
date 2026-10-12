@@ -415,7 +415,27 @@ None. Phase 9 closed the last temporary entries.
   (after a refresh, create/rename, going up, go-to-path on a file), picks
   the left-pane highlight, or checks a file-system event's directory. Rust
   prefers the exact name and folds case (Unicode) only where the volume is
-  case-insensitive, so on Linux `a.txt` and `A.txt` stay distinct.
+  case-insensitive, so on Linux `a.txt` and `A.txt` stay distinct. The
+  start file name and mouse clicks in the side panes follow the same rule.
+- **Case-insensitive folders are detected per folder (Rust-only).** C#
+  treats Windows as case-insensitive and Unix as case-sensitive everywhere.
+  Rust asks each folder (`names_case_insensitive`), which decides case-only
+  renames, re-selection, and paste's same-folder and own-subtree checks:
+  - Windows: case-insensitive unless the folder has NTFS per-directory case
+    sensitivity (WSL-created folders, `fsutil file setCaseSensitiveInfo`),
+    read with `GetFileInformationByHandleEx(FileCaseSensitiveInfo)`.
+  - Linux: case-insensitive when the folder has the ext4/f2fs casefold flag
+    (`chattr +F`), or when an entry looked up under swapped ASCII case is
+    the same file (FAT, exFAT, SMB, WSL's drvfs, without a table of mount
+    types). A missing or different file means case-sensitive; a hard-linked
+    entry proves nothing. A folder with no deciding entry falls back to the
+    file-system type (vfat, exFAT, CIFS/SMB). A case-only rename there goes
+    through a temporary name, since `rename()` does nothing when both names
+    are the same file.
+  - Saved paths (bookmarks, sorts) are still respelled as stored on disk
+    only on macOS, and only per volume there.
+  - APFS also ignores Unicode normalization (NFC vs NFD); names that
+    differ only in normalization are still not matched.
 - **One path key for bookmarks and saved sorts (Rust-only).** Both compare
   paths with full Unicode case folding on Windows and exactly elsewhere;
   C#'s bookmarks fold ordinally (ASCII-style), so non-ASCII bookmarks that
