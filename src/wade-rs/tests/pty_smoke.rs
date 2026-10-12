@@ -16,6 +16,12 @@ const TIMEOUT: Duration = Duration::from_secs(15);
 
 const DOWN: &str = "\x1b[B";
 const ENTER: &str = "\r";
+const ESC: &str = "\x1b";
+/// Backspace as most terminals send it (DEL), and as some send it (BS)
+const BACKSPACE_DEL: &str = "\x7f";
+const BACKSPACE_BS: &str = "\x08";
+#[cfg(unix)]
+const QUIT_HINT: &str = "Press q to quit";
 
 fn temp_dir(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("wade-pty-{}-{name}", std::process::id()));
@@ -42,6 +48,17 @@ fn fixture(name: &str) -> (PathBuf, PathBuf) {
 /// (the status bar path is no help: long temp paths get cut off).
 fn beta_opened(screen: &vt100::Screen) -> bool {
     screen.rows(0, COLS).next().is_some_and(|row| row.contains("inside_beta.txt"))
+}
+
+/// The status bar's "selected/total" counter, such as "2/3".
+fn counter(screen: &vt100::Screen, position: &str) -> bool {
+    screen.rows(0, COLS).last().is_some_and(|row| row.trim_end().ends_with(position))
+}
+
+/// The control character for Ctrl+`letter`.
+#[cfg(unix)]
+fn ctrl(letter: char) -> String {
+    char::from(letter.to_ascii_uppercase() as u8 - b'@').to_string()
 }
 
 struct Session {
@@ -114,6 +131,42 @@ impl Session {
         let mut writer = self.writer.lock().unwrap();
         writer.write_all(bytes.as_bytes()).unwrap();
         writer.flush().unwrap();
+    }
+
+    /// Writes each part, then sleeps for its delay, so the parts arrive in
+    /// separate reads.
+    fn send_split(&mut self, parts: &[(&str, u64)]) {
+        for (bytes, delay_ms) in parts {
+            self.send(bytes);
+            std::thread::sleep(Duration::from_millis(*delay_ms));
+        }
+    }
+
+    /// Esc on its own: a pause past wade's 50ms wait, so the next key is
+    /// not read as Alt+key (ESC then a character is how terminals send Alt).
+    fn escape(&mut self) {
+        self.send_split(&[(ESC, 150)]);
+    }
+
+    /// A bracketed paste.
+    #[cfg(unix)]
+    fn send_paste(&mut self, text: &str) {
+        self.send(&format!("\x1b[200~{text}\x1b[201~"));
+    }
+
+    /// Waits for `what`, then checks it still holds after a short pause,
+    /// so a later queued event that would undo it gets its chance.
+    fn settles(&mut self, what: &str, done: impl Fn(&vt100::Screen) -> bool) {
+        self.wait_for(what, &done);
+        std::thread::sleep(Duration::from_millis(300));
+        if !done(self.parser.lock().unwrap().screen()) {
+            panic!("{what} did not hold; {}", self.diagnostics());
+        }
+    }
+
+    #[cfg(unix)]
+    fn alive(&mut self) -> bool {
+        self.child.try_wait().unwrap().is_none()
     }
 
     fn screen_text(&self) -> String {
@@ -257,6 +310,214 @@ fn keys_sent_together_are_all_handled() {
 
     wade.send(&format!("{DOWN}{ENTER}"));
     wade.wait_for("beta opened", beta_opened);
+    wade.send("q");
+    wade.wait_for_exit();
+}
+
+/// Alt+j arrives on Unix as ESC j: one Alt key event, which (like any
+/// letter with Alt) does nothing; not Esc followed by j.
+#[cfg(unix)]
+#[test]
+fn alt_letter_is_one_key_not_escape_then_the_letter() {
+    let (home, root) = fixture("alt");
+    let mut wade = Session::start(&home, &root, &[]);
+    wade.wait_for_text("inside_alpha.txt");
+
+    // Alt+j then a plain j: only the plain j moves
+    wade.send("\x1bjj");
+    wade.settles("beta selected, no hint", |screen| counter(screen, "2/3") && !screen.contents().contains(QUIT_HINT));
+    wade.send("q");
+    wade.wait_for_exit();
+}
+
+/// A lone Esc waits 50ms for the rest of a sequence: a sequence split by
+/// a shorter pause is still one key; after a longer pause Esc stands alone.
+#[cfg(unix)]
+#[test]
+fn escape_alone_and_split_sequences_follow_the_wait() {
+    let (home, root) = fixture("esc");
+    let mut wade = Session::start(&home, &root, &[]);
+    wade.wait_for_text("inside_alpha.txt");
+
+    wade.send_split(&[(ESC, 15), ("[B", 0)]);
+    wade.settles("Down from a split sequence", |screen| {
+        counter(screen, "2/3") && !screen.contents().contains(QUIT_HINT)
+    });
+
+    wade.send_split(&[(ESC, 200), ("j", 0)]);
+    wade.settles("Esc, then j", |screen| counter(screen, "3/3") && screen.contents().contains(QUIT_HINT));
+    wade.send("q");
+    wade.wait_for_exit();
+}
+
+/// Starts a rename of `notes.txt` with its name erased; the caller types
+/// or pastes the new name and sends Enter.
+#[cfg(unix)]
+fn start_renaming_notes(wade: &mut Session) {
+    wade.wait_for_text("inside_alpha.txt");
+    wade.send("jj");
+    wade.wait_for_text("hello from notes");
+    wade.send("r");
+    wade.send(&BACKSPACE_DEL.repeat("notes.txt".len()));
+}
+
+/// Waits for `name` to replace `notes.txt` on disk.
+fn wait_for_renamed(wade: &mut Session, root: &Path, name: &str) {
+    let path = root.join(name);
+    wade.wait_for("the file renamed", |_| path.is_file());
+    assert!(!root.join("notes.txt").exists());
+}
+
+/// Typed text longer than one read (64 bytes) arrives whole, even where a
+/// read ends inside a two-byte character. The rename's result on disk shows
+/// every character (the input box is narrower than the text).
+#[cfg(unix)]
+#[test]
+fn typed_text_longer_than_a_read_arrives_whole() {
+    let (home, root) = fixture("long-typing");
+    let mut wade = Session::start(&home, &root, &[]);
+    start_renaming_notes(&mut wade);
+
+    // "a" first, so the 64-byte read boundary falls inside an é
+    let name = format!("a{}.txt", "é".repeat(40));
+    wade.send(&name);
+    wade.send(ENTER);
+    wait_for_renamed(&mut wade, &root, &name);
+    wade.send("q");
+    wade.wait_for_exit();
+}
+
+/// Arrow keys longer than one read: a sequence cut by the read boundary
+/// is joined with the next read, not dropped or typed as letters.
+#[cfg(unix)]
+#[test]
+fn escape_sequences_across_reads_are_joined() {
+    let (home, root) = fixture("many-arrows");
+    let mut wade = Session::start(&home, &root, &[]);
+    wade.wait_for_text("inside_alpha.txt");
+
+    // 31 Downs over three entries (wrapping) end on the second
+    wade.send(&DOWN.repeat(31));
+    wade.settles("beta after 31 Downs", |screen| counter(screen, "2/3"));
+    wade.send("q");
+    wade.wait_for_exit();
+}
+
+/// Characters beyond U+FFFF are typed as themselves.
+#[cfg(unix)]
+#[test]
+fn emoji_typed_into_the_filter_arrive_intact() {
+    let (home, root) = fixture("emoji");
+    let mut wade = Session::start(&home, &root, &[]);
+    wade.wait_for_text("inside_alpha.txt");
+
+    wade.send("/😀x");
+    wade.settles("the emoji in the filter", |screen| screen.contents().contains("/😀x"));
+    wade.escape();
+    wade.send("q");
+    wade.wait_for_exit();
+}
+
+/// Raw mode turns off Ctrl+C and Ctrl+Z as signals: they reach wade as
+/// keys (Ctrl+C clears the filter) and never kill or suspend it.
+#[cfg(unix)]
+#[test]
+fn ctrl_c_and_ctrl_z_are_keys_not_signals() {
+    let (home, root) = fixture("ctrl");
+    let mut wade = Session::start(&home, &root, &[]);
+    wade.wait_for_text("inside_alpha.txt");
+
+    wade.send("/zzz");
+    wade.wait_for("an empty listing", |screen| !screen.contents().contains("notes.txt"));
+    wade.send(&ctrl('c'));
+    wade.settles("the filter cleared", |screen| screen.contents().contains("notes.txt"));
+    assert!(wade.alive());
+
+    wade.escape();
+    wade.send(&ctrl('z'));
+    wade.send("j");
+    wade.settles("still taking keys", |screen| counter(screen, "2/3"));
+    assert!(wade.alive());
+    wade.send("q");
+    assert!(wade.wait_for_exit().success());
+}
+
+#[test]
+fn filter_narrows_the_list_and_escape_clears_it() {
+    let (home, root) = fixture("filter");
+    let mut wade = Session::start(&home, &root, &[]);
+    wade.wait_for_text("inside_alpha.txt");
+
+    wade.send("/not");
+    wade.wait_for("only notes.txt", |screen| {
+        screen.contents().contains("hello from notes") && !screen.contents().contains("alpha")
+    });
+    wade.send(ENTER);
+    wade.settles("the filter applied", |screen| counter(screen, "1/1") && !screen.contents().contains("alpha"));
+    wade.escape();
+    wade.wait_for("the full list back", |screen| counter(screen, "1/3"));
+    wade.send("q");
+    wade.wait_for_exit();
+}
+
+fn rename_notes_with(backspace: &str, name: &str) {
+    let (home, root) = fixture(name);
+    let mut wade = Session::start(&home, &root, &[]);
+    wade.wait_for_text("inside_alpha.txt");
+
+    wade.send("jj");
+    wade.wait_for_text("hello from notes");
+    wade.send("r");
+    wade.send(&backspace.repeat("notes.txt".len()));
+    wade.send("renamed.txt");
+    wade.send(ENTER);
+    wait_for_renamed(&mut wade, &root, "renamed.txt");
+    wade.wait_for_text("renamed.txt");
+    wade.send("q");
+    wade.wait_for_exit();
+}
+
+#[test]
+fn rename_with_backspace_as_del() {
+    rename_notes_with(BACKSPACE_DEL, "rename-del");
+}
+
+#[test]
+fn rename_with_backspace_as_bs() {
+    rename_notes_with(BACKSPACE_BS, "rename-bs");
+}
+
+/// Bracketed paste into the filter: the text is inserted, and a newline
+/// in it is dropped, never Enter.
+#[cfg(unix)]
+#[test]
+fn bracketed_paste_goes_into_the_filter() {
+    let (home, root) = fixture("paste");
+    let mut wade = Session::start(&home, &root, &[]);
+    wade.wait_for_text("inside_alpha.txt");
+
+    wade.send("/");
+    wade.send_paste("no\nt");
+    wade.settles("the pasted filter, still typing", |screen| {
+        screen.contents().contains("/not") && !screen.contents().contains("alpha")
+    });
+    wade.escape();
+    wade.send("q");
+    wade.wait_for_exit();
+}
+
+/// A paste longer than one read arrives whole.
+#[cfg(unix)]
+#[test]
+fn a_long_bracketed_paste_arrives_whole() {
+    let (home, root) = fixture("long-paste");
+    let mut wade = Session::start(&home, &root, &[]);
+    start_renaming_notes(&mut wade);
+
+    let name = format!("{}.txt", "x".repeat(100));
+    wade.send_paste(&name);
+    wade.send(ENTER);
+    wait_for_renamed(&mut wade, &root, &name);
     wade.send("q");
     wade.wait_for_exit();
 }
