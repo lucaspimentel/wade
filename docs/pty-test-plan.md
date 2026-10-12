@@ -3,6 +3,10 @@
 About 20 new scenarios for the PTY smoke tests, in three batches, starting
 with input decoding, where three likely bugs are already visible in the code.
 
+**Status:** Batch 1 is done. It confirmed the three input bugs (A1, A3, A4)
+and found a fourth: text boxes drew wide characters one column wide. All
+four are fixed. A3's mouse-burst case moves to C10. B9 is in Batch 3.
+
 ## Context
 
 `src/wade-rs/tests/pty_smoke.rs` runs the built `wade` binary in a

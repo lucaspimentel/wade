@@ -39,6 +39,8 @@ When an intentional behavior change breaks a frozen fixture, move it to Rust own
 
 - ConPTY asks for the cursor position (`ESC[6n`) at startup and holds all output until it is answered; the harness replies.
 - Prefer checks that don't depend on the temp path: long paths get cut off in the status bar.
+- Send Esc with `Session::escape()`, not `send(ESC)`: ESC followed by a key within 50ms is read as Alt+key.
+- Text longer than a text box scrolls out of view; check it through a result instead (a rename's file name on disk).
 
 ## Shipping
 
@@ -48,7 +50,7 @@ When an intentional behavior change breaks a frozen fixture, move it to Rust own
 
 - **No TUI frameworks**: rendering uses raw VT/ANSI escape sequences only (no crossterm, ratatui); output goes through a diffing `ScreenBuffer`.
 - **Windows console input**: use Win32 `ReadConsoleInput`; do NOT enable `ENABLE_VIRTUAL_TERMINAL_INPUT`. VT processing is output-side only. Mouse uses `ENABLE_MOUSE_INPUT`.
-- **Unix console input**: raw mode on `/dev/tty`. Arrow keys arrive as SS3 sequences (`ESC O A/B/C/D`) in alternate screen mode, not CSI. Mouse uses SGR mouse mode.
+- **Unix console input**: raw mode on `/dev/tty`. Arrow keys arrive as SS3 sequences (`ESC O A/B/C/D`) in alternate screen mode, not CSI. Mouse uses SGR mouse mode. `ESC` + a character is Alt+character; a lone ESC (or a sequence cut by a read) waits 50ms for the rest (`VtParser::has_pending`/`flush`).
 - **Platform separator**: use the platform path separator, not hardcoded `/` or `\`.
 - **Git status**: `git --no-optional-locks -c core.quotepath=false status --porcelain=v1` (`--no-optional-locks` is a global option and must precede the subcommand; it keeps background status from holding `index.lock`).
 - **Avoid `Ctrl+Shift+<key>` keybindings**: Windows Terminal reserves many of them (`C`, `V`, `P`, `W`, `Tab`, etc.) and `Ctrl+Tab`, so they never reach the app.

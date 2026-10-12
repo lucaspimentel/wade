@@ -16,6 +16,10 @@
 ### Fixed
 - Keys typed or pasted faster than the screen redraws are no longer dropped: every queued key, mouse, paste and resize event is handled in order (only the last one of each batch was)
 - macOS: wade no longer hangs at startup or ignores input; it waits on `/dev/tty` with `select()` because macOS `poll()` does not support it
+- Linux/macOS: Alt+letter is read as one Alt key (it acted as Esc followed by the letter, so Alt+j moved down and cleared the marks)
+- Linux/macOS: keys and characters cut by a terminal read (64 bytes) are no longer lost: long typed text, fast arrow-key repeats and the end of a bracketed paste
+- Linux/macOS: emoji and other characters beyond U+FFFF typed into the filter, rename and other text boxes arrive intact
+- Text boxes draw wide characters (CJK, emoji) two columns wide instead of overwriting their second half
 
 ### Removed
 - Remove the C# implementation (`src/Wade`, `src/Wade.Search`); the Rust port in `src/wade-rs` is the only build, and the `install-local-csharp` scripts are gone

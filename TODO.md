@@ -69,7 +69,13 @@ backlog.
   terminal setup and restore, raw key input, resize, `--cwd-file` and
   typeahead. They found two bugs, both fixed: the main loop dropped all but
   the last queued key, and macOS hung at startup (`poll()` on `/dev/tty`)
-- [ ] Still untested: mouse and bracketed paste through the PTY, the real
+- [x] PTY Batch 1 (`docs/pty-test-plan.md`): Alt+letter, the Esc wait,
+  text and sequences across reads, emoji, Ctrl+C/Ctrl+Z, the filter, rename
+  (both Backspace codes) and bracketed paste. Found and fixed four bugs:
+  Alt+letter read as Esc + letter, input cut by a read lost, characters
+  beyond U+FFFF truncated, wide characters drawn one column wide in text
+  boxes
+- [ ] Still untested: mouse through the PTY, the real
   launchers (open with default app, open terminal, cloud download), the
   combined text+image preview event and macOS paths
 - [ ] Manual Windows Terminal checks (need a real console; none are

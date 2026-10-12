@@ -431,3 +431,20 @@ None. Phase 9 closed the last temporary entries.
   capability query blocked in `read()` and the input reader never saw
   input. `input::unix::wait_readable` uses `select()` on every Unix; C#
   blocked in `read()` with VMIN=1.
+- **Unix input: Alt, cut-off sequences, whole characters (Rust-only).**
+  C#'s `VtParser` decoded each read on its own, dropped an escape sequence
+  or UTF-8 character cut by the read boundary (64 bytes), kept only the
+  first UTF-16 unit of a character beyond U+FFFF, and read `ESC x` as
+  Escape then `x`. Rust holds an unfinished tail and joins it with the next
+  read (a lone ESC or a cut-off tail still waits 50ms, then is decoded as
+  it stands), reads `ESC` + a character as that character with Alt (as
+  terminals send Alt), and keeps a paste end marker cut by a read. Esc
+  followed by a key within 50ms is therefore Alt+key, as in other terminal
+  apps. `KeyEvent.key_char` is a `char` instead of a UTF-16 unit; Windows
+  input maps a lone surrogate to U+FFFD (a typed pair still arrives as a
+  paste).
+- **Text boxes measure in columns (Rust-only).** C#'s text input drew one
+  character per column and scrolled by character count, so a wide
+  character's second column was overwritten. Rust uses `rune_width` for
+  drawing and scrolling, and leaves out a wide character that would cross
+  the box's edge.
