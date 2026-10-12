@@ -42,6 +42,7 @@ When an intentional behavior change breaks a frozen fixture, move it to Rust own
 - Send Esc with `Session::escape()`, not `send(ESC)`: ESC followed by a key within 50ms is read as Alt+key.
 - Send file-list keys with `Session::send_keys()`: on Windows several printable keys in one read are taken as a paste (`decode.rs` paste burst), which the file list ignores.
 - Text longer than a text box scrolls out of view; check it through a result instead (a rename's file name on disk).
+- After `Session::resize`, the emulator keeps the old frame until wade redraws (ConPTY usually repaints first, Unix PTYs don't). Wait for something only the new layout has (moved pane borders, cells past the old width) before checking it, or the check can pass on the stale frame.
 - Read terminal modes through the master fd (`MasterPty::as_raw_fd`): macOS revokes a slave opened by the test once wade exits.
 
 ## Shipping
