@@ -55,7 +55,17 @@ fn main() -> ExitCode {
     }
 
     let cwd_file_path = config.cwd_file_path.clone();
-    let final_path = App::new(config).run(&CancelToken::new());
+    let cancel = CancelToken::new();
+    #[cfg(unix)]
+    wade::signals::install(&cancel);
+    let final_path = App::new(config).run(&cancel);
+
+    // Rust only: ended by SIGTERM/SIGHUP (the terminal is restored): the
+    // shell's exit status for that signal, and no cwd file
+    #[cfg(unix)]
+    if let Some(signal) = wade::signals::received() {
+        return ExitCode::from(u8::try_from(128 + signal).unwrap_or(1));
+    }
 
     if let (Some(cwd_file), Some(final_path)) = (cwd_file_path, final_path) {
         // C# silently ignores write failures

@@ -11,6 +11,8 @@ pub mod preview;
 pub mod rune_width;
 pub mod screen;
 pub mod search;
+#[cfg(unix)]
+pub mod signals;
 pub mod terminal_caps;
 #[cfg(windows)]
 pub mod terminal_setup;
