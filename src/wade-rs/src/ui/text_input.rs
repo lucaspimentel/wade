@@ -155,37 +155,41 @@ impl TextInput {
             return;
         }
 
-        let text_len = self.buffer.chars().count() as i32;
+        let chars: Vec<char> = self.buffer.chars().collect();
+        let width_of = |range: std::ops::Range<usize>| -> i32 {
+            chars[range].iter().map(|&ch| crate::rune_width::rune_width(ch) as i32).sum()
+        };
 
-        // Adjust scroll offset to keep cursor visible
-        let cursor = self.cursor_position as i32;
-        if cursor < self.scroll_offset as i32 {
-            self.scroll_offset = self.cursor_position;
-        } else if cursor >= self.scroll_offset as i32 + max_width {
-            self.scroll_offset = (cursor - max_width + 1).max(0) as usize;
+        // Adjust scroll offset to keep the cursor visible. Rust only: in
+        // columns, so wide characters (CJK, emoji) take two (C# counted
+        // characters and drew each in one column)
+        let cursor = self.cursor_position.min(chars.len());
+        if cursor < self.scroll_offset {
+            self.scroll_offset = cursor;
+        }
+        while self.scroll_offset < cursor && width_of(self.scroll_offset..cursor) + 1 > max_width {
+            self.scroll_offset += 1;
         }
 
         let cursor_style = CellStyle { inverse: true, ..style };
-        let scroll = self.scroll_offset as i32;
-        let visible_end = (scroll + max_width).min(text_len);
-        let chars: Vec<char> = self.buffer.chars().collect();
 
-        // Render visible text
+        // Render the visible text
         let mut c = col;
-        for i in scroll..visible_end {
-            let cell_style = if usize::try_from(i).ok() == Some(self.cursor_position) {
-                cursor_style
-            } else {
-                style
-            };
-            buffer.put(row, c, chars[i as usize], cell_style);
-            c += 1;
+        for (i, &ch) in chars.iter().enumerate().skip(self.scroll_offset) {
+            let width = crate::rune_width::rune_width(ch) as i32;
+            if c - col + width > max_width {
+                break;
+            }
+
+            let cell_style = if i == cursor { cursor_style } else { style };
+            buffer.put(row, c, ch, cell_style);
+            c += width;
         }
 
         // Cursor at end of text — render inverse space
-        if cursor >= text_len && cursor >= scroll && cursor - scroll < max_width {
-            buffer.put(row, col + cursor - scroll, ' ', cursor_style);
-            c = c.max(col + cursor - scroll + 1);
+        if cursor == chars.len() && c - col < max_width {
+            buffer.put(row, c, ' ', cursor_style);
+            c += 1;
         }
 
         // Fill remaining width with spaces to clear stale content
@@ -387,5 +391,21 @@ mod tests {
         input.move_cursor_home();
         let (text, _) = rendered(&mut input, 5);
         assert!(text.contains("abcd"), "scrolls back when the cursor moves left");
+    }
+
+    #[test]
+    fn wide_characters_take_two_columns() {
+        let mut buffer = ScreenBuffer::new(20, 3);
+        TextInput::new("a😀日b").render(&mut buffer, 0, 0, 10, STYLE);
+        // a, 😀 + continuation, 日 + continuation, b, the cursor
+        assert_eq!(buffer.row_text(0), "a😀日b ".to_string() + &" ".repeat(13));
+
+        // Scrolling counts columns: the cursor's space plus "日b" fill 4
+        let (text, _) = rendered(&mut TextInput::new("a😀日b"), 4);
+        assert!(text.starts_with("日b "), "{text:?}");
+
+        // A wide character that would cross the edge is left out
+        let (text, _) = rendered(&mut at("ab😀", 0), 3);
+        assert!(text.starts_with("ab "), "{text:?}");
     }
 }
