@@ -485,8 +485,9 @@ pub fn get_drive_entries() -> Vec<FileSystemEntry> {
     list
 }
 
-/// Hidden as wade lists it: a dot prefix, or the Windows HIDDEN attribute.
-/// Shared by the listing, the file finder and path completion.
+/// Hidden as wade lists it: a dot prefix, the Windows HIDDEN attribute, or
+/// the macOS `UF_HIDDEN` flag (`chflags hidden`, as Finder hides `~/Library`).
+/// Shared by the listing, the file finder, path completion and Properties.
 #[must_use]
 pub fn is_hidden_entry(name: &str, metadata: Option<&std::fs::Metadata>) -> bool {
     if name.starts_with('.') {
@@ -497,6 +498,12 @@ pub fn is_hidden_entry(name: &str, metadata: Option<&std::fs::Metadata>) -> bool
     if let Some(metadata) = metadata {
         const FILE_ATTRIBUTE_HIDDEN: u32 = 0x0002;
         return metadata.file_attributes() & FILE_ATTRIBUTE_HIDDEN != 0;
+    }
+
+    #[cfg(target_os = "macos")]
+    if let Some(metadata) = metadata {
+        use std::os::macos::fs::MetadataExt;
+        return metadata.st_flags() & libc::UF_HIDDEN != 0;
     }
 
     let _ = metadata;
@@ -617,7 +624,7 @@ pub fn capitalize_drive_letter(path: &str) -> String {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
     #[test]
@@ -846,6 +853,33 @@ mod tests {
             unsafe { windows_sys::Win32::Storage::FileSystem::SetFileAttributesW(wide.as_ptr(), attributes) },
             0
         );
+    }
+
+    /// `chflags hidden`: sets the macOS `UF_HIDDEN` flag.
+    #[cfg(target_os = "macos")]
+    pub(crate) fn chflags_hidden(path: &Path) {
+        let status = std::process::Command::new("chflags").arg("hidden").arg(path).status().unwrap();
+        assert!(status.success(), "chflags hidden {}", path.display());
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn uf_hidden_entries_are_hidden() {
+        let root = test_dir("ufhidden");
+        std::fs::create_dir(root.join("HiddenDir")).unwrap();
+        std::fs::write(root.join("hidden.txt"), "x").unwrap();
+        std::fs::write(root.join("normal.txt"), "x").unwrap();
+        chflags_hidden(&root.join("HiddenDir"));
+        chflags_hidden(&root.join("hidden.txt"));
+
+        let metadata = std::fs::symlink_metadata(root.join("hidden.txt")).unwrap();
+        assert!(is_hidden_entry("hidden.txt", Some(&metadata)));
+        let metadata = std::fs::symlink_metadata(root.join("normal.txt")).unwrap();
+        assert!(!is_hidden_entry("normal.txt", Some(&metadata)));
+
+        let path = root.to_string_lossy().into_owned();
+        assert_eq!(names(&load_entries(&path, false, false, None)), ["normal.txt"]);
+        assert_eq!(names(&load_entries(&path, true, false, None)), ["HiddenDir", "hidden.txt", "normal.txt"]);
     }
 
     #[cfg(windows)]

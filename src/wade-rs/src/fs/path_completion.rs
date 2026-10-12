@@ -192,6 +192,18 @@ mod tests {
         assert!(get_suggestion(&input, true, false).is_some());
     }
 
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn uf_hidden_gating() {
+        let dir = temp_dir("uf-hidden");
+        std::fs::File::create(dir.join("secret.txt")).expect("touch");
+        crate::fs::directory_contents::tests::chflags_hidden(&dir.join("secret.txt"));
+
+        let input = format!("{}{}s", dir.to_string_lossy(), std::path::MAIN_SEPARATOR);
+        assert!(get_suggestion(&input, false, false).is_none());
+        assert!(get_suggestion(&input, true, false).is_some_and(|s| s.ends_with("secret.txt")));
+    }
+
     fn home() -> String {
         std::env::var_os("USERPROFILE")
             .or_else(|| std::env::var_os("HOME"))

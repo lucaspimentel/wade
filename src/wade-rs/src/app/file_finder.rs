@@ -922,6 +922,30 @@ mod tests {
         assert!(position(&entries, "grandchild") < position(&entries, "deep.txt"));
     }
 
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn scan_skips_uf_hidden_entries_when_show_hidden_false() {
+        let root = test_root("uf-hidden");
+        std::fs::create_dir(root.join("HiddenDir")).unwrap();
+        touch(&root.join("HiddenDir").join("inside.txt"));
+        touch(&root.join("hidden.txt"));
+        touch(&root.join("visible.txt"));
+        crate::fs::directory_contents::tests::chflags_hidden(&root.join("HiddenDir"));
+        crate::fs::directory_contents::tests::chflags_hidden(&root.join("hidden.txt"));
+
+        let (hidden_off, _) = scan(&root, false, &CancelToken::new());
+        let (hidden_on, _) = scan(&root, true, &CancelToken::new());
+        let _ = std::fs::remove_dir_all(&root);
+
+        let names = |entries: &[FileSystemEntry]| {
+            let mut names: Vec<String> = entries.iter().map(|e| e.name.clone()).collect();
+            names.sort();
+            names
+        };
+        assert_eq!(names(&hidden_off), ["visible.txt"]);
+        assert_eq!(names(&hidden_on), ["HiddenDir", "hidden.txt", "inside.txt", "visible.txt"]);
+    }
+
     #[test]
     fn scan_skips_hidden_files_when_show_hidden_false() {
         let root = test_root("hidden-off");

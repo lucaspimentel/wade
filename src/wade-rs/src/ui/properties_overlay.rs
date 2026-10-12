@@ -534,12 +534,10 @@ fn format_unix_attributes(entry: &FileSystemEntry, metadata: &std::fs::Metadata)
         flags_parts.push("ReadOnly");
     }
 
-    // .NET reports FileAttributes.Hidden on Unix for dot-prefixed names
-    if std::path::Path::new(&entry.full_path)
-        .file_name()
-        .and_then(|name| name.to_str())
-        .is_some_and(|name| name.starts_with('.'))
-    {
+    // .NET reports FileAttributes.Hidden on Unix for dot-prefixed names;
+    // Rust also for the macOS UF_HIDDEN flag
+    let name = std::path::Path::new(&entry.full_path).file_name().and_then(|name| name.to_str()).unwrap_or("");
+    if crate::fs::directory_contents::is_hidden_entry(name, Some(metadata)) {
         flags_parts.push("Hidden");
     }
 
@@ -869,6 +867,18 @@ mod tests {
         let path = root.join(".env");
         std::fs::write(&path, "x").unwrap();
         let output = render_text(120, 30, &entry(".env", &path.to_string_lossy(), false, 1), None);
+        let _ = std::fs::remove_dir_all(&root);
+        assert!(output.contains("Hidden"), "{output}");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_uf_hidden_file_reports_hidden() {
+        let root = test_root("uf-hidden");
+        let path = root.join("plain.txt");
+        std::fs::write(&path, "x").unwrap();
+        crate::fs::directory_contents::tests::chflags_hidden(&path);
+        let output = render_text(120, 30, &entry("plain.txt", &path.to_string_lossy(), false, 1), None);
         let _ = std::fs::remove_dir_all(&root);
         assert!(output.contains("Hidden"), "{output}");
     }

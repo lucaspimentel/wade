@@ -178,6 +178,11 @@ None. Phase 9 closed the last temporary entries.
   right pane blank. Its `ClearPreviewCache` drops the preview context and
   the empty metadata provider list that the message branch checks, and Rust
   keeps them.
+- **macOS `UF_HIDDEN` files are hidden (Rust-only).** .NET treats only
+  dot-prefixed names as hidden on Unix. Rust also hides entries with the
+  `UF_HIDDEN` flag (`chflags hidden`), as Finder does: `~/Library`, and
+  `/bin`, `/usr` and the other system folders at `/`. The flag of a symlink
+  itself counts, not its target's.
 - **The preview pane says why a preview is missing (Rust-only).**
   - With `file_previews_enabled` off, a dim `[file previews off]` line shows
     below the metadata, or alone when metadata is off too (C# showed only

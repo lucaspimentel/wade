@@ -103,10 +103,10 @@ backlog.
   detection (`statfs`, `diskutil`), Trash on delete, Terminal/iTerm for
   "open terminal here" and `/Volumes` as the drive list; fixed the watcher
   missing the removal of a directory reached through a symlink
-- [ ] macOS hidden flag: treat files with `UF_HIDDEN` set (`chflags hidden`,
-  e.g. `~/Library`) as hidden, like Finder. Read `st_flags & UF_HIDDEN` in
-  `directory_contents::is_hidden_entry` (shared by the listing, the file
-  finder and path completion)
+- [x] macOS hidden flag: files with `UF_HIDDEN` set (`chflags hidden`,
+  e.g. `~/Library`) are hidden, like Finder. `directory_contents::is_hidden_entry`
+  reads `st_flags & UF_HIDDEN` (shared by the listing, the file finder, path
+  completion and the Properties overlay)
 - [ ] Linux Trash on delete (Rust-only): non-permanent delete is permanent on
   Linux, while Windows uses the Recycle Bin and macOS the
   Trash. Implement the freedesktop.org Trash spec (move into
