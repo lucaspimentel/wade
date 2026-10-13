@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-13
+
 ### Added
 - Image previews inside tmux (3.3+) with `allow-passthrough` on: kitty, iTerm2 and Sixel images reach the outer terminal, chosen by what tmux reports about it; Sixel that tmux shows itself works without passthrough
 - Linux: Delete moves files and folders to the Trash (freedesktop.org spec: `~/.local/share/Trash`, or the drive's own `.Trash-$uid` on other mounts) instead of deleting them permanently; Shift+Delete still deletes permanently
