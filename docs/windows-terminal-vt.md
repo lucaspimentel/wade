@@ -52,3 +52,8 @@ was off by the same factor.
   key records as `CSI Vk;Sc;Uc;Kd;Cs;Rc _` to keep it.
 - The console host still needs the `ReadConsoleInput` path, so VT input
   would add a second Windows input path, not replace the first.
+- ConPTY always writes `CSI ?9001h` to the terminal at startup, so Windows
+  Terminal already sends keys as win32-input-mode sequences and ConPTY turns
+  them back into key records: `ReadConsoleInput` gets full key detail as is.
+  A full VT input switch would only add bracketed paste, so it is not planned
+  (TODO.md, "Windows Terminal VT input mode").

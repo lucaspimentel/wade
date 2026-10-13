@@ -290,11 +290,13 @@ Research and implement image previews for Office Open XML formats (`.docx`, `.xl
 - [x] Support paste in text input fields (file finder, filter, go-to-path, rename dialog). Unix: bracketed paste mode (`ESC[200~` ... `ESC[201~`). Windows: heuristic batch detection from `ReadConsoleInput`.
 - [x] Support word-navigation shortcuts in text input fields: `Ctrl+Left`/`Ctrl+Right` to skip words, `Ctrl+Backspace` to delete previous word.
 
-### Windows Terminal VT input mode
+### ~~Windows Terminal VT input mode~~ (Won't do)
 
-Investigate enabling `ENABLE_VIRTUAL_TERMINAL_INPUT` on Windows Terminal (detected via `WT_SESSION`) to get proper bracketed paste and modifier key support via VT sequences instead of structured `ReadConsoleInput` records. This would unify the input pipeline with Unix but requires significant refactoring of `WindowsInputSource`.
+Investigated enabling `ENABLE_VIRTUAL_TERMINAL_INPUT` under Windows Terminal. Not worth it; see `docs/windows-terminal-vt.md`:
 
-- [x] Query replies (cell size, DA1): not needed. Windows Terminal's cell size reply is a fixed 10x20, now used without asking; see `docs/windows-terminal-vt.md`. What's left is paste and modifier keys, which `ReadConsoleInput` already mostly covers.
+- Query replies: not needed. Windows Terminal's cell size reply is a fixed 10x20, now used without asking.
+- Modifier keys: already complete. ConPTY turns on win32-input-mode (`CSI ?9001h`) in Windows Terminal and turns its sequences back into key records, so `ReadConsoleInput` gets every key.
+- Bracketed paste is the only gain, and the paste-burst heuristic covers normal pastes. It would cost a second Windows input path (the console host still needs `ReadConsoleInput`) and win32-input-mode parsing in `VtParser` to keep the keys.
 
 ### ~~File previews longer than 100 lines~~ (Done in Rust)
 
