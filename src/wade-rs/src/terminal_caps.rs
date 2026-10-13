@@ -211,6 +211,25 @@ impl TerminalCapabilities {
     }
 }
 
+/// Windows: capabilities without queries (key records carry no replies).
+/// Windows Terminal (`WT_SESSION`) shows Sixel since v1.22 and lays images
+/// out on a fixed virtual 10x20 cell (`SixelParser::CellSizeForLevel`, its
+/// `CSI 16t` reply), whatever the font. Rust-only: WezTerm on Windows
+/// (`TERM_PROGRAM`) shows iTerm2 inline images.
+#[must_use]
+pub fn windows_capabilities(wt_session: bool, term_program: Option<&str>) -> TerminalCapabilities {
+    let mut caps = TerminalCapabilities {
+        iterm_images: iterm_from_term_program(term_program),
+        ..TerminalCapabilities::DEFAULT
+    };
+    if wt_session {
+        caps.sixel_supported = true;
+        caps.cell_pixel_width = 10;
+        caps.cell_pixel_height = 20;
+    }
+    caps
+}
+
 /// Terminals that answer the graphics query and also support Unicode
 /// placeholders (WezTerm and Konsole answer the query but don't).
 fn is_placeholder_terminal(name: &str) -> bool {
@@ -330,6 +349,15 @@ mod tests {
         assert_eq!((caps.sixel_supported, caps.cell_pixel_width, caps.cell_pixel_height), (true, 9, 18));
 
         assert_eq!(Caps::parse_query_responses(b"\x1b[1;2;3t"), Caps::DEFAULT);
+    }
+
+    #[test]
+    fn windows_terminal_has_sixel_on_a_10x20_cell() {
+        let wt = super::windows_capabilities(true, None);
+        assert_eq!((wt.sixel_supported, wt.cell_pixel_width, wt.cell_pixel_height), (true, 10, 20));
+        assert_eq!(super::windows_capabilities(false, None), Caps::DEFAULT);
+        let wezterm = super::windows_capabilities(false, Some("WezTerm"));
+        assert_eq!(wezterm, Caps { iterm_images: true, ..Caps::DEFAULT });
     }
 
     const KITTY_OK: &[u8] = b"\x1b_Gi=31;OK\x1b\\";

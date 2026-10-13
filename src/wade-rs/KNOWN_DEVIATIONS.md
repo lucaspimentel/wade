@@ -64,6 +64,12 @@ None. Phase 9 closed the last temporary entries.
   without .NET's introsort tie order, so Sixel bytes differ from C#.
   Fit size (never upscaled), labels, layout and when the Sixel is written
   match C#; exact pixels were judged unnecessary for previews.
+- **Windows Terminal images use a 10x20 cell (Rust-only).** C# used the
+  8x16 default on Windows, where query replies can't be read. Windows
+  Terminal (1.22+) lays Sixel out on a fixed virtual 10x20 cell, its
+  `CSI 16t` reply whatever the font, so 8x16 drew images at 80% of the
+  pane. Under `WT_SESSION` wade uses 10x20 without asking. VT input stays
+  off: see `docs/windows-terminal-vt.md`.
 - **PDF previews clean up their temp directory; pdfinfo dates stay raw
   (Phase 8d).** C# deletes the rendered PNG but leaves its
   `wade-pdf-*` directory behind; Rust removes the directory. C# reformats

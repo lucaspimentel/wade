@@ -103,17 +103,12 @@ impl TerminalSetup {
             SetConsoleMode(stdin_handle, input_mode);
         }
 
-        // Windows Terminal supports Sixel since v1.22; detect via WT_SESSION.
-        // Cell pixel size uses defaults (8x16) since VT input is disabled and
-        // cell-size queries never come back through ReadConsoleInput.
-        let wt_session = std::env::var_os("WT_SESSION").is_some();
-        let capabilities = TerminalCapabilities {
-            sixel_supported: wt_session,
-            // Rust-only: WezTerm on Windows shows iTerm2 inline images
-            iterm_images: crate::terminal_caps::iterm_from_term_program(std::env::var("TERM_PROGRAM").ok().as_deref()),
-            tmux: None,
-            ..TerminalCapabilities::DEFAULT
-        };
+        // No queries: VT input is off, so replies never come back through
+        // ReadConsoleInput
+        let capabilities = crate::terminal_caps::windows_capabilities(
+            std::env::var_os("WT_SESSION").is_some(),
+            std::env::var("TERM_PROGRAM").ok().as_deref(),
+        );
 
         save_console_title();
         write_out(&[

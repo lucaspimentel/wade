@@ -52,7 +52,7 @@ When an intentional behavior change breaks a frozen fixture, move it to Rust own
 ## Key Conventions
 
 - **No TUI frameworks**: rendering uses raw VT/ANSI escape sequences only (no crossterm, ratatui); output goes through a diffing `ScreenBuffer`.
-- **Windows console input**: use Win32 `ReadConsoleInput`; do NOT enable `ENABLE_VIRTUAL_TERMINAL_INPUT`. VT processing is output-side only. Mouse uses `ENABLE_MOUSE_INPUT`.
+- **Windows console input**: use Win32 `ReadConsoleInput`; do NOT enable `ENABLE_VIRTUAL_TERMINAL_INPUT`. VT processing is output-side only. Mouse uses `ENABLE_MOUSE_INPUT`. Query replies never arrive; what Windows Terminal and ConPTY answer, and why it is not needed, is in `docs/windows-terminal-vt.md`.
 - **Unix console input**: raw mode on `/dev/tty`. Arrow keys arrive as SS3 sequences (`ESC O A/B/C/D`) in alternate screen mode, not CSI. Mouse uses SGR mouse mode. `ESC` + a character is Alt+character; a lone ESC (or a sequence cut by a read) waits 50ms for the rest (`VtParser::has_pending`/`flush`).
 - **Platform separator**: use the platform path separator, not hardcoded `/` or `\`.
 - **Git status**: `git --no-optional-locks -c core.quotepath=false status --porcelain=v1` (`--no-optional-locks` is a global option and must precede the subcommand; it keeps background status from holding `index.lock`).

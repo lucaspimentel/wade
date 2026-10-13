@@ -22,6 +22,7 @@
 - Linux/macOS: emoji and other characters beyond U+FFFF typed into the filter, rename and other text boxes arrive intact
 - Text boxes draw wide characters (CJK, emoji) two columns wide instead of overwriting their second half
 - Linux/macOS: SIGTERM and SIGHUP (closing the terminal, `kill`) restore the terminal before wade exits, instead of leaving it in raw mode on the alternate screen; the exit status is 128 + the signal and no cwd file is written
+- Windows Terminal: image previews fill the pane: images are laid out on Windows Terminal's 10x20 Sixel cell instead of 8x16, which drew them at 80% of the size and off-center in the full-screen preview
 - Linux: case-insensitive folders (FAT, exFAT, SMB, WSL's `/mnt/c`, ext4 casefold) are detected: a case-only rename works instead of failing as "cannot rename to an existing path", and names match whatever case was typed
 - Windows: folders with per-directory case sensitivity (created by WSL, or `fsutil file setCaseSensitiveInfo`) are treated as case-sensitive: renaming `a.txt` to `A.txt` when both exist is refused instead of replacing the other file, and names are matched exactly
 - macOS: names with accents match whichever Unicode form they were typed or stored in (NFC or NFD): a path typed into Go to path, bookmarks and saved sorts find the folder, and the renamed or created entry stays selected
