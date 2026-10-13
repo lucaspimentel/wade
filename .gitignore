@@ -8,3 +8,4 @@
 
 # Rust build artifacts
 src/wade-rs/target/
+artifacts/
