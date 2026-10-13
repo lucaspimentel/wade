@@ -14,6 +14,8 @@ on:
       - 'LICENSE'
       - '.gitignore'
   workflow_dispatch:
+  # The release workflow runs these checks before building
+  workflow_call:
 
 jobs:
   rust:

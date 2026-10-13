@@ -20,7 +20,23 @@ permissions:
   contents: write
 
 jobs:
+  check-inputs:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check inputs
+      if: github.event_name == 'workflow_dispatch' && !inputs.dry_run && inputs.version == ''
+      run: |
+        echo "A version is required unless dry_run is set."
+        exit 1
+
+  # The same checks as a push to main: tests on Windows, Linux and macOS,
+  # formatting and clippy
+  ci:
+    needs: check-inputs
+    uses: ./.github/workflows/ci.yml
+
   build:
+    needs: ci
     strategy:
       matrix:
         include:
@@ -40,12 +56,6 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - name: Check inputs
-      if: github.event_name == 'workflow_dispatch' && !inputs.dry_run && inputs.version == ''
-      run: |
-        echo "A version is required unless dry_run is set."
-        exit 1
-
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
     - name: Setup Rust
@@ -56,21 +66,6 @@ jobs:
     - name: Install musl tools
       if: runner.os == 'Linux'
       run: sudo apt-get update && sudo apt-get install -y musl-tools
-
-    # Case-insensitive folder tests (WADE_TEST_FAT_DIR) need a FAT volume
-    - name: Mount a FAT volume
-      if: runner.os == 'Linux'
-      run: |
-        command -v mkfs.vfat || (sudo apt-get update && sudo apt-get install -y dosfstools)
-        truncate -s 32M "$RUNNER_TEMP/fat.img"
-        mkfs.vfat "$RUNNER_TEMP/fat.img"
-        mkdir "$RUNNER_TEMP/fat"
-        sudo mount -o loop,uid="$(id -u)",gid="$(id -g)" "$RUNNER_TEMP/fat.img" "$RUNNER_TEMP/fat"
-        echo "WADE_TEST_FAT_DIR=$RUNNER_TEMP/fat" >> "$GITHUB_ENV"
-
-    - name: Test
-      working-directory: src/wade-rs
-      run: cargo test --locked
 
     - name: Build
       working-directory: src/wade-rs
