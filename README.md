@@ -17,7 +17,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Miller columns** — three-pane layout (parent / current / preview); `[` and `]` toggle the left and right panes (session only; unchanged in saved config)
 - **Column headers** — labeled header row with separator line in all panes; adapts to visible columns and drive view
 - **Detail columns** — file size and modification date with responsive column tiers; async directory sizes (gated per drive type)
-- **Drive navigation** — browse drives on Windows with file system, free/total space, and percent-full bar columns; SSD/HDD detection
+- **Drive navigation** — browse drives on Windows (mounted volumes on macOS) with file system, free/total space, and percent-full bar columns; SSD/HDD detection
 - **File-type icons** — Nerd Fonts v3 glyphs per extension, or Unicode, emoji or ASCII symbols per file category for fonts without Nerd Fonts; `icons = none` hides them
 - **Sort order** — by name, date, size, or extension (`s` to cycle, `S` to reverse)
 - **Filter** — `/` to narrow entries in real-time
@@ -29,7 +29,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 
 ### Preview & Metadata
 
-- **File preview** — text (with syntax highlighting), hex, git diff, archive contents (zip, tar, gzip), images (Sixel or kitty graphics), PDF (via `pdftopng`), MSI file listing, and Markdown (built-in Markdig renderer with YAML frontmatter support); a CSV/TSV table view (aligned columns, header row, right-aligned numbers; `;`/`|` separators detected); multiple modes per file switchable via `p`; CSS/SCSS/Sass previews show inline color swatches for hex literals
+- **File preview** — text (with syntax highlighting), hex, git diff, archive contents (zip, tar, gzip), images (Sixel, kitty or iTerm2), PDF (via `pdftopng`), MSI file listing, and Markdown (built-in renderer with YAML frontmatter support); a CSV/TSV table view (aligned columns, header row, right-aligned numbers; `;`/`|` separators detected); multiple modes per file switchable via `p`; CSS/SCSS/Sass previews show inline color swatches for hex literals
 - **Expanded preview** — Right/Enter expands to full width; scrollable
 - **Image preview** — Sixel graphics (Windows Terminal 1.22+, WezTerm, etc.); also supports the kitty graphics protocol (kitty, Ghostty) and iTerm2 inline images (iTerm2, WezTerm), chosen with `image_protocol = auto|kitty|iterm|sixel`; inside tmux with `set -g allow-passthrough on`
 - **File metadata** — structured metadata above preview and in properties overlay (`i`); format-specific providers for images (EXIF), executables (PE/.NET), Office docs, NuGet packages, archives, PDF, media files, MSI installers, and Windows shortcuts (`.lnk`)
@@ -42,7 +42,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 
 ### File Operations
 
-- **File actions** — open, rename, delete (with confirmation), copy/cut/paste with Windows clipboard interop; multi-select supported
+- **File actions** — open, rename, delete (with confirmation), copy/cut/paste through the system clipboard (Windows, macOS, and Linux via wl-copy/xclip); multi-select supported
 - **Copy path** — `y` for absolute path, `Y` for git-relative path
 - **Symlinks** — visual distinction with target display; create from the action palette
 - **Junction points** — detected and distinguished from symlinks with dedicated icon and "Junction" label (Windows)
@@ -56,7 +56,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **In-app config** — `,` opens hierarchical settings dialog
 - **Status bar** — path, git branch, item count, file type, encoding, line endings, size, sort mode
 - **Shell integration** — `T` opens terminal; `wd` wrapper for cd-on-exit (bash, zsh, fish, PowerShell)
-- **Auto-refresh** — `FileSystemWatcher` with 300ms debounce
+- **Auto-refresh** — watches the current directory for changes, with a 300ms debounce
 - **Terminal title** — shows current directory; clears on exit
 - **Minimal rendering** — raw VT/ANSI, double-buffered with dirty-row tracking
 
@@ -123,10 +123,10 @@ wade C:\Users     # open in a specific directory
 `~/.config/wade/config.toml`
 
 ```toml
-icons = nerd                    # nerd, unicode, emoji, ascii, none (replaces show_icons_enabled)
+icons = nerd                    # nerd, unicode, emoji, ascii, none (replaces the old show_icons_enabled)
 show_hidden_files = false
 show_system_files = false       # Windows only; requires show_hidden_files
-sort_mode = name                # name, modified, size, extension (Rust: default for unsorted directories)
+sort_mode = name                # name, modified, size, extension (default for directories without a saved sort)
 sort_ascending = true
 confirm_delete_enabled = true
 parent_pane_enabled = true

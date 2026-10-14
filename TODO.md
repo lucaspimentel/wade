@@ -257,15 +257,14 @@ No OR (`|`). C# keeps the single-term `'` syntax (`KNOWN_DEVIATIONS.md`).
 
 Research and implement image previews for Office Open XML formats (`.docx`, `.xlsx`, `.pptx`, `.dotx`, `.xltx`, `.potx`) by converting the first page to an image, similar to PDF preview.
 
-- `OfficeMetadataProvider` already extracts metadata (title, author, dates) from DOCX/XLSX/PPTX — reuse for preview metadata
+- `OfficeMetadataProvider` (`preview/document_metadata.rs`) already extracts metadata (title, author, dates) from DOCX/XLSX/PPTX — reuse for preview metadata
 - Investigate toolchain:
   - **LibreOffice headless**: `soffice --headless --convert-to pdf --outdir /tmp /path/to/docx` → PDF, then `pdftopng` to PNG. Heavyweight but comprehensive.
   - **Lighter alternatives**: Research if lighter/faster converters exist (e.g., `pandoc` for DOCX→HTML, but visual fidelity TBD)
   - **Availability**: Check if LibreOffice or alternatives are commonly available on Windows/macOS/Linux
-- Create `OfficeImageConverter : IImageConverter` (or extend `ImageConverter` with Office support)
-- Register in `ImageConverter.CanConvert()` fallback logic
-- Add `OfficePreviewProvider : IPreviewProvider` (or extend `PdfPreviewProvider` to handle both PDF and Office)
-- Preview registry order: insert after `PdfPreviewProvider` so Office files are attempted
+- Add an Office converter next to `imaging/pdf.rs` (or extend its `can_convert`/`convert_to_image` to handle Office files)
+- Add an `OfficePreviewProvider` (or extend `PdfPreviewProvider` to handle both PDF and Office)
+- Preview registry order (`preview/registry.rs`): insert after `PdfPreviewProvider` so Office files are attempted
 - Performance concern: LibreOffice startup is slow (~1-2s); consider debouncing or async user feedback
 - Start with DOCX (most common); extend to XLSX/PPTX after proving the concept
 
