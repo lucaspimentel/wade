@@ -24,6 +24,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Go-to-path** — `Ctrl+G` with Tab autocomplete
 - **File finder** — `Ctrl+F` recursive breadth-first search with fuzzy matching, exact-substring queries via a leading `'`, and highlighted results. It also accepts fzf-style syntax: space-separated terms (all must match), `^prefix`, `suffix$` and `!exclude`, with smart case
 - **Bookmarks** — `b` to open, `B` to toggle; persists in MRU order
+- **Tabs** — `t`/`Ctrl+T` opens a tab, `{`/`}` or `1`–`9` switch, `w` closes; tab bar with click-to-switch once a second tab is open
 - **Hidden files** — `.` to toggle; separate system files toggle on Windows
 
 ### Preview & Metadata
@@ -53,7 +54,6 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Mouse support** — click, scroll, right-click context menu in all panes
 - **Action palette** — `Ctrl+P` / `Ctrl+K` searchable command list with submenus
 - **In-app config** — `,` opens hierarchical settings dialog
-- **Tabs** — `t`/`Ctrl+T` opens a tab, `{`/`}` or `1`–`9` switch, `w` closes; tab bar with click-to-switch once a second tab is open
 - **Status bar** — path, git branch, item count, file type, encoding, line endings, size, sort mode
 - **Shell integration** — `T` opens terminal; `wd` wrapper for cd-on-exit (bash, zsh, fish, PowerShell)
 - **Auto-refresh** — `FileSystemWatcher` with 300ms debounce
