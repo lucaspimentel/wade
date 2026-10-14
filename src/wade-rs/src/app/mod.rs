@@ -48,7 +48,9 @@ const MAX_EVENTS_PER_FRAME: usize = 256;
 #[derive(Clone, Debug)]
 pub struct AppConfig {
     pub start_path: String,
-    pub show_icons_enabled: bool,
+    /// `icons = nerd|unicode|emoji|ascii|none` (Rust-only; replaces the C#
+    /// `show_icons_enabled`, which still loads as nerd or none).
+    pub icon_set: crate::ui::file_icons::IconSet,
     pub image_previews_enabled: bool,
     /// Rust-only: `image_protocol = auto|kitty|sixel` (config file only).
     pub image_protocol: crate::imaging::ImageProtocolSetting,
@@ -98,7 +100,7 @@ impl Default for AppConfig {
     fn default() -> Self {
         Self {
             start_path: String::new(),
-            show_icons_enabled: true,
+            icon_set: crate::ui::file_icons::IconSet::Nerd,
             image_previews_enabled: true,
             image_protocol: crate::imaging::ImageProtocolSetting::Auto,
             show_hidden_files: false,
@@ -1851,7 +1853,7 @@ impl App {
             PaneRenderer::render_column_headers(
                 buffer,
                 header_rect,
-                self.config.show_icons_enabled,
+                self.config.icon_set,
                 self.config.size_column_enabled,
                 self.config.date_column_enabled,
                 is_drive_view,
@@ -1871,7 +1873,7 @@ impl App {
             i32::try_from(self.selected_index).unwrap_or(0),
             scroll,
             true,
-            self.config.show_icons_enabled,
+            self.config.icon_set,
             self.config.size_column_enabled,
             self.config.date_column_enabled,
             &self.marked_paths,
@@ -1917,6 +1919,7 @@ impl App {
             self.clipboard_is_cut,
             self.current_branch_name.as_deref(),
             self.ahead_behind_text.as_deref(),
+            self.config.icon_set,
         );
 
         // Search bar, help overlay, and modal dialogs render last, on top.
@@ -1951,34 +1954,15 @@ impl App {
 
         if self.config.column_headers_enabled && left_pane.height > 2 {
             let header_rect = Rect2::new(left_pane.left, left_pane.top, left_pane.width, 2);
-            PaneRenderer::render_column_headers(
-                buffer,
-                header_rect,
-                self.config.show_icons_enabled,
-                false,
-                false,
-                false,
-                false,
-            );
+            PaneRenderer::render_column_headers(buffer, header_rect, self.config.icon_set, false, false, false, false);
             left_pane.top += 2;
             left_pane.height -= 2;
         }
 
         let parent_scroll = calculate_scroll(parent_selected as usize, left_pane.height, parent_entries.len());
         PaneRenderer::render_file_list(
-            buffer,
-            left_pane,
-            &parent_entries,
-            parent_selected,
-            parent_scroll,
-            false,
-            self.config.show_icons_enabled,
-            false,
-            false,
-            &self.marked_paths,
-            None,
-            None,
-            false,
+            buffer, left_pane, &parent_entries, parent_selected, parent_scroll, false, self.config.icon_set, false,
+            false, &self.marked_paths, None, None, false,
         );
     }
 
@@ -1996,32 +1980,15 @@ impl App {
                 if self.config.column_headers_enabled && right_list_pane.height > 2 {
                     let header_rect = Rect2::new(right_list_pane.left, right_list_pane.top, right_list_pane.width, 2);
                     PaneRenderer::render_column_headers(
-                        buffer,
-                        header_rect,
-                        self.config.show_icons_enabled,
-                        false,
-                        false,
-                        false,
-                        false,
+                        buffer, header_rect, self.config.icon_set, false, false, false, false,
                     );
                     right_list_pane.top += 2;
                     right_list_pane.height -= 2;
                 }
 
                 PaneRenderer::render_file_list(
-                    buffer,
-                    right_list_pane,
-                    &preview_entries,
-                    -1,
-                    0,
-                    false,
-                    self.config.show_icons_enabled,
-                    false,
-                    false,
-                    &self.marked_paths,
-                    None,
-                    None,
-                    false,
+                    buffer, right_list_pane, &preview_entries, -1, 0, false, self.config.icon_set, false, false,
+                    &self.marked_paths, None, None, false,
                 );
             } else {
                 PaneRenderer::render_message(buffer, self.layout.right_pane, "[empty directory]");
@@ -2062,6 +2029,7 @@ impl App {
             self.clipboard_is_cut,
             self.current_branch_name.as_deref(),
             self.ahead_behind_text.as_deref(),
+            self.config.icon_set,
         );
     }
 }
@@ -2579,7 +2547,7 @@ mod tests {
     fn plain_app(root: &std::path::Path) -> App {
         let mut app = App::new(AppConfig {
             git_status_enabled: false,
-            show_icons_enabled: false,
+            icon_set: crate::ui::file_icons::IconSet::None,
             ..AppConfig::default()
         });
         app.current_path = root.to_string_lossy().into_owned();
@@ -2626,7 +2594,13 @@ mod tests {
             let mut direct = crate::screen::ScreenBuffer::new(17, 30);
             let rect = crate::ui::layout::Rect::new(pane.left, pane.top, pane.width, 2);
             crate::ui::pane_renderer::PaneRenderer::render_column_headers(
-                &mut direct, rect, false, true, true, false, has_status_col,
+                &mut direct,
+                rect,
+                crate::ui::file_icons::IconSet::None,
+                true,
+                true,
+                false,
+                has_status_col,
             );
             header_of(&direct)
         };

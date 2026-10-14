@@ -458,6 +458,7 @@ impl App {
     /// Port of `RenderFileFinder`: gathers the view and draws it.
     pub fn render_file_finder(&mut self, buffer: &mut ScreenBuffer, width: i32, height: i32) {
         let current_path = self.current_path.clone();
+        let icon_set = self.config.icon_set;
         let Some(state) = self.file_finder.as_mut() else {
             return;
         };
@@ -496,6 +497,7 @@ impl App {
                 selected_index: state.selected_index,
                 scroll_offset: state.scroll_offset,
                 items: &items,
+                icon_set,
             };
 
             render_file_finder_view(buffer, width, height, &view, &mut input);
@@ -536,6 +538,7 @@ pub struct FinderView<'a> {
     pub selected_index: usize,
     pub scroll_offset: usize,
     pub items: &'a [FinderItem<'a>],
+    pub icon_set: file_icons::IconSet,
 }
 
 /// Pure port of `RenderFileFinder`'s drawing.
@@ -638,14 +641,19 @@ pub fn render_file_finder_view(
             buffer.fill_row(row, content.left, content.width, ' ', selected_style);
         }
 
-        buffer.put(row, content.left + 1, file_icons::get_icon(item.entry), base_style);
+        // The icon and a space before the path (nothing without icons)
+        let mut path_col = content.left + 1;
+        if let Some(icon) = file_icons::get_icon(item.entry, view.icon_set) {
+            buffer.put(row, path_col, icon, base_style);
+            path_col += view.icon_set.column_width();
+        }
 
         // Full relative path with match highlighting
         let relative = crate::search::index::relative_path(view.current_path, &item.entry.full_path);
-        let max_chars = (content.width - 3).max(0) as usize;
+        let max_chars = (content.left + content.width - path_col).max(0) as usize;
         let mut mi = 0; // index into match_positions
 
-        for (col, (ci, ch)) in (content.left + 3..).zip(relative.chars().enumerate().take(max_chars)) {
+        for (col, (ci, ch)) in (path_col..).zip(relative.chars().enumerate().take(max_chars)) {
             let is_match = mi < item.match_positions.len() && item.match_positions[mi] == ci;
 
             if is_match {
@@ -1370,6 +1378,7 @@ mod tests {
             selected_index: 0,
             scroll_offset: 0,
             items: &items,
+            icon_set: crate::ui::file_icons::IconSet::Nerd,
         };
 
         let mut buffer = ScreenBuffer::new(60, 30);

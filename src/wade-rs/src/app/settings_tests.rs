@@ -12,6 +12,7 @@ use crate::fs::DriveMediaType;
 use crate::fs::directory_contents::SortMode;
 use crate::input::InputMode;
 use crate::ui::config_dialog::ConfigDialogState;
+use crate::ui::file_icons::IconSet;
 
 /// Labels of the preview (`false`) or metadata (`true`) providers for the
 /// selected file, after a render picked them.
@@ -76,9 +77,9 @@ fn settings() -> Vec<Setting> {
             },
         },
         Setting {
-            name: "show_icons_enabled",
-            config: |c, v| c.show_icons_enabled = v,
-            dialog: |d, v| d.show_icons = v,
+            name: "icons",
+            config: |c, v| c.icon_set = if v { IconSet::Nerd } else { IconSet::None },
+            dialog: |d, v| d.icon_set = if v { IconSet::Nerd } else { IconSet::None },
             probe: |app, _| row_with(app, "a.txt").chars().any(is_icon),
         },
         Setting {
@@ -370,6 +371,33 @@ fn sort_mode_takes_effect_at_startup_and_from_the_dialog() {
     );
     assert_eq!(size_order(&mut app), ["b.txt", "a.txt"], "smallest first");
     let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn every_icon_set_draws_its_glyphs_at_startup_and_from_the_dialog() {
+    let sep = std::path::MAIN_SEPARATOR;
+    let expected = [
+        (IconSet::Nerd, "\u{F15C} a.txt".to_string(), "\u{F114} sub".to_string()),
+        (IconSet::Unicode, "\u{25AB} a.txt".to_string(), "\u{25B8} sub".to_string()),
+        // row_text drops the emoji's continuation cell: the column is 3 wide
+        (IconSet::Emoji, "\u{1F4DD} a.txt".to_string(), "\u{1F4C1} sub".to_string()),
+        (IconSet::Ascii, ". a.txt".to_string(), format!("{sep} sub")),
+        (IconSet::None, " a.txt".to_string(), format!("{sep}sub")),
+    ];
+    for (set, file, dir) in expected {
+        let (parent, root) = fixture();
+        let config = AppConfig { icon_set: set, ..AppConfig::default() };
+        let mut app = app_at(config, &root);
+        assert!(row_with(&mut app, "a.txt").contains(&file), "{set:?} at startup: {}", row_with(&mut app, "a.txt"));
+        assert!(row_with(&mut app, "sub").contains(&dir), "{set:?} at startup: {}", row_with(&mut app, "sub"));
+
+        let mut app = app_at(AppConfig::default(), &root);
+        app.show_config_dialog();
+        app.modal.config_state.as_mut().unwrap().icon_set = set;
+        app.apply_config_changes();
+        assert!(row_with(&mut app, "a.txt").contains(&file), "{set:?} from the dialog");
+        let _ = std::fs::remove_dir_all(&parent);
+    }
 }
 
 #[test]

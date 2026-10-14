@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 
 use crate::app::AppConfig;
 use crate::fs::directory_contents::SortMode;
+use crate::ui::file_icons::IconSet;
 
 fn default_config_path() -> Option<PathBuf> {
     let home = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME"))?;
@@ -45,6 +46,11 @@ pub fn load_config(args: &[String]) -> AppConfig {
         return config;
     };
 
+    // Rust-only `icons` replaces the C# `show_icons_enabled`; a config that
+    // only has the old key turned off loads as no icons
+    let mut icons_key = false;
+    let mut legacy_show_icons = true;
+
     for raw_line in text.lines() {
         let trimmed = raw_line.trim();
         if trimmed.is_empty() || trimmed.starts_with('#') {
@@ -64,7 +70,13 @@ pub fn load_config(args: &[String]) -> AppConfig {
         }
 
         match key {
-            "show_icons_enabled" => config.show_icons_enabled = parse_bool(value, config.show_icons_enabled),
+            "icons" => {
+                if let Some(set) = IconSet::parse(value) {
+                    config.icon_set = set;
+                    icons_key = true;
+                }
+            }
+            "show_icons_enabled" => legacy_show_icons = parse_bool(value, legacy_show_icons),
             "image_previews_enabled" => {
                 config.image_previews_enabled = parse_bool(value, config.image_previews_enabled)
             }
@@ -151,6 +163,10 @@ pub fn load_config(args: &[String]) -> AppConfig {
         }
     }
 
+    if !icons_key && !legacy_show_icons {
+        config.icon_set = IconSet::None;
+    }
+
     config
 }
 
@@ -211,7 +227,7 @@ pub fn to_json(config: &AppConfig) -> String {
         SortMode::Extension => "extension",
     };
     let fields = [
-        ("show_icons_enabled", flag(config.show_icons_enabled)),
+        ("icons", ""),
         ("image_previews_enabled", flag(config.image_previews_enabled)),
         ("show_hidden_files", flag(config.show_hidden_files)),
         ("show_system_files", flag(config.show_system_files)),
@@ -243,7 +259,9 @@ pub fn to_json(config: &AppConfig) -> String {
     let mut json = String::from("{");
 
     for (key, value) in fields {
-        if key == "sort_mode" {
+        if key == "icons" {
+            json.push_str(&format!("\"icons\":\"{}\",", config.icon_set.name()));
+        } else if key == "sort_mode" {
             json.push_str(&format!("\"sort_mode\":\"{sort_mode}\","));
         } else {
             json.push_str(&format!("\"{key}\":{value},"));
@@ -260,7 +278,8 @@ pub fn to_json(config: &AppConfig) -> String {
     json
 }
 
-/// Port of `WadeConfig.Save`: all 27 keys in the C# order.
+/// Port of `WadeConfig.Save`: all 27 keys in the C# order, except that the
+/// Rust-only `icons` takes the place of `show_icons_enabled`.
 pub fn save_config(config: &AppConfig) -> std::io::Result<()> {
     let path = config_path(config);
     if let Some(dir) = path.parent() {
@@ -275,7 +294,7 @@ pub fn save_config(config: &AppConfig) -> std::io::Result<()> {
     };
 
     let content = format!(
-        "show_icons_enabled = {}\n\
+        "icons = {}\n\
          image_previews_enabled = {}\n\
          show_hidden_files = {}\n\
          show_system_files = {}\n\
@@ -302,7 +321,7 @@ pub fn save_config(config: &AppConfig) -> std::io::Result<()> {
          markdown_preview_enabled = {}\n\
          ffprobe_enabled = {}\n\
          mediainfo_enabled = {}\n",
-        config.show_icons_enabled,
+        config.icon_set.name(),
         config.image_previews_enabled,
         config.show_hidden_files,
         config.show_system_files,
@@ -390,14 +409,15 @@ mod tests {
     }
 
     /// The saved file must match the C# `WadeConfig.Save()` layout: 27 keys,
-    /// exact order, `key = true|false`, lowercase sort mode.
+    /// exact order, `key = true|false`, lowercase sort mode (with `icons` in
+    /// place of `show_icons_enabled`).
     #[test]
     fn save_writes_exact_csharp_layout() {
         let config = config_with_path("save.txt");
         save_config(&config).expect("save");
         let text = std::fs::read_to_string(config_path(&config)).expect("read back");
         let expected = "\
-show_icons_enabled = true
+icons = nerd
 image_previews_enabled = true
 show_hidden_files = false
 show_system_files = false
@@ -478,7 +498,7 @@ mediainfo_enabled = true
             ..AppConfig::default()
         };
         let json = to_json(&config);
-        assert!(json.starts_with("{\"show_icons_enabled\":true,"));
+        assert!(json.starts_with("{\"icons\":\"nerd\","));
         assert!(json.contains("\"sort_mode\":\"name\","));
         assert!(json.ends_with("\"start_path\":\"C:\\\\a \"b\"\"}"));
     }
@@ -497,7 +517,6 @@ mediainfo_enabled = true
     /// Every boolean key, with its field and default.
     fn bool_keys() -> Vec<(&'static str, Field, bool)> {
         vec![
-            ("show_icons_enabled", |c| c.show_icons_enabled, true),
             ("image_previews_enabled", |c| c.image_previews_enabled, true),
             ("show_hidden_files", |c| c.show_hidden_files, false),
             ("show_system_files", |c| c.show_system_files, false),
@@ -590,15 +609,50 @@ mediainfo_enabled = true
             "lines",
             "# a comment\n\n   \nshow_hidden_files\n= true\nunknown_key = true\n  show_icons_enabled = false   # inline comment\n  # show_hidden_files = true\n",
         );
-        assert!(!loaded.show_icons_enabled, "inline comment stripped");
+        assert_eq!(loaded.icon_set, IconSet::None, "inline comment stripped");
         assert!(!loaded.show_hidden_files, "comment and malformed lines ignored");
     }
 
     #[test]
     fn missing_config_file_uses_defaults() {
         let loaded = load_config(&["--config-file=/nonexistent/wade/nope.toml".to_string()]);
-        assert!(loaded.show_icons_enabled);
+        assert_eq!(loaded.icon_set, IconSet::Nerd);
         assert_eq!(loaded.config_file_path.as_deref(), Some("/nonexistent/wade/nope.toml"));
+    }
+
+    #[test]
+    fn icons_key_and_the_old_show_icons_key() {
+        for set in IconSet::ALL {
+            assert_eq!(load_text("icons", &format!("icons = {}\n", set.name())).icon_set, set);
+        }
+        assert_eq!(load_text("icons-case", "icons = ASCII\n").icon_set, IconSet::Ascii);
+        assert_eq!(load_text("icons-bad", "icons = fancy\n").icon_set, IconSet::Nerd, "invalid keeps the default");
+
+        // C# configs: show_icons_enabled = false hides icons unless icons is set
+        assert_eq!(load_text("legacy-off", "show_icons_enabled = false\n").icon_set, IconSet::None);
+        assert_eq!(load_text("legacy-on", "show_icons_enabled = true\n").icon_set, IconSet::Nerd);
+        for text in ["show_icons_enabled = false\nicons = emoji\n", "icons = emoji\nshow_icons_enabled = false\n"] {
+            assert_eq!(load_text("legacy-both", text).icon_set, IconSet::Emoji, "{text}");
+        }
+        assert_eq!(
+            load_text("legacy-bad-icons", "show_icons_enabled = false\nicons = fancy\n").icon_set,
+            IconSet::None
+        );
+    }
+
+    #[test]
+    fn saved_icon_set_round_trips() {
+        for set in IconSet::ALL {
+            let mut config = config_with_path(&format!("icons-{}.toml", set.name()));
+            config.icon_set = set;
+            save_config(&config).expect("save");
+            let path = config_path(&config);
+            let text = std::fs::read_to_string(&path).unwrap();
+            assert!(text.starts_with(&format!("icons = {}\n", set.name())), "{text}");
+            assert!(!text.contains("show_icons_enabled"));
+            assert_eq!(load_config(&[format!("--config-file={}", path.display())]).icon_set, set);
+            let _ = std::fs::remove_file(path);
+        }
     }
 
     #[test]
@@ -752,6 +806,7 @@ mediainfo_enabled = true
         };
         let json = to_json(&config);
         let mut keys: Vec<&str> = bool_keys().iter().map(|(key, _, _)| *key).collect();
+        keys.insert(0, "icons");
         keys.insert(4, "sort_mode");
         keys.push("image_protocol");
         keys.push("csv_preview_enabled");

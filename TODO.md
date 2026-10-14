@@ -310,6 +310,10 @@ Investigated enabling `ENABLE_VIRTUAL_TERMINAL_INPUT` under Windows Terminal. No
 
 - [x] File preview for CSV (and TSV) files, e.g. with aligned columns.
 
+### Consolidate settings sources
+
+- [ ] Settings come from `config.toml` and the config dialog only (plus `--config-file`). Add one layer that also reads environment variables and CLI flags (e.g. `WADE_ICONS`, `--icons=`), with a fixed precedence (CLI > env > file > default), instead of adding each override by hand. Useful per terminal: a Nerd Font in one terminal, none in another.
+
 ### Keyboard shortcut convention audit
 
 - [x] Keybinding consistency. Rule: bare keys in lower/upper-case pairs; Ctrl only for the jump tools (Ctrl+P/K palette, Ctrl+F finder, Ctrl+G go to path) and browser/shell conventions (Ctrl+T new tab, Ctrl+L/Ctrl+R refresh). A strict "Ctrl for dialogs" rule is impossible: terminals cannot send Ctrl+`,`/`?`/`/`, and Ctrl+H/I/J/M/[ are Backspace/Tab/Enter/Esc. Done: `d`/`D` delete, `r` rename (Mac laptops have no forward Delete, F2 needs fn), `T` terminal, Ctrl+T new tab, Ctrl+L refresh, symlink palette-only, Esc clears marks then filter then hints at `q` (no longer quits), `q` always quits, and letter keys match the typed character without Ctrl/Alt (Shift+J or Alt+j no longer act as `j`; AltGr still types `[` `{` ...)

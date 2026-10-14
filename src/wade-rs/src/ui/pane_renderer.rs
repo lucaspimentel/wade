@@ -2,7 +2,7 @@
 
 use crate::fs::directory_contents::{FileSystemEntry, GitFileStatus};
 use crate::screen::{CellStyle, Color, ScreenBuffer};
-use crate::ui::file_icons;
+use crate::ui::file_icons::{self, IconSet};
 use crate::ui::format_helpers::{format_date, format_percent_bar, format_size};
 use crate::ui::layout::Layout;
 use crate::ui::layout::Rect;
@@ -227,7 +227,7 @@ impl PaneRenderer {
     pub fn render_column_headers(
         buffer: &mut ScreenBuffer,
         header_rect: Rect,
-        show_icons: bool,
+        icon_set: IconSet,
         show_size: bool,
         show_date: bool,
         is_drive_view: bool,
@@ -242,7 +242,7 @@ impl PaneRenderer {
         buffer.fill_row(row, left, header_rect.width, ' ', header_style);
 
         // Name column header (left-aligned, after icon space)
-        let icon_pad = if show_icons { 2 } else { 1 };
+        let icon_pad = icon_set.column_width();
         let name_col = left + icon_pad;
         buffer.write_string(row, name_col, "Name", header_style, i64::from(layout.name_width - icon_pad));
 
@@ -316,7 +316,7 @@ impl PaneRenderer {
         selected_index: i32,
         scroll_offset: i32,
         is_active: bool,
-        show_icons: bool,
+        icon_set: IconSet,
         show_size: bool,
         show_date: bool,
         marked_paths: &std::collections::HashSet<String>,
@@ -409,44 +409,26 @@ impl PaneRenderer {
             let screen_row = pane.top + row;
             let entry_col = pane.left;
 
-            // Render name
-            #[allow(clippy::needless_late_init, unused_assignments)]
-            let name_chars_used: i32;
-            if show_icons {
-                buffer.put(screen_row, entry_col, file_icons::get_icon(entry), style);
-                buffer.put(screen_row, entry_col + 1, ' ', style);
-
-                let name_start = 2;
-                let max_name = name_width - name_start;
-                let name_len = (i32::try_from(entry.name.len()).unwrap_or(i32::MAX)).min(max_name);
-                if i32::try_from(entry.name.len()).unwrap_or(i32::MAX) > max_name && max_name >= 2 {
-                    buffer.write_string(
-                        screen_row,
-                        entry_col + name_start,
-                        &entry.name,
-                        style,
-                        i64::from(max_name - 1),
-                    );
-                    buffer.put(screen_row, entry_col + name_start + max_name - 1, '\u{2026}', style);
-                } else {
-                    buffer.write_string(screen_row, entry_col + name_start, &entry.name, style, i64::from(max_name));
-                }
-
-                name_chars_used = name_start + name_len;
+            // Render name: the icon and a space, or (no icons) the C# directory marker
+            let name_start = icon_set.column_width();
+            if let Some(icon) = file_icons::get_icon(entry, icon_set) {
+                buffer.put(screen_row, entry_col, icon, style);
+                buffer.put(screen_row, entry_col + name_start - 1, ' ', style);
             } else {
                 let prefix = if entry.is_directory && !entry.is_drive { DIR_SEPARATOR } else { ' ' };
                 buffer.put(screen_row, entry_col, prefix, style);
-                let max_name = name_width - 1;
-                let name_len = (i32::try_from(entry.name.len()).unwrap_or(i32::MAX)).min(max_name);
-                if i32::try_from(entry.name.len()).unwrap_or(i32::MAX) > max_name && max_name >= 2 {
-                    buffer.write_string(screen_row, entry_col + 1, &entry.name, style, i64::from(max_name - 1));
-                    buffer.put(screen_row, entry_col + 1 + max_name - 1, '\u{2026}', style);
-                } else {
-                    buffer.write_string(screen_row, entry_col + 1, &entry.name, style, i64::from(max_name));
-                }
-
-                name_chars_used = 1 + name_len;
             }
+
+            let max_name = name_width - name_start;
+            let name_len = (i32::try_from(entry.name.len()).unwrap_or(i32::MAX)).min(max_name);
+            if i32::try_from(entry.name.len()).unwrap_or(i32::MAX) > max_name && max_name >= 2 {
+                buffer.write_string(screen_row, entry_col + name_start, &entry.name, style, i64::from(max_name - 1));
+                buffer.put(screen_row, entry_col + name_start + max_name - 1, '\u{2026}', style);
+            } else {
+                buffer.write_string(screen_row, entry_col + name_start, &entry.name, style, i64::from(max_name));
+            }
+
+            let name_chars_used = name_start + name_len;
 
             // Append " → target" suffix for symlinks and app exec aliases
             let link_target: Option<&str> = if entry.is_symlink() {
@@ -505,7 +487,7 @@ impl PaneRenderer {
             if status_col_width > 0 {
                 if git_status != GitFileStatus::NONE {
                     let git_icon_style = if is_selected { style } else { get_git_icon_style(git_status, is_marked) };
-                    if let Some(icon) = file_icons::get_git_status_icon(git_status) {
+                    if let Some(icon) = file_icons::get_git_status_icon(git_status, icon_set) {
                         buffer.put(screen_row, entry_col + name_width, icon, git_icon_style);
                     }
                 } else if entry.is_cloud_placeholder {
@@ -518,7 +500,12 @@ impl PaneRenderer {
                             false,
                         )
                     };
-                    buffer.put(screen_row, entry_col + name_width, file_icons::get_cloud_icon(), cloud_icon_style);
+                    buffer.put(
+                        screen_row,
+                        entry_col + name_width,
+                        file_icons::get_cloud_icon(icon_set),
+                        cloud_icon_style,
+                    );
                 }
             }
 

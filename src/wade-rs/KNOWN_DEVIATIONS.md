@@ -500,3 +500,17 @@ None. Phase 9 closed the last temporary entries.
   main loop, which restores the terminal as `q` does. wade exits with
   128 + the signal (the shell's status for a killed process) and, like
   Shift+Q, writes no `--cwd-file`.
+- **Icon sets replace `show_icons_enabled` (Rust-only).** C# had only Nerd
+  Fonts glyphs, on or off. `icons = nerd|unicode|emoji|ascii|none` picks
+  the glyphs; the saved config writes `icons` where C# wrote
+  `show_icons_enabled`, and a config with only `show_icons_enabled = false`
+  loads as `none`. Unicode symbols are East Asian Width neutral and outside
+  U+2600-27BF (which `rune_width` counts as two cells); emoji need no
+  U+FE0F and take a 3-cell icon column. Unicode and emoji mark file
+  categories; ASCII marks kinds and executables only (`/ : @ & * .`), since
+  more ASCII symbols would be guesswork to read. Git, cloud and branch
+  symbols follow the set, except that emoji use the Unicode ones (the
+  status column is one cell) and `none` uses ASCII, so hiding icons keeps
+  git status. Nerd Fonts falls back to the category glyph for extensions
+  missing from the C# table. The file finder honors the set (C# always drew
+  Nerd Fonts icons there).

@@ -50,6 +50,7 @@ pub fn render(
     clipboard_is_cut: bool,
     branch_name: Option<&str>,
     ahead_behind: Option<&str>,
+    icon_set: crate::ui::file_icons::IconSet,
 ) {
     // Fill background
     let bg_style = style(STATUS_FG, Some(STATUS_BG), false, false);
@@ -73,12 +74,17 @@ pub fn render(
         let branch_style = style((180, 140, 220), Some(STATUS_BG), false, false);
         buffer.put(rect.top, info_col, ' ', branch_style);
         buffer.put(rect.top, info_col + 1, ' ', branch_style);
-        buffer.put(rect.top, info_col + 2, '\u{E0A0}', branch_style); // nf-pl-branch
-        buffer.put(rect.top, info_col + 3, ' ', branch_style);
-        let max_branch = (i32::try_from(branch_name.chars().count()).unwrap_or(0)).min(info_max_width - 4);
+        // "  <branch icon> name", or "  name" when the set has no branch icon
+        let mut prefix = 2;
+        if let Some(icon) = crate::ui::file_icons::get_branch_icon(icon_set) {
+            buffer.put(rect.top, info_col + 2, icon, branch_style);
+            buffer.put(rect.top, info_col + 3, ' ', branch_style);
+            prefix = 4;
+        }
+        let max_branch = (i32::try_from(branch_name.chars().count()).unwrap_or(0)).min(info_max_width - prefix);
         if max_branch > 0 {
-            buffer.write_string(rect.top, info_col + 4, branch_name, branch_style, i64::from(max_branch));
-            let total = 4 + max_branch;
+            buffer.write_string(rect.top, info_col + prefix, branch_name, branch_style, i64::from(max_branch));
+            let total = prefix + max_branch;
             info_col += total;
             info_max_width -= total;
         }

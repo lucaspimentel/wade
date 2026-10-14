@@ -5,11 +5,12 @@
 //! dispatches on those, which is equivalent and borrow-checker friendly.
 
 use crate::fs::directory_contents::SortMode;
+use crate::ui::file_icons::IconSet;
 
 /// Identifies which `ConfigDialogState` setting an item edits.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ConfigField {
-    ShowIcons,
+    Icons,
     ImagePreviews,
     ShowHiddenFiles,
     ShowSystemFiles,
@@ -66,7 +67,7 @@ impl ConfigItem {
 
 /// Port of `ConfigDialogState`.
 pub struct ConfigDialogState {
-    pub show_icons: bool,
+    pub icon_set: IconSet,
     pub image_previews: bool,
     pub show_hidden_files: bool,
     pub show_system_files: bool,
@@ -104,7 +105,7 @@ impl ConfigDialogState {
     #[must_use]
     pub fn from_app_config(config: &crate::app::AppConfig) -> Self {
         let mut state = Self {
-            show_icons: config.show_icons_enabled,
+            icon_set: config.icon_set,
             image_previews: config.image_previews_enabled,
             show_hidden_files: config.show_hidden_files,
             show_system_files: config.show_system_files,
@@ -144,7 +145,7 @@ impl ConfigDialogState {
     /// including the `ShowSystemFiles = ShowHiddenFiles && ShowSystemFiles`
     /// clamp with write-back into the dialog state.
     pub fn apply_to(&mut self, config: &mut crate::app::AppConfig) {
-        config.show_icons_enabled = self.show_icons;
+        config.icon_set = self.icon_set;
         config.image_previews_enabled = self.image_previews;
         config.show_hidden_files = self.show_hidden_files;
         config.show_system_files = self.show_hidden_files && self.show_system_files;
@@ -181,7 +182,7 @@ impl ConfigDialogState {
     /// it on non-Windows, so golden parity holds per-platform).
     fn build_items(&mut self) {
         let mut items = vec![
-            ConfigItem::new("Show Icons", 0, ConfigField::ShowIcons, ConfigGate::None),
+            ConfigItem::new("Icons", 0, ConfigField::Icons, ConfigGate::None),
             ConfigItem::new("Show Hidden Files", 0, ConfigField::ShowHiddenFiles, ConfigGate::None),
         ];
 
@@ -319,7 +320,7 @@ impl ConfigDialogState {
         };
 
         match field {
-            ConfigField::ShowIcons => self.show_icons = !self.show_icons,
+            ConfigField::Icons => self.icon_set = self.icon_set.next(),
             ConfigField::ImagePreviews => self.image_previews = !self.image_previews,
             ConfigField::ShowHiddenFiles => self.show_hidden_files = !self.show_hidden_files,
             ConfigField::ShowSystemFiles => self.show_system_files = !self.show_system_files,
@@ -350,17 +351,22 @@ impl ConfigDialogState {
         }
     }
 
-    /// Port of `CycleNextSelected` (only Sort Mode is cycleable).
+    /// Port of `CycleNextSelected` (Sort Mode and the Rust-only Icons are
+    /// cycleable).
     pub fn cycle_next_selected(&mut self) {
-        if self.items.get(self.selected_index).is_some_and(|item| item.field == ConfigField::SortMode) {
-            self.sort_mode = cycle_sort_mode_next(self.sort_mode);
+        match self.items.get(self.selected_index).map(|item| item.field) {
+            Some(ConfigField::SortMode) => self.sort_mode = cycle_sort_mode_next(self.sort_mode),
+            Some(ConfigField::Icons) => self.icon_set = self.icon_set.next(),
+            _ => {}
         }
     }
 
-    /// Port of `CyclePrevSelected` (only Sort Mode is cycleable).
+    /// Port of `CyclePrevSelected`.
     pub fn cycle_prev_selected(&mut self) {
-        if self.items.get(self.selected_index).is_some_and(|item| item.field == ConfigField::SortMode) {
-            self.sort_mode = cycle_sort_mode_prev(self.sort_mode);
+        match self.items.get(self.selected_index).map(|item| item.field) {
+            Some(ConfigField::SortMode) => self.sort_mode = cycle_sort_mode_prev(self.sort_mode),
+            Some(ConfigField::Icons) => self.icon_set = self.icon_set.prev(),
+            _ => {}
         }
     }
 
@@ -373,13 +379,14 @@ impl ConfigDialogState {
 
         match item.field {
             ConfigField::SortMode => format!("\u{25c4} {} \u{25ba}", sort_mode_name(self.sort_mode)),
+            ConfigField::Icons => format!("\u{25c4} {} \u{25ba}", self.icon_set.name()),
             _ => format_bool(self.get_field(item.field)).to_string(),
         }
     }
 
     fn get_field(&self, field: ConfigField) -> bool {
         match field {
-            ConfigField::ShowIcons => self.show_icons,
+            ConfigField::Icons => false, // the icon set renders its own value
             ConfigField::ImagePreviews => self.image_previews,
             ConfigField::ShowHiddenFiles => self.show_hidden_files,
             ConfigField::ShowSystemFiles => self.show_system_files,
@@ -462,7 +469,7 @@ mod tests {
         let state = default_state();
         let labels: Vec<&str> = state.items.iter().map(|item| item.label).collect();
         let expected = vec![
-            "Show Icons",
+            "Icons",
             "Show Hidden Files",
             #[cfg(windows)]
             "Show System Files",
@@ -551,7 +558,7 @@ mod tests {
     fn move_up_wraps_to_last_enabled() {
         let mut state = default_state();
         state.size_column = false;
-        state.selected_index = 0; // Show Icons (enabled)
+        state.selected_index = 0; // Icons (enabled)
         state.move_up();
         // Wraps to the last item (Show CSV/TSV Tables, enabled)
         assert_eq!(state.selected_index, state.items.len() - 1);
@@ -560,9 +567,16 @@ mod tests {
     #[test]
     fn toggle_and_cycle() {
         let mut state = default_state();
-        assert!(state.show_icons);
-        state.toggle_selected(); // Show Icons
-        assert!(!state.show_icons);
+        assert_eq!(state.icon_set, IconSet::Nerd);
+        state.toggle_selected(); // Icons: Enter steps forward
+        assert_eq!(state.icon_set, IconSet::Unicode);
+        state.cycle_next_selected();
+        assert_eq!(state.icon_set, IconSet::Emoji);
+        state.cycle_prev_selected();
+        state.cycle_prev_selected();
+        state.cycle_prev_selected();
+        assert_eq!(state.icon_set, IconSet::None, "wraps backwards");
+        assert_eq!(state.format_value(0), "\u{25c4} none \u{25ba}");
 
         state.selected_index =
             state.items.iter().position(|item| item.field == ConfigField::SortMode).expect("sort mode item");
@@ -571,12 +585,13 @@ mod tests {
         assert_eq!(state.sort_mode, SortMode::Modified);
         state.cycle_prev_selected();
         assert_eq!(state.sort_mode, SortMode::Name);
+        assert_eq!(state.icon_set, IconSet::None, "sort mode cycling leaves the icon set alone");
 
         // Cycle on a bool item is a no-op (not cycleable)
-        state.selected_index = 0;
+        state.selected_index = index_of(&state, "Show Hidden Files");
         state.cycle_next_selected();
         assert_eq!(state.sort_mode, SortMode::Name);
-        assert!(!state.show_icons);
+        assert!(!state.show_hidden_files);
     }
 
     #[test]
@@ -697,7 +712,7 @@ mod tests {
     fn items_have_the_csharp_indentation() {
         let state = default_state();
         let indent = |label: &str| state.items[index_of(&state, label)].indent;
-        assert_eq!(indent("Show Icons"), 0);
+        assert_eq!(indent("Icons"), 0);
         assert_eq!(indent("Show File Details"), 1);
         assert_eq!(indent("Show Archive Details"), 2);
         assert_eq!(indent("Directory Sizes on SSD"), 1);

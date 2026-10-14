@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added
+- Icons setting (`icons = nerd|unicode|emoji|ascii|none`, and an "Icons" row in the config dialog) for fonts without Nerd Fonts: Unicode symbols, emoji or ASCII (`ls -F` style) per file category, or no icons. Git status, cloud and branch symbols follow the set (with no icons they use ASCII). The default stays `nerd`; `show_icons_enabled = false` still loads as `none`
+- Nerd Fonts icons for audio, video, font and database files, and per category for other known extensions
+
+### Fixed
+- The file finder hides icons when icons are off
+
 ## [2.1.0] - 2026-10-13
 
 ### Added

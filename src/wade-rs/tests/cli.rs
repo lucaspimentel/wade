@@ -78,7 +78,7 @@ fn show_config_prints_the_loaded_config_as_json() {
     assert!(json.starts_with('{') && json.trim_end().ends_with('}'), "{json}");
     assert!(json.contains("\"show_hidden_files\":true,"));
     assert!(json.contains("\"sort_mode\":\"size\","));
-    assert!(json.contains("\"show_icons_enabled\":true,"), "defaults for keys not in the file");
+    assert!(json.contains("\"icons\":\"nerd\","), "defaults for keys not in the file");
 
     // No path argument: the current directory
     let start = PathBuf::from(json_string(&json, "start_path"));

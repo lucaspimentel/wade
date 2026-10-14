@@ -12,6 +12,7 @@ use wade::fs::directory_contents::{DRIVES_PATH, FileSystemEntry, GitFileStatus, 
 use wade::preview::{MetadataEntry, MetadataSection};
 use wade::screen::{CellStyle, Color, ScreenBuffer};
 use wade::ui::action_palette::{ActionMenuItem, ActionMenuLevel};
+use wade::ui::file_icons::IconSet;
 use wade::ui::format_helpers::DateParts;
 use wade::ui::help_overlay;
 use wade::ui::layout::{Layout, Rect};
@@ -316,7 +317,7 @@ fn run_scenario(path: &Path) -> String {
                 PaneRenderer::render_column_headers(
                     buffer,
                     pane_rect(&layout, tokens[1]),
-                    flags.contains(&"icons"),
+                    if flags.contains(&"icons") { IconSet::Nerd } else { IconSet::None },
                     flags.contains(&"size"),
                     flags.contains(&"date"),
                     flags.contains(&"drive"),
@@ -339,7 +340,7 @@ fn run_scenario(path: &Path) -> String {
                     selected,
                     scroll,
                     active,
-                    flags.contains(&"icons"),
+                    if flags.contains(&"icons") { IconSet::Nerd } else { IconSet::None },
                     flags.contains(&"size"),
                     flags.contains(&"date"),
                     &marked_paths,
@@ -409,6 +410,7 @@ fn run_scenario(path: &Path) -> String {
                     false,
                     branch_arg,
                     ahead_behind_arg,
+                    IconSet::Nerd,
                 );
                 branch_name.clear();
                 ahead_behind_text.clear();
@@ -624,6 +626,7 @@ fn run_scenario(path: &Path) -> String {
                     selected_index: finder_args[0],
                     scroll_offset: scroll,
                     items: &items,
+                    icon_set: IconSet::Nerd,
                 };
                 let buffer = buffer.as_mut().expect("size op first");
                 wade::app::file_finder::render_file_finder_view(

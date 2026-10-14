@@ -101,7 +101,7 @@ Keybindings:
 
 Config file: ~/.config/wade/config.toml
 
-  show_icons_enabled = true
+  icons = nerd                    # nerd, unicode, emoji, ascii, none
   image_previews_enabled = true
   image_protocol = auto           # auto, kitty, iterm, sixel
   show_hidden_files = false
