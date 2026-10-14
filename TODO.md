@@ -119,8 +119,6 @@ backlog.
   the source folder or its own subtree, directory over a file), hardlinks
   and alternate data streams (listing and sizes)
 - [ ] More native Windows checks that need no TUI:
-  - C# vs Rust diff of inline and full directory sizes, the drive list and the
-    properties overlay on real data
   - PDF and Sixel previews end to end (`pdftopng`, `pdfinfo`, `ffprobe` and
     `mediainfo` are installed on this machine)
 - [x] ConPTY smoke harness: `tests/pty_smoke.rs` runs on the Windows CI job

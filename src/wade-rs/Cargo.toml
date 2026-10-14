@@ -2,7 +2,7 @@
 name = "wade"
 version = "2.1.0"
 edition = "2024"
-description = "TUI file browser (Rust port of the C# Native AOT tool)"
+description = "TUI file browser for Windows Terminal, macOS and Unix terminals"
 
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
