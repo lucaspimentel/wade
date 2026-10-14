@@ -24,7 +24,6 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Go-to-path** — `Ctrl+G` with Tab autocomplete
 - **File finder** — `Ctrl+F` recursive breadth-first search with fuzzy matching, exact-substring queries via a leading `'`, and highlighted results. It also accepts fzf-style syntax: space-separated terms (all must match), `^prefix`, `suffix$` and `!exclude`, with smart case
 - **Bookmarks** — `b` to open, `B` to toggle; persists in MRU order
-- **Tabs** — `t` opens a tab, `{`/`}` or `1`–`9` switch, `w` closes
 - **Hidden files** — `.` to toggle; separate system files toggle on Windows
 
 ### Preview & Metadata
@@ -44,7 +43,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 
 - **File actions** — open, rename, delete (with confirmation), copy/cut/paste with Windows clipboard interop; multi-select supported
 - **Copy path** — `y` for absolute path, `Y` for git-relative path
-- **Symlinks** — visual distinction with target display; `Ctrl+L` to create
+- **Symlinks** — visual distinction with target display; create from the action palette
 - **Junction points** — detected and distinguished from symlinks with dedicated icon and "Junction" label (Windows)
 - **App execution aliases** — MSIX/UWP packaged app aliases detected with resolved target path (Windows)
 - **Cloud files** — auto-detected OneDrive/Dropbox placeholders shown with cloud icon (Windows)
@@ -54,8 +53,9 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Mouse support** — click, scroll, right-click context menu in all panes
 - **Action palette** — `Ctrl+P` / `Ctrl+K` searchable command list with submenus
 - **In-app config** — `,` opens hierarchical settings dialog
+- **Tabs** — `t`/`Ctrl+T` opens a tab, `{`/`}` or `1`–`9` switch, `w` closes; tab bar with click-to-switch once a second tab is open
 - **Status bar** — path, git branch, item count, file type, encoding, line endings, size, sort mode
-- **Shell integration** — `Ctrl+T` opens terminal; `wd` wrapper for cd-on-exit (bash, zsh, fish, PowerShell)
+- **Shell integration** — `T` opens terminal; `wd` wrapper for cd-on-exit (bash, zsh, fish, PowerShell)
 - **Auto-refresh** — `FileSystemWatcher` with 300ms debounce
 - **Terminal title** — shows current directory; clears on exit
 - **Minimal rendering** — raw VT/ANSI, double-buffered with dirty-row tracking
