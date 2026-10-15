@@ -1,7 +1,6 @@
-//! Port of the modal overlay handling in `src/Wade/App.cs`: Confirm and
-//! TextInput dialogs, GoToPath, the search bar, the action palette, and the
-//! Help overlay. Rendering and key handling mirror the C# `Handle*Key` and
-//! `Render*Dialog` methods.
+//! Modal overlays: Confirm and TextInput dialogs, Go to path, the search
+//! bar, the action palette, bookmarks, the config dialog and the Help
+//! overlay. Each has a `handle_*_key` method and a `render_*` function.
 
 use crate::app::input_reader::AppAction;
 use crate::app::{App, InputMode, KeyEvent};
@@ -15,12 +14,7 @@ use crate::ui::layout::Rect;
 use crate::ui::notification::NotificationKind;
 use crate::ui::text_input::TextInput;
 
-/// Purpose of the active text-input dialog (what C# stores as an
-/// `Action<string>` completion callback). The file-operation consumers land
-/// in a later phase; for now Enter with a purpose set reports not-yet-ported.
-/// What the confirm dialog's Yes executes: C# stores an `Action` closure;
-/// the Rust port enumerates the two uses (git-style action dispatch and the
-/// file deletion that carries its target list).
+/// What the confirm dialog's Yes executes.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ConfirmAction {
     Dispatch(AppAction),
@@ -28,20 +22,21 @@ pub enum ConfirmAction {
         targets: Vec<String>,
         permanent: bool,
     },
-    /// `() => ExecutePaste(overwrite: true)`.
+    /// Paste, overwriting conflicts when `overwrite` is set.
     Paste {
         overwrite: bool,
     },
 }
 
+/// What Enter in the active text-input dialog does with the text.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TextInputPurpose {
     Rename,
     NewFile,
     NewDirectory,
-    /// Port of the C# `ShowTextInputDialog("Commit message", ...)` callback.
+    /// `git commit` with the text as the message.
     Commit,
-    /// Port of the `Create Symlink` dialog.
+    /// A symlink with the text as its name.
     CreateSymlink,
 }
 
@@ -49,7 +44,6 @@ pub enum TextInputPurpose {
 pub(crate) struct ModalState {
     pub confirm_title: Option<String>,
     pub confirm_message: Option<String>,
-    /// C# stores an `Action`; the only producers dispatch a single action.
     pub confirm_yes_action: Option<ConfirmAction>,
     pub text_input_title: Option<String>,
     pub active_text_input: Option<TextInput>,
@@ -65,9 +59,8 @@ pub(crate) struct ModalState {
     pub context_menu: Option<crate::ui::context_menu::ContextMenuState>,
 }
 
-/// Port of `Path.GetInvalidFileNameChars`: the platform's invalid file-name
-/// characters. C# returns the full Windows set on Windows; on unix, the
-/// separator plus control characters.
+/// Whether `name` has a character the platform forbids in file names: the
+/// Windows set on Windows; on unix, the separator plus control characters.
 #[must_use]
 pub fn is_invalid_file_name(name: &str) -> bool {
     if name.is_empty() {
@@ -179,8 +172,7 @@ mod invalid_name_tests {
 }
 
 impl App {
-    /// Port of `RenderModals`' modal tail entry points: FileOperation overlay
-    /// and progress reset helpers.
+    /// Shows the file operation overlay and resets its progress.
     pub fn enter_file_operation_mode(&mut self, label: &str) {
         self.input_mode = InputMode::FileOperation;
         self.file_op_label = label.to_string();
@@ -193,8 +185,8 @@ impl App {
 }
 
 impl App {
-    /// Port of the `_inputMode` switch at the top of the C# input loop.
-    /// Returns true when the event was consumed by a modal mode.
+    /// Routes a key to the open modal. Returns true when the event was
+    /// consumed by a modal mode.
     pub fn handle_modal_key(&mut self, key: KeyEvent) -> bool {
         match self.input_mode {
             InputMode::Help => {
@@ -229,7 +221,7 @@ impl App {
                 true
             }
             InputMode::FileOperation => {
-                // Escape cancels the running operation (App.cs:660-671)
+                // Escape cancels the running operation
                 if key.key == crate::console_key::ConsoleKey::Escape {
                     self.file_operation_runner.cancel();
                     self.input_mode = InputMode::Normal;
@@ -243,7 +235,7 @@ impl App {
                 true
             }
             InputMode::Properties => {
-                // Modifier-only keys fall through (App.cs:602-608)
+                // Modifier-only keys fall through
                 if !key.is_modifier_only() {
                     self.handle_properties_key(&key);
                 }
@@ -270,7 +262,7 @@ impl App {
         }
     }
 
-    /// Port of `HandleSearchKey` (App.cs:2790).
+    /// Keys while the search bar is open.
     fn handle_search_key(&mut self, key: KeyEvent) {
         if key.control {
             match key.key {
@@ -293,7 +285,7 @@ impl App {
                     self.sync_search_filter();
                     return;
                 }
-                // Rust only: Ctrl+C clears the filter
+                // Ctrl+C clears the filter
                 crate::console_key::ConsoleKey::C => {
                     if let Some(input) = &mut self.modal.search_input {
                         input.clear();
@@ -374,7 +366,7 @@ impl App {
         }
     }
 
-    /// Shared tail of the C# search edit cases: publish the filter value,
+    /// Shared tail of the search edits: publish the filter value,
     /// invalidate the cache, reset selection and scroll.
     fn sync_search_filter(&mut self) {
         self.search_filter = self.modal.search_input.as_ref().map(|i| i.value().to_string()).unwrap_or_default();
@@ -383,7 +375,7 @@ impl App {
         self.scroll_offset = 0;
     }
 
-    /// Port of `BuildContextMenuItems` (App.cs:3866).
+    /// The right-click menu for the selected entry.
     pub fn build_context_menu_items(&mut self) -> Vec<ActionMenuItem> {
         let mut items = vec![
             ActionMenuItem::new("Open with default app", "o", AppAction::OpenExternal),
@@ -402,7 +394,7 @@ impl App {
             ActionMenuItem::new("Properties", "i", AppAction::ShowProperties),
         ]);
 
-        // Git stage/unstage when applicable (App.cs:3916-3927)
+        // Git stage/unstage when applicable
         let entries = self.get_visible_entries();
         let selected_path = entries.get(self.selected_index).map(|entry| entry.full_path.clone());
         let git_ctx = crate::app::git_menu_items::GitMenuContext {
@@ -416,7 +408,7 @@ impl App {
         items
     }
 
-    /// Port of `HandleContextMenuKey` (App.cs:3934).
+    /// Keys while the context menu is open.
     pub fn handle_context_menu_key(&mut self, key: KeyEvent) {
         use crate::console_key::ConsoleKey;
 
@@ -449,7 +441,7 @@ impl App {
         }
     }
 
-    /// Port of `HandleContextMenuMouse` (App.cs:3979): any click dismisses
+    /// Mouse events while the context menu is open: any click dismisses
     /// the menu; clicks inside the item rows also execute the item.
     pub fn handle_context_menu_mouse(&mut self, mouse: crate::input::MouseEvent) {
         use crate::input::MouseButton;
@@ -498,7 +490,7 @@ impl App {
         self.modal.context_menu = None;
     }
 
-    /// Port of `HandlePasteEvent` (App.cs:2251): paste into the active text
+    /// A bracketed paste: pasted into the active text
     /// input by mode.
     pub fn handle_paste_event(&mut self, text: &str) {
         // Filter to printable characters only
@@ -530,9 +522,9 @@ impl App {
         }
     }
 
-    /// Port of the Rename callback (App.cs:3153-3207): blank or unchanged
-    /// name returns silently; existing destination errors like C#'s catch;
-    /// success re-selects the renamed entry.
+    /// Renames the target: a blank or unchanged name returns silently; an
+    /// existing destination is an error; success re-selects the renamed
+    /// entry.
     fn complete_rename(&mut self, new_name: &str) {
         let Some(target) = self.text_input_target.clone() else {
             return;
@@ -580,7 +572,7 @@ impl App {
         }
     }
 
-    /// Port of the NewFile callback (App.cs:3372-3414).
+    /// Creates an empty file and selects it.
     fn complete_new_file(&mut self, name: &str) {
         if name.trim().is_empty() {
             return;
@@ -612,7 +604,7 @@ impl App {
         }
     }
 
-    /// Port of the NewDirectory callback (App.cs:3415-3457).
+    /// Creates a directory and selects it.
     fn complete_new_directory(&mut self, name: &str) {
         if name.trim().is_empty() {
             return;
@@ -643,8 +635,8 @@ impl App {
         }
     }
 
-    /// Port of the CreateSymlink callback (App.cs:3458-3530): creates a link
-    /// to the stored target; permission errors get the C# message.
+    /// Creates a link to the stored target; a permission error explains
+    /// what is needed.
     fn complete_create_symlink(&mut self, link_name: &str) {
         let Some(target) = self.text_input_target.clone() else {
             return;
@@ -704,7 +696,7 @@ impl App {
         }
     }
 
-    /// Port of `HandleTextInputKey` (App.cs:2289).
+    /// Keys while a text-input dialog is open.
     fn handle_text_input_key(&mut self, key: KeyEvent) {
         if key.control {
             match key.key {
@@ -743,9 +735,9 @@ impl App {
                 self.input_mode = InputMode::Normal;
                 self.modal.active_text_input = None;
                 self.modal.text_input_title = None;
-                // C# clears the dialog state before invoking the completion
-                // action, so the empty-message notification shows with the
-                // dialog already closed (App.cs:2323-2335).
+                // The dialog state is cleared before the completion runs,
+                // so the empty-message notification shows with the dialog
+                // already closed.
                 match purpose {
                     Some(TextInputPurpose::Commit) => {
                         let trimmed = value.trim().to_string();
@@ -812,7 +804,7 @@ impl App {
         }
     }
 
-    /// Port of `HandleConfirmKey` (App.cs:2360).
+    /// Keys while the confirm dialog is open.
     fn handle_confirm_key(&mut self, key: KeyEvent) {
         match key.key {
             crate::console_key::ConsoleKey::Y | crate::console_key::ConsoleKey::Enter => {
@@ -840,8 +832,7 @@ impl App {
         }
     }
 
-    /// Port of `HandleGoToPathKey` (App.cs:2387), minus the ghost-suggestion
-    /// completion, which is deferred to Phase 3c with PathCompletion.
+    /// Keys while the Go to path dialog is open.
     fn handle_go_to_path_key(&mut self, key: KeyEvent) {
         use crate::console_key::ConsoleKey;
 
@@ -991,7 +982,7 @@ impl App {
         }
     }
 
-    /// Port of `GetPathSuggestion` (App.cs:2660).
+    /// The ghost completion for the typed path.
     fn get_path_suggestion(&self, input: &str) -> Option<String> {
         crate::fs::path_completion::get_suggestion(
             input,
@@ -1000,7 +991,7 @@ impl App {
         )
     }
 
-    /// Port of `HandleActionPaletteKey` (App.cs:3099).
+    /// Keys while the action palette is open.
     pub fn handle_action_palette_key(&mut self, key: KeyEvent) {
         if self.modal.action_menu_stack.is_empty() {
             return;
@@ -1043,7 +1034,7 @@ impl App {
         }
     }
 
-    /// Port of `DispatchActionPaletteAction`: the main dispatch, plus the
+    /// Runs a palette item: the main dispatch, plus the
     /// item data for `SelectPreviewProvider`.
     pub fn dispatch_action_palette_action(&mut self, action: AppAction, data: i32) {
         if action == AppAction::SelectPreviewProvider {
@@ -1082,7 +1073,7 @@ impl App {
                 crate::console_key::ConsoleKey::End => {
                     level.selected_index = filtered_count.saturating_sub(1);
                 }
-                // Rust only: Ctrl+C clears the filter
+                // Ctrl+C clears the filter
                 crate::console_key::ConsoleKey::C if key.control => {
                     level.filter.clear();
                     level.selected_index = 0;
@@ -1119,8 +1110,8 @@ impl App {
         }
     }
 
-    /// Port of the palette Enter handling (a separate step in C# so the
-    /// dispatch happens after the selection clamp). Returns Some(action)
+    /// Palette Enter, a separate step so the dispatch happens after the
+    /// selection clamp: opens a submenu, or returns Some(action)
     /// when a leaf item was selected.
     pub fn action_palette_activate(&mut self) -> Option<(AppAction, i32)> {
         let level = self.modal.action_menu_stack.last()?;
@@ -1140,8 +1131,7 @@ impl App {
         }
     }
 
-    /// Port of `ShowActionPalette`, restricted to actions whose subsystems
-    /// are already ported (see KNOWN_DEVIATIONS.md).
+    /// Opens the action palette.
     pub fn show_action_palette(&mut self) {
         self.input_mode = InputMode::ActionPalette;
         self.modal.action_menu_stack.clear();
@@ -1150,7 +1140,7 @@ impl App {
     }
 
     pub(crate) fn build_action_palette_items(&mut self) -> Vec<ActionMenuItem> {
-        // Port of BuildActionPaletteItems (App.cs:2935), C# order
+        // The palette's items, in menu order
         let mut items = vec![
             ActionMenuItem::new("Open with default app", "o", AppAction::OpenExternal),
             ActionMenuItem::new("Rename", "r", AppAction::Rename),
@@ -1219,7 +1209,7 @@ impl App {
             ActionMenuItem::new("Refresh", "Ctrl+R", AppAction::Refresh),
         ]);
 
-        // Git block, gated on the repo root (App.cs:2958-3018)
+        // Git block, gated on the repo root
         let entries = self.get_visible_entries();
         let selected_path = entries.get(self.selected_index).map(|entry| entry.full_path.clone());
         let git_ctx = crate::app::git_menu_items::GitMenuContext {
@@ -1233,7 +1223,7 @@ impl App {
         items
     }
 
-    /// Port of `ShowConfirmDialog`.
+    /// Opens a confirm dialog; Yes runs `on_yes`.
     pub fn show_confirm_dialog(&mut self, title: &str, message: &str, on_yes: ConfirmAction) {
         self.input_mode = InputMode::Confirm;
         self.modal.confirm_title = Some(title.to_string());
@@ -1241,7 +1231,7 @@ impl App {
         self.modal.confirm_yes_action = Some(on_yes);
     }
 
-    /// Port of `ShowTextInputDialog`.
+    /// Opens a text-input dialog.
     pub fn show_text_input_dialog(
         &mut self,
         title: &str,
@@ -1256,22 +1246,22 @@ impl App {
         self.text_input_target = target;
     }
 
-    /// Port of `NavigateToPath` (App.cs:2514).
+    /// Goes to a typed path: a directory opens, a file opens its parent
+    /// with the file selected.
     pub fn navigate_to_path(&mut self, path: &str) {
         if path.trim().is_empty() {
             return;
         }
 
-        // C# Path.GetFullPath throws for an embedded NUL
+        // An embedded NUL is never a valid path
         if path.contains('\0') {
             self.show_notification("Invalid path", NotificationKind::Error);
             return;
         }
 
-        // C# Path.GetFullPath resolves relative paths against the process
-        // working directory, not the pane's current path.
-        // macOS: the stored spelling, so path-keyed state (bookmarks, saved
-        // sorts, selection memory, git status) matches
+        // Relative paths resolve against the process working directory, not the
+        // pane's current path. macOS: the stored spelling, so path-keyed state
+        // (bookmarks, saved sorts, selection memory, git status) matches
         let full = crate::fs::file_operations::on_disk_case(&get_full_path(path));
 
         if is_directory(&full) {
@@ -1336,8 +1326,8 @@ impl App {
         self.input_mode = InputMode::ActionPalette;
     }
 
-    /// Port of the modal tail of `App.Render` (App.cs:1254-1300): search bar,
-    /// help overlay, then the modal dialogs, rendered last on top.
+    /// The modal layer of the frame: search bar, help overlay, then the modal
+    /// dialogs, rendered last on top.
     pub fn render_modals(&mut self, buffer: &mut ScreenBuffer) {
         let width = self.last_width;
         let height = self.last_height;
@@ -1404,7 +1394,6 @@ impl App {
                     );
 
                     // Clamp scroll offset in case content changed
-                    // (App.cs:1286-1291)
                     let visible_rows = (height - 8).max(1) as usize;
                     let max_scroll = self.properties_content_height.saturating_sub(visible_rows);
                     self.properties_scroll_offset = self.properties_scroll_offset.min(max_scroll);
@@ -1434,7 +1423,7 @@ impl App {
         render_text_input_dialog(buffer, width, height, title.as_deref(), input);
     }
 
-    /// Port of `RenderGoToPathDialog` (App.cs) / `GoToPathDialog.Render`.
+    /// Draws the Go to path dialog.
     fn render_go_to_path_dialog(&mut self, buffer: &mut ScreenBuffer, width: i32, height: i32) {
         let input = self.modal.go_to_path_input.as_mut();
         let suggestion = self.modal.go_to_path_suggestion.as_deref();
@@ -1448,13 +1437,13 @@ impl App {
         }
     }
 
-    /// Port of `ShowConfigDialog` (App.cs).
+    /// Opens the config dialog.
     pub fn show_config_dialog(&mut self) {
         self.input_mode = InputMode::Config;
         self.modal.config_state = Some(ConfigDialogState::from_app_config(&self.config));
     }
 
-    /// Port of `ShowBookmarks` (App.cs:4023).
+    /// Opens the bookmarks dialog.
     pub fn show_bookmarks(&mut self) {
         self.input_mode = InputMode::Bookmarks;
         self.modal.bookmark_selected_index = 0;
@@ -1462,7 +1451,7 @@ impl App {
         self.modal.bookmark_input = Some(TextInput::default());
     }
 
-    /// Port of `GetFilteredBookmarks` (App.cs:4031).
+    /// Bookmarks matching the dialog's filter.
     #[must_use]
     pub fn get_filtered_bookmarks(&self) -> Vec<String> {
         let filter = self.modal.bookmark_input.as_ref().map_or(String::new(), |input| input.value().to_string());
@@ -1479,7 +1468,7 @@ impl App {
             .collect()
     }
 
-    /// Port of `HandleBookmarkKey` (App.cs:4053).
+    /// Keys while the bookmarks dialog is open.
     pub fn handle_bookmark_key(&mut self, key: KeyEvent) {
         use crate::console_key::ConsoleKey;
 
@@ -1521,7 +1510,7 @@ impl App {
             ConsoleKey::End => {
                 self.modal.bookmark_selected_index = filtered.len().saturating_sub(1);
             }
-            // Rust only: Ctrl+C clears the filter
+            // Ctrl+C clears the filter
             ConsoleKey::C if key.control => {
                 if let Some(input) = &mut self.modal.bookmark_input {
                     input.clear();
@@ -1611,7 +1600,7 @@ impl App {
         }
     }
 
-    /// Port of `RenderBookmarks` (App.cs).
+    /// Draws the bookmarks dialog.
     pub fn render_bookmarks(&mut self, buffer: &mut ScreenBuffer, width: i32, height: i32) {
         let filtered = self.get_filtered_bookmarks();
         let selected = self.modal.bookmark_selected_index;
@@ -1620,7 +1609,7 @@ impl App {
         render_bookmarks(buffer, width, height, &filtered, selected, scroll, input);
     }
 
-    /// Port of `HandleConfigKey` (App.cs).
+    /// Keys while the config dialog is open.
     pub fn handle_config_key(&mut self, key: KeyEvent) {
         use crate::console_key::ConsoleKey;
 
@@ -1629,7 +1618,7 @@ impl App {
             return;
         };
 
-        // Rust only: h/j/k/l match the typed character without Ctrl/Alt
+        // h/j/k/l match the typed character without Ctrl/Alt
         match (key.key, key.plain_char()) {
             (ConsoleKey::UpArrow, _) | (_, Some('k')) => state.move_up(),
             (ConsoleKey::DownArrow, _) | (_, Some('j')) => state.move_down(),
@@ -1642,7 +1631,7 @@ impl App {
         }
     }
 
-    /// Port of `ApplyConfigChanges` (App.cs:4196).
+    /// Applies and saves the config dialog's draft.
     pub(crate) fn apply_config_changes(&mut self) {
         let Some(mut state) = self.modal.config_state.take() else {
             return;
@@ -1680,7 +1669,7 @@ impl App {
     }
 }
 
-/// Port of `RenderBookmarks` / `BookmarksDialog.Render` (App.cs).
+/// Draws the bookmarks dialog.
 pub fn render_bookmarks(
     buffer: &mut ScreenBuffer,
     width: i32,
@@ -1817,7 +1806,7 @@ pub fn render_bookmarks(
     }
 }
 
-/// Port of `RenderConfigDialog` (App.cs).
+/// Draws the config dialog.
 pub fn render_config_dialog(buffer: &mut ScreenBuffer, width: i32, height: i32, state: &ConfigDialogState) {
     const CONTENT_WIDTH: i32 = 47;
     let content_height = state.items.len() as i32 + 1;
@@ -1884,7 +1873,7 @@ pub fn render_config_dialog(buffer: &mut ScreenBuffer, width: i32, height: i32, 
     }
 }
 
-/// Port of `RenderSearchBar` / `SearchBar.Render` (App.cs:4558).
+/// Draws the search bar.
 pub fn render_search_bar(
     buffer: &mut ScreenBuffer,
     center_pane: Rect,
@@ -1923,7 +1912,7 @@ pub fn render_search_bar(
     }
 }
 
-/// Port of `RenderConfirmDialog` / `ConfirmDialog.Render` (App.cs:2888).
+/// Draws the confirm dialog.
 pub fn render_confirm_dialog(buffer: &mut ScreenBuffer, width: i32, height: i32, title: Option<&str>, message: &str) {
     let lines: Vec<&str> = message.split('\n').collect();
     let footer = "[Y/Enter] Yes  [N/Esc] No";
@@ -1952,7 +1941,7 @@ pub fn render_confirm_dialog(buffer: &mut ScreenBuffer, width: i32, height: i32,
     }
 }
 
-/// Port of `RenderTextInputDialog` / `TextInputDialog.Render` (App.cs:2919).
+/// Draws a text-input dialog.
 pub fn render_text_input_dialog(
     buffer: &mut ScreenBuffer,
     width: i32,
@@ -1976,8 +1965,8 @@ pub fn render_text_input_dialog(
     }
 }
 
-/// Port of `RenderGoToPathDialog` / `GoToPathDialog.Render` (App.cs:2663):
-/// single-row path input with the inline ghost suggestion suffix.
+/// Draws the Go to path dialog: single-row path input with the inline ghost
+/// suggestion suffix.
 pub fn render_go_to_path_dialog(
     buffer: &mut ScreenBuffer,
     width: i32,
@@ -2039,7 +2028,7 @@ pub fn render_go_to_path_dialog(
     }
 }
 
-/// Port of `RenderActionPalette` / `ActionPaletteDialog.Render` (App.cs:3948).
+/// Draws the action palette.
 pub fn render_action_palette(
     buffer: &mut ScreenBuffer,
     width: i32,
@@ -2215,11 +2204,11 @@ pub fn is_absolute_path(path: &str) -> bool {
     bytes.len() >= 3 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' && (bytes[2] == b'\\' || bytes[2] == b'/')
 }
 
-/// Collapse `.` and `..` segments lexically (rough `Path.GetFullPath`).
+/// Collapse `.` and `..` segments lexically.
 #[must_use]
 pub fn collapse_dots(path: &str) -> String {
     // Preserve the "C:" prefix when present, and a leading separator on
-    // unix (C# Path.GetFullPath keeps "/foo" rooted)
+    // unix ("/foo" stays rooted)
     let (prefix, rest) = if path.len() >= 2 && path.as_bytes()[1] == b':' {
         (&path[..2], &path[2..])
     } else if !cfg!(windows) && path.starts_with('/') {

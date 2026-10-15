@@ -1,6 +1,4 @@
-//! Port of the Ctrl+F file finder in `src/Wade/App.cs` (`ShowFileFinder`,
-//! `ScanFilesForFinder`, `StartFinderSearch`, `HandleFileFinderKey`,
-//! `RenderFileFinder`): a BFS walk streams entries into a `SearchIndex`,
+//! The Ctrl+F file finder: a BFS walk streams entries into a `SearchIndex`,
 //! typing streams scored results back, and the dialog lists them with the
 //! matched characters highlighted.
 
@@ -30,13 +28,13 @@ pub const SCAN_FLUSH_INTERVAL: Duration = Duration::from_millis(200);
 pub const SEARCH_FLUSH_INTERVAL: Duration = Duration::from_millis(100);
 /// Rows the selection scroll window keeps visible (and the PgUp/PgDn step).
 pub const MAX_ITEM_ROWS: usize = 18;
-/// Rows actually drawn: C# loops over `content.Height - 2` = 19 rows, one
-/// more than the scroll window, so a 19th item shows below it.
+/// Rows actually drawn: one more than the scroll window, so a 19th item
+/// shows below it.
 const DRAWN_ITEM_ROWS: usize = MAX_ITEM_ROWS + 1;
 
 const FOOTER: &str = "[\u{2191}\u{2193}] Navigate  [Enter] Open  [Esc] Cancel";
 
-/// The finder's per-session state (the C# `_fileFinder*` fields).
+/// The finder's state while it is open.
 pub struct FileFinderState {
     pub input: TextInput,
     pub selected_index: usize,
@@ -60,9 +58,8 @@ pub struct FileFinderState {
 }
 
 impl FileFinderState {
-    /// Port of the cache maintenance in `GetFinderDisplayEntries`: re-sorts
-    /// the results (score descending, then path ordinal) and rebuilds the
-    /// display list when they changed. Call before `display`.
+    /// Re-sorts the results (score descending, then path ordinal) and
+    /// rebuilds the display list when they changed. Call before `display`.
     pub fn refresh_display(&mut self) {
         let Some(results) = self.results.as_mut() else {
             return;
@@ -87,9 +84,8 @@ impl FileFinderState {
         self.display_dirty = false;
     }
 
-    /// Port of `GetFinderDisplayEntries`' result: every scanned entry for an
-    /// empty query, otherwise the sorted results whose entries are known.
-    /// Returns (entry index, match positions) pairs.
+    /// Every scanned entry for an empty query, otherwise the sorted results
+    /// whose entries are known. Returns (entry index, match positions) pairs.
     #[must_use]
     pub fn display(&self) -> Vec<(usize, &[usize])> {
         if self.input.value().is_empty() {
@@ -118,7 +114,7 @@ impl FileFinderState {
 }
 
 impl App {
-    /// Port of `ShowFileFinder`: opens the dialog and starts the walk.
+    /// Opens the dialog and starts the walk.
     pub fn show_file_finder(&mut self) {
         if self.current_path == DRIVES_PATH {
             return;
@@ -134,7 +130,7 @@ impl App {
 
         self.input_mode = InputMode::FileFinder;
         self.file_finder = Some(FileFinderState {
-            // Reopen with the last query, cursor at the end (C# starts empty)
+            // Reopen with the last query, cursor at the end
             input: TextInput::new(&self.last_finder_query),
             selected_index: 0,
             scroll_offset: 0,
@@ -164,7 +160,7 @@ impl App {
         self.start_finder_search();
     }
 
-    /// Port of `CloseFileFinder`.
+    /// Closes the finder and stops its walk and search.
     pub fn close_file_finder(&mut self) {
         if let Some(state) = self.file_finder.take() {
             self.last_finder_query = state.input.value().to_string();
@@ -174,7 +170,7 @@ impl App {
         self.input_mode = InputMode::Normal;
     }
 
-    /// Port of the `FileFinderPartialResultEvent` handling in the main loop.
+    /// A batch of walked entries arrived.
     pub fn handle_file_finder_partial_result(&mut self, event: FileFinderPartialResultEvent) {
         if self.input_mode != InputMode::FileFinder || event.base_path != self.current_path {
             return;
@@ -192,11 +188,11 @@ impl App {
         }
 
         // Results whose entries arrive after them become displayable now
-        // (C# waits for the next result batch; KNOWN_DEVIATIONS.md)
+        // (KNOWN_DEVIATIONS.md)
         state.display_dirty = true;
     }
 
-    /// Port of the `FileFinderScanCompleteEvent` handling.
+    /// The walk finished.
     pub fn handle_file_finder_scan_complete(&mut self, event: FileFinderScanCompleteEvent) {
         if self.input_mode != InputMode::FileFinder || event.base_path != self.current_path {
             return;
@@ -207,7 +203,7 @@ impl App {
         }
     }
 
-    /// Port of `HandleFileFinderSearchResult`.
+    /// A batch of scored results arrived.
     pub fn handle_file_finder_search_result(&mut self, event: FileFinderSearchResultEvent) {
         if self.input_mode != InputMode::FileFinder || event.base_path != self.current_path || event.results.is_empty()
         {
@@ -226,8 +222,8 @@ impl App {
         state.display_dirty = true;
     }
 
-    /// Port of `StartFinderSearch`: (re)starts the search for the current
-    /// input and a pump thread that batches results into events.
+    /// (Re)starts the search for the current input and a pump thread that
+    /// batches results into events.
     pub fn start_finder_search(&mut self) {
         let sender = self.pipeline.sender();
         let base_path = self.current_path.clone();
@@ -320,7 +316,7 @@ impl App {
         });
     }
 
-    /// Port of the `InputMode.FileFinder` paste branch of `HandlePasteEvent`.
+    /// A paste while the finder is open: into the query.
     pub fn paste_into_file_finder(&mut self, text: &str) {
         if let Some(state) = self.file_finder.as_mut() {
             state.input.insert_string(text);
@@ -331,7 +327,7 @@ impl App {
         self.start_finder_search();
     }
 
-    /// Port of `HandleFileFinderKey`.
+    /// Keys while the finder is open.
     pub fn handle_file_finder_key(&mut self, key: KeyEvent) {
         if self.file_finder.is_none() {
             self.input_mode = InputMode::Normal;
@@ -357,7 +353,7 @@ impl App {
                     self.start_finder_search();
                     return;
                 }
-                // Rust only: Ctrl+C clears the query
+                // Ctrl+C clears the query
                 ConsoleKey::C => {
                     state.input.clear();
                     state.selected_index = 0;
@@ -407,8 +403,7 @@ impl App {
             ConsoleKey::PageDown => {
                 let state = self.file_finder.as_mut().unwrap();
                 let step = MAX_ITEM_ROWS.min(count);
-                // C# Math.Min(count - 1, ...) goes to -1 on an empty list;
-                // the clamp below turns that into 0
+                // `saturating_sub` keeps an empty list at 0
                 state.selected_index = (state.selected_index + step).min(count.saturating_sub(1));
             }
             ConsoleKey::Home => self.file_finder.as_mut().unwrap().selected_index = 0,
@@ -455,7 +450,7 @@ impl App {
         self.start_finder_search();
     }
 
-    /// Port of `RenderFileFinder`: gathers the view and draws it.
+    /// Gathers the view and draws it.
     pub fn render_file_finder(&mut self, buffer: &mut ScreenBuffer, width: i32, height: i32) {
         let current_path = self.current_path.clone();
         let icon_set = self.config.icon_set;
@@ -514,7 +509,8 @@ fn close_state(state: &FileFinderState) {
         cancel.cancel();
     }
 
-    // C# disposes the index here; the scan thread may still hold a clone
+    // The scan thread may still hold a clone of the index, so cancel instead
+    // of dropping it
     state.index.cancel_search();
 }
 
@@ -525,8 +521,8 @@ pub struct FinderItem<'a> {
     pub match_positions: &'a [usize],
 }
 
-/// Everything `render_file_finder_view` draws (the C# render reads these
-/// from `App` fields). `items` starts at `scroll_offset`.
+/// Everything `render_file_finder_view` draws. `items` starts at
+/// `scroll_offset`.
 pub struct FinderView<'a> {
     pub scanning: bool,
     pub has_entries: bool,
@@ -541,7 +537,7 @@ pub struct FinderView<'a> {
     pub icon_set: file_icons::IconSet,
 }
 
-/// Pure port of `RenderFileFinder`'s drawing.
+/// Draws the finder (pure: everything comes from `view`).
 pub fn render_file_finder_view(
     buffer: &mut ScreenBuffer,
     width: i32,
@@ -549,8 +545,7 @@ pub fn render_file_finder_view(
     view: &FinderView<'_>,
     input: &mut TextInput,
 ) {
-    // C# Math.Clamp(w * 3 / 4, 70, w - 8) throws below 78 columns; the port
-    // lets the upper bound win instead (KNOWN_DEVIATIONS.md)
+    // Below 78 columns the upper bound wins (KNOWN_DEVIATIONS.md)
     let content_width = (width * 3 / 4).max(70).min(width - 8);
     let content_height = MAX_ITEM_ROWS as i32 + 3; // input + separator + count + item rows
     let title = if view.scanning { "Find File [scanning...]" } else { "Find File" };
@@ -665,11 +660,10 @@ pub fn render_file_finder_view(
     }
 }
 
-/// Port of `ScanFilesForFinder`: breadth-first walk (so current-directory
-/// entries come first) that streams entries in batches every 200ms, adds
-/// each path to `index`, and finishes with a scan-complete event. Always
-/// skips `.git`; honors the hidden/system visibility settings; stops at the
-/// 50,000-entry cap (checked per directory, like C#).
+/// Breadth-first walk (so current-directory entries come first) that streams
+/// entries in batches every 200ms, adds each path to `index`, and finishes with
+/// a scan-complete event. Always skips `.git`; honors the hidden/system
+/// visibility settings; stops at the 50,000-entry cap (checked per directory).
 pub fn scan_files_for_finder(
     base_path: &str,
     show_hidden: bool,
@@ -776,9 +770,9 @@ struct WalkItem {
     metadata: std::fs::Metadata,
 }
 
-/// One directory's children split into (files, directories). Like .NET's
-/// enumeration, a symlink or junction to a directory counts as a directory
-/// (so the walk follows it); unreadable directories yield nothing.
+/// One directory's children split into (files, directories). A symlink or
+/// junction to a directory counts as a directory (so the walk follows it);
+/// unreadable directories yield nothing.
 fn list_directory(dir: &std::path::Path) -> (Vec<WalkItem>, Vec<WalkItem>) {
     let mut files = Vec::new();
     let mut dirs = Vec::new();
@@ -1057,7 +1051,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&root);
         let _ = std::fs::remove_dir_all(&outside);
 
-        // Like .NET's EnumerateDirectories: listed as a directory and walked
+        // Listed as a directory and walked
         assert!(has(&entries, "link", true));
         assert!(has(&entries, "inside.txt", false));
     }
@@ -1350,7 +1344,7 @@ mod tests {
 
     #[test]
     fn narrow_screen_renders_without_panicking() {
-        // C# Math.Clamp throws below 78 columns; the port renders
+        // Below 78 columns the dialog still renders
         let entry = FileSystemEntry {
             name: "a.txt".to_string(),
             full_path: "a.txt".to_string(),

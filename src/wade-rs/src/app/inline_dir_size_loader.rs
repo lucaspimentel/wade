@@ -1,12 +1,12 @@
-//! Port of `src/Wade/InlineDirSizeLoader.cs`: computes sizes for a list of
-//! directories on a background thread, injecting one `InlineDirSizeReadyEvent`
-//! per directory and a final `InlineDirSizeCompleteEvent`.
+//! Computes sizes for a list of directories on a background thread, injecting
+//! one `InlineDirSizeReadyEvent` per directory and a final
+//! `InlineDirSizeCompleteEvent`.
 
 use std::sync::mpsc::Sender;
 
 use crate::input::{CancelToken, InlineDirSizeCompleteEvent, InlineDirSizeReadyEvent, InputEvent};
 
-/// Port of `InlineDirSizeLoader`.
+/// One background batch of directory sizes at a time.
 pub struct InlineDirSizeLoader {
     cancel: Option<CancelToken>,
 }
@@ -23,7 +23,7 @@ impl InlineDirSizeLoader {
         Self { cancel: None }
     }
 
-    /// Port of `BeginLoad`: cancels any in-flight load and spawns a fresh
+    /// Cancels any in-flight load and spawns a fresh
     /// one on a background thread.
     pub fn begin_load(&mut self, parent_path: &str, directory_paths: &[String], out: Sender<InputEvent>) {
         if let Some(previous) = self.cancel.take() {
@@ -40,7 +40,7 @@ impl InlineDirSizeLoader {
         });
     }
 
-    /// Port of `Cancel`.
+    /// Cancels the in-flight load.
     pub fn cancel(&mut self) {
         if let Some(cancel) = self.cancel.take() {
             cancel.cancel();
@@ -74,8 +74,8 @@ pub(crate) fn sum_directory(directory_path: &str, cancel: &CancelToken) -> i64 {
                 continue;
             }
 
-            // A symlink/junction to a directory is neither listed by .NET's
-            // EnumerateFiles nor recursed into
+            // A symlink/junction to a directory is neither counted nor
+            // recursed into
             if file_type.is_symlink() && std::fs::metadata(entry.path()).is_ok_and(|target| target.is_dir()) {
                 continue;
             }
@@ -243,7 +243,7 @@ mod tests {
         std::fs::write(root.join("f.txt"), [0u8; 10]).unwrap();
         std::fs::write(root.join("f.txt:extra"), [0u8; 50]).unwrap();
 
-        // Like C# and Explorer: each link counts in full, streams do not
+        // Like Explorer: each link counts in full, streams do not
         let total = super::sum_directory(&root.to_string_lossy(), &CancelToken::new());
         let _ = std::fs::remove_dir_all(&root);
         assert_eq!(total, 210);

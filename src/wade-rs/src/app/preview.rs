@@ -1,7 +1,7 @@
-//! Port of the App preview flow (App.cs): the selection-change trigger,
-//! `BuildPreviewContext`, `ReloadActiveProvider`, `ClearPreviewCache`, the
-//! loader event handlers, the right-pane file preview, the "Change
-//! preview" menu, expanded-preview mode, and the image (Sixel) paths.
+//! The preview flow: the selection-change trigger, the preview context,
+//! provider reloads and the cache, the loader event handlers, the
+//! right-pane file preview, the "Change preview" menu, full-screen
+//! preview, and the image paths.
 
 use crate::app::App;
 use crate::app::input_reader::AppAction;
@@ -19,7 +19,7 @@ use crate::ui::layout::Rect;
 use crate::ui::metadata_renderer;
 use crate::ui::pane_renderer::PaneRenderer;
 
-/// C# `MetaSeparatorStyle`.
+/// The rule between metadata and the preview.
 const META_SEPARATOR_STYLE: CellStyle = CellStyle {
     fg: Some(Color { r: 60, g: 60, b: 80 }),
     bg: None,
@@ -30,7 +30,7 @@ const META_SEPARATOR_STYLE: CellStyle = CellStyle {
     strikethrough: false,
 };
 
-/// Rust-only: shown in place of a preview when `file_previews_enabled` is off.
+/// Shown in place of a preview when `file_previews_enabled` is off.
 const PREVIEWS_OFF_MESSAGE: &str = "[file previews off]";
 
 /// `PREVIEWS_OFF_MESSAGE` in the dim message color of `render_message`.
@@ -46,7 +46,7 @@ fn previews_off_line() -> StyledLine {
     }
 }
 
-/// The App's preview cache (C# `_cachedPreview*`, `_applicable*`, ...).
+/// The App's preview cache and the providers that apply to the selection.
 #[derive(Default)]
 pub struct PreviewState {
     pub(crate) loader: crate::app::preview_loader::PreviewLoader,
@@ -65,11 +65,11 @@ pub struct PreviewState {
     pub(crate) loading: bool,
     pub(crate) is_rendered: bool,
     pub(crate) is_placeholder: bool,
-    /// Rust only: the last cached line is a truncation marker, drawn
+    /// The last cached line is a truncation marker, drawn
     /// without a line number.
     pub(crate) has_truncation_marker: bool,
     pub(crate) expanded_scroll_offset: usize,
-    // Image previews (C# `_cachedSixelData`, `_cachedImagePath`, ...)
+    // Image previews
     pub(crate) cached_image: Option<ImageData>,
     pub(crate) cached_image_path: Option<String>,
     pub(crate) cached_image_pixel_width: i32,
@@ -81,16 +81,16 @@ pub struct PreviewState {
     /// Row the image starts on below a text/metadata header; 0 for the
     /// pane top.
     pub(crate) sixel_image_top: i32,
-    /// Rust-only: the cached kitty image has not been transmitted yet.
+    /// The cached kitty image has not been transmitted yet.
     pub(crate) kitty_transmit_pending: bool,
-    /// Rust-only: kitty delete commands for replaced images, written with
+    /// Kitty delete commands for replaced images, written with
     /// the next output.
     pub(crate) kitty_deletes: String,
 }
 
 impl PreviewState {
-    /// C# `(_isImagePreview ? _cachedImagePath : _cachedPreviewPath)`, when
-    /// either is set.
+    /// The cached image path for an image preview, else the cached preview
+    /// path; None when neither is set.
     pub(crate) fn reload_path(&self) -> Option<String> {
         if self.cached_path.is_none() && self.cached_image_path.is_none() {
             return None;
@@ -123,12 +123,12 @@ impl PreviewState {
 }
 
 impl App {
-    /// Port of `BuildPreviewContext`.
+    /// What providers need to know about the selection and the pane.
     pub(crate) fn build_preview_context(&mut self, pane_width: i32, pane_height: i32) -> PreviewContext {
         let entries = self.get_visible_entries();
         let selected = entries.get(self.selected_index);
 
-        // C# TryGetValue: the default (None) status when the path is absent
+        // No status when the path is absent
         let git_status = match (&self.git_statuses, selected) {
             (Some(statuses), Some(entry)) => Some(
                 crate::fs::git_utils::statuses_get(statuses, &entry.full_path)
@@ -156,7 +156,7 @@ impl App {
             image_previews_enabled: self.image_previews_effective,
             image_protocol: self.image_protocol,
             archive_metadata_enabled: self.config.archive_metadata_enabled,
-            // Rust only: the right pane reads what it can show; full-screen
+            // The right pane reads what it can show; full-screen
             // reads up to the config limits and marks a cut-off text
             limits: if self.input_mode == InputMode::ExpandedPreview {
                 PreviewLimits::full_screen(self.config.preview_max_lines, self.config.preview_max_bytes)
@@ -181,7 +181,7 @@ impl App {
         self.preview.active_context = Some(context);
     }
 
-    /// Port of `ReloadActiveProvider`.
+    /// Loads `path` with the active provider in the background.
     pub(crate) fn reload_active_provider(&mut self, path: &str, include_metadata: bool) {
         let Some(context) = self.preview.active_context.clone() else {
             return;
@@ -229,7 +229,7 @@ impl App {
             .begin_load(path, metadata_providers.unwrap_or_default(), preview_provider, context, sender);
     }
 
-    /// Port of `ClearPreviewCache` (also leaves expanded preview).
+    /// Drops the cached preview (also leaves full-screen preview).
     pub(crate) fn clear_preview_cache(&mut self) {
         if self.input_mode == InputMode::ExpandedPreview {
             self.input_mode = InputMode::Normal;
@@ -250,7 +250,7 @@ impl App {
         };
     }
 
-    /// Port of `HandlePreviewReady`.
+    /// A text preview arrived.
     pub fn handle_preview_ready(&mut self, event: PreviewReadyEvent) {
         if self.preview.pending_path.as_deref() != Some(event.path.as_str()) {
             return;
@@ -270,7 +270,7 @@ impl App {
         state.cached_image_path = None;
     }
 
-    /// Port of `HandleImagePreviewReady`.
+    /// An image preview arrived.
     pub fn handle_image_preview_ready(&mut self, event: ImagePreviewReadyEvent) {
         if self.preview.pending_path.as_deref() != Some(event.path.as_str()) {
             return;
@@ -289,7 +289,7 @@ impl App {
         state.loading = false;
     }
 
-    /// Port of `HandleCombinedPreviewReady`.
+    /// A text-plus-image preview arrived.
     pub fn handle_combined_preview_ready(&mut self, event: CombinedPreviewReadyEvent) {
         if self.preview.pending_path.as_deref() != Some(event.path.as_str()) {
             return;
@@ -310,7 +310,7 @@ impl App {
         state.loading = false;
     }
 
-    /// Port of `HandlePreviewLoadingComplete`.
+    /// The preview load finished (with or without a result).
     pub fn handle_preview_loading_complete(&mut self, event: PreviewLoadingCompleteEvent) {
         if self.preview.pending_path.as_deref() != Some(event.path.as_str()) {
             return;
@@ -320,7 +320,7 @@ impl App {
         self.preview.loading = false;
     }
 
-    /// Port of `HandleMetadataReady`.
+    /// Metadata sections arrived.
     pub fn handle_metadata_ready(&mut self, event: MetadataReadyEvent) {
         if self.preview.pending_path.as_deref() != Some(event.path.as_str())
             && self.preview.cached_path.as_deref() != Some(event.path.as_str())
@@ -340,7 +340,7 @@ impl App {
         }
     }
 
-    /// Port of `HandleSelectPreviewProvider`.
+    /// Switches to the `index`th applicable provider ("Change preview").
     pub(crate) fn handle_select_preview_provider(&mut self, index: i32) {
         let Some(providers) = &self.preview.applicable_providers else {
             return;
@@ -373,7 +373,7 @@ impl App {
         }
     }
 
-    /// True when Open on a file should enter expanded preview (App.cs:713).
+    /// True when Open on a file should enter full-screen preview.
     pub(crate) fn active_provider_is_previewable(&self) -> bool {
         self.preview
             .applicable_providers
@@ -382,7 +382,7 @@ impl App {
             .is_some_and(|provider| provider.label() != NonePreviewProvider.label())
     }
 
-    /// Port of `ShowPreviewMenu`.
+    /// Opens the "Change preview" menu.
     pub(crate) fn show_preview_menu(&mut self) {
         let Some(items) = self.build_preview_menu_items() else {
             return;
@@ -393,7 +393,7 @@ impl App {
         self.modal.action_menu_stack.push(ActionMenuLevel::new("Change preview", items));
     }
 
-    /// Port of `BuildPreviewMenuItems`: only when more than one provider
+    /// The "Change preview" items: only when more than one provider
     /// applies; the active one is marked with a bullet.
     pub(crate) fn build_preview_menu_items(&self) -> Option<Vec<ActionMenuItem>> {
         let providers = self.preview.applicable_providers.as_ref().filter(|providers| providers.len() > 1)?;
@@ -416,7 +416,7 @@ impl App {
         )
     }
 
-    /// Port of `EnterExpandedPreview`.
+    /// Enters full-screen preview.
     pub(crate) fn enter_expanded_preview(&mut self) {
         self.input_mode = InputMode::ExpandedPreview;
         self.preview.expanded_scroll_offset = 0;
@@ -440,13 +440,13 @@ impl App {
         self.request_full_redraw = true;
     }
 
-    /// Port of `LeaveExpandedPreview`.
+    /// Leaves full-screen preview.
     pub(crate) fn leave_expanded_preview(&mut self) {
         self.input_mode = InputMode::Normal;
         self.preview.expanded_scroll_offset = 0;
 
         if !self.preview_pane_enabled {
-            // Rust only: nothing to show it in, and the next Enter picks the
+            // Nothing to show it in, and the next Enter picks the
             // providers for its own selection
             self.clear_preview_cache();
         } else if let Some(path) = self.preview.reload_path() {
@@ -460,7 +460,7 @@ impl App {
         self.request_full_redraw = true;
     }
 
-    /// Port of the resize branch's preview reload (App.cs:401-413).
+    /// Reloads the preview for the resized pane.
     pub(crate) fn reload_preview_after_resize(&mut self) {
         let pane = if self.input_mode == InputMode::ExpandedPreview {
             self.layout.expanded_pane
@@ -480,13 +480,13 @@ impl App {
         self.preview.cached_styled_lines.as_ref().map(|lines| lines.len().saturating_sub(height))
     }
 
-    /// Port of `HandleExpandedPreviewKey`.
+    /// Keys in full-screen preview.
     pub(crate) fn handle_expanded_preview_key(&mut self, key: &KeyEvent) {
         use crate::console_key::ConsoleKey;
 
         let page = usize::try_from(self.layout.expanded_pane.height).unwrap_or(0);
 
-        // Rust only: letters match the typed character without Ctrl/Alt, so
+        // Letters match the typed character without Ctrl/Alt, so
         // Shift+Q or Alt+j are not q or j
         let ch = key.plain_char();
 
@@ -533,7 +533,7 @@ impl App {
         }
     }
 
-    /// Port of `HandleExpandedPreviewMouse`.
+    /// Mouse events in full-screen preview.
     pub(crate) fn handle_expanded_preview_mouse(&mut self, mouse: &MouseEvent) {
         use crate::input::MouseButton;
 
@@ -547,23 +547,23 @@ impl App {
         }
     }
 
-    /// Port of the file branch of the right pane (App.cs:1161-1235).
+    /// The right pane for a selected file.
     pub(crate) fn render_file_preview(&mut self, buffer: &mut ScreenBuffer, path: &str) {
         let pane = self.layout.right_pane;
 
-        // Rust-only: only the pending path counts as current. C# also skips
-        // when the path is cached, so returning to a file while another one
-        // loads waited for that abandoned load before reloading
+        // Only the pending path counts as current: counting the cached path
+        // too would make returning to a file while another one loads wait
+        // for that abandoned load before reloading
         if self.preview.pending_path.as_deref() != Some(path) {
             self.set_applicable_providers(path, pane.width, pane.height);
 
             let no_previews = self.preview.applicable_providers.as_ref().is_some_and(Vec::is_empty);
-            // Rust-only: metadata turned off (None) counts as no metadata, so
+            // Metadata turned off (None) counts as no metadata, so
             // the message below shows instead of a blank pane
             if no_previews && self.preview.applicable_metadata_providers.as_ref().is_none_or(Vec::is_empty) {
-                // Rust-only: keep the context and the (empty) metadata list the
-                // message below needs; C# ClearPreviewCache drops them and the
-                // pane stays blank
+                // Keep the context and the (empty) metadata list the message
+                // below needs; `clear_preview_cache` would drop them and
+                // leave the pane blank
                 let context = self.preview.active_context.take();
                 let metadata_providers = self.preview.applicable_metadata_providers.take();
                 self.clear_preview_cache();
@@ -586,7 +586,7 @@ impl App {
         let context = state.active_context.as_ref();
         let is_broken_symlink = context.is_some_and(|c| c.is_broken_symlink);
         let is_cloud_placeholder = context.is_some_and(|c| c.is_cloud_placeholder);
-        // Rust-only: say why there is no preview (the specific reasons win)
+        // Say why there is no preview (the specific reasons win)
         let previews_off = !self.config.file_previews_enabled && !is_broken_symlink && !is_cloud_placeholder;
 
         if state.applicable_providers.as_ref().is_some_and(Vec::is_empty)
@@ -631,8 +631,8 @@ impl App {
             let image_top = render_combined_preview(buffer, pane, lines, state.is_rendered);
             self.draw_image_area(buffer, pane, image_top, false);
         } else if let (Some(sections), Some(lines)) = (&state.cached_metadata_sections, &state.cached_styled_lines) {
-            // Rust-only: placeholder messages ("[empty file]", "[error: ...]")
-            // show below the metadata, without line numbers; C# hid them
+            // Placeholder messages ("[empty file]", "[error: ...]") show
+            // below the metadata, without line numbers
             render_metadata_with_text(buffer, pane, sections, lines, state.is_rendered || state.is_placeholder);
         } else if state.is_image_preview && state.cached_image.is_some() {
             // Claim the pane for the image (the Sixel bypasses the cells)
@@ -643,7 +643,7 @@ impl App {
         }
     }
 
-    /// Port of `RenderExpandedPreview` (the status bar is drawn by the
+    /// The full-screen preview pane (the status bar is drawn by the
     /// caller with the cached preview path).
     pub(crate) fn render_expanded_preview_pane(&mut self, buffer: &mut ScreenBuffer) {
         let pane = self.layout.expanded_pane;
@@ -666,7 +666,7 @@ impl App {
             if let (true, true, Some((marker, numbered_lines))) =
                 (numbered, self.preview.has_truncation_marker, lines.split_last())
             {
-                // Rust only: the truncation marker gets no line number
+                // The truncation marker gets no line number
                 PaneRenderer::render_preview(buffer, pane, numbered_lines, scroll, true);
                 let marker_row = i32::try_from(numbered_lines.len()).unwrap_or(i32::MAX) - scroll as i32;
 
@@ -681,8 +681,8 @@ impl App {
     }
 
     /// The image part of a preview, below `image_top` (0 for the pane top).
-    /// Sixel: marks the image for the write after the flush. Kitty (Rust-
-    /// only): placeholder cells, clipped to the pane, centered in the
+    /// Sixel: marks the image for the write after the flush. Kitty:
+    /// placeholder cells, clipped to the pane, centered in the
     /// image-only expanded preview like the Sixel.
     fn draw_image_area(&mut self, buffer: &mut ScreenBuffer, pane: Rect, image_top: i32, center: bool) {
         let Some(ImageData::Kitty { id, cols, rows, .. }) = self.preview.cached_image else {
@@ -705,7 +705,7 @@ impl App {
     }
 
     /// The Properties overlay's metadata: cached sections, minus the
-    /// file-name section; None when nothing remains (App.cs:1279).
+    /// file-name section; None when nothing remains.
     pub(crate) fn properties_metadata_sections(&self, entry_name: &str) -> Option<Vec<MetadataSection>> {
         let sections: Vec<MetadataSection> = self
             .preview
@@ -728,9 +728,8 @@ fn fill_blank(buffer: &mut ScreenBuffer, pane: Rect, top: i32) {
     }
 }
 
-/// Port of `RenderMetadataWithImage`: metadata on top (at most half the
-/// pane, the last row a separator), blank image area below. Returns the
-/// image's top row.
+/// Metadata on top (at most half the pane, the last row a separator), blank
+/// image area below. Returns the image's top row.
 pub fn render_metadata_with_image(buffer: &mut ScreenBuffer, pane: Rect, sections: &[MetadataSection]) -> i32 {
     let metadata_lines = metadata_renderer::render(sections, pane.width);
     let metadata_rows = (metadata_lines.len() as i32 + 1).min(pane.height / 2);
@@ -744,8 +743,8 @@ pub fn render_metadata_with_image(buffer: &mut ScreenBuffer, pane: Rect, section
     image_top
 }
 
-/// Port of `RenderCombinedPreview`: text on top (at most half the pane, at
-/// least one row), blank image area below. Returns the image's top row.
+/// Text on top (at most half the pane, at least one row), blank image area
+/// below. Returns the image's top row.
 pub fn render_combined_preview(buffer: &mut ScreenBuffer, pane: Rect, lines: &[StyledLine], is_rendered: bool) -> i32 {
     let text_rows = (lines.len() as i32).min(pane.height / 2).max(1);
 
@@ -757,8 +756,8 @@ pub fn render_combined_preview(buffer: &mut ScreenBuffer, pane: Rect, lines: &[S
     image_top
 }
 
-/// Port of `RenderMetadataWithText`: metadata on top (at most half the
-/// pane, the last row a separator), the preview below.
+/// Metadata on top (at most half the pane, the last row a separator), the
+/// preview below.
 pub fn render_metadata_with_text(
     buffer: &mut ScreenBuffer,
     pane: Rect,
@@ -1159,7 +1158,7 @@ mod tests {
             is_placeholder: false,
             has_truncation_marker: false,
         });
-        // C#: the preview's label (null) replaces it
+        // The preview's label (None) replaces it
         assert_eq!(app.preview.cached_file_type_label, None);
     }
 
@@ -1308,7 +1307,7 @@ mod tests {
         assert_eq!(sections[0].header.as_deref(), Some("Archive"));
     }
 
-    // --- Kitty graphics (Rust only) -----------------------------------------
+    // --- Kitty graphics ------------------------------------------------------
 
     fn kitty_app(name: &str, files: &[(&str, &str)]) -> (App, std::path::PathBuf) {
         let (mut app, root) = app_with(name, files);
@@ -1517,7 +1516,7 @@ mod tests {
         assert!(shows(&buffer, "zulu"));
     }
 
-    // --- iTerm2 inline images (Rust only) -----------------------------------
+    // --- iTerm2 inline images ------------------------------------------------
 
     fn iterm_app(name: &str) -> (App, std::path::PathBuf) {
         let (mut app, root) = sixel_app(name);

@@ -1,6 +1,5 @@
-//! Port of `src/Wade/GitStatusLoader.cs`: loads branch name, statuses, and
-//! ahead/behind counts on a background thread and injects a
-//! `GitStatusReadyEvent` into the pipeline.
+//! Loads branch name, statuses, and ahead/behind counts on a background thread
+//! and injects a `GitStatusReadyEvent` into the pipeline.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -14,8 +13,7 @@ use crate::fs::git_utils::{self};
 pub struct GitUtilsQueries;
 use crate::input::{CancelToken, GitStatusReadyEvent, InputEvent};
 
-/// The three query steps of the load sequence, injectable for tests (C#
-/// hardcodes the GitUtils statics).
+/// The three query steps of the load sequence, injectable for tests.
 pub trait GitQueries: Send + Sync {
     fn read_branch_name(&self, repo_root: &str) -> Option<String>;
     fn query_status(&self, repo_root: &str, cancel: &CancelToken) -> Option<HashMap<String, GitFileStatus>>;
@@ -36,7 +34,7 @@ impl GitQueries for GitUtilsQueries {
     }
 }
 
-/// Port of `GitStatusLoader`.
+/// One background status load at a time.
 pub struct GitStatusLoader {
     cancel: Option<CancelToken>,
 }
@@ -53,8 +51,8 @@ impl GitStatusLoader {
         Self { cancel: None }
     }
 
-    /// Port of `BeginLoad`: cancels any in-flight load, spawns the load
-    /// sequence on a background thread, injects the ready event.
+    /// Cancels any in-flight load, spawns the load sequence on a background
+    /// thread, injects the ready event.
     pub fn begin_load(&mut self, repo_root: &str, queries: Arc<dyn GitQueries>, out: Sender<InputEvent>) {
         if let Some(previous) = self.cancel.take() {
             previous.cancel();
@@ -93,7 +91,7 @@ impl GitStatusLoader {
         });
     }
 
-    /// Port of `Cancel`.
+    /// Cancels the in-flight load.
     pub fn cancel(&mut self) {
         if let Some(cancel) = self.cancel.take() {
             cancel.cancel();

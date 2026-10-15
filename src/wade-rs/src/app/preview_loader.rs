@@ -1,4 +1,4 @@
-//! Port of `PreviewLoader`: loads metadata (from every applicable provider)
+//! Loads metadata (from every applicable provider)
 //! and then the preview on a background thread, injecting events. A new
 //! load cancels the previous one.
 
@@ -23,7 +23,7 @@ impl PreviewLoader {
         Self::default()
     }
 
-    /// Port of `BeginLoad(path, metadataProviders, previewProvider, context)`.
+    /// Cancels any in-flight load and loads `path` in the background.
     pub fn begin_load(
         &mut self,
         path: &str,
@@ -42,7 +42,7 @@ impl PreviewLoader {
         });
     }
 
-    /// Port of `Cancel`.
+    /// Cancels the in-flight load.
     pub fn cancel(&mut self) {
         if let Some(cancel) = self.cancel.take() {
             cancel.cancel();
@@ -50,9 +50,9 @@ impl PreviewLoader {
     }
 }
 
-/// Port of `LoadMetadataAndPreview`. Metadata first (sections merged in
-/// provider order, the first file-type label wins), then the preview with
-/// the pane height reduced by the rendered metadata (at most half).
+/// Metadata first (sections merged in provider order, the first file-type label
+/// wins), then the preview with the pane height reduced by the rendered
+/// metadata (at most half).
 pub fn load_metadata_and_preview(
     path: &str,
     metadata_providers: &[&'static dyn MetadataProvider],
@@ -131,7 +131,7 @@ pub fn load_metadata_and_preview(
     }
 }
 
-/// Port of `LoadWithProvider`: combined, image or text results.
+/// One provider's preview: combined, image or text results.
 fn load_with_provider(
     path: &str,
     provider: &dyn PreviewProvider,
@@ -182,7 +182,6 @@ fn load_with_provider(
 
 #[cfg(test)]
 mod tests {
-    //! Port of PreviewLoaderTests.cs.
 
     use std::sync::mpsc::{Receiver, channel};
     use std::time::Duration;
@@ -243,7 +242,7 @@ mod tests {
         }
     }
 
-    /// Blocks until cancelled (C# SlowPreviewProvider: Task.Delay(ct)).
+    /// Blocks until cancelled.
     struct SlowPreviewProvider;
 
     impl PreviewProvider for SlowPreviewProvider {

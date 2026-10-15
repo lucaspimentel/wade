@@ -1,7 +1,6 @@
-//! Port of the git-entry gating shared by the action palette and the context
-//! menu (App.cs:2958-3018 and App.cs:3916-3927). The C# port of this module
-//! is src/Wade/UI/GitMenuItems.cs; both the app and the renderer fixture
-//! runners call it so fixtures exercise the same code as the app.
+//! The git entries of the action palette and the context menu. Both the app
+//! and the renderer fixture runners call it so fixtures exercise the same
+//! code as the app.
 
 use std::collections::{HashMap, HashSet};
 
@@ -10,8 +9,8 @@ use crate::fs::directory_contents::GitFileStatus;
 use crate::fs::git_utils::statuses_get;
 use crate::ui::action_palette::ActionMenuItem;
 
-/// Inputs to the git-menu builders. `selected_path` corresponds to C#'s
-/// `_selectedIndex < entries.Count` check plus the entry's FullPath.
+/// Inputs to the git-menu builders. `selected_path` is the selected entry's
+/// full path, None when nothing is selected.
 pub struct GitMenuContext<'a> {
     pub repo_root: Option<&'a str>,
     pub statuses: Option<&'a HashMap<String, GitFileStatus>>,
@@ -19,7 +18,7 @@ pub struct GitMenuContext<'a> {
     pub marked_paths: &'a HashSet<String>,
 }
 
-/// Port of `HasStatusInSelection` (App.cs:1489): marked paths take
+/// Whether the selection has a git status; marked paths take
 /// precedence over the selected entry.
 #[must_use]
 fn has_status_in_selection(ctx: &GitMenuContext, mask: GitFileStatus) -> bool {
@@ -38,8 +37,8 @@ fn has_status_in_selection(ctx: &GitMenuContext, mask: GitFileStatus) -> bool {
         .is_some_and(|path| statuses_get(statuses, path).is_some_and(|status| status.intersects(mask)))
 }
 
-/// Port of the palette's git block (App.cs:2958-3018). Like C#, it has no
-/// "Git: Copy relative path" entry (the Y key covers it).
+/// The palette's git block. It has no "Git: Copy relative path" entry (the
+/// Y key covers it).
 #[must_use]
 pub fn build_git_menu_items(ctx: &GitMenuContext) -> Vec<ActionMenuItem> {
     let Some(_repo_root) = ctx.repo_root else {
@@ -84,7 +83,7 @@ pub fn build_git_menu_items(ctx: &GitMenuContext) -> Vec<ActionMenuItem> {
     items
 }
 
-/// Port of the context menu's git additions (App.cs:3916-3927): Stage/Unstage
+/// The context menu's git additions: Stage/Unstage
 /// only, gated on repo + statuses + a selected entry.
 #[must_use]
 pub fn build_git_context_menu_items(ctx: &GitMenuContext) -> Vec<ActionMenuItem> {

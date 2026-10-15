@@ -1,17 +1,16 @@
-//! Port of `src/Wade/FileOperationRunner.cs`: copy/move/delete on a
-//! background thread with progress + completion events into the pipeline.
+//! Copy/move/delete on a background thread with progress + completion events
+//! into the pipeline.
 
 use std::sync::mpsc::Sender;
 
 use crate::fs::file_operations;
 use crate::input::{CancelToken, FileOperationCompleteEvent, InputEvent};
 
-/// One file operation for the runner thread: the C# runner closes over
-/// `RunPaste`/`RunDelete`; the Rust runner receives it as a closure and the
-/// App builds the appropriate one.
+/// One file operation for the runner thread, built by `paste_operation` or
+/// `delete_operation`. Returns (successes, errors, cancelled).
 pub type FileOperation = Box<dyn FnOnce(&CancelToken, &Sender<InputEvent>) -> (usize, usize, bool) + Send>;
 
-/// Port of `FileOperationRunner`.
+/// One background file operation at a time.
 pub struct FileOperationRunner {
     cancel: Option<CancelToken>,
 }
@@ -28,10 +27,9 @@ impl FileOperationRunner {
         Self { cancel: None }
     }
 
-    /// Port of `BeginPaste`/`BeginDelete`'s `StartAction` shape: cancels any
-    /// in-flight operation, runs on a background thread. The closure emits
-    /// `FileOperationProgress` events per item and the runner emits the
-    /// `FileOperationComplete` event when not cancelled.
+    /// Cancels any in-flight operation and runs `operation` on a background
+    /// thread. The closure emits `FileOperationProgress` events per item and
+    /// the runner emits the `FileOperationComplete` event when not cancelled.
     pub fn begin(&mut self, operation: FileOperation, out: Sender<InputEvent>) {
         if let Some(previous) = self.cancel.take() {
             previous.cancel();
@@ -55,7 +53,7 @@ impl FileOperationRunner {
         });
     }
 
-    /// Port of `Cancel` (also the Esc-to-cancel path).
+    /// Cancels the running operation (also the Esc-to-cancel path).
     pub fn cancel(&mut self) {
         if let Some(cancel) = self.cancel.take() {
             cancel.cancel();
@@ -63,9 +61,8 @@ impl FileOperationRunner {
     }
 }
 
-/// Builds the paste operation (copy or move per item) with the C# runner's
-/// exact per-item logic, emitting progress events. Never emits the
-/// completion event itself, the runner does.
+/// Builds the paste operation (copy or move per item), emitting progress
+/// events. Never emits the completion event itself, the runner does.
 pub fn paste_operation(
     sources: Vec<String>,
     destination: String,
@@ -145,7 +142,8 @@ pub fn paste_operation(
     })
 }
 
-/// Builds the delete operation with the C# runner's exact per-item loop.
+/// Builds the delete operation (to the trash unless `permanent`), emitting
+/// progress events.
 pub fn delete_operation(paths: Vec<String>, permanent: bool) -> FileOperation {
     Box::new(move |cancel, progress| {
         let total = paths.len();

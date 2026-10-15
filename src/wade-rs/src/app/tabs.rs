@@ -1,4 +1,4 @@
-//! Rust-only: multiple tabs (GitHub issue #17). The active tab's state lives
+//! Multiple tabs (GitHub issue #17). The active tab's state lives
 //! inline in `App` (so the many readers of `current_path` are unchanged);
 //! switching swaps it with the saved `TabState` of the target tab.
 

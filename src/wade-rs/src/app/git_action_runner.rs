@@ -1,15 +1,14 @@
-//! Port of `src/Wade/GitActionRunner.cs`: runs a git action on a background
-//! thread and injects a `GitActionCompleteEvent` into the pipeline.
+//! Runs a git action on a background thread and injects a
+//! `GitActionCompleteEvent` into the pipeline.
 
 use std::sync::mpsc::Sender;
 
 use crate::input::{CancelToken, GitActionCompleteEvent, InputEvent};
 
-/// One git action: the C# runner closes over `GitUtils.<Action>`; the Rust
-/// runner receives it as a closure.
+/// One git action (a `git_utils` command). Returns (success, error message).
 pub type GitAction = Box<dyn FnOnce(&CancelToken) -> (bool, Option<String>) + Send>;
 
-/// Port of `GitActionRunner`.
+/// One background git action at a time.
 pub struct GitActionRunner {
     cancel: Option<CancelToken>,
 }
@@ -26,9 +25,8 @@ impl GitActionRunner {
         Self { cancel: None }
     }
 
-    /// Port of `StartAction`: cancels any in-flight action, runs the action
-    /// on a background thread, injects the completion event (unless
-    /// cancelled, matching the C# token check).
+    /// Cancels any in-flight action, runs the action on a background thread,
+    /// injects the completion event (unless cancelled).
     pub fn start_action(&mut self, action: GitAction, out: Sender<InputEvent>) {
         if let Some(previous) = self.cancel.take() {
             previous.cancel();
@@ -48,7 +46,7 @@ impl GitActionRunner {
         });
     }
 
-    /// Port of `Cancel`.
+    /// Cancels the in-flight action.
     pub fn cancel(&mut self) {
         if let Some(cancel) = self.cancel.take() {
             cancel.cancel();

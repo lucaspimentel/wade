@@ -68,7 +68,7 @@ fn arrows_and_vim_keys_move_and_wrap_the_selection() {
     press(&mut app, ch('k'));
     press(&mut app, key(K::UpArrow));
     assert_eq!(selected_name(&mut app), "sub");
-    // Like C#, Up on the first entry wraps to the last and Down wraps back
+    // Up on the first entry wraps to the last and Down wraps back
     press(&mut app, key(K::UpArrow));
     assert_eq!(selected_name(&mut app), "readme.md", "wraps to the last entry");
     press(&mut app, key(K::DownArrow));
@@ -343,7 +343,7 @@ fn properties_scroll_with_j_and_shift_j_closes() {
     let _ = std::fs::remove_dir_all(&parent);
 }
 
-/// macOS (Rust-only): going up from "/" lists the mounted volumes with the
+/// macOS: going up from "/" lists the mounted volumes with the
 /// boot volume selected.
 #[cfg(target_os = "macos")]
 #[test]
@@ -608,7 +608,7 @@ fn f2_onto_an_existing_name_keeps_both_files() {
 }
 
 /// Linux: names differing only in case are distinct entries, so selection
-/// follows the exact name (C# folds case on every OS).
+/// follows the exact name.
 #[cfg(target_os = "linux")]
 #[test]
 fn selection_keeps_the_exact_name_when_another_differs_only_in_case() {
@@ -1077,7 +1077,7 @@ fn git_commit_dialog_commits_the_index() {
     let _ = std::fs::remove_dir_all(&parent);
 }
 
-// --- Ports of SearchFilterTests.cs and ModalInputTests.cs ------------------------
+// --- Search filter and modal input -------------------------------------------
 
 fn char_only(c: char) -> crate::input::KeyEvent {
     crate::input::KeyEvent {
@@ -1291,7 +1291,7 @@ fn sixel_output_is_suppressed_in_modal_modes() {
     }
 }
 
-// --- Ctrl+C clears search and filter boxes (Rust only) ----------------------
+// --- Ctrl+C clears search and filter boxes ----------------------------------
 
 #[test]
 fn ctrl_c_clears_the_filter_and_keeps_it_open() {
@@ -1347,7 +1347,7 @@ fn ctrl_c_clears_the_finder_query() {
     let _ = std::fs::remove_dir_all(&parent);
 }
 
-// --- Sort remembered per directory (Rust only) ------------------------------
+// --- Sort remembered per directory ------------------------------------------
 
 fn file_names(app: &mut App) -> Vec<String> {
     visible_names(app).into_iter().filter(|n| n != "sub").collect()
@@ -1422,7 +1422,7 @@ fn saved_sorts_survive_a_restart() {
     let _ = std::fs::remove_dir_all(&parent);
 }
 
-// --- Tabs (Rust only) ---------------------------------------------------------
+// --- Tabs ---------------------------------------------------------------------
 
 #[test]
 fn one_tab_shows_no_bar_and_t_adds_one() {

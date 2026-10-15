@@ -1,11 +1,11 @@
-//! Port of `src/Wade/DirectorySizeLoader.cs`: computes a directory's total
-//! size on a background thread and injects a `DirectorySizeReadyEvent`.
+//! Computes a directory's total size on a background thread and injects a
+//! `DirectorySizeReadyEvent`.
 
 use std::sync::mpsc::Sender;
 
 use crate::input::{CancelToken, DirectorySizeReadyEvent, InputEvent};
 
-/// Port of `DirectorySizeLoader`.
+/// One background directory-size calculation at a time.
 pub struct DirectorySizeLoader {
     cancel: Option<CancelToken>,
 }
@@ -22,8 +22,8 @@ impl DirectorySizeLoader {
         Self { cancel: None }
     }
 
-    /// Port of `BeginCalculation`: cancels any in-flight calculation and
-    /// spawns a fresh one on a background thread.
+    /// Cancels any in-flight calculation and spawns a fresh one on a background
+    /// thread.
     pub fn begin_calculation(&mut self, directory_path: &str, out: Sender<InputEvent>) {
         if let Some(previous) = self.cancel.take() {
             previous.cancel();
@@ -38,7 +38,7 @@ impl DirectorySizeLoader {
         });
     }
 
-    /// Port of `Cancel`.
+    /// Cancels the in-flight calculation.
     pub fn cancel(&mut self) {
         if let Some(cancel) = self.cancel.take() {
             cancel.cancel();

@@ -1,20 +1,19 @@
-//! Port of `src/Wade/FileSystemWatcherManager.cs`: watches the current
-//! directory for changes and injects a debounced `FileSystemChangedEvent`.
+//! Watches the current directory for changes and injects a debounced
+//! `FileSystemChangedEvent`.
 //!
-//! The C# version uses `System.IO.FileSystemWatcher`. On Windows this port
-//! is hand-rolled on `ReadDirectoryChangesW`, which reports what
-//! `FileSystemWatcher` does (buffer overflow and a deleted watched
-//! directory request a full refresh); the `notify` crate's Windows backend
-//! drops both. Linux and macOS use `notify` (inotify, FSEvents/kqueue).
+//! On Windows the watcher is hand-rolled on `ReadDirectoryChangesW`, so a
+//! buffer overflow and a deleted watched directory request a full refresh;
+//! the `notify` crate's Windows backend drops both. Linux and macOS use
+//! `notify` (inotify, FSEvents/kqueue).
 
 use std::sync::mpsc::Sender;
 
 use crate::input::{FileSystemChangedEvent, InputEvent};
 
-/// Port of `FileSystemWatcherManager.DebounceMs`.
+/// Quiet time after the last change before the event is sent.
 pub const DEBOUNCE_MS: u64 = 300;
 
-/// Port of `FileSystemWatcherManager`. `Watch` no-ops when the path is
+/// Watches one directory at a time. `watch` no-ops when the path is
 /// unchanged; failures silently degrade (manual refresh still works).
 pub struct FileSystemWatcherManager {
     sender: Sender<InputEvent>,
@@ -36,8 +35,8 @@ impl FileSystemWatcherManager {
         }
     }
 
-    /// Port of `Watch`: already-watching check (OrdinalIgnoreCase, matching
-    /// C#), stop-then-restart on change, silent degradation on failure.
+    /// Watches `directory_path`: no-op when already watched, otherwise
+    /// stop-then-restart; failures degrade silently.
     pub fn watch(&mut self, directory_path: &str) {
         if self.watched_path.as_ref().is_some_and(|current| paths_equal(current, directory_path)) {
             return;
@@ -58,8 +57,8 @@ impl FileSystemWatcherManager {
                 self.shutdown = Some(shutdown_tx);
                 self.worker = Some(worker);
 
-                // Debounce pump: resets the 300ms window on every FS event
-                // (matching C#'s per-event timer reset); `true` = full refresh.
+                // Debounce pump: resets the 300ms window on every FS event;
+                // `true` = full refresh.
                 std::thread::spawn(move || {
                     let mut pending_full_refresh = false;
 
@@ -109,7 +108,7 @@ impl FileSystemWatcherManager {
         }
     }
 
-    /// Port of `Stop`: tears down the watcher and debounce timer.
+    /// Tears down the watcher and debounce timer.
     pub fn stop(&mut self) {
         if let Some(shutdown) = self.shutdown.take() {
             let _ = shutdown.send(());
@@ -129,15 +128,14 @@ impl Drop for FileSystemWatcherManager {
 }
 
 /// Same watched directory: equal, or another spelling on a
-/// case-insensitive volume (C# folds case on every OS).
+/// case-insensitive volume.
 #[must_use]
 fn paths_equal(a: &str, b: &str) -> bool {
     crate::fs::file_operations::same_dir_path(a, b)
 }
 
-/// Port of `OnFileSystemEvent`'s `.git` filter: ignore changes to the .git
-/// directory (git operations modify it constantly, creating a feedback loop
-/// with RefreshGitStatus).
+/// Ignore changes to the .git directory (git operations modify it
+/// constantly, creating a feedback loop with `refresh_git_status`).
 #[must_use]
 pub fn is_git_internal_event(file_name: &str) -> bool {
     file_name.eq_ignore_ascii_case(".git")
@@ -170,7 +168,7 @@ impl Drop for WatchWorker {
 #[cfg(not(windows))]
 type WatchWorker = notify::RecommendedWatcher;
 
-/// `FileSystemWatcher.NotifyFilter` in the C# version.
+/// File and directory names, last write and size changes.
 #[cfg(windows)]
 const NOTIFY_FILTER: u32 = windows_sys::Win32::Storage::FileSystem::FILE_NOTIFY_CHANGE_FILE_NAME
     | windows_sys::Win32::Storage::FileSystem::FILE_NOTIFY_CHANGE_DIR_NAME
@@ -291,10 +289,9 @@ fn spawn_watch_thread(directory_path: &str, event_tx: std::sync::mpsc::Sender<bo
         overlapped: Box::new(unsafe { std::mem::zeroed() }),
     };
 
-    // The first read is issued before watch() returns, like C#'s
-    // EnableRaisingEvents: Windows only buffers changes once a read is
-    // pending, so issuing it on the thread would drop changes made right
-    // after watch().
+    // The first read is issued before watch() returns: Windows only buffers
+    // changes once a read is pending, so issuing it on the thread would drop
+    // changes made right after watch().
     if !issue_read(dir_raw, io_raw, &mut read) {
         return Err(());
     }
@@ -397,8 +394,8 @@ fn parse_notify_buffer(buffer: &[u8], event_tx: &std::sync::mpsc::Sender<bool>) 
 
 /// Starts a non-recursive watch. Each reportable change sends `false`;
 /// a watcher error, a rescan request (queue overflow) or the removal of
-/// the watched directory sends `true` (C# `OnError`, full refresh). Mirrors `FileSystemWatcher.NotifyFilter`
-/// (FileName | DirectoryName | LastWrite | Size): creations, removals,
+/// the watched directory sends `true` (full refresh). Like the Windows
+/// filter (names, last write, size): creations, removals,
 /// renames and modifications count; accesses do not.
 #[cfg(not(windows))]
 fn spawn_watch_thread(
@@ -420,7 +417,7 @@ fn spawn_watch_thread(
         let signal = match result {
             Err(_) => Some(true),
             Ok(event) if event.need_rescan() => Some(true),
-            // The watched directory itself went away (C# raises Error)
+            // The watched directory itself went away
             Ok(event)
                 if matches!(event.kind, EventKind::Remove(_))
                     && (event.paths.contains(&watched) || event.paths.contains(&watched_resolved)) =>

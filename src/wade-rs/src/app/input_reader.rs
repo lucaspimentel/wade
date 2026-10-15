@@ -1,9 +1,9 @@
-//! Port of src/Wade/Terminal/InputReader.cs: AppAction enum and MapKey.
+//! The `AppAction` enum and the key map.
 
 use crate::console_key::ConsoleKey;
 use crate::input::KeyEvent;
 
-/// Port of the `AppAction` enum (order matters: it is a C# enum).
+/// Everything a key, palette item or menu item can do.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum AppAction {
     None,
@@ -25,7 +25,7 @@ pub enum AppAction {
     ToggleMark,
     CycleSortMode,
     ToggleSortDirection,
-    /// Rust only: forget the current directory's saved sort.
+    /// Forget the current directory's saved sort.
     ResetDirectorySort,
     GoToPath,
     OpenExternal,
@@ -61,23 +61,22 @@ pub enum AppAction {
     GitPullRebase,
     GitFetch,
     DownloadCloudFile,
-    // Rust only: tabs (#17)
+    // Tabs (#17)
     NewTab,
     NextTab,
     PrevTab,
     /// Tab number 1-9.
     SwitchTab(u8),
     CloseTab,
-    /// Rust only: Esc in the file list clears the marks, else the filter,
+    /// Esc in the file list clears the marks, else the filter,
     /// else hints at `q` (it no longer quits).
     ClearOrQuitHint,
 }
 
-/// Port of `InputReader.MapKey`. `key_char` is the typed character (C#'s
-/// `KeyEvent.KeyChar`, a UTF-16 unit there).
+/// The action for a key in the file list.
 ///
-/// Rust only: bare-key bindings match the typed character with no Ctrl or
-/// Alt held (`KeyEvent::plain_char`), so Shift+J or Alt+j no longer act as
+/// Bare-key bindings match the typed character with no Ctrl or
+/// Alt held (`KeyEvent::plain_char`), so Shift+J or Alt+j do not act as
 /// `j`; and the keybinding rule is bare keys in lower/upper-case pairs, with
 /// Ctrl only for the jump tools (Ctrl+P/K, Ctrl+F, Ctrl+G) and the browser
 /// and shell conventions (Ctrl+T new tab, Ctrl+L/Ctrl+R refresh).

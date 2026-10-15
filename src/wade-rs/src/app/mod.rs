@@ -1,7 +1,6 @@
-//! Port of the app spine: main loop, navigation, pane rendering.
-//! Subsets of src/Wade/App.cs not yet portable (git, previews, file
-//! operations, dialogs) dispatch a status-bar notification instead;
-//! tracked as a temporary deviation in KNOWN_DEVIATIONS.md.
+//! The app spine: state, main loop, event dispatch, navigation and pane
+//! rendering. Dialogs, previews, the file finder and tabs live in the
+//! submodules.
 
 pub mod config_io;
 pub mod dialogs;
@@ -163,22 +162,21 @@ pub struct App {
     current_drive_media_type: crate::fs::DriveMediaType,
     /// `drive_media_type::detect`; tests substitute a fixed drive type.
     detect_drive_media_type: fn(&str) -> crate::fs::DriveMediaType,
-    /// Port of `_clipboardPaths` / `_clipboardIsCut`: wade's own clipboard.
+    /// Wade's own clipboard: the copied or cut paths.
     pub(crate) clipboard_paths: Vec<String>,
     pub(crate) clipboard_is_cut: bool,
     /// The OS clipboard; tests swap in a recording fake.
     pub(crate) os_clipboard: OsClipboard,
-    /// Set by HandleFileSystemChanged: the next frame forces a full redraw
-    /// (port of C# buffer.ForceFullRedraw()).
+    /// Set by `handle_file_system_changed`: the next frame repaints the
+    /// whole screen.
     request_full_redraw: bool,
     /// Ctrl+F file finder state while it is open.
     pub(crate) file_finder: Option<crate::app::file_finder::FileFinderState>,
-    /// The finder's query when it last closed; it reopens with it (Rust only).
+    /// The finder's query when it last closed; it reopens with it.
     pub(crate) last_finder_query: String,
     file_op_label: String,
     file_op_progress: Option<crate::input::FileOperationProgressEvent>,
-    /// C# closes over the entry in the TextInput completion callback; Rust
-    /// stores the target path explicitly for Rename/CreateSymlink purposes.
+    /// The entry a Rename or Create Symlink text input acts on.
     text_input_target: Option<String>,
     pub(crate) git_queries: std::sync::Arc<dyn crate::app::git_status_loader::GitQueries>,
     current_repo_root: Option<String>,
@@ -198,18 +196,17 @@ pub struct App {
     last_width: i32,
     last_height: i32,
     pub(crate) modal: dialogs::ModalState,
-    /// Preview cache and loader (C# `_cachedPreview*` fields).
+    /// Preview cache and loader.
     pub(crate) preview: preview::PreviewState,
-    /// Terminal Sixel support and cell pixel size (C# `_sixelSupported`,
-    /// `_cellPixelWidth`/`Height`).
+    /// Terminal image support and cell pixel size.
     pub(crate) capabilities: crate::terminal_caps::TerminalCapabilities,
-    /// C# `_imagePreviewsEffective`: the config flag and Sixel support.
+    /// Image previews are on in the config and the terminal can show them.
     pub(crate) image_previews_effective: bool,
-    /// Rust-only: the image protocol for these capabilities and the
+    /// The image protocol for these capabilities and the
     /// `image_protocol` setting (PDF previews use it even with image
     /// previews off).
     pub(crate) image_protocol: Option<crate::imaging::ImageProtocol>,
-    /// Rust only: every tab's saved state; the active slot is a
+    /// Every tab's saved state; the active slot is a
     /// placeholder while its fields live inline above.
     pub(crate) tabs: Vec<tabs::TabState>,
     pub(crate) active_tab: usize,
@@ -298,7 +295,7 @@ impl App {
 
     /// One main-loop step for every event but resize (which needs the
     /// screen buffer): dispatch to its handler, then clamp the selection
-    /// and scroll like the C# loop. Tests drive the App through this.
+    /// and scroll. Tests drive the App through this.
     pub fn handle_event(&mut self, event: InputEvent) {
         match event {
             InputEvent::Resize(_) => {}
@@ -309,8 +306,8 @@ impl App {
             InputEvent::GitActionComplete(event) => self.handle_git_action_complete(event),
             InputEvent::FileOperationComplete(event) => self.handle_file_operation_complete(event),
             InputEvent::FileOperationProgress(event) => self.handle_file_operation_progress(event),
-            // Like the C# main loop: loader events are handled whether they
-            // arrive first or queued behind another event
+            // Loader events are handled whether they arrive first or queued
+            // behind another event
             InputEvent::DirectorySizeReady(event) => self.handle_directory_size_ready(event),
             InputEvent::InlineDirSizeReady(event) => self.handle_inline_dir_size_ready(event),
             InputEvent::InlineDirSizeComplete(event) => self.handle_inline_dir_size_complete(event),
@@ -329,7 +326,7 @@ impl App {
         self.clamp_selection_and_scroll();
     }
 
-    /// The end of each C# main-loop iteration: clamp the selection to the
+    /// The end of each main-loop iteration: clamp the selection to the
     /// visible entries and keep it on screen (`AdjustScroll`).
     fn clamp_selection_and_scroll(&mut self) {
         let entries = self.get_visible_entries();
@@ -384,19 +381,17 @@ impl App {
         self.scroll_offset
     }
 
-    /// Port of `App.Run`'s setup and main loop. Events arrive over the
-    /// app-owned pipeline (console pump + async loaders), mirroring the C#
-    /// `InputPipeline`.
+    /// Terminal setup and the main loop. Events arrive over the app-owned
+    /// pipeline (console pump + async loaders).
     pub fn run(&mut self, cancel: &crate::input::CancelToken) -> Option<String> {
         self.apply_startup_config();
         self.bookmark_store.load();
 
-        // C# `using var terminal = new TerminalSetup()`: console modes and
-        // the alternate screen for the lifetime of the loop
+        // Console modes and the alternate screen for the lifetime of the loop
         let mut terminal = crate::terminal_setup::TerminalSetup::new();
         self.set_capabilities(terminal.capabilities());
 
-        // C# creates the input source after TerminalSetup, so the capability
+        // The input source starts after terminal setup, so the capability
         // query's replies are read before the input reader starts
         let pump_cancel = crate::input::CancelToken::new();
         let pump = spawn_input_pump(self.pipeline.sender(), pump_cancel.clone());
@@ -419,7 +414,7 @@ impl App {
                 self.notification = None;
             }
 
-            // Ensure filesystem watcher tracks the current directory (App.cs:264)
+            // Ensure filesystem watcher tracks the current directory
             self.tick_file_system_watcher();
 
             if self.request_full_redraw {
@@ -444,8 +439,7 @@ impl App {
             };
 
             // Handle every queued event in order before the next render, so
-            // keys typed or pasted faster than a frame are not lost (C# kept
-            // only the last key/mouse/paste/resize of the batch). The cap
+            // keys typed or pasted faster than a frame are not lost. The cap
             // keeps a flood of events from starving the render; the rest
             // stay queued for the next pass
             let mut next = Some(event);
@@ -472,7 +466,7 @@ impl App {
         pump_cancel.cancel();
         let _ = pump.join();
 
-        // Free the kitty image still shown (Rust-only)
+        // Free the kitty image still shown
         self.preview.set_image(None);
         if let Some(output) = self.take_pending_image_output() {
             write_raw(&output);
@@ -483,9 +477,9 @@ impl App {
         if self.write_cwd { Some(self.current_path.clone()) } else { None }
     }
 
-    /// The image write after a flush. Rust-only kitty output comes first, in
-    /// any mode: deletes for replaced images, then a new image's transmit
-    /// (once). Then the Sixel (App.cs:270-289): only while an image is
+    /// The image write after a flush. Kitty output comes first, in any mode:
+    /// deletes for replaced images, then a new image's transmit (once). Then
+    /// the Sixel or iTerm2 image: only while an image is
     /// pending, the preview is visible, and no modal is open, as the cursor
     /// move plus the Sixel data.
     pub(crate) fn take_pending_image_output(&mut self) -> Option<String> {
@@ -498,7 +492,7 @@ impl App {
             }
         }
 
-        // Rust-only: kitty commands pass through tmux one by one
+        // Kitty commands pass through tmux one by one
         if self.image_passthrough().is_some() {
             out = crate::terminal_caps::tmux_wrap_each(&out);
         }
@@ -520,7 +514,7 @@ impl App {
             return None;
         }
 
-        // Rust-only: iTerm2 inline images are written exactly like Sixel
+        // iTerm2 inline images are written exactly like Sixel
         let Some(crate::imaging::ImageData::Sixel(sixel) | crate::imaging::ImageData::Iterm(sixel)) =
             &self.preview.cached_image
         else {
@@ -545,7 +539,7 @@ impl App {
             );
         }
 
-        // Rust-only: through tmux the cursor move goes to the outer terminal
+        // Through tmux the cursor move goes to the outer terminal
         // too, so it is offset by the pane's position
         match self.image_passthrough() {
             Some(tmux) => Some(crate::terminal_caps::tmux_wrap(&format!(
@@ -556,7 +550,7 @@ impl App {
         }
     }
 
-    /// Rust-only: the tmux passthrough image output takes, if any. Sixel
+    /// The tmux passthrough image output takes, if any. Sixel
     /// that tmux shows itself is written plainly.
     fn image_passthrough(&self) -> Option<crate::terminal_caps::TmuxPassthrough> {
         self.capabilities
@@ -564,7 +558,7 @@ impl App {
             .filter(|tmux| !(tmux.native_sixel && self.image_protocol == Some(crate::imaging::ImageProtocol::Sixel)))
     }
 
-    /// Applies detected terminal capabilities (App.cs:237-241).
+    /// Applies detected terminal capabilities.
     pub fn set_capabilities(&mut self, capabilities: crate::terminal_caps::TerminalCapabilities) {
         self.capabilities = capabilities;
         self.update_image_protocol();
@@ -591,7 +585,7 @@ impl App {
             self.recalc_layout();
             clear_screen();
 
-            // Rust-only: a resized tmux pane may have moved
+            // A resized tmux pane may have moved
             #[cfg(unix)]
             if let Some(tmux) = self.capabilities.tmux.as_mut()
                 && let Some((top, left)) = crate::terminal_setup::tmux_pane_position()
@@ -613,7 +607,7 @@ impl App {
         self.dispatch(action);
     }
 
-    /// Port of the AppAction dispatch switch (3a subset).
+    /// Runs an action from the key map, palette or context menu.
     pub fn dispatch(&mut self, action: AppAction) {
         use AppAction as A;
         let entries = self.get_visible_entries();
@@ -652,7 +646,7 @@ impl App {
                             self.refresh_git_status();
                         }
                     } else {
-                        // Rust only: with the right pane hidden nothing has
+                        // With the right pane hidden nothing has
                         // picked the file's preview yet, so pick it here
                         if !self.preview_pane_enabled {
                             let path = entry.full_path.clone();
@@ -676,8 +670,7 @@ impl App {
             }
             A::Home => self.selected_index = 0,
             A::End => self.selected_index = entries.len().saturating_sub(1),
-            // Rust only: q always quits; Esc (below) clears marks and the
-            // filter. C# shared one action: q/Esc cleared the filter, else quit
+            // q always quits; Esc (below) clears marks and the filter
             A::Quit => self.quit = true,
             A::ClearOrQuitHint => {
                 if !self.marked_paths.is_empty() {
@@ -725,7 +718,7 @@ impl App {
                 self.parent_pane_enabled = !self.parent_pane_enabled;
                 self.recalc_layout();
                 clear_screen();
-                // C# ForceFullRedraw: the cleared screen must be repainted fully
+                // The cleared screen must be repainted fully
                 self.request_full_redraw = true;
             }
             A::TogglePreviewPane => {
@@ -735,7 +728,7 @@ impl App {
                 self.clear_preview_cache();
                 self.request_full_redraw = true;
             }
-            // Rust only: s/S change the current directory's saved sort; the
+            // s/S change the current directory's saved sort; the
             // config sort stays the default for the others
             A::CycleSortMode if self.current_path != DRIVES_PATH => {
                 let (mode, ascending, _) = self.directory_contents.sort_for(&self.current_path);
@@ -899,7 +892,7 @@ impl App {
         self.clear_preview_cache();
     }
 
-    /// Port of `GetVisibleEntries`.
+    /// The listing after the search filter.
     #[must_use]
     pub fn get_visible_entries(&mut self) -> Vec<FileSystemEntry> {
         let all = self.directory_contents.get_entries(&self.current_path);
@@ -916,7 +909,7 @@ impl App {
         self.filtered_entries.clone().unwrap_or_default()
     }
 
-    /// Port of `VisibleFileListHeight`.
+    /// Rows available for file entries in the center pane.
     #[must_use]
     pub fn visible_file_list_height(&self, _entries: &[FileSystemEntry]) -> usize {
         let mut height = self.layout.center_pane.height;
@@ -929,7 +922,7 @@ impl App {
         height.max(0) as usize
     }
 
-    /// Port of `AdjustScroll`.
+    /// Scrolls just enough to keep the selection within `visible_height` rows.
     pub fn adjust_scroll(&mut self, visible_height: usize) {
         let selected = self.selected_index;
         if selected < self.scroll_offset {
@@ -939,7 +932,7 @@ impl App {
         }
     }
 
-    /// Port of `ShowNotification`.
+    /// Shows a status-bar notification.
     pub fn show_notification(&mut self, message: &str, kind: NotificationKind) {
         self.notification = Some(Notification {
             message: message.to_string(),
@@ -950,7 +943,7 @@ impl App {
 
     /// The title sequence `update_terminal_title` writes: the current path
     /// when the title setting is on; otherwise the title from before wade
-    /// started (Rust-only; C# writes an empty title).
+    /// started.
     #[must_use]
     pub fn terminal_title_sequence(&self) -> String {
         if self.config.terminal_title_enabled {
@@ -960,7 +953,7 @@ impl App {
         }
     }
 
-    /// Port of `UpdateTerminalTitle` (App.cs): OSC 0 title set/clear.
+    /// Writes the terminal title (OSC 0).
     pub fn update_terminal_title(&self) {
         use std::io::Write;
 
@@ -976,8 +969,7 @@ impl App {
         }
     }
 
-    /// Port of the mouse-event dispatch (App.cs:541-573) and
-    /// `HandleMouseEvent` (App.cs:1731): scroll wheel, pane click navigation,
+    /// Mouse events: scroll wheel, pane click navigation, tab bar clicks,
     /// right-click context menu.
     pub fn handle_mouse(&mut self, mouse: crate::input::MouseEvent) {
         use crate::input::MouseButton;
@@ -1029,7 +1021,7 @@ impl App {
             return;
         }
 
-        // Rust only: a click on the tab bar switches tabs
+        // A click on the tab bar switches tabs
         if self.tab_bar_visible() && mouse.row == 0 {
             if mouse.button == MouseButton::Left
                 && let Some(index) = self.tab_at_column(mouse.col)
@@ -1068,7 +1060,7 @@ impl App {
         self.selected_index = if entries.is_empty() { 0 } else { self.selected_index.min(entries.len() - 1) };
     }
 
-    /// Port of `HitTestPane`.
+    /// Whether the cell at `row`, `col` is inside `pane`.
     fn hit_test_pane(pane: crate::ui::layout::Rect, row: i32, col: i32) -> bool {
         row >= pane.top && row < pane.top + pane.height && col >= pane.left && col < pane.left + pane.width
     }
@@ -1088,7 +1080,8 @@ impl App {
         self.refresh_git_status();
     }
 
-    /// Port of `RefreshGitStatus` (App.cs:2571).
+    /// Finds the current directory's repo and loads its status in the
+    /// background.
     pub fn refresh_git_status(&mut self) {
         if !self.config.git_status_enabled {
             self.current_repo_root = None;
@@ -1100,7 +1093,7 @@ impl App {
             self.current_repo_root = repo_root.clone();
 
             if let Some(root) = repo_root {
-                // Like C#: branch/statuses are NOT cleared here, so the
+                // Branch/statuses are NOT cleared here, so the
                 // previous listing stays visible until the new event lands
                 let sender = self.pipeline.sender();
                 let queries = std::sync::Arc::clone(&self.git_queries);
@@ -1114,7 +1107,8 @@ impl App {
         self.refresh_inline_dir_sizes();
     }
 
-    /// Port of `RefreshInlineDirSizes` (App.cs:2625-2675).
+    /// Starts computing the listing's directory sizes when the drive is
+    /// fast enough.
     fn refresh_inline_dir_sizes(&mut self) {
         self.inline_dir_sizes = None;
         self.directory_contents.dir_sizes = None;
@@ -1148,7 +1142,7 @@ impl App {
         }
     }
 
-    /// Port of `ShouldComputeInlineDirSizes` (App.cs:2650).
+    /// Whether inline directory sizes are computed on this drive type.
     pub(crate) fn should_compute_inline_dir_sizes_impl(
         drive_type: crate::fs::DriveMediaType,
         config: &AppConfig,
@@ -1163,7 +1157,7 @@ impl App {
         }
     }
 
-    /// Port of `HandleDirectorySizeReady` (App.cs:1416).
+    /// The properties overlay's directory size arrived.
     pub fn handle_directory_size_ready(&mut self, event: crate::input::DirectorySizeReadyEvent) {
         if Some(event.path.as_str()) != self.properties_dir_size_path.as_deref() {
             return;
@@ -1173,7 +1167,7 @@ impl App {
         self.properties_dir_size_text = Some(format!("{} ({} bytes)", formatted, group_thousands(event.total_bytes)));
     }
 
-    /// Port of `HandleInlineDirSizeReady` (App.cs:1429).
+    /// One listed directory's size arrived.
     pub fn handle_inline_dir_size_ready(&mut self, event: crate::input::InlineDirSizeReadyEvent) {
         if event.parent_path != self.current_path {
             return;
@@ -1184,7 +1178,7 @@ impl App {
             .insert(event.directory_path, event.total_bytes);
     }
 
-    /// Rust only: saves (or with `None` forgets) the current directory's
+    /// Saves (or with `None` forgets) the current directory's
     /// sort and re-sorts its listing.
     fn set_directory_sort(&mut self, sort: Option<(SortMode, bool)>) {
         let path = self.current_path.clone();
@@ -1206,13 +1200,13 @@ impl App {
         self.clear_preview_cache();
     }
 
-    /// Port of `HandleInlineDirSizeComplete` (App.cs:1440).
+    /// All listed directory sizes arrived.
     pub fn handle_inline_dir_size_complete(&mut self, event: crate::input::InlineDirSizeCompleteEvent) {
         if event.parent_path != self.current_path {
             return;
         }
 
-        // C# shares one dictionary between the two; keep the App's copy for rendering
+        // The listing sorts by its own copy; the App keeps one for rendering
         self.directory_contents.dir_sizes.clone_from(&self.inline_dir_sizes);
 
         if self.directory_contents.sort_for(&self.current_path).0 == crate::fs::directory_contents::SortMode::Size {
@@ -1220,7 +1214,8 @@ impl App {
         }
     }
 
-    /// Port of `HandleFileSystemChanged` (App.cs:1531).
+    /// The watched directory changed: reload it and keep the selection on
+    /// the same name.
     pub fn handle_file_system_changed(&mut self, event: crate::input::FileSystemChangedEvent) {
         if !same_dir_path(&event.directory_path, &self.current_path) {
             return; // Stale event for a directory we've navigated away from
@@ -1264,14 +1259,13 @@ impl App {
         self.request_full_redraw = true;
     }
 
-    /// Port of the watcher tick at the top of the render loop (App.cs:264).
+    /// Points the file-system watcher at the current directory.
     pub fn tick_file_system_watcher(&mut self) {
         let path = self.current_path.clone();
         self.fs_watcher.watch(&path);
     }
 
-    /// Port of `ShowProperties` dispatch (App.cs:810-828 and the palette
-    /// site at App.cs:3546).
+    /// Opens the properties overlay for the selected entry.
     fn show_properties(&mut self) {
         let entries = self.get_visible_entries();
 
@@ -1294,7 +1288,7 @@ impl App {
         }
     }
 
-    /// Port of `HandlePropertiesKey` (App.cs:1948). Modifier-only keys are
+    /// Keys while the properties overlay is open. Modifier-only keys are
     /// filtered by the caller.
     pub(crate) fn handle_properties_key(&mut self, key: &KeyEvent) {
         use crate::console_key::ConsoleKey;
@@ -1306,7 +1300,7 @@ impl App {
             app.properties_dir_size_text = None;
         };
 
-        // Rust only: k/j scroll only as typed (Shift+K closes like any other
+        // k/j scroll only as typed (Shift+K closes like any other
         // key)
         let ch = key.plain_char();
 
@@ -1338,8 +1332,7 @@ impl App {
     }
 
     /// The dispatch arms for the network git commands (push/pull/fetch and
-    /// variants): all share the repo-root guard and the 30s timeout
-    /// (App.cs:3789-3826).
+    /// variants): all share the repo-root guard and the 30s timeout.
     fn run_simple_git_action(&mut self, action: fn(&str, &crate::input::CancelToken) -> (bool, Option<String>)) {
         if let Some(root) = self.current_repo_root.clone() {
             let sender = self.pipeline.sender();
@@ -1347,8 +1340,7 @@ impl App {
         }
     }
 
-    /// Port of `ExecuteDelete` (App.cs:2668) plus the delete-confirm target
-    /// building from `DispatchFileAction` (App.cs:3210-3246).
+    /// Deletes `targets` in the background (to the trash unless `permanent`).
     pub fn execute_delete(&mut self, targets: Vec<String>, permanent: bool) {
         let sender = self.pipeline.sender();
         self.file_operation_runner
@@ -1357,12 +1349,12 @@ impl App {
         self.file_op_label = "Deleting".to_string();
     }
 
-    /// Port of `ExecutePaste` (App.cs:1012-1023).
+    /// Pastes wade's clipboard into the current directory.
     pub fn execute_paste(&mut self, overwrite: bool) {
         self.execute_paste_internal(self.clipboard_paths.clone(), self.clipboard_is_cut, overwrite);
     }
 
-    /// Port of `DownloadCloudFile` (App.cs): reading the file triggers the
+    /// Downloads a cloud placeholder: reading the file triggers the
     /// Cloud Files recall; the listing refreshes afterwards.
     fn download_cloud_file(&mut self, path: String) {
         self.show_notification("Downloading\u{2026}", NotificationKind::Info);
@@ -1383,8 +1375,8 @@ impl App {
         }
     }
 
-    /// Copies text to the OS clipboard, with C#'s success/failure
-    /// notifications.
+    /// Copies text to the OS clipboard and shows a success or failure
+    /// notification.
     pub(crate) fn copy_text_to_clipboard(&mut self, text: &str, success: &str) {
         if self.os_clipboard.set_text(text) {
             self.show_notification(success, NotificationKind::Success);
@@ -1393,8 +1385,8 @@ impl App {
         }
     }
 
-    /// Port of the `CopyGitRelativePath` body: `path` relative to the repo
-    /// root of the current directory, with forward slashes.
+    /// Copies `path` relative to the repo root of the current directory, with
+    /// forward slashes.
     pub(crate) fn copy_git_relative_path(&mut self, path: &str) {
         match crate::fs::git_utils::find_repo_root(&self.current_path) {
             None => self.show_notification("Not inside a git repository", NotificationKind::Error),
@@ -1410,7 +1402,7 @@ impl App {
         }
     }
 
-    /// Ports of the Copy/Cut arms: marked paths or the selected entry go to
+    /// Copy/Cut: marked paths or the selected entry go to
     /// wade's clipboard and to the OS clipboard.
     fn set_clipboard(&mut self, entries: &[FileSystemEntry], is_cut: bool) {
         let verb = if is_cut { "Cut" } else { "Copied" };
@@ -1428,7 +1420,7 @@ impl App {
         let _ = self.os_clipboard.set_files(&self.clipboard_paths, self.clipboard_is_cut);
     }
 
-    /// Port of the Paste arm: OS clipboard files win over wade's own, then
+    /// Paste: OS clipboard files win over wade's own, then
     /// conflicts ask before overwriting.
     fn paste_from_clipboard(&mut self) {
         if let Some((paths, is_cut)) = self.os_clipboard.get_files()
@@ -1484,13 +1476,12 @@ impl App {
         self.file_op_label = if is_cut { "Moving" } else { "Copying" }.to_string();
     }
 
-    /// Port of `HandleFileOperationProgress` (enhancement): stores the live
-    /// progress for the overlay.
+    /// Stores the live file operation progress for the overlay.
     pub fn handle_file_operation_progress(&mut self, event: crate::input::FileOperationProgressEvent) {
         self.file_op_progress = Some(event);
     }
 
-    /// Port of `HandleFileOperationComplete` (App.cs:2704).
+    /// A background file operation finished: notify and reload.
     pub fn handle_file_operation_complete(&mut self, event: crate::input::FileOperationCompleteEvent) {
         self.input_mode = InputMode::Normal;
         self.file_op_progress = None;
@@ -1517,13 +1508,14 @@ impl App {
         }
     }
 
-    /// Port of `HandleGitStatusReady`'s sibling for filtered lists: C# calls
-    /// `InvalidateFilteredEntries()` after file operations and config apply.
+    /// Drops the cached filtered listing (after file operations and config
+    /// changes).
     pub fn invalidate_filtered_entries(&mut self) {
         self.filtered_entries = None;
     }
 
-    /// Port of `DispatchFileAction` (App.cs:3132-3530).
+    /// File actions: open, copy, cut, paste, delete, rename, create and the
+    /// git and clipboard commands.
     pub fn dispatch_file_action(&mut self, action: AppAction) {
         use AppAction as A;
         let entries = self.get_visible_entries();
@@ -1620,7 +1612,7 @@ impl App {
         }
     }
 
-    /// Port of the OpenTerminal dispatch arm (App.cs:946-957).
+    /// Opens a terminal in the current directory.
     fn open_terminal_here(&mut self) {
         match open_terminal(&self.current_path) {
             Ok(()) => self.show_notification("Opened terminal", NotificationKind::Success),
@@ -1628,12 +1620,12 @@ impl App {
         }
     }
 
-    /// Port of `HandleGitActionComplete` (App.cs:1517).
+    /// A git command finished: notify and refresh the status.
     pub fn handle_git_action_complete(&mut self, event: crate::input::GitActionCompleteEvent) {
         if event.success {
             self.show_notification("Git action completed", NotificationKind::Success);
         } else {
-            // C# interpolation renders null as empty: "Git error: "
+            // No message renders as "Git error: "
             let message = format!("Git error: {}", event.error_message.unwrap_or_default());
             self.show_notification(&message, NotificationKind::Error);
         }
@@ -1641,8 +1633,7 @@ impl App {
         self.refresh_git_status();
     }
 
-    /// Port of `GetSelectedOrMarkedPaths` (App.cs:3867): marked paths first,
-    /// else the selected entry's full path.
+    /// Marked paths first, else the selected entry's full path.
     #[must_use]
     pub fn get_selected_or_marked_paths(&self, entries: &[FileSystemEntry]) -> Vec<String> {
         if !self.marked_paths.is_empty() {
@@ -1656,7 +1647,7 @@ impl App {
         Vec::new()
     }
 
-    /// Port of `HasStatusInSelection` (App.cs:1489): marked paths take
+    /// Whether the selection has a git status; marked paths take
     /// precedence over the selected entry.
     #[must_use]
     pub fn has_status_in_selection(&self, status_mask: GitFileStatus, entries: &[FileSystemEntry]) -> bool {
@@ -1678,7 +1669,7 @@ impl App {
         false
     }
 
-    /// Port of `HandleGitStatusReady` (App.cs:1455).
+    /// The repo status arrived.
     pub fn handle_git_status_ready(&mut self, event: crate::input::GitStatusReadyEvent) {
         if Some(event.repo_root.clone()) != self.current_repo_root {
             return;
@@ -1689,7 +1680,7 @@ impl App {
         self.ahead_behind_text = Self::format_ahead_behind(event.ahead, event.behind);
     }
 
-    /// Port of `FormatAheadBehind` (App.cs:1461).
+    /// " ↑2 ↓1" style ahead/behind counts, or `None` when both are zero.
     #[must_use]
     pub fn format_ahead_behind(ahead: u32, behind: u32) -> Option<String> {
         if ahead == 0 && behind == 0 {
@@ -1708,7 +1699,7 @@ impl App {
     }
 
     /// Left-pane click: navigate into the clicked directory, or navigate to
-    /// the parent and select the clicked file (App.cs:1795-1830).
+    /// the parent and select the clicked file.
     fn handle_left_pane_click(&mut self, row: i32, _col: i32, header_offset: i32) {
         if self.current_path == DRIVES_PATH {
             return;
@@ -1751,8 +1742,8 @@ impl App {
         }
     }
 
-    /// The scroll offset the left pane is rendered with (mirrors
-    /// `calculate_scroll(parent_selected, ...)` in `render_left_pane`).
+    /// The scroll offset the left pane is rendered with (the same
+    /// `calculate_scroll(parent_selected, ...)` as `render_left_pane`).
     fn mouse_left_pane_scroll(&self, parent_entries: &[FileSystemEntry]) -> i32 {
         let (_, current_name) = if DirectoryContents::is_drive_root(&self.current_path) {
             (DRIVES_PATH.to_string(), drive_root(&self.current_path).map(|r| drive_name(&r)).unwrap_or_default())
@@ -1777,7 +1768,7 @@ impl App {
     }
 
     /// Right-pane click: navigate into the previewed directory (only when the
-    /// selected entry is a directory) (App.cs:1843-1900).
+    /// selected entry is a directory).
     fn handle_right_pane_click(&mut self, row: i32, _col: i32, header_offset: i32) {
         let entries = self.get_visible_entries();
         if entries.is_empty() || self.selected_index >= entries.len() {
@@ -1808,7 +1799,7 @@ impl App {
         }
     }
 
-    /// Port of `ClearSearchFilter`.
+    /// Clears the search filter.
     pub fn clear_search_filter(&mut self) {
         self.search_filter.clear();
         self.filtered_entries = None;
@@ -1817,7 +1808,7 @@ impl App {
         }
     }
 
-    /// Port of the 3a subset of `App.Render`.
+    /// Draws the frame into `buffer`.
     pub fn render(&mut self, buffer: &mut ScreenBuffer) {
         if self.input_mode == InputMode::ExpandedPreview {
             self.render_expanded_preview(buffer);
@@ -1835,7 +1826,7 @@ impl App {
 
         // Column headers + separator line
         if self.config.column_headers_enabled && file_list_pane.height > 2 {
-            // C#: the rows add a status column for git statuses or cloud
+            // The rows add a status column for git statuses or cloud
             // placeholders, so the headers must leave room for it too
             let has_status_col = self.git_statuses.is_some() || entries.iter().any(|e| e.is_cloud_placeholder);
             let header_rect = Rect2::new(file_list_pane.left, file_list_pane.top, file_list_pane.width, 2);
@@ -1852,8 +1843,7 @@ impl App {
             file_list_pane.height -= 2;
         }
 
-        // C# passes _scrollOffset (kept by AdjustScroll); mouse hit-testing
-        // uses the same offset
+        // The offset `adjust_scroll` keeps; mouse hit-testing uses the same
         let scroll = i32::try_from(self.scroll_offset).unwrap_or(0);
         PaneRenderer::render_file_list(
             buffer,
@@ -1988,7 +1978,7 @@ impl App {
         }
     }
 
-    /// Port of `RenderExpandedPreview`: the preview fills the screen above
+    /// The full-screen preview: it fills the screen above
     /// the status bar, which shows the previewed file's path.
     fn render_expanded_preview(&mut self, buffer: &mut ScreenBuffer) {
         self.render_expanded_preview_pane(buffer);
@@ -2027,9 +2017,8 @@ use crate::fs::directory_contents::{capitalize_drive_letter, drive_name, drive_r
 use crate::fs::file_operations::{find_name, same_dir_path};
 use crate::ui::layout::Rect as Rect2;
 
-/// Port of `Process.Start(path) { UseShellExecute = true }` (App.cs:3143).
-/// Windows: `ShellExecuteExW` on its own STA thread, as .NET does. Unix
-/// (.NET `Process.Unix`): an executable file runs directly (falling back
+/// Opens `path` with the default app. Windows: `ShellExecuteExW` on its own
+/// STA thread. Unix: an executable file runs directly (falling back
 /// to the opener when exec reports ENOEXEC); anything else goes to the
 /// first opener found: xdg-open, gnome-open or kfmclient on Linux,
 /// /usr/bin/open on macOS.
@@ -2100,7 +2089,7 @@ fn shell_execute(path: &str) -> std::io::Result<()> {
     }
 }
 
-/// .NET `IsExecutable`: an existing non-directory the user may execute.
+/// An existing non-directory the user may execute.
 #[cfg(unix)]
 fn is_executable_file(path: &str) -> bool {
     let Ok(c_path) = std::ffi::CString::new(path) else {
@@ -2129,10 +2118,10 @@ fn find_program_in(program: &str, path_var: Option<&std::ffi::OsStr>) -> Option<
     })
 }
 
-/// Port of `OpenTerminalHere` (App.cs:979-1010): wt.exe with cmd fallback on
+/// Opens a terminal in `working_directory`: wt.exe with cmd fallback on
 /// Windows; Terminal or iTerm on macOS and a terminal emulator on other
-/// unixes (Rust-only; C# starts a detached $SHELL, which competes with wade
-/// for the TTY). The child is not waited on.
+/// unixes (a shell in wade's own terminal would compete with wade for the
+/// TTY). The child is not waited on.
 fn open_terminal(working_directory: &str) -> std::io::Result<()> {
     #[cfg(windows)]
     {
@@ -2150,7 +2139,7 @@ fn open_terminal(working_directory: &str) -> std::io::Result<()> {
         }
     }
 
-    // macOS (Rust-only): a new window of the terminal app in use
+    // macOS: a new window of the terminal app in use
     #[cfg(target_os = "macos")]
     {
         let app = macos_terminal_app(std::env::var("TERM_PROGRAM").ok().as_deref());
@@ -2240,7 +2229,7 @@ pub(crate) fn macos_terminal_app(term_program: Option<&str>) -> &'static str {
         _ => "Terminal",
     }
 }
-/// C# `"{value:N0}"` invariant format: thousands-grouped with commas.
+/// Thousands grouped with commas.
 #[must_use]
 pub(crate) fn group_thousands(value: i64) -> String {
     let digits = value.abs().to_string();
@@ -2266,7 +2255,8 @@ pub(crate) fn format_size_buf(bytes: i64) -> String {
     buf[..n].iter().collect()
 }
 
-/// Port of `CalculateScroll`.
+/// The scroll offset that keeps `selected_index` near the middle of
+/// `visible_height` rows.
 #[must_use]
 pub fn calculate_scroll(selected_index: usize, visible_height: i32, total_count: usize) -> i32 {
     let visible = visible_height.max(0);
@@ -2312,7 +2302,7 @@ fn terminal_size() -> Option<(i32, i32)> {
     }
 }
 
-/// The C# `InputPipeline` reader thread: owns the platform input source
+/// The input reader thread: owns the platform input source
 /// and forwards its events into the app's queue until cancelled.
 fn spawn_input_pump(
     sender: std::sync::mpsc::Sender<InputEvent>,
@@ -2429,8 +2419,8 @@ mod tests {
     }
 
     #[test]
-    fn should_compute_inline_dir_sizes_matches_csharp_theory() {
-        // (drive type, ssd, hdd, network, expected) from InlineDirSizeTests.cs
+    fn should_compute_inline_dir_sizes_by_drive_type() {
+        // (drive type, ssd, hdd, network, expected)
         let cases = [
             (DriveMediaType::Ssd, true, false, false, true),
             (DriveMediaType::Ssd, false, false, false, false),
@@ -2502,7 +2492,7 @@ mod tests {
         assert_eq!(seen, [SortMode::Modified, SortMode::Size, SortMode::Extension, SortMode::Name]);
         app.dispatch(AppAction::ToggleSortDirection);
         assert!(!app.directory_contents.sort_for(&app.current_path).1);
-        // Rust only: the config sort is the default for other directories
+        // The config sort is the default for other directories
         assert_eq!((app.config.sort_mode, app.config.sort_ascending), (SortMode::Name, true));
         assert_eq!(app.directory_contents.sort_for("/elsewhere"), (SortMode::Name, true, false));
     }
@@ -2623,7 +2613,7 @@ mod tests {
         }
         assert_eq!(app.selected_index(), 40);
 
-        // C# AdjustScroll: just enough to keep the selection on the last row
+        // Just enough to keep the selection on the last row
         let visible = app.visible_file_list_height(&[]);
         assert_eq!(app.scroll_offset(), 40 + 1 - visible);
 
@@ -2707,7 +2697,7 @@ mod tests {
 
     #[test]
     fn file_system_changed_resets_selection_when_directory_empties() {
-        // C# falls through to Math.Min(idx, Math.Max(0, count - 1)) = 0
+        // The old index clamps to the empty listing: 0
         let root = test_root("fsc-empty");
         let mut app = app_at(&root, &["a.txt", "b.txt"]);
         app.selected_index = 1;
