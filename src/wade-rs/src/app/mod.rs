@@ -744,13 +744,7 @@ impl App {
             // config sort stays the default for the others
             A::CycleSortMode if self.current_path != DRIVES_PATH => {
                 let (mode, ascending, _) = self.directory_contents.sort_for(&self.current_path);
-                let mode = match mode {
-                    SortMode::Name => SortMode::Modified,
-                    SortMode::Modified => SortMode::Size,
-                    SortMode::Size => SortMode::Extension,
-                    SortMode::Extension => SortMode::Name,
-                };
-                self.set_directory_sort(Some((mode, ascending)));
+                self.set_directory_sort(Some((mode.next(), ascending)));
             }
             A::ToggleSortDirection if self.current_path != DRIVES_PATH => {
                 let (mode, ascending, _) = self.directory_contents.sort_for(&self.current_path);

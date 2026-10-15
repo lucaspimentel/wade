@@ -220,12 +220,7 @@ pub fn normalize_start_path(path: &str) -> String {
 #[must_use]
 pub fn to_json(config: &AppConfig) -> String {
     let flag = |value: bool| if value { "true" } else { "false" };
-    let sort_mode = match config.sort_mode {
-        SortMode::Name => "name",
-        SortMode::Modified => "modified",
-        SortMode::Size => "size",
-        SortMode::Extension => "extension",
-    };
+    let sort_mode = config.sort_mode.name();
     let fields = [
         ("icons", ""),
         ("image_previews_enabled", flag(config.image_previews_enabled)),
@@ -286,12 +281,7 @@ pub fn save_config(config: &AppConfig) -> std::io::Result<()> {
         std::fs::create_dir_all(dir)?;
     }
 
-    let sort_mode = match config.sort_mode {
-        SortMode::Name => "name",
-        SortMode::Modified => "modified",
-        SortMode::Size => "size",
-        SortMode::Extension => "extension",
-    };
+    let sort_mode = config.sort_mode.name();
 
     let content = format!(
         "icons = {}\n\
@@ -383,12 +373,9 @@ fn parse_bool(value: &str, default: bool) -> bool {
 /// their numeric values (C# would also store undefined numbers; those are
 /// ignored here).
 fn parse_sort_mode(value: &str) -> Option<SortMode> {
-    match value.to_ascii_lowercase().as_str() {
-        "name" | "0" => Some(SortMode::Name),
-        "modified" | "1" => Some(SortMode::Modified),
-        "size" | "2" => Some(SortMode::Size),
-        "extension" | "3" => Some(SortMode::Extension),
-        _ => None,
+    match ["0", "1", "2", "3"].iter().position(|number| *number == value) {
+        Some(index) => Some(SortMode::ALL[index]),
+        None => SortMode::parse(&value.to_ascii_lowercase()),
     }
 }
 

@@ -70,6 +70,39 @@ pub enum SortMode {
     Extension,
 }
 
+impl SortMode {
+    pub const ALL: [SortMode; 4] = [SortMode::Name, SortMode::Modified, SortMode::Size, SortMode::Extension];
+
+    /// The name used in the config file, the sort store and the config dialog.
+    #[must_use]
+    pub fn name(self) -> &'static str {
+        match self {
+            SortMode::Name => "name",
+            SortMode::Modified => "modified",
+            SortMode::Size => "size",
+            SortMode::Extension => "extension",
+        }
+    }
+
+    /// The mode with this exact `name()`.
+    #[must_use]
+    pub fn parse(value: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|mode| mode.name() == value)
+    }
+
+    #[must_use]
+    pub fn next(self) -> Self {
+        let index = Self::ALL.iter().position(|mode| *mode == self).unwrap_or(0);
+        Self::ALL[(index + 1) % Self::ALL.len()]
+    }
+
+    #[must_use]
+    pub fn prev(self) -> Self {
+        let index = Self::ALL.iter().position(|mode| *mode == self).unwrap_or(0);
+        Self::ALL[(index + Self::ALL.len() - 1) % Self::ALL.len()]
+    }
+}
+
 /// Sentinel path representing the list of drives.
 pub const DRIVES_PATH: &str = "::drives";
 
@@ -626,6 +659,17 @@ pub fn capitalize_drive_letter(path: &str) -> String {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+
+    #[test]
+    fn sort_mode_names_parse_and_cycle() {
+        for mode in SortMode::ALL {
+            assert_eq!(SortMode::parse(mode.name()), Some(mode));
+            assert_eq!(mode.next().prev(), mode);
+        }
+        assert_eq!(SortMode::Extension.next(), SortMode::Name);
+        assert_eq!(SortMode::Name.prev(), SortMode::Extension);
+        assert_eq!(SortMode::parse("Name"), None, "names are exact");
+    }
 
     #[test]
     fn is_cloud_placeholder_attributes_detects_recall_flags() {

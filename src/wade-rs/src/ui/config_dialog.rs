@@ -324,7 +324,7 @@ impl ConfigDialogState {
             ConfigField::ImagePreviews => self.image_previews = !self.image_previews,
             ConfigField::ShowHiddenFiles => self.show_hidden_files = !self.show_hidden_files,
             ConfigField::ShowSystemFiles => self.show_system_files = !self.show_system_files,
-            ConfigField::SortMode => self.sort_mode = cycle_sort_mode_next(self.sort_mode),
+            ConfigField::SortMode => self.sort_mode = self.sort_mode.next(),
             ConfigField::SortAscending => self.sort_ascending = !self.sort_ascending,
             ConfigField::ConfirmDelete => self.confirm_delete = !self.confirm_delete,
             ConfigField::ParentPane => self.parent_pane = !self.parent_pane,
@@ -355,7 +355,7 @@ impl ConfigDialogState {
     /// cycleable).
     pub fn cycle_next_selected(&mut self) {
         match self.items.get(self.selected_index).map(|item| item.field) {
-            Some(ConfigField::SortMode) => self.sort_mode = cycle_sort_mode_next(self.sort_mode),
+            Some(ConfigField::SortMode) => self.sort_mode = self.sort_mode.next(),
             Some(ConfigField::Icons) => self.icon_set = self.icon_set.next(),
             _ => {}
         }
@@ -364,7 +364,7 @@ impl ConfigDialogState {
     /// Port of `CyclePrevSelected`.
     pub fn cycle_prev_selected(&mut self) {
         match self.items.get(self.selected_index).map(|item| item.field) {
-            Some(ConfigField::SortMode) => self.sort_mode = cycle_sort_mode_prev(self.sort_mode),
+            Some(ConfigField::SortMode) => self.sort_mode = self.sort_mode.prev(),
             Some(ConfigField::Icons) => self.icon_set = self.icon_set.prev(),
             _ => {}
         }
@@ -378,7 +378,7 @@ impl ConfigDialogState {
         };
 
         match item.field {
-            ConfigField::SortMode => format!("\u{25c4} {} \u{25ba}", sort_mode_name(self.sort_mode)),
+            ConfigField::SortMode => format!("\u{25c4} {} \u{25ba}", self.sort_mode.name()),
             ConfigField::Icons => format!("\u{25c4} {} \u{25ba}", self.icon_set.name()),
             _ => format_bool(self.get_field(item.field)).to_string(),
         }
@@ -422,38 +422,6 @@ impl ConfigDialogState {
 #[must_use]
 pub fn format_bool(value: bool) -> &'static str {
     if value { "[X]" } else { "[ ]" }
-}
-
-#[must_use]
-fn sort_mode_name(mode: SortMode) -> &'static str {
-    match mode {
-        SortMode::Name => "name",
-        SortMode::Modified => "modified",
-        SortMode::Size => "size",
-        SortMode::Extension => "extension",
-    }
-}
-
-/// Port of `CycleSortModeNext`.
-#[must_use]
-pub fn cycle_sort_mode_next(current: SortMode) -> SortMode {
-    match current {
-        SortMode::Name => SortMode::Modified,
-        SortMode::Modified => SortMode::Size,
-        SortMode::Size => SortMode::Extension,
-        SortMode::Extension => SortMode::Name,
-    }
-}
-
-/// Port of `CycleSortModePrev`.
-#[must_use]
-pub fn cycle_sort_mode_prev(current: SortMode) -> SortMode {
-    match current {
-        SortMode::Name => SortMode::Extension,
-        SortMode::Modified => SortMode::Name,
-        SortMode::Size => SortMode::Modified,
-        SortMode::Extension => SortMode::Size,
-    }
 }
 
 #[cfg(test)]

@@ -310,6 +310,14 @@ Investigated enabling `ENABLE_VIRTUAL_TERMINAL_INPUT` under Windows Terminal. No
 ### Consolidate settings sources
 
 - [ ] Settings come from `config.toml` and the config dialog only (plus `--config-file`). Add one layer that also reads environment variables and CLI flags (e.g. `WADE_ICONS`, `--icons=`), with a fixed precedence (CLI > env > file > default), instead of adding each override by hand. Useful per terminal: a Nerd Font in one terminal, none in another.
+- [ ] Groundwork refactors (no behavior change):
+  - `SortMode::name()`/`parse()` instead of the five hand-written mappings (status bar, config dialog, config_io twice, sort store)
+  - Split `AppConfig` into persisted `Settings` and per-run state (start path, cwd file, config file path, show-config/help/version)
+  - Config dialog edits a `Settings` draft instead of mirroring 28 fields (`from_app_config`/`apply_to`/`toggle`/`get_field`)
+  - One table of boolean keys driving load, save and `to_json` (non-bool and legacy keys stay explicit; file and JSON order unchanged)
+  - One `parse_args` → `CliArgs` (config file, cwd file, start path, help/version/show-config); `load_config` takes the path only
+  - Separately: a shared `home_dir()` for the 7 `USERPROFILE`/`HOME` lookups; doc comments that describe behavior instead of "Port of `WadeConfig.*`"
+- [ ] Later, behavior changes: save keeping comments and unknown keys; reporting invalid values
 
 ### Keyboard shortcut convention audit
 

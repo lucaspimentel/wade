@@ -25,25 +25,6 @@ fn key(path: &str) -> String {
     super::path_key(path).into_owned()
 }
 
-fn mode_name(mode: SortMode) -> &'static str {
-    match mode {
-        SortMode::Name => "name",
-        SortMode::Modified => "modified",
-        SortMode::Size => "size",
-        SortMode::Extension => "extension",
-    }
-}
-
-fn parse_mode(value: &str) -> Option<SortMode> {
-    match value {
-        "name" => Some(SortMode::Name),
-        "modified" => Some(SortMode::Modified),
-        "size" => Some(SortMode::Size),
-        "extension" => Some(SortMode::Extension),
-        _ => None,
-    }
-}
-
 /// Parses `<mode> <asc|desc> <path>`; `None` for blank, comment or
 /// malformed lines.
 fn parse_line(line: &str) -> Option<(String, SortMode, bool)> {
@@ -54,7 +35,7 @@ fn parse_line(line: &str) -> Option<(String, SortMode, bool)> {
     }
 
     let mut parts = line.splitn(3, ' ');
-    let mode = parse_mode(parts.next()?)?;
+    let mode = SortMode::parse(parts.next()?)?;
     let ascending = match parts.next()? {
         "asc" => true,
         "desc" => false,
@@ -110,7 +91,7 @@ impl SortStore {
 
         let mut content = String::new();
         for (path, (mode, ascending)) in entries {
-            content.push_str(&format!("{} {} {path}\n", mode_name(*mode), if *ascending { "asc" } else { "desc" }));
+            content.push_str(&format!("{} {} {path}\n", SortMode::name(*mode), if *ascending { "asc" } else { "desc" }));
         }
 
         std::fs::write(file_path, content)
