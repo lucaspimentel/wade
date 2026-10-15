@@ -1,9 +1,9 @@
-//! Port of src/Wade/UI/FileIcons.cs: Nerd Font icon mapping, plus the
-//! Rust-only Unicode, emoji and ASCII sets.
+//! File icons: the Nerd Font mapping, plus the Unicode, emoji and ASCII
+//! sets.
 
 use crate::fs::directory_contents::FileSystemEntry;
 
-// Port of the C# extension -> icon table (OrdinalIgnoreCase).
+// Extension -> Nerd Font icon (any case).
 const EXTENSION_ICONS: &[(&str, u32)] = &[
     (".cs", 0xF031B),
     (".csx", 0xF031B),
@@ -91,7 +91,7 @@ const EXTENSION_ICONS: &[(&str, u32)] = &[
     (".pdb", 0xF188),
 ];
 
-/// Rust-only: which glyphs mark file types (`icons = nerd|unicode|emoji|ascii|none`).
+/// Which glyphs mark file types (`icons = nerd|unicode|emoji|ascii|none`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum IconSet {
     /// Nerd Fonts v3 glyphs (needs a patched font).
@@ -308,7 +308,7 @@ pub fn get_icon(entry: &FileSystemEntry, set: IconSet) -> Option<char> {
     pick(set, category_glyphs(category(&ext, &name_lower)))
 }
 
-/// The C# per-extension Nerd Fonts table and its special file names.
+/// The per-extension Nerd Fonts table and its special file names.
 fn nerd_extension_icon(ext: &str, name_lower: &str) -> Option<u32> {
     if !ext.is_empty()
         && let Some(&(_, code)) = EXTENSION_ICONS.iter().find(|(e, _)| *e == ext)
@@ -370,8 +370,8 @@ fn status_glyph(set: IconSet, (nerd, unicode, ascii): (u32, char, char)) -> char
     }
 }
 
-/// Mirrors .NET `Path.GetExtension`: text from the final dot, including the
-/// dot (unlike Rust's Path::extension, which treats ".name" as no extension).
+/// Text from the final dot, including the dot (unlike `Path::extension`,
+/// which treats ".name" as no extension).
 #[must_use]
 pub fn get_extension(name: &str) -> &str {
     match name.rfind('.') {
@@ -387,7 +387,6 @@ fn icon(code_point: u32) -> char {
 
 #[cfg(test)]
 mod tests {
-    //! Port of FileIconsTests.cs, plus the link, junction and app-alias icons.
 
     use super::{IconSet, get_branch_icon, get_cloud_icon, get_git_status_icon, get_icon};
     use crate::fs::FileSystemEntry;

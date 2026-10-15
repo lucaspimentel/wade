@@ -1,5 +1,5 @@
-//! Port of `MetadataRenderer`: metadata sections as styled lines (header,
-//! divider, aligned label/value rows, list items).
+//! Metadata sections as styled lines (header, divider, aligned label/value
+//! rows, list items).
 
 use crate::highlight::StyledLine;
 use crate::preview::MetadataSection;
@@ -24,7 +24,7 @@ fn styled(text: String, style: CellStyle) -> StyledLine {
     }
 }
 
-/// Port of `MetadataRenderer.Render`. `max_width` only caps the header
+/// Renders the sections. `max_width` only caps the header
 /// divider (0 = default 20).
 #[must_use]
 pub fn render(sections: &[MetadataSection], max_width: i32) -> Vec<StyledLine> {

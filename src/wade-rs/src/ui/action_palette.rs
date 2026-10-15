@@ -1,5 +1,4 @@
-//! Port of `src/Wade/UI/ActionMenuItem.cs` and `src/Wade/UI/ActionMenuLevel.cs`:
-//! the action palette data model.
+//! The action palette data model: items, submenus and filtered levels.
 
 use crate::app::input_reader::AppAction;
 use crate::ui::text_input::TextInput;
@@ -62,7 +61,7 @@ impl ActionMenuLevel {
         }
     }
 
-    /// Port of `GetFilteredItems`: label substring filter, case-insensitive.
+    /// Label substring filter, case-insensitive.
     #[must_use]
     pub fn get_filtered_items(&self) -> Vec<&ActionMenuItem> {
         let filter = self.filter.value();

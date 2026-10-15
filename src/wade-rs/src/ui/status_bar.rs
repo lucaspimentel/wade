@@ -1,4 +1,4 @@
-//! Port of src/Wade/UI/StatusBar.cs.
+//! The status bar: path, counts, sort, git branch and notifications.
 
 use crate::fs::directory_contents::FileSystemEntry;
 use crate::screen::{CellStyle, Color, ScreenBuffer};
@@ -30,8 +30,7 @@ const PATH_FG: (u8, u8, u8) = (80, 160, 255);
 const SUCCESS_FG: (u8, u8, u8) = (80, 200, 80);
 const ERROR_FG: (u8, u8, u8) = (220, 80, 80);
 
-/// Port of `StatusBar.Render`. Metadata parameters are `None` until the
-/// preview phases land; the render path is otherwise identical.
+/// Draws the status bar.
 #[allow(clippy::too_many_arguments)]
 pub fn render(
     buffer: &mut ScreenBuffer,
@@ -187,7 +186,7 @@ fn build_right_text(
         SortMode::Name => "name",
     });
     out.push(if sort_ascending { '\u{2191}' } else { '\u{2193}' });
-    // Rust only: the directory has its own saved sort
+    // The directory has its own saved sort
     if sort_overridden {
         out.push('*');
     }

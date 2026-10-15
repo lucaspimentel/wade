@@ -1,4 +1,4 @@
-//! Port of src/Wade/UI/PaneRenderer.cs (file lists, headers, borders).
+//! Pane drawing: file lists, column headers, previews, borders.
 
 use crate::fs::directory_contents::{FileSystemEntry, GitFileStatus};
 use crate::screen::{CellStyle, Color, ScreenBuffer};
@@ -223,7 +223,7 @@ fn compute_column_layout(
 pub struct PaneRenderer;
 
 impl PaneRenderer {
-    /// Port of `RenderColumnHeaders`.
+    /// The column headers and the rule under them.
     pub fn render_column_headers(
         buffer: &mut ScreenBuffer,
         header_rect: Rect,
@@ -307,7 +307,7 @@ impl PaneRenderer {
         }
     }
 
-    /// Port of `RenderFileList`.
+    /// A file list: names with icons, details columns, git and cloud status.
     #[allow(clippy::too_many_arguments)]
     pub fn render_file_list(
         buffer: &mut ScreenBuffer,
@@ -409,7 +409,7 @@ impl PaneRenderer {
             let screen_row = pane.top + row;
             let entry_col = pane.left;
 
-            // Render name: the icon and a space, or (no icons) the C# directory marker
+            // Render name: the icon and a space, or (no icons) the directory marker
             let name_start = icon_set.column_width();
             if let Some(icon) = file_icons::get_icon(entry, icon_set) {
                 buffer.put(screen_row, entry_col, icon, style);
@@ -701,8 +701,8 @@ impl PaneRenderer {
         }
     }
 
-    /// Port of `RenderPreview`: styled lines from `scroll_offset`, with an
-    /// optional 4-wide right-aligned line number plus a space.
+    /// Styled lines from `scroll_offset`, with an optional 4-wide right-aligned
+    /// line number plus a space.
     pub fn render_preview(
         buffer: &mut ScreenBuffer,
         pane: Rect,
@@ -724,7 +724,7 @@ impl PaneRenderer {
             content_line_number += 1;
 
             if show_line_numbers {
-                // C# TryFormat into 4 chars: wider numbers leave it blank
+                // 4 chars: wider numbers leave it blank
                 let number = content_line_number.to_string();
                 let text = if number.len() <= 4 { format!("{number:>4}") } else { "    ".to_string() };
 
@@ -770,8 +770,7 @@ impl PaneRenderer {
         }
     }
 
-    /// Port of `RenderStyledContent`: the first span covering a position
-    /// wins. Positions are chars (C#: UTF-16 units).
+    /// The first span covering a position wins. Positions are chars.
     fn render_styled_content(
         buffer: &mut ScreenBuffer,
         row: i32,
@@ -805,8 +804,7 @@ impl PaneRenderer {
         }
     }
 
-    /// Port of `RenderPerCharContent`: one style per char, default past
-    /// the end of `char_styles`.
+    /// One style per char, default past the end of `char_styles`.
     fn render_per_char_content(
         buffer: &mut ScreenBuffer,
         row: i32,
@@ -836,14 +834,14 @@ impl PaneRenderer {
         }
     }
 
-    /// Port of `RenderMessage`.
+    /// A dim message in the pane's first row.
     pub fn render_message(buffer: &mut ScreenBuffer, pane: Rect, message: &str) {
-        // C# uses DimColor (100,100,100), not DetailColor
+        // Dimmer than DETAIL_COLOR
         let style = style((100, 100, 100), None);
         buffer.write_string(pane.top, pane.left + 1, message, style, i64::from(pane.width - 1));
     }
 
-    /// Port of `RenderBorders`.
+    /// The vertical lines between panes.
     pub fn render_borders(
         buffer: &mut ScreenBuffer,
         layout: &Layout,
@@ -852,7 +850,7 @@ impl PaneRenderer {
         parent_pane_enabled: bool,
     ) {
         let style = style(ui::BORDER_COLOR, None);
-        // Rust: the pane rows (below the tab bar when it is shown)
+        // The pane rows (below the tab bar when it is shown)
         let rows = layout.center_pane.top..layout.center_pane.top + layout.center_pane.height;
 
         if parent_pane_enabled {

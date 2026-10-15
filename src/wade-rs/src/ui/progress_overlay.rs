@@ -1,13 +1,12 @@
-//! Port of `src/Wade/UI/ProgressOverlay.cs`, with an ENHANCEMENT over C#:
-//! when per-item progress is available, the overlay shows the item count and
-//! current file name (C# shows only the operation label). This divergence is
-//! tracked in KNOWN_DEVIATIONS.md, so no golden fixture covers this overlay.
+//! The file operation overlay: the operation label and, when per-item
+//! progress is available, the item count and current file name. No frozen
+//! golden covers it (KNOWN_DEVIATIONS.md).
 
 use crate::input::FileOperationProgressEvent;
 use crate::screen::{CellStyle, Color, ScreenBuffer};
 use crate::ui::dialog_box::{self, BG_COLOR};
 
-/// Port of `ProgressOverlay.Render`.
+/// Draws the overlay.
 pub fn render(
     buffer: &mut ScreenBuffer,
     screen_width: i32,

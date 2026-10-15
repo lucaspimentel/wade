@@ -1,4 +1,4 @@
-//! Port of src/Wade/UI/Notification.cs.
+//! Status-bar notifications.
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum NotificationKind {
@@ -7,7 +7,7 @@ pub enum NotificationKind {
     Error,
 }
 
-/// Mirrors C# `Notification(string Message, NotificationKind Kind, long Timestamp)`.
+/// A message shown in the status bar until it expires.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Notification {
     pub message: String,

@@ -1,4 +1,4 @@
-//! UI layer: ports of src/Wade/UI/*.cs pieces used by the app spine.
+//! UI layer: panes, overlays, dialogs and their formatting helpers.
 
 pub mod action_palette;
 pub mod config_dialog;
@@ -19,8 +19,7 @@ pub mod text_input;
 pub use layout::{Layout, Rect};
 pub use notification::{Notification, NotificationKind};
 
-// Shared palette, mirroring PaneRenderer's private constants (used by
-// StatusBar as well).
+// Shared palette (panes and status bar).
 
 pub(crate) const DIR_COLOR: (u8, u8, u8) = (80, 160, 255);
 pub(crate) const FILE_COLOR: (u8, u8, u8) = (200, 200, 200);

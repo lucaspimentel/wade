@@ -1,4 +1,4 @@
-//! Port of `src/Wade/UI/HelpOverlay.cs`: static full-screen help overlay.
+//! Static full-screen help overlay.
 
 use crate::screen::{CellStyle, Color, ScreenBuffer};
 use crate::ui::dialog_box::{self, BG_COLOR};

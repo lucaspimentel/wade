@@ -1,6 +1,6 @@
-//! Port of the Rect record and Layout class in src/Wade/UI/Layout.cs.
+//! Screen layout: the three panes, the status bar and the dialogs' rects.
 
-/// Mirrors C# `Rect(int Left, int Top, int Width, int Height)`.
+/// A screen rectangle in cells.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct Rect {
     pub left: i32,
@@ -25,7 +25,7 @@ impl Rect {
         self.top + self.height
     }
 
-    /// Port of `Rect.CenterContent`.
+    /// The top-left cell that centers content of this size in the rect.
     #[must_use]
     pub const fn center_content(&self, content_width: i32, content_height: i32) -> (i32, i32) {
         let cw = self.width - content_width;
@@ -54,7 +54,7 @@ pub struct Layout {
 }
 
 impl Layout {
-    /// Port of `Layout.Calculate`.
+    /// Splits the screen into panes and the status bar.
     pub fn calculate(
         &mut self,
         terminal_width: i32,
@@ -65,8 +65,7 @@ impl Layout {
         self.calculate_with_top(terminal_width, terminal_height, preview_pane_enabled, parent_pane_enabled, 0);
     }
 
-    /// `calculate` with the first `top` rows reserved (Rust only: the tab
-    /// bar).
+    /// `calculate` with the first `top` rows reserved (the tab bar).
     pub fn calculate_with_top(
         &mut self,
         terminal_width: i32,
@@ -137,8 +136,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn three_pane_layout_matches_csharp_ratios() {
-        // C#: width 100 -> usable 98, left = 98*20/100 = 19, center = 98*40/100 = 39
+    fn three_pane_layout_ratios() {
+        // Width 100 -> usable 98, left = 98*20/100 = 19, center = 98*40/100 = 39
         let mut layout = Layout::default();
         layout.calculate(100, 30, true, true);
         assert_eq!(layout.left_pane, Rect::new(0, 0, 19, 29));

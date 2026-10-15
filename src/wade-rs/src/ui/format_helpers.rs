@@ -1,6 +1,6 @@
-//! Port of src/Wade/UI/FormatHelpers.cs.
+//! Size, date, percent and progress-bar formatting.
 
-/// Mirrors `PercentBarResult(int Length, int FilledCount, int LabelStart, int LabelLength)`.
+/// Where `format_percent_bar` put the bar and its label.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct PercentBarResult {
     pub length: usize,
@@ -9,7 +9,7 @@ pub struct PercentBarResult {
     pub label_length: usize,
 }
 
-/// Wall-clock fields mirroring a C# `DateTime` value for `format_date`.
+/// Local wall-clock fields for `format_date`.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct DateParts {
     pub year: i32,
@@ -17,15 +17,14 @@ pub struct DateParts {
     pub day: u32,
     pub hour: u32,
     pub minute: u32,
-    /// Sub-minute precision, kept so "sort by modified" breaks ties like
-    /// C# (which compares the full `DateTime`).
+    /// Sub-minute precision, kept so "sort by modified" compares the full
+    /// time.
     pub second: u32,
     pub nanosecond: u32,
 }
 
-/// Port of `FormatHelpers.FormatSize`: formats a byte count as "N B" or
-/// "N.N KB/MB/GB/TB" with .NET "F1" semantics (one decimal, midpoint away
-/// from zero, invariant culture).
+/// Formats a byte count as "N B" or "N.N KB/MB/GB/TB" (one decimal,
+/// midpoint away from zero).
 #[must_use]
 pub fn format_size(buf: &mut [char], bytes: i64) -> usize {
     let text = if bytes < 1024 {
@@ -41,7 +40,7 @@ pub fn format_size(buf: &mut [char], bytes: i64) -> usize {
             (1024.0_f64 * 1024.0 * 1024.0 * 1024.0, "TB")
         };
 
-        // .NET "F1": round to one decimal, midpoint away from zero;
+        // Round to one decimal, midpoint away from zero;
         // the decimal is always shown ("1.0 KB", never "1 KB")
         let tenths = ((bytes as f64 / divisor) * 10.0).round() as i64;
         let whole = tenths / 10;
@@ -53,8 +52,8 @@ pub fn format_size(buf: &mut [char], bytes: i64) -> usize {
     copy_fit(buf, &text)
 }
 
-/// Port of `FormatHelpers.FormatDate`: 19 -> "yyyy-MM-dd hh:mm tt",
-/// 10 -> "yyyy-MM-dd", 6 -> "MMM dd" (invariant culture; 12-hour clock).
+/// The date for a column width: 19 -> "yyyy-MM-dd hh:mm AM",
+/// 10 -> "yyyy-MM-dd", 6 -> "MMM dd" (English month names; 12-hour clock).
 #[must_use]
 pub fn format_date(buf: &mut [char], parts: DateParts, max_width: usize) -> usize {
     let text = if max_width >= 19 {
@@ -72,8 +71,7 @@ pub fn format_date(buf: &mut [char], parts: DateParts, max_width: usize) -> usiz
     copy_fit(buf, &text)
 }
 
-/// Port of `FormatPercentBar`: fills `buf` with the bar and returns the
-/// label bounds (`PercentBarResult`).
+/// Fills `buf` with the bar and returns the label bounds.
 #[must_use]
 pub fn format_percent_bar(buf: &mut [char], fraction: f64, bar_width: usize) -> PercentBarResult {
     if buf.len() < bar_width {
@@ -146,9 +144,8 @@ pub fn format_size_string(bytes: i64) -> String {
     buf[..n].iter().collect()
 }
 
-/// .NET `{ratio:P0}` under the invariant culture: the exact binary value
-/// times 100 rounded half-to-even (as .NET formats doubles), digits grouped
-/// with commas, then " %".
+/// A whole percentage: the exact binary value times 100 rounded
+/// half-to-even, digits grouped with commas, then " %".
 #[must_use]
 pub fn format_percent_p0(ratio: f64) -> String {
     // Two decimals of the ratio are the integer percent digits
@@ -189,8 +186,6 @@ mod tests {
         assert_eq!(format_size(&mut buf, 1_572_864), 6);
         assert_eq!(&buf[..6], &['1', '.', '5', ' ', 'M', 'B']);
     }
-
-    // Port of the rest of FormatHelpersTests.cs
 
     #[test]
     fn format_size_string_covers_bytes_to_gigabytes() {

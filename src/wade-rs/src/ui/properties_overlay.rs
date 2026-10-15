@@ -1,6 +1,5 @@
-//! Port of `src/Wade/UI/PropertiesOverlay.cs`: the `i` (Properties) overlay
-//! with scroll support. Metadata-provider sections are a Phase 7 item; the
-//! parameter stays in the signature so Phase 7 is a drop-in.
+//! The `i` (Properties) overlay with scroll support: file facts, then the
+//! metadata providers' sections.
 
 use crate::fs::DriveMediaType;
 use crate::fs::directory_contents::{FileSystemEntry, GitFileStatus};
@@ -55,7 +54,7 @@ struct Row {
     value_style: CellStyle,
 }
 
-/// Port of `PropertiesOverlay.Render`. Returns the total content row count.
+/// Draws the overlay. Returns the total content row count.
 #[allow(clippy::too_many_arguments)]
 pub fn render(
     buffer: &mut ScreenBuffer,
@@ -245,7 +244,7 @@ pub fn render(
     total_content_height
 }
 
-/// Port of `PropertiesOverlay.BuildValues`.
+/// The overlay's label/value rows for `entry`.
 fn build_values(
     entry: &FileSystemEntry,
     directory_size_text: Option<&str>,
@@ -338,9 +337,9 @@ fn format_size_string(bytes: i64) -> String {
     buf[..n].iter().collect()
 }
 
-/// Port of the try/catch fact-gathering in `BuildValues` (dates, attributes,
-/// read-only). Returns `(created, accessed, attributes, read_only)`; `None`
-/// created/accessed mean the C# catch branch fired ("N/A" filled in later).
+/// Dates, attributes and read-only. Returns `(created, accessed,
+/// attributes, read_only)`; `None` created/accessed mean they could not be
+/// read ("N/A" filled in later).
 fn collect_platform_facts(
     entry: &FileSystemEntry,
     metadata: Option<&std::fs::Metadata>,
@@ -389,8 +388,7 @@ fn collect_platform_facts(
     }
 }
 
-/// Port of `FormatDateTime`: "yyyy-MM-dd hh:mm tt", 12-hour clock,
-/// invariant culture.
+/// "yyyy-MM-dd hh:mm AM", 12-hour clock.
 #[must_use]
 pub fn format_date_time(parts: &crate::ui::format_helpers::DateParts) -> String {
     let (hour12, suffix) = match parts.hour {
@@ -403,8 +401,7 @@ pub fn format_date_time(parts: &crate::ui::format_helpers::DateParts) -> String 
     format!("{:04}-{:02}-{:02} {:02}:{:02} {}", parts.year, parts.month, parts.day, hour12, parts.minute, suffix)
 }
 
-/// Port of `FormatAttributes` (+ `FormatWindowsAttributes` /
-/// `FormatUnixAttributes`).
+/// Windows attribute names, or Unix permissions.
 #[must_use]
 fn format_attributes(entry: &FileSystemEntry, metadata: &std::fs::Metadata) -> String {
     #[cfg(windows)]
@@ -492,7 +489,7 @@ fn is_read_only(metadata: &std::fs::Metadata) -> bool {
     }
 }
 
-/// .NET `FileStatus.IsReadOnly` on unix: the write bit of the class the
+/// Read-only on unix: the write bit of the class the
 /// effective user falls in (owner, then group, then other). Unlike
 /// `access(W_OK)`, root gets no exemption.
 #[must_use]
@@ -534,8 +531,7 @@ fn format_unix_attributes(entry: &FileSystemEntry, metadata: &std::fs::Metadata)
         flags_parts.push("ReadOnly");
     }
 
-    // .NET reports FileAttributes.Hidden on Unix for dot-prefixed names;
-    // Rust also for the macOS UF_HIDDEN flag
+    // Dot-prefixed names and the macOS UF_HIDDEN flag
     let name = std::path::Path::new(&entry.full_path).file_name().and_then(|name| name.to_str()).unwrap_or("");
     if crate::fs::directory_contents::is_hidden_entry(name, Some(metadata)) {
         flags_parts.push("Hidden");
@@ -548,7 +544,7 @@ fn format_unix_attributes(entry: &FileSystemEntry, metadata: &std::fs::Metadata)
     }
 }
 
-/// Port of `FormatGitStatus` (internal static for testability in C#).
+/// The git status as text ("Staged, Modified", ...), or an em dash.
 #[must_use]
 pub fn format_git_status(status: Option<GitFileStatus>) -> String {
     let Some(status) = status else {
@@ -580,7 +576,7 @@ pub fn format_git_status(status: Option<GitFileStatus>) -> String {
     if labels.is_empty() { "\u{2014}".to_string() } else { labels.join(", ") }
 }
 
-/// Port of `GetGitStatusColor`.
+/// The color of the most important git status flag.
 #[must_use]
 pub fn get_git_status_color(status: GitFileStatus) -> Color {
     if status.intersects(GitFileStatus::CONFLICT) {
@@ -647,8 +643,7 @@ mod tests {
         dir
     }
 
-    /// Serializes the buffer and strips escape sequences, like the C#
-    /// tests' `Flush` + `StripAnsi`.
+    /// Serializes the buffer and strips escape sequences.
     fn flush(buffer: &mut ScreenBuffer) -> String {
         let mut raw = String::new();
         buffer.serialize(&mut raw);
@@ -752,7 +747,7 @@ mod tests {
 
     #[test]
     fn ready_drive_shows_dash_for_dates_and_free_of_total() {
-        // C# sets Created/Accessed to an em dash for drives (not "N/A")
+        // Created/Accessed are an em dash for drives (not "N/A")
         let root = test_root("drive");
         let path = root.to_string_lossy().into_owned();
         let mut drive = entry(&path, &path, true, 0);

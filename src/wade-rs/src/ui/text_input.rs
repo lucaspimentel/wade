@@ -1,4 +1,4 @@
-//! Port of `src/Wade/UI/TextInput.cs`: single-line text input state.
+//! Single-line text input state.
 
 use crate::screen::{CellStyle, ScreenBuffer};
 
@@ -160,9 +160,8 @@ impl TextInput {
             chars[range].iter().map(|&ch| crate::rune_width::rune_width(ch) as i32).sum()
         };
 
-        // Adjust scroll offset to keep the cursor visible. Rust only: in
-        // columns, so wide characters (CJK, emoji) take two (C# counted
-        // characters and drew each in one column)
+        // Adjust scroll offset to keep the cursor visible, in columns, so
+        // wide characters (CJK, emoji) take two
         let cursor = self.cursor_position.min(chars.len());
         if cursor < self.scroll_offset {
             self.scroll_offset = cursor;
@@ -206,7 +205,6 @@ fn byte_index_of_char(s: &str, char_index: usize) -> usize {
 
 #[cfg(test)]
 mod tests {
-    //! Port of TextInputTests.cs.
 
     use super::TextInput;
     use crate::screen::{CellStyle, Color, ScreenBuffer};

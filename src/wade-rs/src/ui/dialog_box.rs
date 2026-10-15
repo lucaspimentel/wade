@@ -1,4 +1,4 @@
-//! Port of `src/Wade/UI/DialogBox.cs`: reusable centered dialog box chrome.
+//! Reusable centered dialog box chrome.
 
 use crate::screen::{CellStyle, Color, ScreenBuffer};
 use crate::ui::layout::Rect;

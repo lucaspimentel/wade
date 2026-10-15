@@ -1,12 +1,11 @@
-//! Port of `src/Wade/UI/ContextMenuState.cs` and `src/Wade/UI/ContextMenuRenderer.cs`:
-//! the right-click floating context menu.
+//! The right-click floating context menu.
 
 use crate::screen::{CellStyle, Color, ScreenBuffer};
 use crate::ui::action_palette::ActionMenuItem;
 use crate::ui::dialog_box::BG_COLOR;
 use crate::ui::layout::Rect;
 
-/// Port of `ContextMenuState`.
+/// The open context menu: its items, selection and anchor.
 pub struct ContextMenuState {
     pub items: Vec<ActionMenuItem>,
     pub anchor_row: i32,
@@ -25,7 +24,7 @@ impl ContextMenuState {
         }
     }
 
-    /// Port of `MoveUp` (wraps around).
+    /// Selects the previous item (wraps around).
     pub fn move_up(&mut self) {
         if self.items.is_empty() {
             return;
@@ -38,7 +37,7 @@ impl ContextMenuState {
         };
     }
 
-    /// Port of `MoveDown` (wraps around).
+    /// Selects the next item (wraps around).
     pub fn move_down(&mut self) {
         if self.items.is_empty() {
             return;
@@ -52,8 +51,8 @@ impl ContextMenuState {
     }
 }
 
-/// Port of `ContextMenuRenderer.GetMenuRect`: box sized to the item labels,
-/// anchored at the click position and clamped to the screen.
+/// Box sized to the item labels, anchored at the click position and clamped to
+/// the screen.
 #[must_use]
 pub fn get_menu_rect(screen_width: i32, screen_height: i32, state: &ContextMenuState) -> Rect {
     let item_count = state.items.len();
@@ -88,7 +87,7 @@ pub fn get_menu_rect(screen_width: i32, screen_height: i32, state: &ContextMenuS
     Rect::new(left, top, box_width, box_height)
 }
 
-/// Port of `ContextMenuRenderer.Render`.
+/// Draws the context menu.
 pub fn render(buffer: &mut ScreenBuffer, screen_width: i32, screen_height: i32, state: &ContextMenuState) {
     let box_rect = get_menu_rect(screen_width, screen_height, state);
     let item_count = state.items.len();
@@ -239,8 +238,6 @@ mod tests {
         let rect = get_menu_rect(80, 25, &state);
         assert_eq!(rect.width, 10 + 4);
     }
-
-    // Port of the rest of ContextMenuTests.cs
 
     fn abc() -> Vec<ActionMenuItem> {
         vec![
