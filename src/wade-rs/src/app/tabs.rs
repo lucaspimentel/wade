@@ -37,8 +37,7 @@ pub fn tab_label(path: &str) -> String {
         return "Drives".to_string();
     }
 
-    let home = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME"));
-    if home.is_some_and(|home| std::path::Path::new(&home) == std::path::Path::new(path)) {
+    if crate::fs::home_dir().is_some_and(|home| home == std::path::Path::new(path)) {
         return "~".to_string();
     }
 
@@ -291,7 +290,7 @@ mod tests {
         let root = if cfg!(windows) { "C:\\".to_string() } else { "/".to_string() };
         assert_eq!(tab_label(&root), root);
 
-        if let Some(home) = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")) {
+        if let Some(home) = crate::fs::home_dir() {
             assert_eq!(tab_label(&home.to_string_lossy()), "~");
         }
     }

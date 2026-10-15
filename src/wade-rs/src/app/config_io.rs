@@ -10,8 +10,7 @@ use crate::fs::directory_contents::SortMode;
 use crate::ui::file_icons::IconSet;
 
 fn default_config_path() -> Option<PathBuf> {
-    let home = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME"))?;
-    Some(Path::new(&home).join(".config").join("wade").join("config.toml"))
+    crate::fs::wade_config_file("config.toml")
 }
 
 /// The path `save_config` writes to: the `--config-file=` override,
@@ -767,7 +766,7 @@ mediainfo_enabled = true
 
     #[test]
     fn start_path_tilde_expands_to_home() {
-        let Some(home) = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")) else {
+        let Some(home) = crate::fs::home_dir() else {
             return;
         };
         let home = home.to_string_lossy().into_owned();

@@ -21,8 +21,7 @@ impl BookmarkStore {
     /// `~/.config/wade/bookmarks`. Tests pass an explicit path.
     pub fn new(file_path: Option<PathBuf>) -> Self {
         let file_path = file_path.unwrap_or_else(|| {
-            let home = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")).unwrap_or_default();
-            Path::new(&home).join(".config").join("wade").join("bookmarks")
+            super::wade_config_file("bookmarks").unwrap_or_else(|| Path::new(".config").join("wade").join("bookmarks"))
         });
 
         Self { bookmarks: Vec::new(), file_path }

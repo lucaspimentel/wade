@@ -54,8 +54,7 @@ impl SortStore {
     /// `~/.config/wade/sorts`.
     #[must_use]
     pub fn default_path() -> PathBuf {
-        let home = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")).unwrap_or_default();
-        Path::new(&home).join(".config").join("wade").join("sorts")
+        super::wade_config_file("sorts").unwrap_or_else(|| Path::new(".config").join("wade").join("sorts"))
     }
 
     /// Replaces the entries with the file's; a missing or unreadable file

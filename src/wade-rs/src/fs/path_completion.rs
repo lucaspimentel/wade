@@ -4,7 +4,7 @@
 #[must_use]
 pub fn expand_tilde(path: &str) -> String {
     if let Some(rest) = path.strip_prefix('~')
-        && let Some(home) = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME"))
+        && let Some(home) = super::home_dir()
     {
         return join_home(&home.to_string_lossy(), rest);
     }
@@ -205,11 +205,7 @@ mod tests {
     }
 
     fn home() -> String {
-        std::env::var_os("USERPROFILE")
-            .or_else(|| std::env::var_os("HOME"))
-            .expect("home")
-            .to_string_lossy()
-            .into_owned()
+        crate::fs::home_dir().expect("home").to_string_lossy().into_owned()
     }
 
     #[test]
