@@ -1,5 +1,5 @@
-//! wade: TUI file browser (Rust port of the C# Native AOT tool).
-//! Port of src/Wade/Program.cs.
+//! wade: TUI file browser. Parses the command line, validates the start
+//! path, runs the app and writes the `--cwd-file`.
 
 use std::path::Path;
 use std::process::ExitCode;
@@ -62,7 +62,7 @@ fn main() -> ExitCode {
     wade::signals::install(&cancel);
     let final_path = App::new(config, start).run(&cancel);
 
-    // Rust only: ended by SIGTERM/SIGHUP (the terminal is restored): the
+    // Ended by SIGTERM/SIGHUP (the terminal is restored): the
     // shell's exit status for that signal, and no cwd file
     #[cfg(unix)]
     if let Some(signal) = wade::signals::received() {
@@ -70,14 +70,14 @@ fn main() -> ExitCode {
     }
 
     if let (Some(cwd_file), Some(final_path)) = (cli.cwd_file, final_path) {
-        // C# silently ignores write failures
+        // Write failures are ignored
         let _ = std::fs::write(cwd_file, final_path);
     }
 
     ExitCode::SUCCESS
 }
 
-/// Port of `PrintVersion`: the informational version, `2.0.0+<commit sha>`.
+/// The informational version, `2.0.0+<commit sha>`.
 fn version_string() -> String {
     match option_env!("WADE_COMMIT") {
         Some(sha) => format!("{}+{sha}", env!("CARGO_PKG_VERSION")),
@@ -85,7 +85,6 @@ fn version_string() -> String {
     }
 }
 
-/// Port of `PrintHelp`.
 fn print_help() {
     println!(
         "wade \u{2014} TUI file browser

@@ -498,7 +498,7 @@ mod tests {
     }
 
     #[test]
-    fn items_have_the_csharp_indentation() {
+    fn items_are_indented_under_their_parent() {
         let state = default_state();
         let indent = |label: &str| state.items[index_of(&state, label)].indent;
         assert_eq!(indent("Icons"), 0);

@@ -46,11 +46,11 @@ const MAX_EVENTS_PER_FRAME: usize = 256;
 /// dialog. Per-run inputs live in `StartOptions`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AppConfig {
-    /// `icons = nerd|unicode|emoji|ascii|none` (Rust-only; replaces the C#
+    /// `icons = nerd|unicode|emoji|ascii|none` (replaces
     /// `show_icons_enabled`, which still loads as nerd or none).
     pub icon_set: crate::ui::file_icons::IconSet,
     pub image_previews_enabled: bool,
-    /// Rust-only: `image_protocol = auto|kitty|sixel` (config file only).
+    /// `image_protocol = auto|kitty|iterm|sixel` (config file only).
     pub image_protocol: crate::imaging::ImageProtocolSetting,
     pub show_hidden_files: bool,
     pub show_system_files: bool,
@@ -69,10 +69,10 @@ pub struct AppConfig {
     pub file_metadata_enabled: bool,
     pub file_previews_enabled: bool,
     pub archive_metadata_enabled: bool,
-    /// Rust only: the full-screen preview's line and byte limits.
+    /// The full-screen preview's line and byte limits.
     pub preview_max_lines: usize,
     pub preview_max_bytes: u64,
-    /// Rust only: the CSV/TSV table preview.
+    /// The CSV/TSV table preview.
     pub csv_preview_enabled: bool,
     pub dir_size_ssd_enabled: bool,
     pub dir_size_hdd_enabled: bool,

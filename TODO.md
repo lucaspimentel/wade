@@ -310,14 +310,12 @@ Investigated enabling `ENABLE_VIRTUAL_TERMINAL_INPUT` under Windows Terminal. No
 ### Consolidate settings sources
 
 - [ ] Settings come from `config.toml` and the config dialog only (plus `--config-file`). Add one layer that also reads environment variables and CLI flags (e.g. `WADE_ICONS`, `--icons=`), with a fixed precedence (CLI > env > file > default), instead of adding each override by hand. Useful per terminal: a Nerd Font in one terminal, none in another.
-- [ ] Groundwork refactors (no behavior change):
-  - `SortMode::name()`/`parse()` instead of the five hand-written mappings (status bar, config dialog, config_io twice, sort store)
-  - Split `AppConfig` into persisted `Settings` and per-run state (start path, cwd file, config file path, show-config/help/version)
-  - Config dialog edits a `Settings` draft instead of mirroring 28 fields (`from_app_config`/`apply_to`/`toggle`/`get_field`)
-  - One table of boolean keys driving load, save and `to_json` (non-bool and legacy keys stay explicit; file and JSON order unchanged)
-  - One `parse_args` → `CliArgs` (config file, cwd file, start path, help/version/show-config); `load_config` takes the path only
-  - Separately: a shared `home_dir()` for the 7 `USERPROFILE`/`HOME` lookups; doc comments that describe behavior instead of "Port of `WadeConfig.*`"
+- [x] Groundwork refactors (no behavior change): `SortMode::name`/`parse`/`next`/`prev`; per-run state moved from `AppConfig` to `StartOptions`, with one `parse_args` → `CliArgs`; the config dialog edits a draft `AppConfig` with an accessor per row; one `KEYS` table drives load, save and `--show-config`; a shared `home_dir()`
 - [ ] Later, behavior changes: save keeping comments and unknown keys; reporting invalid values
+
+### Doc comments without the C# port history
+
+- [ ] About 760 comments in 108 files still say "Port of `X`" or compare with C# (the config files are done). Describe what the code does instead; keep the reason where a comment explains a deliberate choice (and move lasting ones to `KNOWN_DEVIATIONS.md`).
 
 ### Keyboard shortcut convention audit
 

@@ -333,11 +333,11 @@ mod tests {
         std::env::temp_dir().join(format!("wade-config-test-{}-{file_name}", std::process::id()))
     }
 
-    /// The saved file must match the C# `WadeConfig.Save()` layout: 27 keys,
+    /// The saved file layout: 27 keys,
     /// exact order, `key = true|false`, lowercase sort mode (with `icons` in
     /// place of `show_icons_enabled`).
     #[test]
-    fn save_writes_exact_csharp_layout() {
+    fn save_writes_the_fixed_layout() {
         let path = temp_config_path("save.txt");
         save_config(&AppConfig::default(), &path).expect("save");
         let text = std::fs::read_to_string(&path).expect("read back");
@@ -419,7 +419,7 @@ mediainfo_enabled = true
         assert!(json.ends_with("\"start_path\":\"C:\\\\a \"b\"\"}"));
     }
 
-    /// Loads `text` as a config file (port of the WadeConfigTests helper).
+    /// Loads `text` as a config file.
     fn load_text(name: &str, text: &str) -> AppConfig {
         let path = temp_config_path(name);
         std::fs::write(&path, text).unwrap();
@@ -542,7 +542,7 @@ mediainfo_enabled = true
         assert_eq!(load_text("icons-case", "icons = ASCII\n").icon_set, IconSet::Ascii);
         assert_eq!(load_text("icons-bad", "icons = fancy\n").icon_set, IconSet::Nerd, "invalid keeps the default");
 
-        // C# configs: show_icons_enabled = false hides icons unless icons is set
+        // Older configs: show_icons_enabled = false hides icons unless icons is set
         assert_eq!(load_text("legacy-off", "show_icons_enabled = false\n").icon_set, IconSet::None);
         assert_eq!(load_text("legacy-on", "show_icons_enabled = true\n").icon_set, IconSet::Nerd);
         for text in ["show_icons_enabled = false\nicons = emoji\n", "icons = emoji\nshow_icons_enabled = false\n"] {
@@ -638,7 +638,7 @@ mediainfo_enabled = true
         assert_eq!(load(&std::fs::read_to_string(&path).unwrap()), Setting::Kitty);
 
         save_config(&config, &path).unwrap();
-        assert!(!std::fs::read_to_string(&path).unwrap().contains("image_protocol"), "auto keeps the C# layout");
+        assert!(!std::fs::read_to_string(&path).unwrap().contains("image_protocol"), "auto keeps the fixed layout");
         assert!(to_json(&config, "").contains("\"image_protocol\":\"auto\","));
         let _ = std::fs::remove_file(&path);
     }
@@ -662,7 +662,7 @@ mediainfo_enabled = true
         assert!(!load(&saved));
 
         save_config(&config, &path).unwrap();
-        assert!(!std::fs::read_to_string(&path).unwrap().contains("csv_preview"), "on keeps the C# layout");
+        assert!(!std::fs::read_to_string(&path).unwrap().contains("csv_preview"), "on keeps the fixed layout");
         assert!(to_json(&config, "").contains("\"csv_preview_enabled\":true,"));
         let _ = std::fs::remove_file(&path);
     }
@@ -696,7 +696,7 @@ mediainfo_enabled = true
         assert_eq!(load(&saved), (500, 1_048_576));
 
         save_config(&config, &path).unwrap();
-        assert!(!std::fs::read_to_string(&path).unwrap().contains("preview_max"), "defaults keep the C# layout");
+        assert!(!std::fs::read_to_string(&path).unwrap().contains("preview_max"), "defaults keep the fixed layout");
         assert!(to_json(&config, "").contains("\"preview_max_lines\":10000,\"preview_max_bytes\":4194304,"));
         let _ = std::fs::remove_file(&path);
     }
