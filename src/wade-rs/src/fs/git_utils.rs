@@ -1,5 +1,5 @@
-//! Port of `src/Wade/FileSystem/GitUtils.cs` (git status subset; the action
-//! commands and GetDiff land in Phase 4b / Phase 7).
+//! Git through the `git` command line: repo discovery, branch, status,
+//! ahead/behind, diff and the stage/commit/push/pull/fetch actions.
 
 use std::collections::HashMap;
 use std::process::{Command, Stdio};
@@ -11,9 +11,8 @@ use crate::input::CancelToken;
 const LOCAL_TIMEOUT_MS: u128 = 10_000;
 const NETWORK_TIMEOUT_MS: u128 = 30_000;
 
-/// Case-insensitive status lookup mirroring the C# dictionary's
-/// `StringComparer.OrdinalIgnoreCase`: exact match first, then a
-/// case-insensitive scan on Windows only.
+/// Status lookup: exact match first, then a case-insensitive scan on
+/// Windows only.
 #[must_use]
 pub fn statuses_get(map: &HashMap<String, GitFileStatus>, path: &str) -> Option<GitFileStatus> {
     if let Some(status) = map.get(path) {
@@ -29,8 +28,8 @@ pub fn statuses_get(map: &HashMap<String, GitFileStatus>, path: &str) -> Option<
     None
 }
 
-/// Port of `GitUtils.FindRepoRoot`: walks up from `path` looking for a
-/// directory containing a `.git` folder (or worktree `.git` file).
+/// Walks up from `path` looking for a directory containing a `.git` folder (or
+/// worktree `.git` file).
 #[must_use]
 pub fn find_repo_root(path: &str) -> Option<String> {
     if path.is_empty() {
@@ -54,9 +53,8 @@ pub fn find_repo_root(path: &str) -> Option<String> {
     }
 }
 
-/// Port of `GitUtils.ReadBranchName`: reads the branch from `.git/HEAD`;
-/// supports worktrees (`.git` as a file with `gitdir: <path>`). Returns None
-/// for detached HEAD, missing files, or errors.
+/// Reads the branch from `.git/HEAD`; supports worktrees (`.git` as a file with
+/// `gitdir: <path>`). Returns None for detached HEAD, missing files, or errors.
 #[must_use]
 pub fn read_branch_name(repo_root: &str) -> Option<String> {
     let git_path = std::path::Path::new(repo_root).join(".git");
@@ -78,13 +76,9 @@ pub fn read_branch_name(repo_root: &str) -> Option<String> {
     head_content.strip_prefix("ref: refs/heads/").map(str::to_string)
 }
 
-/// Port of `GitUtils.RunGitCommand` (success/error shape); used by the
-/// Phase 4b git actions. Reads stderr before stdout (C# behavior), then
-/// enforces the timeout via a try_wait poll loop (kill on expiry).
-/// Port of `GitUtils.RunGitCommand` shape: success plus an optional error
-/// message. `args` are the argv words after "git" (the C# version joins them
-/// into a command line and lets the process launcher re-split it, which
-/// unquotes; passing argv directly is equivalent).
+/// Runs a git action: success plus an optional error message. `args` are
+/// the argv words after "git". Reads stderr before stdout, then enforces
+/// the timeout via a try_wait poll loop (kill on expiry).
 pub fn run_git_result(
     repo_root: &str,
     args: &[&str],
@@ -105,8 +99,8 @@ fn run_git_capturing(repo_root: &str, args: &[&str], cancel: &CancelToken, timeo
 
     let mut child = spawn_git(repo_root, args).map_err(|err| err.to_string())?;
 
-    // C# reads stderr first, then drains stdout; blocking reads clone the
-    // C# semantics (git commands here emit small output)
+    // Read stderr first, then drain stdout; blocking reads are fine (git
+    // commands here emit small output)
     let stderr = read_stream(child.stderr.take());
     let stdout = read_stream(child.stdout.take());
 
@@ -153,8 +147,8 @@ fn read_stream<S: std::io::Read>(stream: Option<S>) -> String {
     }
 }
 
-/// Port of `WaitForExit(timeoutMs)`: poll `try_wait` and kill on expiry.
-/// Returns the exit status on success, None on timeout/error.
+/// Poll `try_wait` and kill on expiry. Returns the exit status on success, None
+/// on timeout/error.
 fn wait_with_timeout(child: &mut std::process::Child, timeout_ms: u128) -> Option<std::process::ExitStatus> {
     let deadline = Instant::now() + Duration::from_millis(timeout_ms as u64);
     loop {
@@ -174,10 +168,9 @@ fn wait_with_timeout(child: &mut std::process::Child, timeout_ms: u128) -> Optio
     }
 }
 
-/// Port of `GitUtils.GetDiff`: `git diff [--staged] -- <path>` in the repo
-/// root, split on '\n' (a trailing empty element and '\r' kept, as in C#).
-/// None on failure, empty output, a non-zero exit, timeout (10 s) or
-/// cancellation.
+/// `git diff [--staged] -- <path>` in the repo root, split on '\n' (a trailing
+/// empty element and '\r' kept). None on failure, empty output, a non-zero
+/// exit, timeout (10 s) or cancellation.
 #[must_use]
 pub fn get_diff(repo_root: &str, file_path: &str, staged: bool, cancel: &CancelToken) -> Option<Vec<String>> {
     let relative = relative_path(repo_root, file_path).replace('\\', "/");
@@ -189,8 +182,8 @@ pub fn get_diff(repo_root: &str, file_path: &str, staged: bool, cancel: &CancelT
 
     args.extend(["--", relative.as_str()]);
 
-    // Only stdout is redirected (C# leaves stderr alone), so a large diff
-    // cannot block on a full stderr pipe
+    // Only stdout is redirected, so a large diff cannot block on a full
+    // stderr pipe
     let mut child = Command::new("git")
         .args(&args)
         .current_dir(repo_root)
@@ -209,8 +202,8 @@ pub fn get_diff(repo_root: &str, file_path: &str, staged: bool, cancel: &CancelT
     Some(output.split('\n').map(str::to_string).collect())
 }
 
-/// Port of `GitUtils.QueryStatus`: runs `git status --porcelain=v1` in the
-/// repo root; returns the parsed status map or None on error/cancellation.
+/// Runs `git status --porcelain=v1` in the repo root; returns the parsed status
+/// map or None on error/cancellation.
 #[must_use]
 pub fn query_status(repo_root: &str, cancel: &CancelToken) -> Option<HashMap<String, GitFileStatus>> {
     if cancel.is_cancelled() {
@@ -232,8 +225,8 @@ pub fn query_status(repo_root: &str, cancel: &CancelToken) -> Option<HashMap<Str
     }
 }
 
-/// Port of `GitUtils.GetAheadBehind`: commit counts ahead/behind the
-/// upstream; None when there is no upstream or on error.
+/// Commit counts ahead/behind the upstream; None when there is no upstream or
+/// on error.
 #[must_use]
 pub fn get_ahead_behind(repo_root: &str, cancel: &CancelToken) -> Option<(u32, u32)> {
     if cancel.is_cancelled() {
@@ -251,8 +244,8 @@ pub fn get_ahead_behind(repo_root: &str, cancel: &CancelToken) -> Option<(u32, u
     }
 }
 
-/// Port of `GitUtils.GetRelativePath` usage in `BuildPathArgs`: the path
-/// relative to the repo root, with backslashes converted to forward slashes.
+/// The path relative to the repo root, with backslashes converted to forward
+/// slashes.
 #[must_use]
 pub fn relative_path(repo_root: &str, path: &str) -> String {
     let root_norm = repo_root.trim_end_matches(['/', '\\']);
@@ -268,7 +261,7 @@ pub fn relative_path(repo_root: &str, path: &str) -> String {
         &path_norm[root_norm.len()..]
     } else {
         // Not under the root: return the path unchanged (stage paths always
-        // live under the root; C# GetRelativePath would produce ../ segments)
+        // live under the root)
         path_norm
     };
 
@@ -284,14 +277,11 @@ pub fn relative_path(repo_root: &str, path: &str) -> String {
     relative.replace('\\', "/")
 }
 
-/// Port of `GitUtils.BuildPathArgs`: the command followed by `--` and the
-/// relative, forward-slashed paths as separate argv words (the C# version
-/// builds a quoted command line that the launcher re-splits, which unquotes;
-/// passing argv words directly is equivalent).
+/// The command followed by `--` and the relative, forward-slashed paths as
+/// separate argv words.
 #[must_use]
 pub fn build_path_args(command: &str, repo_root: &str, paths: &[String]) -> Vec<String> {
-    // The C# command may be multi-word ("reset -q"); the argv model
-    // splits it
+    // The command may be multi-word ("reset -q")
     let mut args: Vec<String> = command.split(' ').map(str::to_string).collect();
     args.push("--".to_string());
     for path in paths {
@@ -301,32 +291,29 @@ pub fn build_path_args(command: &str, repo_root: &str, paths: &[String]) -> Vec<
     args
 }
 
-/// Port of `GitUtils.Stage`: `git add -- <paths>`.
+/// `git add -- <paths>`.
 pub fn stage(repo_root: &str, paths: &[String], cancel: &CancelToken) -> (bool, Option<String>) {
     run_git_args_owned(repo_root, &build_path_args("add", repo_root, paths), cancel, LOCAL_TIMEOUT_MS)
 }
 
-/// Port of `GitUtils.Unstage`: `git reset -q -- <paths>` (unlike
-/// `git restore --staged`, it also works before the first commit).
+/// `git reset -q -- <paths>` (unlike `git restore --staged`, it also works
+/// before the first commit).
 pub fn unstage(repo_root: &str, paths: &[String], cancel: &CancelToken) -> (bool, Option<String>) {
     run_git_args_owned(repo_root, &build_path_args("reset -q", repo_root, paths), cancel, LOCAL_TIMEOUT_MS)
 }
 
-/// Port of `GitUtils.StageAll`: `git add -A`.
+/// `git add -A`.
 pub fn stage_all(repo_root: &str, cancel: &CancelToken) -> (bool, Option<String>) {
     run_git_args_owned(repo_root, &["add".to_string(), "-A".to_string()], cancel, LOCAL_TIMEOUT_MS)
 }
 
-/// Port of `GitUtils.UnstageAll`: `git reset -q` (no `HEAD` argument, so it
-/// also works before the first commit).
+/// `git reset -q` (no `HEAD` argument, so it also works before the first
+/// commit).
 pub fn unstage_all(repo_root: &str, cancel: &CancelToken) -> (bool, Option<String>) {
     run_git_args_owned(repo_root, &["reset".to_string(), "-q".to_string()], cancel, LOCAL_TIMEOUT_MS)
 }
 
-/// Port of `GitUtils.Commit`: `git commit -m <message>`. The C# version
-/// escapes the message for its command-line string, which the process
-/// launcher then unescapes; passing the raw message as one argv word is
-/// equivalent.
+/// `git commit -m <message>`, the message passed as one argv word.
 pub fn commit(repo_root: &str, message: &str, cancel: &CancelToken) -> (bool, Option<String>) {
     run_git_args_owned(
         repo_root,
@@ -336,27 +323,27 @@ pub fn commit(repo_root: &str, message: &str, cancel: &CancelToken) -> (bool, Op
     )
 }
 
-/// Port of `GitUtils.Push`: `git push` (30s timeout).
+/// `git push` (30s timeout).
 pub fn push(repo_root: &str, cancel: &CancelToken) -> (bool, Option<String>) {
     run_git_args_owned(repo_root, &["push".to_string()], cancel, NETWORK_TIMEOUT_MS)
 }
 
-/// Port of `GitUtils.PushForceWithLease`: `git push --force-with-lease` (30s).
+/// `git push --force-with-lease` (30s).
 pub fn push_force_with_lease(repo_root: &str, cancel: &CancelToken) -> (bool, Option<String>) {
     run_git_args_owned(repo_root, &["push".to_string(), "--force-with-lease".to_string()], cancel, NETWORK_TIMEOUT_MS)
 }
 
-/// Port of `GitUtils.Pull`: `git pull` (30s).
+/// `git pull` (30s).
 pub fn pull(repo_root: &str, cancel: &CancelToken) -> (bool, Option<String>) {
     run_git_args_owned(repo_root, &["pull".to_string()], cancel, NETWORK_TIMEOUT_MS)
 }
 
-/// Port of `GitUtils.PullRebase`: `git pull --rebase` (30s).
+/// `git pull --rebase` (30s).
 pub fn pull_rebase(repo_root: &str, cancel: &CancelToken) -> (bool, Option<String>) {
     run_git_args_owned(repo_root, &["pull".to_string(), "--rebase".to_string()], cancel, NETWORK_TIMEOUT_MS)
 }
 
-/// Port of `GitUtils.Fetch`: `git fetch` (30s).
+/// `git fetch` (30s).
 pub fn fetch(repo_root: &str, cancel: &CancelToken) -> (bool, Option<String>) {
     run_git_args_owned(repo_root, &["fetch".to_string()], cancel, NETWORK_TIMEOUT_MS)
 }
@@ -371,8 +358,7 @@ fn run_git_args_owned(
     run_git_result(repo_root, &refs, cancel, timeout_ms)
 }
 
-/// Port of `GitUtils.ParsePorcelainOutput` (internal static, testable):
-/// parses `git status --porcelain=v1` into per-path statuses, then
+/// Parses `git status --porcelain=v1` into per-path statuses, then
 /// aggregates into parent directories.
 #[must_use]
 pub fn parse_porcelain_output(output: &str, repo_root: &str) -> HashMap<String, GitFileStatus> {
@@ -519,9 +505,8 @@ fn normalize_full_path(path: &str) -> String {
     crate::app::dialogs::get_full_path(path)
 }
 
-/// Port of `AggregateDirectoryStatuses` (internal static, testable): ORs
-/// each entry's status (minus Ignored) into every parent directory up to the
-/// repo root.
+/// ORs each entry's status (minus Ignored) into every parent directory up to
+/// the repo root.
 pub fn aggregate_directory_statuses(statuses: &mut HashMap<String, GitFileStatus>, repo_root: &str) {
     // Snapshot keys to avoid modifying during enumeration
     let file_paths: Vec<String> = statuses.keys().cloned().collect();
@@ -644,9 +629,8 @@ mod tests {
     }
 
     /// Platform-native root for parser tests: a windows-style root produces
-    /// CWD-resolved keys on unix (faithful C# `Path.GetFullPath` behavior),
-    /// so tests use the platform's native form and build expected keys with
-    /// the same join the parser uses.
+    /// CWD-resolved keys on unix, so tests use the platform's native form and
+    /// build expected keys with the same join the parser uses.
     fn test_root() -> String {
         if cfg!(windows) { String::from("C:\\repo") } else { String::from("/repo") }
     }
@@ -751,9 +735,9 @@ mod tests {
         {
             assert_eq!(relative_path(r"C:\repo", r"C:\repo\src\a.txt"), "src/a.txt");
             assert_eq!(relative_path(r"c:\REPO", r"C:\repo\b.txt"), "b.txt");
-            // Outside the root: slashes normalized, unchanged otherwise. C#
-            // GetRelativePath would produce ../ segments, but stage paths
-            // always live under the repo root, so this branch never fires.
+            // Outside the root: slashes normalized, unchanged otherwise.
+            // Stage paths always live under the repo root, so this branch
+            // never fires.
             assert_eq!(relative_path(r"C:\repo", r"C:\other\c.txt"), "C:/other/c.txt");
         }
         #[cfg(not(windows))]

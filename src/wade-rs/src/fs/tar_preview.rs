@@ -1,15 +1,15 @@
-//! Port of `TarPreview` plus the part of .NET's `System.Formats.Tar`
-//! `TarReader` it relies on: V7, ustar, PAX (local and global extended
-//! headers) and GNU (long name/link) headers, read without copying data.
-//! Gzip goes through `fs::gzip::GzipReader`, which mirrors `GZipStream`.
+//! Tar, tar.gz and plain .gz previews and stats, with a tar reader for V7,
+//! ustar, PAX (local and global extended headers) and GNU (long name/link)
+//! headers, read without copying data. Gzip goes through
+//! `fs::gzip::GzipReader`.
 //!
-//! TarReader facts the port follows (probed against .NET, pinned by the
-//! archive golden): checksums are not verified; an all-null or zero
-//! checksum field ends the archive; names stop at the first NUL (trailing
-//! spaces kept); on a seekable stream, being exactly at the end is the end
-//! of the archive while anything else short is `EndOfStreamException`;
-//! numeric fields that don't parse are `InvalidDataException`; GNU headers
-//! parse the atime/ctime fields where ustar keeps its name prefix.
+//! Reader rules (pinned by the frozen archive golden): checksums are not
+//! verified; an all-null or zero checksum field ends the archive; names
+//! stop at the first NUL (trailing spaces kept); on a seekable stream,
+//! being exactly at the end is the end of the archive while anything else
+//! short is `EndOfStream`; numeric fields that don't parse are
+//! `InvalidData`; GNU headers parse the atime/ctime fields where ustar
+//! keeps its name prefix.
 
 use std::fs::File;
 use std::io::{self, BufReader, Read, Seek, SeekFrom};
@@ -25,7 +25,7 @@ const RECORD_SIZE: usize = 512;
 const USTAR_MAGIC_OFFSET: usize = 257;
 const ISIZE_SAFETY_LIMIT: u64 = 3584 * 1024 * 1024; // ~3.5 GiB
 
-/// Port of `TarFormat`.
+/// The archive's header format.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TarFormat {
     Tar,
@@ -33,7 +33,7 @@ pub enum TarFormat {
     Gzip,
 }
 
-/// Port of `TarArchiveStats`.
+/// Entry counts and sizes for the metadata section.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TarArchiveStats {
     pub files: usize,
@@ -43,16 +43,16 @@ pub struct TarArchiveStats {
     pub uncompressed_hint: Option<i64>,
 }
 
-/// The .NET exception families the C# code distinguishes.
+/// Why an archive could not be read.
 #[derive(Debug)]
 pub enum TarError {
-    /// `InvalidDataException` (corrupt header, unparsable number).
+    /// Corrupt header or unparsable number.
     InvalidData,
-    /// `EndOfStreamException` (archive cut short).
+    /// Archive cut short.
     EndOfStream,
-    /// `NotSupportedException` (GNU sparse entries).
+    /// GNU sparse entries.
     NotSupported,
-    /// Any other `IOException`.
+    /// Any other I/O error.
     Io(io::Error),
 }
 
@@ -72,13 +72,13 @@ fn ends_with_ignore_case(path: &str, suffix: &str) -> bool {
         && path[path.len() - suffix.len()..].eq_ignore_ascii_case(suffix)
 }
 
-/// Port of `IsTarArchive`: .tar, .tar.gz or .tgz.
+/// .tar, .tar.gz or .tgz.
 #[must_use]
 pub fn is_tar_archive(path: &str) -> bool {
     ends_with_ignore_case(path, ".tar") || ends_with_ignore_case(path, ".tar.gz") || ends_with_ignore_case(path, ".tgz")
 }
 
-/// Port of `IsPlainGzip`: .gz but not .tar.gz.
+/// .gz but not .tar.gz.
 #[must_use]
 pub fn is_plain_gzip(path: &str) -> bool {
     ends_with_ignore_case(path, ".gz") && !ends_with_ignore_case(path, ".tar.gz")
@@ -169,8 +169,7 @@ struct Header {
     type_flag: u8,
 }
 
-/// Bytes up to the first NUL, as UTF-8 (`GetTrimmedUtf8String` behavior
-/// observed in .NET: trailing spaces survive).
+/// Bytes up to the first NUL, as UTF-8 (trailing spaces survive).
 fn field_string(field: &[u8]) -> String {
     let end = field.iter().position(|&b| b == 0).unwrap_or(field.len());
     String::from_utf8_lossy(&field[..end]).into_owned()
@@ -180,7 +179,7 @@ fn is_null_or_space(b: u8) -> bool {
     b == 0 || b == b' '
 }
 
-/// Port of `TarHelpers.ParseOctal`: trims nulls/spaces at both ends.
+/// An octal field; trims nulls/spaces at both ends.
 fn parse_octal(field: &[u8]) -> Result<i64, TarError> {
     let start = field.iter().position(|&b| !is_null_or_space(b)).unwrap_or(field.len());
     let end = field.iter().rposition(|&b| !is_null_or_space(b)).map_or(start, |i| i + 1);
@@ -198,7 +197,7 @@ fn parse_octal(field: &[u8]) -> Result<i64, TarError> {
     Ok(value)
 }
 
-/// Port of `TarHelpers.ParseNumeric`: base-256 when the high bit is set,
+/// A numeric field: base-256 when the high bit is set,
 /// octal otherwise.
 fn parse_numeric(field: &[u8]) -> Result<i64, TarError> {
     if field.first().is_some_and(|&b| b & 0x80 != 0) {
@@ -231,8 +230,8 @@ fn padding(size: i64) -> u64 {
     (RECORD_SIZE as u64 - size % RECORD_SIZE as u64) % RECORD_SIZE as u64
 }
 
-/// Port of `TarHeader.TryGetNextHeader` (attributes only; the caller
-/// handles the data block). `None` marks the end of the archive.
+/// The next header (attributes only; the caller handles the data block). `None`
+/// marks the end of the archive.
 fn read_header(source: &mut dyn TarSource, initial: Format) -> Result<Option<Header>, TarError> {
     if let Some((position, length)) = source.seek_state()
         && position == length
@@ -349,7 +348,7 @@ fn parse_pax(data: &[u8]) -> Vec<(String, String)> {
     records
 }
 
-/// Port of `TarReader.GetNextEntry(copyData: false)`.
+/// Walks the entries' headers, skipping their data.
 struct TarReader<'a> {
     source: &'a mut dyn TarSource,
     reached_end: bool,
@@ -483,8 +482,8 @@ fn with_tar_source<T>(path: &str, f: impl FnOnce(&mut dyn TarSource) -> Result<T
     }
 }
 
-/// Port of `RenderTarEntries`: the first `entry_limit` (C#: 100)
-/// non-directory entries in archive order, then sorted case-insensitively.
+/// The first `entry_limit` non-directory entries in archive order, then sorted
+/// case-insensitively.
 fn render_tar_entries(
     source: &mut dyn TarSource,
     entry_limit: usize,
@@ -537,7 +536,7 @@ fn render_tar_entries(
     Ok(Some(lines))
 }
 
-/// Port of `CountTarEntries`.
+/// Counts the entries and sums their sizes.
 fn count_tar_entries(source: &mut dyn TarSource, cancel: &CancelToken) -> Result<Option<(usize, i64)>, TarError> {
     let mut reader = TarReader::new(source);
     let mut files = 0;
@@ -561,8 +560,7 @@ fn count_tar_entries(source: &mut dyn TarSource, cancel: &CancelToken) -> Result
     Ok(Some((files, total)))
 }
 
-/// Port of `LooksLikeTarGzip`: the first decompressed record carries the
-/// ustar magic.
+/// The first decompressed record carries the ustar magic.
 fn looks_like_tar_gzip(path: &str, cancel: &CancelToken) -> bool {
     let Ok(mut gz) = File::open(path).map(GzipReader::new) else {
         return false;
@@ -580,18 +578,17 @@ fn looks_like_tar_gzip(path: &str, cancel: &CancelToken) -> bool {
     &buf[USTAR_MAGIC_OFFSET..USTAR_MAGIC_OFFSET + 5] == b"ustar"
 }
 
-/// Maps the C# catch blocks of `GetPreviewLines`/`GetGzipStyledPreview`:
-/// corrupt or short archives become "[invalid archive]".
+/// Corrupt or short archives become "[invalid archive]".
 fn invalid_or_none<T>(result: Result<Option<T>, TarError>, invalid: impl FnOnce() -> T) -> Option<T> {
     match result {
         Ok(value) => value,
         Err(TarError::InvalidData | TarError::EndOfStream | TarError::Io(_)) => Some(invalid()),
-        // C# lets NotSupportedException escape (the preview never arrives)
+        // Sparse entries: no preview
         Err(TarError::NotSupported) => None,
     }
 }
 
-/// Port of `GetPreviewLines` (tar and tar.gz listings; plain .gz text).
+/// Tar and tar.gz listings; plain .gz text.
 #[must_use]
 pub fn get_preview_lines(path: &str, limits: PreviewLimits, cancel: &CancelToken) -> Option<Vec<String>> {
     let invalid = || vec!["[invalid archive]".to_string()];
@@ -613,7 +610,7 @@ pub fn get_preview_lines(path: &str, limits: PreviewLimits, cancel: &CancelToken
     None
 }
 
-/// Port of `GetStats`; `None` on any failure.
+/// Archive stats; `None` on any failure.
 #[must_use]
 pub fn get_stats(path: &str, cancel: &CancelToken) -> Option<TarArchiveStats> {
     let compressed_size = i64::try_from(std::fs::metadata(path).ok()?.len()).ok()?;
@@ -658,7 +655,7 @@ pub fn get_stats(path: &str, cancel: &CancelToken) -> Option<TarArchiveStats> {
     None
 }
 
-/// Port of `ReadGzipIsize`: the trailer's last four bytes.
+/// The uncompressed size from the trailer's last four bytes.
 fn read_gzip_isize(path: &str) -> Option<u32> {
     let mut file = File::open(path).ok()?;
     if file.metadata().ok()?.len() < 4 {
@@ -682,7 +679,7 @@ fn file_name_without_extension(path: &str) -> &str {
     name.rfind('.').map_or(name, |dot| &name[..dot])
 }
 
-/// Port of `BuildGzipMetadataLine`.
+/// The plain .gz header line: inner name, sizes and ratio.
 fn build_gzip_metadata_line(path: &str) -> Result<String, TarError> {
     let inner_name = file_name_without_extension(path);
     let compressed = i64::try_from(std::fs::metadata(path)?.len()).unwrap_or(i64::MAX);
@@ -697,16 +694,15 @@ fn build_gzip_metadata_line(path: &str) -> Result<String, TarError> {
     })
 }
 
-/// Port of `GzipContent`.
+/// The text head of a plain .gz file, or a placeholder.
 struct GzipContent {
     lines: Vec<String>,
     is_text: bool,
     truncation: Option<Truncation>,
 }
 
-/// Port of `ReadGzipContent`: the binary check on the first 4 KB
-/// decompressed, then text lines up to `limits` (C#: 30 lines from those
-/// 4 KB), or a placeholder.
+/// The binary check on the first 4 KB decompressed, then text lines up to
+/// `limits`, or a placeholder.
 fn read_gzip_content(path: &str, limits: PreviewLimits, cancel: &CancelToken) -> Result<Option<GzipContent>, TarError> {
     let placeholder = |text: &str| GzipContent {
         lines: vec![text.to_string()],
@@ -829,7 +825,7 @@ fn string_reader_lines(text: &str) -> Vec<String> {
     lines
 }
 
-/// Port of `RenderGzip`.
+/// A plain .gz preview: a tar listing when it holds a tar, else the text.
 fn render_gzip(path: &str, limits: PreviewLimits, cancel: &CancelToken) -> Result<Option<Vec<String>>, TarError> {
     if looks_like_tar_gzip(path, cancel) {
         return render_tar_entries(&mut open_gzip(path)?, limits.lines, cancel);
@@ -848,9 +844,8 @@ fn render_gzip(path: &str, limits: PreviewLimits, cancel: &CancelToken) -> Resul
     Ok(Some(lines))
 }
 
-/// Port of `GetGzipStyledPreview`: a tar listing for tar payloads, else
-/// the metadata line, a rule, and the text head highlighted by the inner
-/// file name (`script.py.gz` as Python).
+/// A tar listing for tar payloads, else the metadata line, a rule, and the text
+/// head highlighted by the inner file name (`script.py.gz` as Python).
 #[must_use]
 pub fn get_gzip_styled_preview(path: &str, limits: PreviewLimits, cancel: &CancelToken) -> Option<Vec<StyledLine>> {
     let result = (|| -> Result<Option<Vec<StyledLine>>, TarError> {
@@ -887,8 +882,8 @@ pub fn get_gzip_styled_preview(path: &str, limits: PreviewLimits, cancel: &Cance
 
 #[cfg(test)]
 mod tests {
-    //! Port of the TarPreviewTests.cs cases the archive golden doesn't
-    //! cover (extension checks, cancellation, stats).
+    //! What the archive golden doesn't cover: extension checks,
+    //! cancellation, stats.
 
     use std::io::Write;
 
@@ -960,7 +955,7 @@ mod tests {
 
     #[test]
     fn sparse_entries_produce_no_preview() {
-        // C# lets NotSupportedException escape: no preview arrives
+        // No preview arrives
         let path = crate::preview::test_path("sparse.tar");
         let mut header = vec![0u8; 512];
         header[..6].copy_from_slice(b"sparse");

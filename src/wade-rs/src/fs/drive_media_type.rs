@@ -1,17 +1,16 @@
-//! Port of src/Wade/FileSystem/DriveMediaType.cs and DriveTypeDetector.cs.
-//! Windows queries the volume's seek penalty
-//! (`IOCTL_STORAGE_QUERY_PROPERTY`); Linux reads
+//! Drive type and media detection (SSD, HDD, network, removable), which
+//! decides whether inline directory sizes are computed. Windows queries
+//! the volume's seek penalty (`IOCTL_STORAGE_QUERY_PROPERTY`); Linux reads
 //! `/sys/block/<device>/queue/rotational` for the device mounted at the
-//! root. The .NET `DriveInfo.DriveType` it starts from is `GetDriveTypeW`
-//! on Windows and, on Linux, the mount's file-system type (a reduced
-//! version of .NET's table: network, RAM and optical file systems are
-//! recognised, everything else is Fixed).
+//! root. The drive type it starts from is `GetDriveTypeW` on Windows and,
+//! on Linux, the mount's file-system type (network, RAM and optical file
+//! systems are recognised, everything else is Fixed).
 //!
-//! macOS (Rust-only): `statfs` gives the file-system type and
+//! macOS: `statfs` gives the file-system type and
 //! `diskutil info -plist` the SolidState and removable-media flags; the
 //! diskutil answer is cached per volume because it costs a process launch.
 
-/// Port of `DriveMediaType`.
+/// What kind of storage a drive is.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum DriveMediaType {
     Ssd,
@@ -22,7 +21,7 @@ pub enum DriveMediaType {
     Unknown,
 }
 
-/// Port of .NET `DriveType`, named as `DriveType.ToString()` prints it.
+/// The drive type, with the names the Properties overlay shows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DriveType {
     Unknown,
@@ -49,7 +48,7 @@ impl DriveType {
     }
 }
 
-/// Port of `DriveTypeDetector.Detect(new DriveInfo(root))`.
+/// The media type of the drive at `root`.
 #[must_use]
 pub fn detect(root: &str) -> DriveMediaType {
     match drive_type(root) {
@@ -60,7 +59,7 @@ pub fn detect(root: &str) -> DriveMediaType {
     }
 }
 
-/// .NET `DriveInfo(root).DriveType`.
+/// The drive type of the drive at `root`.
 #[must_use]
 pub fn drive_type(root: &str) -> DriveType {
     #[cfg(windows)]
@@ -157,7 +156,7 @@ pub fn parse_diskutil_plist(xml: &str) -> Option<DiskutilInfo> {
     Some(info)
 }
 
-/// Port of `ParseRotationalValue`.
+/// `/sys/block/*/queue/rotational`: "1" is an HDD, "0" an SSD.
 #[must_use]
 pub fn parse_rotational_value(content: Option<&str>) -> DriveMediaType {
     match content {
@@ -167,13 +166,13 @@ pub fn parse_rotational_value(content: Option<&str>) -> DriveMediaType {
     }
 }
 
-/// Port of `ParseSeekPenaltyResult`.
+/// A seek penalty means an HDD, none an SSD.
 #[must_use]
 pub const fn parse_seek_penalty_result(incurs_seek_penalty: bool) -> DriveMediaType {
     if incurs_seek_penalty { DriveMediaType::Hdd } else { DriveMediaType::Ssd }
 }
 
-/// Port of `ExtractBaseDevice`: /dev/sda1 → sda, /dev/nvme0n1p1 → nvme0n1.
+/// The disk of a partition: /dev/sda1 → sda, /dev/nvme0n1p1 → nvme0n1.
 #[must_use]
 pub fn extract_base_device(device_path: &str) -> Option<String> {
     let device = device_path.rsplit(['/', '\\']).next().unwrap_or("");
@@ -202,8 +201,8 @@ pub fn extract_base_device(device_path: &str) -> Option<String> {
     (!trimmed.is_empty()).then(|| trimmed.to_string())
 }
 
-/// The .NET Unix `DriveInfo` file-system-type mapping, reduced to the
-/// families that matter for `Detect`.
+/// The drive type of a Unix file-system type, reduced to the families that
+/// matter for `detect`.
 #[must_use]
 pub fn drive_type_from_fs_type(fs_type: &str) -> DriveType {
     match fs_type {

@@ -1,9 +1,7 @@
-//! Port of the file-type label dictionaries from
-//! `src/Wade/FileSystem/FilePreview.cs` (`s_extensionLabels`,
-//! `s_filenameLabels`, and `GetFileTypeLabel`). Phase 7 reuses this for
-//! previews; Phase 4d uses it for the Properties overlay Type row.
+//! File-type labels by file name and extension, shown above previews and
+//! in the Properties overlay's Type row.
 
-/// Port of `s_filenameLabels` (StringComparer.Ordinal, so exact case).
+/// Labels by whole file name (exact case).
 const FILENAME_LABELS: &[(&str, &str)] = &[
     ("Dockerfile", "Docker"),
     ("Makefile", "Makefile"),
@@ -14,7 +12,7 @@ const FILENAME_LABELS: &[(&str, &str)] = &[
     ("Procfile", "Procfile"),
 ];
 
-/// Port of `s_extensionLabels` (StringComparer.OrdinalIgnoreCase).
+/// Labels by extension (any case).
 const EXTENSION_LABELS: &[(&str, &str)] = &[
     // Programming
     (".cs", "C#"),
@@ -129,8 +127,7 @@ const EXTENSION_LABELS: &[(&str, &str)] = &[
     (".wasm", "WebAssembly"),
 ];
 
-/// Port of `GetFileTypeLabel`: filename lookup first (exact case, matching
-/// C#'s Ordinal comparer), then extension (case-insensitive).
+/// Filename lookup first (exact case), then extension (case-insensitive).
 #[must_use]
 pub fn get_file_type_label(path: &str) -> Option<&'static str> {
     let file_name = crate::app::dialogs::file_name_of(path);

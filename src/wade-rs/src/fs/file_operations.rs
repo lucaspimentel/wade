@@ -1,13 +1,11 @@
-//! Port of `src/Wade/FileSystem/FileOperations.cs` and `src/Wade/FileSystem/Shell32.cs`:
-//! recursive copy, move, delete (Recycle Bin or Trash), with C#'s
-//! symlink-first semantics.
+//! Recursive copy, move, delete (Recycle Bin or Trash), with symlink-first
+//! semantics: a link is copied, moved or deleted as a link.
 
 use crate::input::CancelToken;
 use std::path::Path;
 
-/// True when `path` is a symlink (does NOT follow the link). The C# code
-/// checks `FileInfo.LinkTarget` before any Directory.Exists call, because
-/// Directory.Exists follows links on Windows.
+/// True when `path` is a symlink (does NOT follow the link). Checked before
+/// any directory test, because those follow links.
 #[must_use]
 pub fn is_symlink(path: &str) -> bool {
     std::fs::symlink_metadata(path).is_ok_and(|meta| meta.file_type().is_symlink())
@@ -15,13 +13,12 @@ pub fn is_symlink(path: &str) -> bool {
 
 /// Whether a non-permanent delete has somewhere to go: the Recycle Bin on
 /// Windows, the Trash on macOS and the freedesktop.org Trash on Linux and
-/// other Unix (both Rust-only; C# deleted permanently outside Windows).
+/// other Unix.
 pub const HAS_TRASH: bool = cfg!(any(windows, unix));
 
-/// Port of `FileOperations.Delete`: deletes the paths; with
-/// permanent=false, sends them to the Recycle Bin via SHFileOperation on
-/// Windows, or to the Trash on macOS and Linux.
-/// Returns (successCount, errorCount) using the C# runner's accounting.
+/// Deletes the paths; with permanent=false, sends them to the Recycle Bin via
+/// SHFileOperation on Windows, or to the Trash on macOS and Linux. Returns
+/// (successes, errors).
 pub fn delete_paths(paths: &[String], permanent: bool, cancel: &CancelToken) -> (usize, usize) {
     if paths.is_empty() {
         return (0, 0);
@@ -81,13 +78,12 @@ fn trash_item(path: &str) -> bool {
         .is_ok_and(|output| output.status.success() && String::from_utf8_lossy(&output.stdout).trim() == "ok")
 }
 
-/// Delete a single path with the C# symlink-first rules: a symlink (file or
+/// Delete a single path, symlink first: a symlink (file or
 /// dir) is removed non-recursively via its link; real dirs are removed
 /// recursively; missing paths count as errors.
 fn delete_one(path: &str) -> bool {
     if is_symlink(path) {
-        // Symlinks: remove the link itself. C# uses Directory.Delete(path,
-        // false) for dir-links and File.Delete otherwise.
+        // Symlinks: remove the link itself, never the target's contents
         return remove_symlink(path).is_ok();
     }
 
@@ -103,7 +99,7 @@ fn delete_one(path: &str) -> bool {
 ///   WSL or `fsutil file setCaseSensitiveInfo`).
 /// - macOS: per volume (APFS and HFS+ are case-insensitive unless formatted
 ///   otherwise).
-/// - Linux (Rust-only): ext4/f2fs casefold directories, then a lookup of an
+/// - Linux: ext4/f2fs casefold directories, then a lookup of an
 ///   entry under another case (FAT, exFAT, SMB and WSL's drvfs answer by
 ///   behavior), then the file-system type for empty folders.
 /// - Other unixes: never.
@@ -347,7 +343,7 @@ pub fn same_dir_path(a: &str, b: &str) -> bool {
     a == b || NameRule::of(Path::new(a)).same(a, b)
 }
 
-/// macOS (Rust-only): `path` with each existing component spelled as it is
+/// macOS: `path` with each existing component spelled as it is
 /// stored on disk, so a path typed as `/users/me/src` becomes
 /// `/Users/me/src` on a case-insensitive volume (and an NFC `café` the
 /// NFD `café` stored on disk, on any volume) and lookups keyed by path
@@ -486,10 +482,9 @@ pub fn unique_copy_name(dir: &str, name: &str, is_directory: bool) -> String {
     }
 }
 
-/// Port of `FileOperationRunner.RunPaste`'s copy branch for one entry:
-/// symlink-preserve when requested (falling through to a content copy on
-/// permission errors), directory recursion, file copy. C# File.Copy does not
-/// overwrite; callers delete the destination first when overwrite is set.
+/// Copies one entry: symlink-preserve when requested (falling through to a
+/// content copy on permission errors), directory recursion, file copy.
+/// Callers delete the destination first when overwrite is set.
 pub fn copy_path(source: &str, dest: &str, preserve_symlinks: bool) -> Result<(), std::io::Error> {
     if preserve_symlinks && is_symlink(source) {
         let Some(target) = std::fs::read_link(source).ok().map(|p| p.to_string_lossy().to_string()) else {
@@ -498,8 +493,7 @@ pub fn copy_path(source: &str, dest: &str, preserve_symlinks: bool) -> Result<()
 
         return match create_symlink(dest, &target, Path::new(source).is_dir()) {
             Ok(()) => Ok(()),
-            // C# catches UnauthorizedAccessException and falls through to a
-            // content copy
+            // No permission to create links: copy the content instead
             Err(err) if is_permission_denied(&err) => copy_by_content(source, dest, preserve_symlinks),
             Err(err) => Err(err),
         };
@@ -525,8 +519,7 @@ fn copy_by_content(source: &str, dest: &str, preserve_symlinks: bool) -> Result<
     }
 }
 
-/// Port of `FileOperations.CopyDirectory`: recursive copy with optional
-/// symlink preservation per entry.
+/// Recursive copy with optional symlink preservation per entry.
 pub fn copy_directory(source: &str, destination: &str, preserve_symlinks: bool) -> Result<(), std::io::Error> {
     std::fs::create_dir_all(destination)?;
 
@@ -559,14 +552,14 @@ pub fn copy_directory(source: &str, destination: &str, preserve_symlinks: bool) 
     Ok(())
 }
 
-/// Port of `Directory.Move`/`File.Move` (same-directory renames and
+/// Moves or renames a file or directory (same-directory renames and
 /// cross-directory moves).
 pub fn move_path(source: &str, dest: &str) -> Result<(), std::io::Error> {
     std::fs::rename(source, dest)
 }
 
 /// Renames `source` to `dest`, a spelling of the same name in another
-/// case. Linux (Rust-only): `rename()` does nothing when both names are the
+/// case. Linux: `rename()` does nothing when both names are the
 /// same file, as on a FAT volume, so the entry goes through a temporary
 /// name. Windows and macOS change the case in place.
 pub fn rename_case(source: &str, dest: &str) -> Result<(), std::io::Error> {
@@ -594,8 +587,8 @@ fn remove_symlink(path: &str) -> Result<(), std::io::Error> {
     result
 }
 
-/// Port of the runner's `DeleteExisting`: removes an existing destination
-/// before an overwrite; symlinks are removed as links, dirs recursively.
+/// Removes an existing destination before an overwrite; symlinks are removed as
+/// links, dirs recursively.
 pub fn delete_existing(path: &str) -> Result<(), std::io::Error> {
     if is_symlink(path) {
         return remove_symlink(path);
@@ -609,7 +602,8 @@ pub fn delete_existing(path: &str) -> Result<(), std::io::Error> {
     }
 }
 
-/// Port of `Directory.CreateSymbolicLink`/`File.CreateSymbolicLink`.
+/// Creates a symlink at `link_path` (a directory link when `is_directory`,
+/// which Windows needs to know).
 fn create_symlink(link_path: &str, target: &str, is_directory: bool) -> Result<(), std::io::Error> {
     #[cfg(windows)]
     {
@@ -631,7 +625,7 @@ fn is_permission_denied(err: &std::io::Error) -> bool {
     err.kind() == std::io::ErrorKind::PermissionDenied
 }
 
-/// Windows recycle-bin delete via `SHFileOperationW` (port of Shell32.cs).
+/// Windows recycle-bin delete via `SHFileOperationW`.
 #[cfg(windows)]
 fn recycle_files(paths: &[String]) -> i32 {
     use windows_sys::Win32::UI::Shell::{
@@ -743,9 +737,8 @@ mod tests {
         std::fs::set_permissions(path, permissions).expect("set read-only");
     }
 
-    /// Rust's `remove_file` and `remove_dir_all` delete read-only files on
-    /// Windows, where C#'s `File.Delete` throws, so no attribute clearing is
-    /// needed.
+    /// `remove_file` and `remove_dir_all` delete read-only files on
+    /// Windows, so no attribute clearing is needed.
     #[cfg(windows)]
     #[test]
     fn permanent_delete_removes_read_only_files_and_trees() {
@@ -1081,7 +1074,7 @@ mod tests {
         let _ = std::fs::remove_file(&trashed);
         std::fs::write(&file, b"x").expect("write");
 
-        // delete_paths with C#'s accounting: one moved, one missing
+        // One moved, one missing
         let missing = dir.join("missing.txt");
         let (success, errors) = delete_paths(&[p(&file), p(&missing)], false, &CancelToken::new());
         assert_eq!((success, errors), (1, 1), "Trash at {} exists: {}", trash.display(), trash.is_dir());
@@ -1098,7 +1091,7 @@ mod tests {
         let file = dir.join(&name);
         std::fs::write(&file, b"x").expect("write");
 
-        // delete_paths with C#'s accounting: one moved, one missing
+        // One moved, one missing
         let missing = dir.join("missing.txt");
         let (success, errors) = delete_paths(&[p(&file), p(&missing)], false, &CancelToken::new());
         assert_eq!((success, errors), (1, 1));
@@ -1174,10 +1167,10 @@ mod tests {
     }
 
     #[test]
-    fn copy_does_not_overwrite_via_runner_semantics() {
-        // C# File.Copy throws when the destination exists; the runner deletes
-        // the destination first when overwrite is set. copy_path itself
-        // (fs::copy-based) DOES overwrite, so callers must check first.
+    fn copy_path_overwrites_an_existing_file() {
+        // copy_path (fs::copy-based) overwrites, so the paste operation
+        // checks for conflicts first and deletes the destination only when
+        // overwrite is set
         let dir = temp_dir("overwrite");
         let src = dir.join("src.txt");
         std::fs::write(&src, b"new").expect("write");
@@ -1185,7 +1178,6 @@ mod tests {
         std::fs::write(&dest, b"old").expect("write");
 
         copy_path(&p(&src), &p(&dest), true).expect("copy");
-        // Divergence documented: Rust std copy overwrites
         assert_eq!(std::fs::read(&dest).expect("read"), b"new");
     }
 

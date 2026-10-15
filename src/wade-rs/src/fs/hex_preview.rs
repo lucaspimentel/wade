@@ -1,4 +1,4 @@
-//! Port of `HexPreview`: a classic 16-bytes-per-row hex dump of the first
+//! A classic 16-bytes-per-row hex dump of the first
 //! 64 KB, with per-cell styles.
 
 use std::io::Read;
@@ -32,7 +32,7 @@ const ASCII: CellStyle = style(120, 200, 120, false); // green
 const DOT: CellStyle = style(100, 100, 100, true); // dim non-printable
 const SEPARATOR: CellStyle = style(80, 80, 80, true); // dim separators
 
-/// Port of `HexPreview.GetPreviewLines`. `None` on error or cancellation;
+/// The hex dump's lines. `None` on error or cancellation;
 /// an empty file is a single `[empty file]` line.
 #[must_use]
 pub fn get_preview_lines(path: &str, cancel: &CancelToken) -> Option<Vec<StyledLine>> {
@@ -133,8 +133,8 @@ fn format_row(offset: usize, bytes: &[u8]) -> StyledLine {
 
 #[cfg(test)]
 mod tests {
-    //! Port of the HexPreviewTests.cs cases the preview golden doesn't
-    //! reach (cancellation, missing files, column positions).
+    //! What the preview golden doesn't reach: cancellation, missing files,
+    //! column positions.
 
     use super::get_preview_lines;
     use crate::input::CancelToken;

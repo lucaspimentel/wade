@@ -1,6 +1,6 @@
-//! Port of src/Wade/FileSystem/ReparsePointDetector.cs: junction points
-//! (`IO_REPARSE_TAG_MOUNT_POINT`) and app execution aliases
-//! (`IO_REPARSE_TAG_APPEXECLINK`). Windows-only; always false/None elsewhere.
+//! Reparse point detection: junction points (`IO_REPARSE_TAG_MOUNT_POINT`) and
+//! app execution aliases (`IO_REPARSE_TAG_APPEXECLINK`). Windows-only; always
+//! false/None elsewhere.
 
 const IO_REPARSE_TAG_MOUNT_POINT: u32 = 0xA000_0003;
 const IO_REPARSE_TAG_APPEXECLINK: u32 = 0x8000_001B;
@@ -59,7 +59,7 @@ pub const fn is_app_exec_link_tag(reparse_tag: u32) -> bool {
     reparse_tag == IO_REPARSE_TAG_APPEXECLINK
 }
 
-/// Port of `ParseAppExecLinkTarget`. Buffer layout: header(8), Version(4),
+/// The target of an app execution alias. Buffer layout: header(8), Version(4),
 /// then 3 null-terminated UTF-16 strings (package ID, AUMID, target path);
 /// the third string is the target executable path.
 #[must_use]

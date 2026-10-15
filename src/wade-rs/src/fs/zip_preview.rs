@@ -1,5 +1,5 @@
-//! Port of `ZipPreview` plus the part of .NET's `ZipArchive` (read mode)
-//! it relies on: the end-of-central-directory search, the Zip64 EOCD
+//! Zip previews, with a reader for what they need: the
+//! end-of-central-directory search, the Zip64 EOCD
 //! locator and record, and the central-directory file headers (names,
 //! sizes, Zip64 extra fields). Entry data is never decompressed.
 
@@ -40,8 +40,8 @@ pub struct ZipEntry {
     pub local_header_offset: u64,
 }
 
-/// Why an archive could not be read: .NET's `InvalidDataException`
-/// (corrupt structure) versus any other `IOException`.
+/// Why an archive could not be read: corrupt structure versus any other I/O
+/// error.
 #[derive(Debug)]
 pub enum ZipError {
     InvalidData,
@@ -59,14 +59,14 @@ fn has_extension(path: &str, extensions: &[&str]) -> bool {
     !ext.is_empty() && extensions.iter().any(|candidate| candidate.eq_ignore_ascii_case(ext))
 }
 
-/// Port of `IsZipFile`.
+/// Whether `path` has a zip-based extension.
 #[must_use]
 pub fn is_zip_file(path: &str) -> bool {
     has_extension(path, ZIP_EXTENSIONS)
 }
 
-/// Port of `IsPrimaryArchive`: archive contents is the default preview
-/// (false for secondary types like .docx or .nupkg).
+/// Archive contents is the default preview (false for secondary types like
+/// .docx or .nupkg).
 #[must_use]
 pub fn is_primary_archive(path: &str) -> bool {
     has_extension(path, PRIMARY_ARCHIVE_EXTENSIONS)
@@ -89,12 +89,10 @@ fn read_up_to(reader: &mut impl Read, buf: &mut [u8]) -> io::Result<usize> {
     crate::fs::gzip::read_fully(reader, buf)
 }
 
-/// Port of `ZipHelper.SeekBackwardsToSignature` for the EOCD: the last
-/// signature that starts within the comment window before the minimal
-/// EOCD position.
+/// The EOCD: the last signature that starts within the comment window before
+/// the minimal EOCD position.
 fn find_eocd(file: &mut (impl Read + Seek), length: u64) -> Result<u64, ZipError> {
-    // .NET 10 reports a file shorter than an EOCD record as invalid data
-    // (earlier versions threw an IOException for a seek before the start).
+    // A file shorter than an EOCD record is invalid data
     if length < EOCD_SIZE {
         return Err(ZipError::InvalidData);
     }
@@ -172,8 +170,8 @@ fn read_end_of_central_directory(file: &mut (impl Read + Seek), length: u64) -> 
     Ok((cd_start, expected_entries))
 }
 
-/// Port of `ZipCentralDirectoryFileHeader.TryReadBlock` for the fields the
-/// preview uses; `None` ends the directory (wrong signature or short data).
+/// A central-directory file header's fields the preview uses; `None` ends the
+/// directory (wrong signature or short data).
 fn read_central_header(file: &mut impl Read) -> Result<Option<ZipEntry>, ZipError> {
     let mut fixed = [0u8; CENTRAL_HEADER_SIZE];
     if read_up_to(file, &mut fixed)? < CENTRAL_HEADER_SIZE || u32_at(&fixed, 0) != CENTRAL_HEADER_SIGNATURE {
@@ -197,8 +195,8 @@ fn read_central_header(file: &mut impl Read) -> Result<Option<ZipEntry>, ZipErro
     let name_bytes = &variable[..name_length];
     let extra = &variable[name_length..name_length + extra_length];
 
-    // Bit 11 marks UTF-8 names; .NET's default for the rest is UTF-8 too,
-    // so the flag doesn't matter
+    // Bit 11 marks UTF-8 names; the rest are read as UTF-8 too, so the flag
+    // doesn't matter
     let full_name = String::from_utf8_lossy(name_bytes).into_owned();
 
     let mut length = u64::from(uncompressed32);
@@ -256,8 +254,7 @@ fn read_central_header(file: &mut impl Read) -> Result<Option<ZipEntry>, ZipErro
     }))
 }
 
-/// Port of `ZipFile.OpenRead(path).Entries`: every central-directory
-/// entry, in directory order.
+/// Every central-directory entry, in directory order.
 pub fn read_entries(path: &str) -> Result<Vec<ZipEntry>, ZipError> {
     let mut file = std::io::BufReader::new(std::fs::File::open(path)?);
     let length = file.get_ref().metadata()?.len();
@@ -282,8 +279,8 @@ const LOCAL_HEADER_SIZE: usize = 30;
 /// Entries larger than this are not decompressed (metadata parts are tiny).
 const MAX_ENTRY_DATA: u64 = 64 * 1024 * 1024;
 
-/// Port of `ZipArchiveEntry.Open()` read to the end: stored and deflate
-/// entries; other methods are `InvalidDataException`, as in .NET.
+/// An entry's data: stored and deflate entries; other methods are
+/// `InvalidData`.
 pub fn read_entry_data(path: &str, entry: &ZipEntry) -> Result<Vec<u8>, ZipError> {
     if entry.length > MAX_ENTRY_DATA || entry.compressed_length > MAX_ENTRY_DATA {
         return Err(ZipError::InvalidData);
@@ -324,8 +321,7 @@ pub fn read_entry_data(path: &str, entry: &ZipEntry) -> Result<Vec<u8>, ZipError
     }
 }
 
-/// Port of `GetPreviewLines`. `None` on cancellation or an I/O error (C#
-/// lets the `IOException` escape, so no preview arrives either).
+/// The archive listing. `None` on cancellation or an I/O error.
 #[must_use]
 pub fn get_preview_lines(path: &str, entry_limit: usize, cancel: &CancelToken) -> Option<Vec<String>> {
     let entries = match read_entries(path) {
@@ -379,8 +375,7 @@ pub fn get_preview_lines(path: &str, entry_limit: usize, cancel: &CancelToken) -
 
 #[cfg(test)]
 mod tests {
-    //! Port of the ZipPreviewTests.cs cases the archive golden doesn't
-    //! cover (extension sets, cancellation).
+    //! What the archive golden doesn't cover: extension sets, cancellation.
 
     use super::{get_preview_lines, is_primary_archive, is_zip_file};
     use crate::input::CancelToken;

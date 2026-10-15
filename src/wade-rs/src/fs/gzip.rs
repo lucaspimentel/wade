@@ -1,8 +1,7 @@
-//! A gzip reader with .NET `GZipStream` (Decompress) semantics over
-//! `flate2`: concatenated members are read in sequence, a truncated stream
-//! ends silently, bytes after a member that don't start another member are
-//! ignored, and corrupt data (bad header, deflate data or CRC) is an
-//! `InvalidData` error.
+//! A gzip reader over `flate2`: concatenated members are read in sequence, a
+//! truncated stream ends silently, bytes after a member that don't start
+//! another member are ignored, and corrupt data (bad header, deflate data or
+//! CRC) is an `InvalidData` error.
 
 use std::io::{self, BufRead, Read};
 
@@ -116,7 +115,7 @@ impl<R: Read> Read for GzipReader<R> {
     }
 }
 
-/// Reads until `buf` is full or the stream ends (C# `ReadFully`).
+/// Reads until `buf` is full or the stream ends.
 pub fn read_fully(reader: &mut (impl Read + ?Sized), buf: &mut [u8]) -> io::Result<usize> {
     let mut total = 0;
 

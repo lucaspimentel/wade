@@ -1,4 +1,5 @@
-//! Ports of src/Wade/FileSystem.
+//! File system access: listings, file operations, git, clipboard, stores
+//! and the archive and text readers previews use.
 
 pub mod bookmark_store;
 pub mod directory_contents;

@@ -1,18 +1,16 @@
-//! Port of `src/Wade/LnkParser`: the parts of a Windows Shell Link (.lnk)
-//! that `ShortcutMetadataProvider` shows. The header, LinkTargetIDList,
-//! LinkInfo and StringData are parsed with the C# reader's semantics
-//! (`BinaryReader` over a seekable file: reads past the end fail, seeks
-//! past the end don't, short `ReadBytes` return what is there).
+//! The parts of a Windows Shell Link (.lnk) that `ShortcutMetadataProvider`
+//! shows. The header, LinkTargetIDList, LinkInfo and StringData are parsed
+//! over a seekable file: reads past the end fail, seeks past the end don't,
+//! short byte reads return what is there.
 //!
-//! ExtraData blocks are not parsed: the C# parser catches every error
-//! inside `ExtraDataBlock.ParseAll` and nothing reads the blocks, so they
-//! never change the result.
+//! ExtraData blocks are not parsed: nothing shown comes from them.
 
 use std::fs::File;
 use std::io::{self, BufReader, Seek, SeekFrom};
 
 const HEADER_SIZE: u32 = 0x4c;
-/// `00021401-0000-0000-C000-000000000046` in .NET's mixed-endian byte order.
+/// `00021401-0000-0000-C000-000000000046` in the GUID's mixed-endian byte
+/// order.
 const LINK_CLSID: [u8; 16] =
     [0x01, 0x14, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46];
 
@@ -30,7 +28,7 @@ const VOLUME_ID_AND_LOCAL_BASE_PATH: u32 = 0x01;
 /// `ShowCommand.Normal`.
 pub const SHOW_NORMAL: u32 = 1;
 
-/// Any failure: the C# provider catches everything and shows nothing.
+/// Any failure: the provider shows nothing.
 #[derive(Debug)]
 pub struct LnkError;
 
@@ -89,7 +87,7 @@ impl Reader {
         Ok(u32::from_le_bytes(self.read_array()?))
     }
 
-    /// ANSI (`Encoding.Default`, UTF-8 on .NET Core) up to a NUL.
+    /// ANSI text (read as UTF-8) up to a NUL.
     fn read_null_terminated(&mut self) -> Result<String> {
         let mut bytes = Vec::new();
         loop {
@@ -131,7 +129,7 @@ pub fn decode_utf16le(bytes: &[u8]) -> String {
     text
 }
 
-/// Port of `ShellLinkHeader` (the fields the provider reads).
+/// The ShellLinkHeader fields the provider reads.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ShellLinkHeader {
     pub link_flags: u32,
@@ -162,7 +160,7 @@ fn parse_header(reader: &mut Reader) -> Result<ShellLinkHeader> {
     Ok(ShellLinkHeader { link_flags, show_command, hot_key })
 }
 
-/// Port of `LinkTargetIdList.Parse` reduced to what `GetLaunchUri` needs:
+/// The LinkTargetIDList, reduced to what `launch_uri` needs:
 /// the item walk (which can fail) and the raw-bytes string scan.
 fn parse_id_list(reader: &mut Reader) -> Result<Vec<String>> {
     let id_list_size = reader.read_u16()?;
@@ -189,7 +187,7 @@ fn parse_id_list(reader: &mut Reader) -> Result<Vec<String>> {
     Ok(extract_string_list(&raw))
 }
 
-/// Port of `LinkTargetIdList.ExtractStringList`: UTF-16 then ASCII runs.
+/// The strings in an ID list item: UTF-16 then ASCII runs.
 /// Lengths include the terminator, so the strings end with a NUL char.
 fn extract_string_list(data: &[u8]) -> Vec<String> {
     let mut strings: Vec<String> = Vec::new();
@@ -282,7 +280,7 @@ fn likely_ascii_string(data: &[u8], offset: usize) -> Option<usize> {
     None
 }
 
-/// Port of `LinkInfo` (the fields the provider reads).
+/// The LinkInfo fields the provider reads.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct LinkInfo {
     pub volume_label: Option<String>,
@@ -293,7 +291,7 @@ pub struct LinkInfo {
 }
 
 impl LinkInfo {
-    /// Port of `GetFullPath`.
+    /// The local base path plus the common path suffix.
     #[must_use]
     pub fn full_path(&self) -> String {
         let base = self.local_base_path_unicode.as_deref().or(self.local_base_path.as_deref()).unwrap_or("");
@@ -302,7 +300,7 @@ impl LinkInfo {
     }
 }
 
-/// Port of `VolumeID.Parse`'s label (Unicode at 0x14, else ANSI at the
+/// The VolumeID's label (Unicode at 0x14, else ANSI at the
 /// given offset).
 fn parse_volume_label(reader: &mut Reader) -> Result<String> {
     let start = reader.position;
@@ -374,7 +372,7 @@ fn parse_link_info(reader: &mut Reader) -> Result<LinkInfo> {
     Ok(info)
 }
 
-/// Port of `StringData`.
+/// The optional StringData strings.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct StringData {
     pub name: Option<String>,
@@ -408,7 +406,7 @@ fn parse_string_data(reader: &mut Reader, flags: u32) -> Result<StringData> {
     })
 }
 
-/// Port of `LnkFile`.
+/// A parsed .lnk file.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LnkFile {
     pub header: ShellLinkHeader,
@@ -419,7 +417,7 @@ pub struct LnkFile {
 }
 
 impl LnkFile {
-    /// Port of `LnkFile.Parse`.
+    /// Parses the .lnk file at `path`.
     pub fn parse(path: &str) -> Result<Self> {
         let mut reader = Reader::open(path)?;
         let header = parse_header(&mut reader)?;
@@ -446,7 +444,7 @@ impl LnkFile {
         })
     }
 
-    /// Port of `GetTargetPath`: the LinkInfo path, else the relative path.
+    /// The LinkInfo path, else the relative path.
     #[must_use]
     pub fn target_path(&self) -> Option<String> {
         if let Some(full_path) = self.link_info.as_ref().map(LinkInfo::full_path).filter(|p| !p.is_empty()) {
@@ -456,8 +454,8 @@ impl LnkFile {
         self.string_data.relative_path.clone()
     }
 
-    /// Port of `GetLaunchUri`: the first msgamelaunch://, ms-xbl-* or
-    /// other "://" string in the ID list.
+    /// The first msgamelaunch://, ms-xbl-* or other "://" string in the ID
+    /// list.
     #[must_use]
     pub fn launch_uri(&self) -> Option<String> {
         self.id_list_strings
@@ -478,7 +476,7 @@ fn starts_with_ignore_case(text: &str, prefix: &str) -> bool {
         && text[..prefix.len()].eq_ignore_ascii_case(prefix)
 }
 
-/// Port of `ShowCommand.ToString()`: names for defined values, else the
+/// The show command's name for defined values, else the
 /// number.
 #[must_use]
 pub fn show_command_name(show_command: u32) -> String {
@@ -490,7 +488,7 @@ pub fn show_command_name(show_command: u32) -> String {
     }
 }
 
-/// Port of `HotKeyHelper.Decode`.
+/// The hotkey as text, e.g. "CTRL + ALT - K {0x064B}".
 #[must_use]
 pub fn decode_hot_key(hot_key: u16) -> String {
     if hot_key == 0 {

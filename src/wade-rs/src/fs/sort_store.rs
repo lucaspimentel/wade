@@ -1,4 +1,4 @@
-//! Rust-only: sort orders remembered per directory, stored as plain text at
+//! Sort orders remembered per directory, stored as plain text at
 //! `~/.config/wade/sorts` (next to `bookmarks`). One entry per line:
 //! `<mode> <asc|desc> <path>`; the path is the rest of the line.
 

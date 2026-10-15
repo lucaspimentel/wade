@@ -1,13 +1,13 @@
-//! Port of `FilePreview`: binary/encoding/line-ending detection and the
-//! first lines of a text file for the preview pane.
+//! Binary/encoding/line-ending detection and the first lines of a text file for
+//! the preview pane.
 
 use std::io::Read;
 
 use super::file_type_labels;
 use crate::preview::Truncation;
 
-/// C#'s line limit, kept for `get_preview_lines` (the parity goldens).
-const CSHARP_PREVIEW_LINES: usize = 100;
+/// The line limit of `get_preview_lines`, which the frozen goldens use.
+const GOLDEN_PREVIEW_LINES: usize = 100;
 const BINARY_CHECK_SIZE: usize = 512;
 
 /// Extensions treated as binary without reading the file.
@@ -21,7 +21,7 @@ const BINARY_EXTENSIONS: &[&str] = &[
     ".exe", ".dll", ".so", ".dylib", ".pdb", ".wasm",
 ];
 
-/// Port of `FileMetadata`.
+/// A file's detected encoding and line endings, or that it is binary.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FileMetadata {
     pub is_binary: bool,
@@ -47,7 +47,7 @@ impl FileMetadata {
     }
 }
 
-/// Port of `GetFileTypeLabel`.
+/// The file-type label ("C#", "Rust", "Docker", ...) for `path`.
 #[must_use]
 pub fn get_file_type_label(path: &str) -> Option<&'static str> {
     file_type_labels::get_file_type_label(path)
@@ -63,9 +63,8 @@ pub(crate) fn extension(path: &str) -> &str {
     }
 }
 
-/// Port of `DetectFileMetadata`: known binary extensions, BOMs, a BOM-less
-/// UTF-16 heuristic, then a null-byte and line-ending scan of the first
-/// 512 bytes. Any I/O error counts as binary.
+/// Known binary extensions, BOMs, a BOM-less UTF-16 heuristic, then a null-byte
+/// and line-ending scan of the first 512 bytes. Any I/O error counts as binary.
 #[must_use]
 pub fn detect_file_metadata(path: &str) -> FileMetadata {
     let ext = extension(path);
@@ -149,13 +148,13 @@ pub fn detect_file_metadata(path: &str) -> FileMetadata {
     FileMetadata::new(false, encoding, line_ending)
 }
 
-/// Port of `IsBinary`.
+/// Whether `path` looks like a binary file.
 #[must_use]
 pub fn is_binary(path: &str) -> bool {
     detect_file_metadata(path).is_binary
 }
 
-/// Port of `TryDetectBomlessUtf16`: at least 8 bytes; one byte of each
+/// BOM-less UTF-16: at least 8 bytes; one byte of each
 /// code unit mostly null (>= 80%) and the other mostly not (<= 10%).
 fn detect_bomless_utf16(buffer: &[u8]) -> Option<&'static str> {
     if buffer.len() < 8 {
@@ -190,18 +189,18 @@ fn detect_bomless_utf16(buffer: &[u8]) -> Option<&'static str> {
     None
 }
 
-/// Port of `GetPreviewLines`: up to 100 lines with tabs expanded to four
-/// spaces, or a single placeholder line (`[binary file]`, `[empty file]`,
-/// `[access denied]`, `[error: ...]`). Returns the lines and the metadata
-/// (with `placeholder_message` set for placeholders).
+/// Up to 100 lines with tabs expanded to four spaces, or a single placeholder
+/// line (`[binary file]`, `[empty file]`, `[access denied]`, `[error: ...]`).
+/// Returns the lines and the metadata (with `placeholder_message` set for
+/// placeholders).
 #[must_use]
 pub fn get_preview_lines(path: &str) -> (Vec<String>, FileMetadata) {
     let (lines, metadata, _) =
-        get_preview_lines_limited(path, CSHARP_PREVIEW_LINES, crate::preview::PreviewLimits::DEFAULT_MAX_BYTES);
+        get_preview_lines_limited(path, GOLDEN_PREVIEW_LINES, crate::preview::PreviewLimits::DEFAULT_MAX_BYTES);
     (lines, metadata)
 }
 
-/// `get_preview_lines` with Rust's limits: up to `line_limit` lines and
+/// `get_preview_lines` with explicit limits: up to `line_limit` lines and
 /// `byte_limit` bytes read, plus where the text was cut off, if it was.
 #[must_use]
 pub fn get_preview_lines_limited(

@@ -1,4 +1,5 @@
-//! Port of src/Wade/FileSystem/DirectoryContents.cs (core subset).
+//! Directory listings: loading, filtering, sorting and caching entries, and
+//! the drive list.
 
 use std::collections::HashMap;
 #[cfg(windows)]
@@ -6,7 +7,7 @@ use std::os::windows::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-/// Mirrors the `GitFileStatus` flags enum in src/Wade/FileSystem/GitUtils.cs.
+/// Git status flags of a path.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct GitFileStatus(pub u32);
 
@@ -18,7 +19,7 @@ impl GitFileStatus {
     pub const IGNORED: Self = Self(1 << 3);
     pub const CONFLICT: Self = Self(1 << 4);
 
-    /// Any-bit overlap, matching the C# `(s & statusMask) != 0` checks.
+    /// Any-bit overlap.
     #[must_use]
     pub const fn intersects(self, other: Self) -> bool {
         self.0 & other.0 != 0
@@ -144,10 +145,9 @@ pub struct DirectoryContents {
     /// Default sort, for directories without a saved one.
     pub sort_mode: SortMode,
     pub sort_ascending: bool,
-    /// Rust only: sorts remembered per directory.
+    /// Sorts remembered per directory.
     pub path_sorts: super::sort_store::SortStore,
-    /// Port of `DirectoryContents.DirSizes`: inline directory sizes, used
-    /// when building directory entries.
+    /// Inline directory sizes, used when building directory entries.
     pub dir_sizes: Option<HashMap<String, i64>>,
 }
 
@@ -182,7 +182,6 @@ impl DirectoryContents {
         }
 
         let mut entries = load_entries(path, self.show_hidden_files, self.show_system_files, self.dir_sizes.as_ref());
-        // C# LoadEntries sorts with the instance's SortMode/SortAscending;
         // load_entries sorts by name, so ties keep name order (stable sort)
         let (sort_mode, sort_ascending, _) = self.sort_for(path);
         sort_entries(&mut entries, sort_mode, sort_ascending);
@@ -190,7 +189,7 @@ impl DirectoryContents {
         entries
     }
 
-    /// Rust only: the directory's saved sort, or the default. The flag is
+    /// The directory's saved sort, or the default. The flag is
     /// true when the directory has a saved sort.
     #[must_use]
     pub fn sort_for(&self, path: &str) -> (SortMode, bool, bool) {
@@ -251,7 +250,7 @@ pub fn drive_root(_path: &str) -> Option<String> {
     if Path::new(_path).is_absolute() { Some("/".to_string()) } else { None }
 }
 
-/// macOS (Rust-only): a volume mounted under /Volumes is its own root, as
+/// macOS: a volume mounted under /Volumes is its own root, as
 /// it is its own entry in the drive list; everything else is under "/".
 #[cfg(target_os = "macos")]
 #[must_use]
@@ -264,15 +263,15 @@ pub fn drive_root(path: &str) -> Option<String> {
     Some(mount_point.filter(|mount| mount.starts_with("/Volumes/")).unwrap_or_else(|| "/".to_string()))
 }
 
-/// The drive-list name of a drive root: "C:\" -> "C:" (C# trims the
-/// separator), while a Unix root keeps its path ("/", "/Volumes/USB").
+/// The drive-list name of a drive root: "C:\" -> "C:" (the separator is
+/// trimmed), while a Unix root keeps its path ("/", "/Volumes/USB").
 #[must_use]
 pub fn drive_name(root: &str) -> String {
     let trimmed = root.trim_end_matches(['\\', '/']);
     if trimmed.is_empty() { root.to_string() } else { trimmed.to_string() }
 }
 
-/// Port of `LoadEntries`: enumerate, filter, sort.
+/// Enumerate, filter, sort.
 pub fn load_entries(
     path: &str,
     show_hidden: bool,
@@ -306,9 +305,9 @@ pub fn load_entries(
         #[cfg(windows)]
         let attributes = metadata.file_attributes();
 
-        // .NET EnumerateDirectories lists directory symlinks and junctions:
-        // on Windows by FILE_ATTRIBUTE_DIRECTORY, on unix by the link's
-        // target. `FileType::is_dir` follows neither.
+        // Directory symlinks and junctions are directories: on Windows by
+        // FILE_ATTRIBUTE_DIRECTORY, on unix by the link's target.
+        // `FileType::is_dir` follows neither.
         #[cfg(windows)]
         let is_directory = attributes & 0x0010 != 0;
         #[cfg(not(windows))]
@@ -326,9 +325,9 @@ pub fn load_entries(
 
         let full_path = item.path().to_string_lossy().to_string();
 
-        // Ports of CheckIsCloudPlaceholder / CheckIsJunctionPoint /
-        // CheckIsAppExecLink: reparse queries only for entries carrying
-        // FILE_ATTRIBUTE_REPARSE_POINT, junctions only for directories.
+        // Cloud placeholder, junction and app execution alias checks: reparse
+        // queries only for entries carrying FILE_ATTRIBUTE_REPARSE_POINT,
+        // junctions only for directories.
         #[cfg(windows)]
         let (is_cloud_placeholder, is_reparse_point) =
             (is_cloud_placeholder_attributes(attributes), attributes & 0x0400 != 0);
@@ -347,8 +346,7 @@ pub fn load_entries(
             full_path,
             is_directory,
             size: if is_directory {
-                // Port of DirectoryContents.cs:193: inline dir sizes take
-                // precedence over the placeholder size
+                // Inline dir sizes take precedence over the placeholder size
                 dir_sizes
                     .and_then(|sizes| sizes.get(&item.path().to_string_lossy().to_string()).copied())
                     .unwrap_or(0)
@@ -375,7 +373,7 @@ pub fn load_entries(
     list
 }
 
-/// Port of `SortEntries`: directories always sort first.
+/// Sorts by `sort_mode`; directories always sort first.
 pub fn sort_entries(list: &mut [FileSystemEntry], sort_mode: SortMode, sort_ascending: bool) {
     list.sort_by(|a, b| {
         if a.is_directory != b.is_directory {
@@ -414,8 +412,7 @@ fn compare_date_parts(
         .cmp(&(b.year, b.month, b.day, b.hour, b.minute, b.second, b.nanosecond))
 }
 
-/// Converts a `SystemTime` into local wall-clock fields (C#
-/// `LastWriteTime` is local time).
+/// Converts a `SystemTime` into local wall-clock fields.
 #[must_use]
 pub fn system_time_to_date_parts(t: SystemTime) -> super::super::ui::format_helpers::DateParts {
     use chrono::{Datelike, Timelike};
@@ -432,7 +429,7 @@ pub fn system_time_to_date_parts(t: SystemTime) -> super::super::ui::format_help
     }
 }
 
-/// Port of `GetDriveEntries`.
+/// The drive list: one entry per ready drive.
 #[cfg(windows)]
 pub fn get_drive_entries() -> Vec<FileSystemEntry> {
     use windows_sys::Win32::Storage::FileSystem::{
@@ -480,7 +477,7 @@ pub fn get_drive_entries() -> Vec<FileSystemEntry> {
                 let label = info_ok.then(|| utf16_until_nul(&volume_buf)).filter(|l| !l.is_empty());
                 let format = info_ok.then(|| utf16_until_nul(&fs_buf)).filter(|f| !f.is_empty());
 
-                // Mirrors C#: trim trailing separators for names longer than "X:\"
+                // Trim trailing separators for names longer than "X:\"
                 let name = if drive.len() > 2 {
                     drive.trim_end_matches(['\\', '/']).to_string()
                 } else {
@@ -488,7 +485,7 @@ pub fn get_drive_entries() -> Vec<FileSystemEntry> {
                 };
 
                 if !spaces_ok {
-                    continue; // mirrors IsReady check
+                    continue; // the drive is not ready
                 }
 
                 let root = drive.to_uppercase();
@@ -562,7 +559,7 @@ fn utf16_until_nul(buf: &[u16]) -> String {
     String::from_utf16_lossy(&buf[..len])
 }
 
-/// Port of `IsCloudPlaceholderAttributes`: FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS
+/// Whether the attributes mark a cloud placeholder: FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS
 /// or FILE_ATTRIBUTE_RECALL_ON_OPEN.
 #[must_use]
 pub const fn is_cloud_placeholder_attributes(attribute_bits: u32) -> bool {
@@ -576,7 +573,7 @@ pub fn get_drive_entries() -> Vec<FileSystemEntry> {
     Vec::new()
 }
 
-/// macOS (Rust-only): the volumes mounted under /Volumes, boot volume
+/// macOS: the volumes mounted under /Volumes, boot volume
 /// first. Name is the mount point, label the volume name.
 #[cfg(target_os = "macos")]
 pub fn get_drive_entries() -> Vec<FileSystemEntry> {
@@ -641,8 +638,7 @@ pub fn volume_mounts(volumes_dir: &Path) -> Vec<(String, String)> {
     mounts
 }
 
-/// Port of `PathCompletion.CapitalizeDriveLetter` (the pieces the spine
-/// needs): uppercases a leading drive letter, e.g. "c:\foo" -> "C:\foo".
+/// Uppercases a leading drive letter, e.g. "c:\foo" -> "C:\foo".
 #[must_use]
 pub fn capitalize_drive_letter(path: &str) -> String {
     let mut chars = path.chars();

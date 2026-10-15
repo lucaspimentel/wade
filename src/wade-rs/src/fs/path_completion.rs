@@ -1,4 +1,4 @@
-//! Port of `src/Wade/FileSystem/PathCompletion.cs`.
+//! Path completion for the Go to path dialog.
 
 /// Expands a leading `~` to the user's home directory.
 #[must_use]

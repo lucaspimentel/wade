@@ -1,10 +1,9 @@
-//! Port of src/Wade/FileSystem/SystemClipboard.cs.
+//! The OS clipboard.
 //!
 //! Text: Windows `CF_UNICODETEXT`; unix pipes into pbcopy, wl-copy, xclip
-//! or xsel (first that succeeds), as C# does.
+//! or xsel (first that succeeds).
 //!
 //! Files: Windows `CF_HDROP` plus "Preferred DropEffect" (copy=1, move=2).
-//! C# has no unix file clipboard; Rust adds one (accepted deviation):
 //! Linux writes `x-special/gnome-copied-files` through wl-copy/xclip and
 //! reads it back (falling back to `text/uri-list`), macOS goes through
 //! NSPasteboard file URLs via `osascript -l JavaScript` (always a copy).
@@ -13,10 +12,10 @@ use std::io::Write as _;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-/// C# `process.WaitForExit(3000)`.
+/// How long a clipboard tool may run.
 const TOOL_TIMEOUT: Duration = Duration::from_millis(3000);
 
-/// Port of `SetText`: true on success, false when no clipboard mechanism
+/// Copies text: true on success, false when no clipboard mechanism
 /// is available.
 #[must_use]
 pub fn set_text(text: &str) -> bool {
@@ -36,8 +35,7 @@ pub fn set_text(text: &str) -> bool {
     }
 }
 
-/// Port of `SetFiles`: publishes paths for Explorer (or a unix file
-/// manager) to paste.
+/// Publishes paths for Explorer (or a unix file manager) to paste.
 #[must_use]
 pub fn set_files(paths: &[String], is_cut: bool) -> bool {
     if paths.is_empty() {
@@ -67,7 +65,7 @@ pub fn set_files(paths: &[String], is_cut: bool) -> bool {
     }
 }
 
-/// Port of `GetFiles`: paths on the OS clipboard (e.g. files copied in
+/// Paths on the OS clipboard (e.g. files copied in
 /// Explorer) and whether they were cut.
 #[must_use]
 pub fn get_files() -> Option<(Vec<String>, bool)> {

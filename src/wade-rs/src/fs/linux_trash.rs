@@ -1,4 +1,4 @@
-//! Rust-only: moving items to the Trash on Linux (and other non-macOS Unix)
+//! Moving items to the Trash on Linux (and other non-macOS Unix)
 //! per the freedesktop.org Trash specification 1.0:
 //! <https://specifications.freedesktop.org/trash-spec/latest/>
 //!

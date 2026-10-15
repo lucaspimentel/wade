@@ -1,24 +1,21 @@
-//! Port of `src/Wade/BookmarkStore.cs`: the plain-text bookmark list stored
-//! at `~/.config/wade/bookmarks`.
+//! The plain-text bookmark list stored at `~/.config/wade/bookmarks`.
 
 use std::path::{Path, PathBuf};
 
-/// Path equality by the shared store key (case-insensitive on Windows,
-/// matching the C# `BookmarkStore.PathComparison`, with full Unicode case
-/// folding where C# folds ordinally).
+/// Path equality by the shared store key (case-insensitive on Windows, with
+/// full Unicode case folding).
 fn paths_equal(a: &str, b: &str) -> bool {
     super::path_key(a) == super::path_key(b)
 }
 
-/// Port of `BookmarkStore`.
+/// Bookmarked directories, most recently added first.
 pub struct BookmarkStore {
     bookmarks: Vec<String>,
     file_path: PathBuf,
 }
 
 impl BookmarkStore {
-    /// Port of the `BookmarkStore(filePath = null)` constructor: defaults to
-    /// `~/.config/wade/bookmarks`. Tests pass an explicit path.
+    /// Defaults to `~/.config/wade/bookmarks`. Tests pass an explicit path.
     pub fn new(file_path: Option<PathBuf>) -> Self {
         let file_path = file_path.unwrap_or_else(|| {
             super::wade_config_file("bookmarks").unwrap_or_else(|| Path::new(".config").join("wade").join("bookmarks"))
@@ -27,13 +24,13 @@ impl BookmarkStore {
         Self { bookmarks: Vec::new(), file_path }
     }
 
-    /// Port of `Bookmarks`.
+    /// The bookmarks, most recently added first.
     #[must_use]
     pub fn bookmarks(&self) -> &[String] {
         &self.bookmarks
     }
 
-    /// Port of `Load`.
+    /// Reads the file; a missing or unreadable file is an empty list.
     pub fn load(&mut self) {
         self.bookmarks.clear();
 
@@ -49,8 +46,8 @@ impl BookmarkStore {
 
             // macOS: stored spelling, so the entry matches the paths wade
             // navigates to. Entries equal by `paths_equal` (case-insensitive
-            // on Windows, exact elsewhere) merge, the first wins: C# keeps
-            // them, though Contains/Remove already treat them as one.
+            // on Windows, exact elsewhere) merge, the first wins, since
+            // `contains` and `remove` already treat them as one.
             let bookmark = super::file_operations::on_disk_case(trimmed);
             if !self.contains(&bookmark) {
                 self.bookmarks.push(bookmark);
@@ -58,7 +55,7 @@ impl BookmarkStore {
         }
     }
 
-    /// Port of `Save`.
+    /// Writes the list, creating the directory if needed.
     pub fn save(&self) -> std::io::Result<()> {
         if let Some(dir) = self.file_path.parent() {
             std::fs::create_dir_all(dir)?;
@@ -73,26 +70,26 @@ impl BookmarkStore {
         std::fs::write(&self.file_path, content)
     }
 
-    /// Port of `Contains`.
+    /// Whether `path` is bookmarked.
     #[must_use]
     pub fn contains(&self, path: &str) -> bool {
         self.bookmarks.iter().any(|b| paths_equal(b, path))
     }
 
-    /// Port of `Add`: MRU semantics, the added path moves to the top.
+    /// MRU semantics: the added path moves to the top.
     pub fn add(&mut self, path: &str) {
         self.bookmarks.retain(|b| !paths_equal(b, path));
         self.bookmarks.insert(0, path.to_string());
         let _ = self.save();
     }
 
-    /// Port of `Remove`.
+    /// Removes `path`.
     pub fn remove(&mut self, path: &str) {
         self.bookmarks.retain(|b| !paths_equal(b, path));
         let _ = self.save();
     }
 
-    /// Port of `Toggle`.
+    /// Removes `path` when bookmarked, else adds it.
     pub fn toggle(&mut self, path: &str) {
         if self.contains(path) {
             self.remove(path);
