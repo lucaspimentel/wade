@@ -1,4 +1,4 @@
-//! Port of `LanguageMap`: picks the tokenizer for a file path by full file
+//! Picks the tokenizer for a file path by full file
 //! name, then extension (both ASCII case-insensitive), then a few
 //! extensionless shell-like names.
 
@@ -32,7 +32,7 @@ static MARKDOWN: MarkdownLanguage = MarkdownLanguage;
 static GIT_IGNORE: GitIgnoreLanguage = GitIgnoreLanguage;
 static DOCKERFILE: DockerfileLanguage = DockerfileLanguage;
 
-/// Port of `ByExtension` (keys lowercase, with the dot).
+/// The language for an extension (lowercase, with the dot).
 fn by_extension(extension: &str) -> Option<&'static dyn Language> {
     let language: &'static dyn Language = match extension {
         ".c" => &C,
@@ -61,14 +61,14 @@ fn by_extension(extension: &str) -> Option<&'static dyn Language> {
     Some(language)
 }
 
-/// Port of `ByFilename` (keys lowercase).
+/// The language for a whole file name (lowercase).
 fn by_file_name(file_name: &str) -> Option<&'static dyn Language> {
     let language: &'static dyn Language = match file_name {
         ".gitignore" | ".dockerignore" | ".npmignore" | ".prettierignore" | ".eslintignore" | ".gitattributes" => {
             &GIT_IGNORE
         }
         "dockerfile" | "containerfile" => &DOCKERFILE,
-        // Rust only: TOML lock files (`.lock` alone is not TOML: yarn.lock, Gemfile.lock)
+        // TOML lock files (`.lock` alone is not TOML: yarn.lock, Gemfile.lock)
         "cargo.lock" | "poetry.lock" | "uv.lock" | "pdm.lock" => &TOML,
         _ => return None,
     };
@@ -76,10 +76,10 @@ fn by_file_name(file_name: &str) -> Option<&'static dyn Language> {
     Some(language)
 }
 
-/// Port of `NoExtensionShellNames`.
+/// Extensionless names highlighted as shell.
 const NO_EXTENSION_SHELL_NAMES: [&str; 3] = ["makefile", "jenkinsfile", "brewfile"];
 
-/// Port of `LanguageMap.GetLanguage`.
+/// The language for `file_path`, if any.
 #[must_use]
 pub fn get_language(file_path: &str) -> Option<&'static dyn Language> {
     let name = file_name(file_path);

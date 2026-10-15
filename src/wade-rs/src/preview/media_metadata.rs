@@ -499,7 +499,7 @@ mod tests {
     }
 
     #[test]
-    fn duration_and_size_format_like_csharp() {
+    fn duration_and_size_format() {
         for (seconds, expected) in
             [(0.0, "0s"), (5.0, "5s"), (65.0, "1m 05s"), (222.5, "3m 42s"), (3661.0, "1h 01m 01s")]
         {

@@ -1,4 +1,4 @@
-//! Port of `CLanguage`.
+//! C syntax highlighting.
 
 use crate::highlight::StyledSpan;
 use crate::highlight::c_like::CLikeLanguage;

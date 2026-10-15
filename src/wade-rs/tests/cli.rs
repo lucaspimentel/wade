@@ -28,8 +28,8 @@ fn stdout(output: &Output) -> String {
     String::from_utf8_lossy(&output.stdout).into_owned()
 }
 
-/// The JSON string value of `key` in `--show-config` output (C# escapes
-/// only backslashes).
+/// The JSON string value of `key` in `--show-config` output (only
+/// backslashes are escaped).
 fn json_string(json: &str, key: &str) -> String {
     let marker = format!("\"{key}\":\"");
     let start = json.find(&marker).unwrap_or_else(|| panic!("{key} missing in {json}")) + marker.len();

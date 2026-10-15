@@ -1,4 +1,4 @@
-//! Port of `GitIgnoreLanguage`: comments, negation, glob wildcards,
+//! Ignore files: comments, negation, glob wildcards,
 //! character classes, separators and escapes in ignore-file patterns.
 
 use crate::highlight::scan::index_of_char;

@@ -1,4 +1,4 @@
-//! Port of `CSharpLanguage`.
+//! C# syntax highlighting.
 
 use crate::highlight::c_like::CLikeLanguage;
 use crate::highlight::c_like::{

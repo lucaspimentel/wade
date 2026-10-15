@@ -1,11 +1,11 @@
-//! Port of `JavaScriptLanguage`.
+//! JavaScript syntax highlighting.
 
 use crate::highlight::c_like::CLikeLanguage;
 use crate::highlight::c_like::base_try_match_string;
 use crate::highlight::{StyledSpan, TokenKind};
 
 /// Template literals: `...` with backslash escapes (single line). Shared
-/// with TypeScript, which inherits the C# override.
+/// with TypeScript.
 pub(super) fn match_template_literal(line: &[char], pos: usize, spans: &mut Vec<StyledSpan>) -> Option<usize> {
     if line[pos] != '`' {
         return None;

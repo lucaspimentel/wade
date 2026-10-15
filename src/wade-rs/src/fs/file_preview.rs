@@ -523,7 +523,7 @@ mod tests {
     }
 
     #[test]
-    fn file_type_labels_match_csharp_theories() {
+    fn file_type_label_cases() {
         for (extension, label) in [
             (".cs", "C#"),
             (".py", "Python"),

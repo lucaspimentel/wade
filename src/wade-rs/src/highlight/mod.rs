@@ -1,9 +1,8 @@
-//! Port of `src/Wade/Highlighting` (minus `MarkdigRenderer`, a Phase 7
-//! preview): line tokenizers producing styled spans, the VS Code Dark+
-//! theme, and the path -> language map.
+//! Syntax highlighting: line tokenizers producing styled spans, the VS Code
+//! Dark+ theme, and the path -> language map.
 //!
 //! Span `start`/`len` are char (code point) indices into the line; they
-//! equal the C# UTF-16 indices for BMP text.
+//! equal UTF-16 indices (as in the frozen goldens) for BMP text.
 
 pub mod c_like;
 pub mod language_map;
@@ -15,7 +14,7 @@ use crate::screen::CellStyle;
 
 pub use language_map::get_language;
 
-/// Port of `TokenKind`.
+/// What a span is: keyword, string, comment, ...
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum TokenKind {
     Plain,
@@ -42,7 +41,7 @@ pub enum TokenKind {
     HexColor,
 }
 
-/// Port of `StyledSpan`.
+/// A token's char range and kind.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct StyledSpan {
     pub start: usize,
@@ -57,7 +56,7 @@ impl StyledSpan {
     }
 }
 
-/// Port of `StyledLine`. When `char_styles` is set it is the authoritative
+/// A line's text and styles. When `char_styles` is set it is the authoritative
 /// per-cell style source and renderers ignore `spans`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StyledLine {
@@ -77,7 +76,7 @@ impl StyledLine {
         }
     }
 
-    /// Port of `RegexLanguage.MakeResult`: no spans -> `None`.
+    /// A line with spans; no spans -> `None`.
     #[must_use]
     pub fn with_spans(text: &str, spans: Vec<StyledSpan>) -> Self {
         Self {
@@ -88,17 +87,17 @@ impl StyledLine {
     }
 }
 
-/// Port of `ILanguage`: tokenizes one line; `state` carries multi-line
+/// Tokenizes one line; `state` carries multi-line
 /// context (block comments, multi-line strings, ...) across calls.
 pub trait Language: Sync {
     fn tokenize_line(&self, line: &str, state: &mut u8) -> StyledLine;
 
-    /// The C# class name (used by the parity goldens).
+    /// The name the frozen highlight goldens use (e.g. `CSharpLanguage`).
     fn name(&self) -> &'static str;
 }
 
-/// Port of `SyntaxHighlighter.Highlight`: tokenizes `lines` with the
-/// language for `file_path`, threading state from line to line.
+/// Tokenizes `lines` with the language for `file_path`, threading state from
+/// line to line.
 #[must_use]
 pub fn highlight(lines: &[&str], file_path: &str) -> Vec<StyledLine> {
     let Some(language) = get_language(file_path) else {

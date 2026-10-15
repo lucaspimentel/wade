@@ -1,4 +1,4 @@
-//! Port of `CppLanguage`: `CLanguage` with the C++ word sets.
+//! C++ syntax highlighting: the C rules with the C++ word sets.
 
 use crate::highlight::StyledSpan;
 use crate::highlight::c_like::CLikeLanguage;

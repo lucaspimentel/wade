@@ -1,8 +1,7 @@
-//! Port of the `RegexLanguage` base: a single-pass, left-to-right scanner
-//! for C-like languages with pluggable keyword/constant/builtin sets and
-//! hooks for language specifics. C# subclasses override virtual methods;
-//! here a language implements `CLikeLanguage`, overriding the hooks it
-//! needs, and gets `Language` through the blanket impl.
+//! A single-pass, left-to-right scanner for C-like languages with pluggable
+//! keyword/constant/builtin sets and hooks for language specifics. A
+//! language implements `CLikeLanguage`, overriding the hooks it needs, and
+//! gets `Language` through the blanket impl.
 
 use super::scan::{index_of, starts_with_at, substring};
 use super::{Language, StyledLine, StyledSpan, TokenKind};
@@ -30,7 +29,7 @@ pub trait CLikeLanguage: Sync {
     }
 
     /// Runs before the main scan: may emit spans and returns the position to
-    /// continue from, or `None` to skip the main loop (C# `-1`).
+    /// continue from, or `None` to skip the main loop.
     fn try_match_line_prefix(&self, _line: &[char], _spans: &mut Vec<StyledSpan>, _state: &mut u8) -> Option<usize> {
         Some(0)
     }
@@ -75,7 +74,7 @@ impl<T: CLikeLanguage> Language for T {
         CLikeLanguage::name(self)
     }
 
-    /// Port of `RegexLanguage.TokenizeLine`.
+    /// Tokenizes one line with `scan_line`.
     fn tokenize_line(&self, text: &str, state: &mut u8) -> StyledLine {
         if text.is_empty() {
             return StyledLine::plain(text);
@@ -120,7 +119,8 @@ impl<T: CLikeLanguage> Language for T {
     }
 }
 
-/// Port of `RegexLanguage.ScanLine`.
+/// The main scan: comments, strings, numbers and words, with the language's
+/// hooks.
 pub fn scan_line<L: CLikeLanguage + ?Sized>(
     language: &L,
     line: &[char],
@@ -225,8 +225,8 @@ pub fn base_try_match_string(line: &[char], pos: usize, spans: &mut Vec<StyledSp
     None
 }
 
-/// Port of `ScanQuotedString`: a quoted string with backslash escapes;
-/// unterminated strings run to the end of the line.
+/// A quoted string with backslash escapes; unterminated strings run to the end
+/// of the line.
 pub fn scan_quoted_string(line: &[char], start: usize, quote: char, spans: &mut Vec<StyledSpan>) -> usize {
     let mut pos = start + 1;
 
@@ -246,8 +246,8 @@ pub fn scan_quoted_string(line: &[char], start: usize, quote: char, spans: &mut 
         pos += 1;
     }
 
-    // An escape at the very end steps past the line, as C# does; the span
-    // still covers it (C# Length is pos - start)
+    // An escape at the very end steps past the line; the span still
+    // covers it (its length is pos - start)
     spans.push(StyledSpan::new(start, pos - start, TokenKind::String));
     pos
 }

@@ -1,4 +1,4 @@
-//! Port of `JsonLanguage`: keys vs string values (tracked by `:`), numbers,
+//! JSON: keys vs string values (tracked by `:`), numbers,
 //! constants and punctuation. Stateless across lines.
 
 use crate::highlight::scan::starts_with_at;

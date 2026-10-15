@@ -171,7 +171,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn format_size_matches_csharp_output() {
+    fn format_size_cases() {
         let mut buf = ['\0'; 16];
         assert_eq!(format_size(&mut buf, 0), 3);
         assert_eq!(&buf[..3], ['0', ' ', 'B']);

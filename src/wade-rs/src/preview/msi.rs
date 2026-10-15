@@ -264,7 +264,7 @@ mod tests {
     use crate::preview::{test_context, test_path};
 
     #[test]
-    fn parse_long_name_matches_csharp_theory() {
+    fn parse_long_name_cases() {
         for (input, expected) in [
             ("SHORTN~1|LongFileName.txt", "LongFileName.txt"),
             ("plain.txt", "plain.txt"),

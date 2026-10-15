@@ -1,4 +1,4 @@
-//! Port of `SyntaxTheme`: VS Code Dark+ inspired token colors.
+//! VS Code Dark+ inspired token colors.
 
 use super::TokenKind;
 use crate::screen::{CellStyle, Color};
@@ -37,7 +37,7 @@ const ATTR_VALUE: CellStyle = style(206, 145, 120, false, false); // salmon
 const KEY: CellStyle = style(156, 220, 254, false, false); // light blue
 const DIRECTIVE: CellStyle = style(155, 155, 155, false, false); // dim gray
 
-/// Port of `SyntaxTheme.GetStyle`.
+/// The style of a token kind.
 #[must_use]
 pub const fn get_style(kind: TokenKind) -> CellStyle {
     match kind {
@@ -72,7 +72,7 @@ mod tests {
     use crate::screen::Color;
 
     #[test]
-    fn theme_matches_csharp_palette() {
+    fn theme_palette() {
         let keyword = get_style(TokenKind::Keyword);
         assert!(keyword.fg == Some(Color { r: 86, g: 156, b: 214 }) && keyword.bold);
         assert!(get_style(TokenKind::Italic).dim);

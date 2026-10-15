@@ -1,4 +1,4 @@
-//! Port of `XmlHtmlLanguage`: tags, attributes, entity references and
+//! XML and HTML: tags, attributes, entity references and
 //! `<!-- -->` comments (multi-line via state 1).
 
 use crate::highlight::scan::{index_of, starts_with_at};

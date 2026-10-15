@@ -1,4 +1,4 @@
-//! Port of `JavaLanguage`.
+//! Java syntax highlighting.
 
 use crate::highlight::c_like::CLikeLanguage;
 use crate::highlight::c_like::{base_try_match_string, end_triple_quote_string, match_triple_quote_string};

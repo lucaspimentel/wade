@@ -1,6 +1,6 @@
-//! Char-slice helpers mirroring the C# `string` calls the tokenizers use.
+//! Char-slice helpers the tokenizers use.
 
-/// `line.AsSpan(pos).StartsWith(prefix)`.
+/// Whether `line[pos..]` starts with `prefix`.
 #[must_use]
 pub fn starts_with_at(line: &[char], pos: usize, prefix: &str) -> bool {
     for (index, expected) in (pos..).zip(prefix.chars()) {
@@ -12,7 +12,7 @@ pub fn starts_with_at(line: &[char], pos: usize, prefix: &str) -> bool {
     true
 }
 
-/// `line.IndexOf(needle, from, StringComparison.Ordinal)`.
+/// The index of `needle` at or after `from` (exact match).
 #[must_use]
 pub fn index_of(line: &[char], needle: &str, from: usize) -> Option<usize> {
     let needle: Vec<char> = needle.chars().collect();
@@ -28,7 +28,7 @@ pub fn index_of(line: &[char], needle: &str, from: usize) -> Option<usize> {
     (from..=line.len() - needle.len()).find(|&start| line[start..start + needle.len()] == needle[..])
 }
 
-/// `line.IndexOf(ch, from)`.
+/// The index of `ch` at or after `from`.
 #[must_use]
 pub fn index_of_char(line: &[char], ch: char, from: usize) -> Option<usize> {
     line.iter().skip(from).position(|&c| c == ch).map(|i| i + from)

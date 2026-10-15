@@ -1,5 +1,5 @@
-//! Port of `YamlLanguage`: comments, document markers, list items,
-//! `key: value` pairs and scalar values. Stateless across lines.
+//! YAML: comments, document markers, list items, `key: value` pairs and scalar
+//! values. Stateless across lines.
 
 use crate::highlight::scan::{index_of, starts_with_at};
 use crate::highlight::{Language, StyledLine, StyledSpan, TokenKind};
@@ -105,7 +105,7 @@ impl Language for YamlLanguage {
     }
 }
 
-/// Port of `ScanYamlValue`.
+/// A scalar value after `key:` or `- `.
 fn scan_yaml_value(line: &[char], pos: usize, spans: &mut Vec<StyledSpan>) {
     let len = line.len();
 
@@ -148,7 +148,7 @@ fn scan_yaml_value(line: &[char], pos: usize, spans: &mut Vec<StyledSpan>) {
         return;
     }
 
-    // Boolean / null (prefix match, as in C#)
+    // Boolean / null (prefix match)
     if ["true", "false", "yes", "no", "null", "~"].iter().any(|word| starts_with_at(line, pos, word)) {
         let comment = comment_index.filter(|&index| index > pos);
         let end = comment.unwrap_or(len);

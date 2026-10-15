@@ -1,4 +1,4 @@
-//! Port of `PythonLanguage`.
+//! Python syntax highlighting.
 
 use crate::highlight::c_like::CLikeLanguage;
 use crate::highlight::c_like::{STATE_MULTI_STRING, STATE_NORMAL, scan_quoted_string};
@@ -85,7 +85,7 @@ impl CLikeLanguage for PythonLanguage {
             pos += 1; // skip prefix
         }
 
-        // Only a lowercase prefix widens the span (as in C#)
+        // Only a lowercase prefix widens the span
         let span_start = if pos > 0 && matches!(line[pos - 1], 'f' | 'b' | 'r' | 'u') {
             pos - 1
         } else {

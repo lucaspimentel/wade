@@ -1,6 +1,5 @@
-//! Port of `DiffLanguage`: full-line colors for unified diff output via
-//! per-char styles (added green, removed red, hunk headers cyan, metadata
-//! dim gray).
+//! Full-line colors for unified diff output via per-char styles (added green,
+//! removed red, hunk headers cyan, metadata dim gray).
 
 use crate::highlight::{Language, StyledLine};
 use crate::screen::{CellStyle, Color};

@@ -386,7 +386,7 @@ mod tests {
     ];
 
     #[test]
-    fn extension_sets_match_csharp() {
+    fn extension_sets() {
         for ext in PRIMARY {
             assert!(is_zip_file(&format!("file{ext}")), "{ext}");
             assert!(is_primary_archive(&format!("file{ext}")), "{ext}");

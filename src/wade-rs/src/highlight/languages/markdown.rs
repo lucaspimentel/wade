@@ -1,8 +1,8 @@
-//! Port of `MarkdownLanguage`: fenced code blocks (state 1), headings,
+//! Markdown source highlighting: fenced code blocks (state 1), headings,
 //! blockquotes, rules, list markers, and the inline code/bold/italic/link
-//! patterns. The C# inline patterns are .NET regexes; each is ported as a
-//! hand-written matcher with the same leftmost, non-overlapping match
-//! semantics (greedy groups try longest first, lazy `.+?` shortest first).
+//! patterns. Each inline pattern is a hand-written matcher with regex
+//! semantics: leftmost, non-overlapping matches (greedy groups try longest
+//! first, lazy `.+?` shortest first).
 
 use crate::highlight::{Language, StyledLine, StyledSpan, TokenKind};
 use crate::text::{is_digit, is_whitespace};

@@ -1,4 +1,4 @@
-//! Port of `TomlLanguage` (also used for INI-like files): section headers,
+//! TOML (also used for INI-like files): section headers,
 //! `key = value` pairs with string/constant/number values, comments, and
 //! `"""` multi-line strings (state 2).
 
@@ -126,8 +126,8 @@ impl Language for TomlLanguage {
     }
 }
 
-/// Port of `ScanValue`: one value after `=` (anything after it on the line,
-/// such as a trailing comment, is not scanned, as in C#).
+/// One value after `=` (anything after it on the line, such as a trailing
+/// comment, is not scanned).
 fn scan_value(line: &[char], start: usize, spans: &mut Vec<StyledSpan>, state: &mut u8) {
     let len = line.len();
     let mut pos = start;
@@ -200,5 +200,5 @@ fn scan_value(line: &[char], start: usize, spans: &mut Vec<StyledSpan>, state: &
     }
 
     // Arrays and inline tables are left to the main loop (which has already
-    // stopped scanning this line, as in C#)
+    // stopped scanning this line)
 }

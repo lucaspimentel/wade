@@ -908,7 +908,7 @@ mod tests {
     }
 
     #[test]
-    fn extension_checks_match_csharp() {
+    fn extension_checks() {
         for path in ["archive.tar", "archive.tar.gz", "archive.TAR.GZ", "archive.tgz", "archive.TGZ"] {
             assert!(is_tar_archive(path), "{path}");
         }

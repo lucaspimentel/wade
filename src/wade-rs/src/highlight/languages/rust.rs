@@ -1,4 +1,4 @@
-//! Port of `RustLanguage`.
+//! Rust syntax highlighting.
 
 use crate::highlight::c_like::CLikeLanguage;
 use crate::highlight::c_like::base_try_match_string;

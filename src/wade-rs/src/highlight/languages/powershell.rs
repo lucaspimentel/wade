@@ -1,6 +1,6 @@
-//! Port of `PowerShellLanguage`. Its keyword and constant sets
-//! include `-eq`/`$true`-style words the identifier scanner never produces
-//! (kept for parity).
+//! PowerShell syntax highlighting. Its keyword and constant sets include
+//! `-eq`/`$true`-style words the identifier scanner never produces (kept to
+//! match the frozen goldens).
 
 use crate::highlight::StyledSpan;
 use crate::highlight::c_like::CLikeLanguage;

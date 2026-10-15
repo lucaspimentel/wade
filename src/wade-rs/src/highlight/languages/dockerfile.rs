@@ -1,4 +1,4 @@
-//! Port of `DockerfileLanguage`: the leading instruction keyword (case
+//! Dockerfiles: the leading instruction keyword (case
 //! insensitive), strings, `$VAR`/`${VAR}` references, `--flags`, the `AS`
 //! keyword and comments.
 

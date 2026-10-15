@@ -1,10 +1,10 @@
-//! Port of `CssLanguage`: properties as keys, strings, comments, and color
+//! CSS: properties as keys, strings, comments, and color
 //! literals in value position followed by a ` ██` swatch in the literal's
 //! color. Lines with swatches carry per-char styles (the authoritative
 //! render source) and spans shifted past the inserted cells.
 //!
-//! Rust extends the C# swatches (KNOWN_DEVIATIONS.md): `rgb()`/`hsl()` and
-//! named colors, and in brace syntax (`.css`/`.scss`) a value position
+//! Swatches cover hex, `rgb()`/`hsl()` and named colors
+//! (KNOWN_DEVIATIONS.md). In brace syntax (`.css`/`.scss`) a value position
 //! requires being inside a block, carries across lines, and a run that
 //! turns out to be a selector (followed by `{`) loses its swatches.
 
@@ -115,8 +115,8 @@ impl Language for CssLanguage {
     }
 }
 
-/// Port of `ScanCss`, extended with brace depth, statement tracking and
-/// the function and named color forms.
+/// The CSS scan, with brace depth, statement tracking and the hex,
+/// function and named color forms.
 fn scan_css(line: &[char], start: usize, spans: &mut Vec<StyledSpan>, scan: &mut Scan, matches: &mut Vec<ColorMatch>) {
     let mut pos = start;
     let len = line.len();
@@ -280,8 +280,8 @@ fn discard_statement(scan: &Scan, spans: &mut Vec<StyledSpan>, matches: &mut Vec
     }
 }
 
-/// Port of `TryMatchHexColor`: a run of exactly 3, 4, 6 or 8 hex digits
-/// after the `#`. Returns (hex length, color); alpha is discarded.
+/// A run of exactly 3, 4, 6 or 8 hex digits after the `#`. Returns (hex length,
+/// color); alpha is discarded.
 fn try_match_hex_color(line: &[char], pos: usize) -> Option<(usize, Color)> {
     let run_len = line[pos + 1..].iter().take_while(|c| c.is_ascii_hexdigit()).count();
 
@@ -293,7 +293,7 @@ fn try_match_hex_color(line: &[char], pos: usize) -> Option<(usize, Color)> {
     try_parse_hex_color(hex).map(|color| (run_len, color))
 }
 
-/// Port of `TryParseHexColor`.
+/// The color of a 3, 4, 6 or 8 digit hex literal.
 fn try_parse_hex_color(hex: &[char]) -> Option<Color> {
     let nibble = |c: char| c.to_digit(16).map(|d| d as u8);
 
@@ -442,8 +442,8 @@ fn named_color(lowercase: &str) -> Option<Color> {
         .map(|index| NAMED_COLORS[index].1)
 }
 
-/// Port of `BuildSwatchResult`: inserts the swatch cells after each color
-/// literal, styles every cell, and shifts the spans to the new positions.
+/// Inserts the swatch cells after each color literal, styles every cell, and
+/// shifts the spans to the new positions.
 fn build_swatch_result(line: &[char], spans: &[StyledSpan], matches: &[ColorMatch]) -> StyledLine {
     let mut new_text = String::with_capacity(line.len() + matches.len() * SWATCH_LEN);
     let mut char_styles = Vec::with_capacity(line.len() + matches.len() * SWATCH_LEN);

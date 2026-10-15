@@ -1041,7 +1041,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn capitalize_drive_letter_matches_csharp_cases() {
+    fn capitalize_drive_letter_cases() {
         for (input, expected) in [
             (r"c:\Users\foo", r"C:\Users\foo"),
             (r"d:\", r"D:\"),

@@ -360,7 +360,7 @@ mod tests {
     }
 
     #[test]
-    fn labels_match_csharp() {
+    fn labels() {
         assert_eq!(DiffPreviewProvider.label(), "Git diff");
         assert_eq!(NonePreviewProvider.label(), "None");
     }

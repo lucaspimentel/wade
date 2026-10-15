@@ -1,4 +1,5 @@
-//! Port of `TypeScriptLanguage`: `JavaScriptLanguage` with the TypeScript keyword set.
+//! TypeScript syntax highlighting: the JavaScript rules with the TypeScript
+//! keyword set.
 
 use super::javascript::{BUILTINS, CONSTANTS, match_template_literal};
 use crate::highlight::StyledSpan;
