@@ -1,6 +1,6 @@
-//! Port of `WadeConfig.Load` / `WadeConfig.Save` (src/Wade/WadeConfig.cs):
-//! `~/.config/wade/config.toml`, `key = value` lines with `#` comments; keys
-//! match C# exactly.
+//! `config.toml`: `key = value` lines with `#` comments, at
+//! `~/.config/wade/config.toml` or the `--config-file=` path. Also parses
+//! the command line and prints `--show-config`.
 
 use crate::preview::PreviewLimits;
 use std::path::{Path, PathBuf};
@@ -23,6 +23,77 @@ pub fn config_path(config_file: Option<&Path>) -> PathBuf {
         .map(Path::to_path_buf)
         .or_else(default_config_path)
         .unwrap_or_else(|| PathBuf::from("config.toml"))
+}
+
+/// A key that is always saved.
+enum Key {
+    Icons,
+    SortMode,
+    Flag(&'static str, fn(&mut AppConfig) -> &mut bool),
+}
+
+/// The always-saved keys, in file and `--show-config` order. The optional
+/// keys (`image_protocol`, `csv_preview_enabled`, `preview_max_*`) follow
+/// them, written only when they differ from the default.
+const KEYS: [Key; 27] = [
+    Key::Icons,
+    Key::Flag("image_previews_enabled", |c| &mut c.image_previews_enabled),
+    Key::Flag("show_hidden_files", |c| &mut c.show_hidden_files),
+    Key::Flag("show_system_files", |c| &mut c.show_system_files),
+    Key::SortMode,
+    Key::Flag("sort_ascending", |c| &mut c.sort_ascending),
+    Key::Flag("confirm_delete_enabled", |c| &mut c.confirm_delete_enabled),
+    Key::Flag("parent_pane_enabled", |c| &mut c.parent_pane_enabled),
+    Key::Flag("preview_pane_enabled", |c| &mut c.preview_pane_enabled),
+    Key::Flag("size_column_enabled", |c| &mut c.size_column_enabled),
+    Key::Flag("date_column_enabled", |c| &mut c.date_column_enabled),
+    Key::Flag("column_headers_enabled", |c| &mut c.column_headers_enabled),
+    Key::Flag("copy_symlinks_as_links_enabled", |c| &mut c.copy_symlinks_as_links_enabled),
+    Key::Flag("zip_preview_enabled", |c| &mut c.zip_preview_enabled),
+    Key::Flag("terminal_title_enabled", |c| &mut c.terminal_title_enabled),
+    Key::Flag("git_status_enabled", |c| &mut c.git_status_enabled),
+    Key::Flag("file_metadata_enabled", |c| &mut c.file_metadata_enabled),
+    Key::Flag("file_previews_enabled", |c| &mut c.file_previews_enabled),
+    Key::Flag("archive_metadata_enabled", |c| &mut c.archive_metadata_enabled),
+    Key::Flag("dir_size_ssd_enabled", |c| &mut c.dir_size_ssd_enabled),
+    Key::Flag("dir_size_hdd_enabled", |c| &mut c.dir_size_hdd_enabled),
+    Key::Flag("dir_size_network_enabled", |c| &mut c.dir_size_network_enabled),
+    Key::Flag("pdf_preview_enabled", |c| &mut c.pdf_preview_enabled),
+    Key::Flag("pdf_metadata_enabled", |c| &mut c.pdf_metadata_enabled),
+    Key::Flag("markdown_preview_enabled", |c| &mut c.markdown_preview_enabled),
+    Key::Flag("ffprobe_enabled", |c| &mut c.ffprobe_enabled),
+    Key::Flag("mediainfo_enabled", |c| &mut c.mediainfo_enabled),
+];
+
+impl Key {
+    fn name(&self) -> &'static str {
+        match self {
+            Key::Icons => "icons",
+            Key::SortMode => "sort_mode",
+            Key::Flag(name, _) => name,
+        }
+    }
+
+    /// The value as the file writes it.
+    fn value(&self, config: &AppConfig) -> String {
+        match self {
+            Key::Icons => config.icon_set.name().to_string(),
+            Key::SortMode => config.sort_mode.name().to_string(),
+            Key::Flag(_, flag) => flag(&mut { *config }).to_string(),
+        }
+    }
+}
+
+/// The on/off key named `name`, including the optional `csv_preview_enabled`.
+fn flag_key(name: &str) -> Option<fn(&mut AppConfig) -> &mut bool> {
+    if name == "csv_preview_enabled" {
+        return Some(|c| &mut c.csv_preview_enabled);
+    }
+
+    KEYS.iter().find_map(|key| match key {
+        Key::Flag(key_name, flag) if *key_name == name => Some(*flag),
+        _ => None,
+    })
 }
 
 /// The command line: `[options] [path]`. Unknown flags are ignored.
@@ -63,7 +134,8 @@ pub fn parse_args(args: &[String]) -> CliArgs {
 }
 
 /// Reads `config_file`, or the default location when `None`. A missing or
-/// unreadable file gives the defaults.
+/// unreadable file gives the defaults; unknown keys and invalid values are
+/// ignored.
 #[must_use]
 pub fn load_config(config_file: Option<&Path>) -> AppConfig {
     let mut config = AppConfig::default();
@@ -75,8 +147,8 @@ pub fn load_config(config_file: Option<&Path>) -> AppConfig {
         return config;
     };
 
-    // Rust-only `icons` replaces the C# `show_icons_enabled`; a config that
-    // only has the old key turned off loads as no icons
+    // `icons` replaced `show_icons_enabled`; a file with only the old key
+    // turned off loads as no icons
     let mut icons_key = false;
     let mut legacy_show_icons = true;
 
@@ -106,12 +178,17 @@ pub fn load_config(config_file: Option<&Path>) -> AppConfig {
                 }
             }
             "show_icons_enabled" => legacy_show_icons = parse_bool(value, legacy_show_icons),
-            "image_previews_enabled" => {
-                config.image_previews_enabled = parse_bool(value, config.image_previews_enabled)
+            "sort_mode" => {
+                if let Some(mode) = parse_sort_mode(value) {
+                    config.sort_mode = mode;
+                }
             }
-            // Rust-only keys: invalid values keep the default, small ones
-            // are raised to the minimum
-            "csv_preview_enabled" => config.csv_preview_enabled = parse_bool(value, config.csv_preview_enabled),
+            "image_protocol" => {
+                if let Some(setting) = crate::imaging::ImageProtocolSetting::parse(value) {
+                    config.image_protocol = setting;
+                }
+            }
+            // Small limits are raised to the minimum
             "preview_max_lines" => {
                 if let Ok(lines) = value.parse::<usize>() {
                     config.preview_max_lines = lines.max(PreviewLimits::MIN_MAX_LINES);
@@ -122,60 +199,13 @@ pub fn load_config(config_file: Option<&Path>) -> AppConfig {
                     config.preview_max_bytes = bytes.max(PreviewLimits::MIN_MAX_BYTES);
                 }
             }
-            "image_protocol" => {
-                if let Some(setting) = crate::imaging::ImageProtocolSetting::parse(value) {
-                    config.image_protocol = setting;
-                }
-            }
-            "show_hidden_files" => config.show_hidden_files = parse_bool(value, config.show_hidden_files),
-            "show_system_files" => config.show_system_files = parse_bool(value, config.show_system_files),
-            "sort_mode" => {
-                if let Some(mode) = parse_sort_mode(value) {
-                    config.sort_mode = mode;
-                }
-            }
-            "sort_ascending" => config.sort_ascending = parse_bool(value, config.sort_ascending),
-            "confirm_delete_enabled" => {
-                config.confirm_delete_enabled = parse_bool(value, config.confirm_delete_enabled)
-            }
-            "parent_pane_enabled" => config.parent_pane_enabled = parse_bool(value, config.parent_pane_enabled),
-            "preview_pane_enabled" => config.preview_pane_enabled = parse_bool(value, config.preview_pane_enabled),
-            "size_column_enabled" => config.size_column_enabled = parse_bool(value, config.size_column_enabled),
-            "date_column_enabled" => config.date_column_enabled = parse_bool(value, config.date_column_enabled),
-            "column_headers_enabled" => {
-                config.column_headers_enabled = parse_bool(value, config.column_headers_enabled)
-            }
-            "copy_symlinks_as_links_enabled" => {
-                config.copy_symlinks_as_links_enabled = parse_bool(value, config.copy_symlinks_as_links_enabled);
-            }
-            "zip_preview_enabled" => config.zip_preview_enabled = parse_bool(value, config.zip_preview_enabled),
-            "terminal_title_enabled" => {
-                config.terminal_title_enabled = parse_bool(value, config.terminal_title_enabled)
-            }
-            "git_status_enabled" => config.git_status_enabled = parse_bool(value, config.git_status_enabled),
-            "file_metadata_enabled" => config.file_metadata_enabled = parse_bool(value, config.file_metadata_enabled),
-            "file_previews_enabled" => config.file_previews_enabled = parse_bool(value, config.file_previews_enabled),
-            "archive_metadata_enabled" => {
-                config.archive_metadata_enabled = parse_bool(value, config.archive_metadata_enabled)
-            }
-            "dir_size_ssd_enabled" => config.dir_size_ssd_enabled = parse_bool(value, config.dir_size_ssd_enabled),
-            "dir_size_hdd_enabled" => config.dir_size_hdd_enabled = parse_bool(value, config.dir_size_hdd_enabled),
-            "dir_size_network_enabled" => {
-                config.dir_size_network_enabled = parse_bool(value, config.dir_size_network_enabled)
-            }
-            "pdf_preview_enabled" => config.pdf_preview_enabled = parse_bool(value, config.pdf_preview_enabled),
-            "pdf_metadata_enabled" => config.pdf_metadata_enabled = parse_bool(value, config.pdf_metadata_enabled),
-            "markdown_preview_enabled" => {
-                config.markdown_preview_enabled = parse_bool(value, config.markdown_preview_enabled)
-            }
-            "ffprobe_enabled" => config.ffprobe_enabled = parse_bool(value, config.ffprobe_enabled),
-            "mediainfo_enabled" => config.mediainfo_enabled = parse_bool(value, config.mediainfo_enabled),
+            // Older key: sets both columns
             "detail_columns_enabled" => {
-                // Backward compat: sets both columns
                 let detail = parse_bool(value, true);
                 config.size_column_enabled = detail;
                 config.date_column_enabled = detail;
             }
+            // Older key: a list of tools to turn off
             "disabled_tools" => {
                 for tool in value.split(',').map(str::trim).filter(|tool| !tool.is_empty()) {
                     match tool {
@@ -188,7 +218,12 @@ pub fn load_config(config_file: Option<&Path>) -> AppConfig {
                     }
                 }
             }
-            _ => {}
+            _ => {
+                if let Some(flag) = flag_key(key) {
+                    let field = flag(&mut config);
+                    *field = parse_bool(value, *field);
+                }
+            }
         }
     }
 
@@ -199,7 +234,7 @@ pub fn load_config(config_file: Option<&Path>) -> AppConfig {
     config
 }
 
-/// The start-path half of `WadeConfig.Load`: expands a leading `~` to the
+/// Expands a leading `~` to the
 /// home directory, then strips trailing separators (both kinds, on every
 /// OS) while keeping a root (`/`, `C:\`).
 #[must_use]
@@ -222,130 +257,37 @@ pub fn normalize_start_path(path: &str) -> String {
     }
 }
 
-/// Port of `WadeConfig.ToJson` (`--show-config`).
+/// `--show-config`: the settings and start path as one JSON object.
 #[must_use]
 pub fn to_json(config: &AppConfig, start_path: &str) -> String {
-    let flag = |value: bool| if value { "true" } else { "false" };
-    let sort_mode = config.sort_mode.name();
-    let fields = [
-        ("icons", ""),
-        ("image_previews_enabled", flag(config.image_previews_enabled)),
-        ("show_hidden_files", flag(config.show_hidden_files)),
-        ("show_system_files", flag(config.show_system_files)),
-        ("sort_mode", ""),
-        ("sort_ascending", flag(config.sort_ascending)),
-        ("confirm_delete_enabled", flag(config.confirm_delete_enabled)),
-        ("parent_pane_enabled", flag(config.parent_pane_enabled)),
-        ("preview_pane_enabled", flag(config.preview_pane_enabled)),
-        ("size_column_enabled", flag(config.size_column_enabled)),
-        ("date_column_enabled", flag(config.date_column_enabled)),
-        ("column_headers_enabled", flag(config.column_headers_enabled)),
-        ("copy_symlinks_as_links_enabled", flag(config.copy_symlinks_as_links_enabled)),
-        ("zip_preview_enabled", flag(config.zip_preview_enabled)),
-        ("terminal_title_enabled", flag(config.terminal_title_enabled)),
-        ("git_status_enabled", flag(config.git_status_enabled)),
-        ("file_metadata_enabled", flag(config.file_metadata_enabled)),
-        ("file_previews_enabled", flag(config.file_previews_enabled)),
-        ("archive_metadata_enabled", flag(config.archive_metadata_enabled)),
-        ("dir_size_ssd_enabled", flag(config.dir_size_ssd_enabled)),
-        ("dir_size_hdd_enabled", flag(config.dir_size_hdd_enabled)),
-        ("dir_size_network_enabled", flag(config.dir_size_network_enabled)),
-        ("pdf_preview_enabled", flag(config.pdf_preview_enabled)),
-        ("pdf_metadata_enabled", flag(config.pdf_metadata_enabled)),
-        ("markdown_preview_enabled", flag(config.markdown_preview_enabled)),
-        ("ffprobe_enabled", flag(config.ffprobe_enabled)),
-        ("mediainfo_enabled", flag(config.mediainfo_enabled)),
-    ];
-
     let mut json = String::from("{");
 
-    for (key, value) in fields {
-        if key == "icons" {
-            json.push_str(&format!("\"icons\":\"{}\",", config.icon_set.name()));
-        } else if key == "sort_mode" {
-            json.push_str(&format!("\"sort_mode\":\"{sort_mode}\","));
-        } else {
-            json.push_str(&format!("\"{key}\":{value},"));
+    for key in &KEYS {
+        let value = key.value(config);
+        match key {
+            Key::Flag(..) => json.push_str(&format!("\"{}\":{value},", key.name())),
+            _ => json.push_str(&format!("\"{}\":\"{value}\",", key.name())),
         }
     }
 
-    // Rust-only key
     json.push_str(&format!("\"image_protocol\":\"{}\",", config.image_protocol.name()));
-    json.push_str(&format!("\"csv_preview_enabled\":{},", flag(config.csv_preview_enabled)));
+    json.push_str(&format!("\"csv_preview_enabled\":{},", config.csv_preview_enabled));
     json.push_str(&format!("\"preview_max_lines\":{},", config.preview_max_lines));
     json.push_str(&format!("\"preview_max_bytes\":{},", config.preview_max_bytes));
-    // C# escapes only backslashes in the start path
+    // Only backslashes are escaped in the start path
     json.push_str(&format!("\"start_path\":\"{}\"}}", start_path.replace('\\', "\\\\")));
     json
 }
 
-/// Port of `WadeConfig.Save`: all 27 keys in the C# order, except that the
-/// Rust-only `icons` takes the place of `show_icons_enabled`.
+/// Writes every key in `KEYS`, then the optional keys that differ from
+/// their default. Creates the directory when needed.
 pub fn save_config(config: &AppConfig, path: &Path) -> std::io::Result<()> {
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)?;
     }
 
-    let sort_mode = config.sort_mode.name();
+    let mut content: String = KEYS.iter().map(|key| format!("{} = {}\n", key.name(), key.value(config))).collect();
 
-    let content = format!(
-        "icons = {}\n\
-         image_previews_enabled = {}\n\
-         show_hidden_files = {}\n\
-         show_system_files = {}\n\
-         sort_mode = {sort_mode}\n\
-         sort_ascending = {}\n\
-         confirm_delete_enabled = {}\n\
-         parent_pane_enabled = {}\n\
-         preview_pane_enabled = {}\n\
-         size_column_enabled = {}\n\
-         date_column_enabled = {}\n\
-         column_headers_enabled = {}\n\
-         copy_symlinks_as_links_enabled = {}\n\
-         zip_preview_enabled = {}\n\
-         terminal_title_enabled = {}\n\
-         git_status_enabled = {}\n\
-         file_metadata_enabled = {}\n\
-         file_previews_enabled = {}\n\
-         archive_metadata_enabled = {}\n\
-         dir_size_ssd_enabled = {}\n\
-         dir_size_hdd_enabled = {}\n\
-         dir_size_network_enabled = {}\n\
-         pdf_preview_enabled = {}\n\
-         pdf_metadata_enabled = {}\n\
-         markdown_preview_enabled = {}\n\
-         ffprobe_enabled = {}\n\
-         mediainfo_enabled = {}\n",
-        config.icon_set.name(),
-        config.image_previews_enabled,
-        config.show_hidden_files,
-        config.show_system_files,
-        config.sort_ascending,
-        config.confirm_delete_enabled,
-        config.parent_pane_enabled,
-        config.preview_pane_enabled,
-        config.size_column_enabled,
-        config.date_column_enabled,
-        config.column_headers_enabled,
-        config.copy_symlinks_as_links_enabled,
-        config.zip_preview_enabled,
-        config.terminal_title_enabled,
-        config.git_status_enabled,
-        config.file_metadata_enabled,
-        config.file_previews_enabled,
-        config.archive_metadata_enabled,
-        config.dir_size_ssd_enabled,
-        config.dir_size_hdd_enabled,
-        config.dir_size_network_enabled,
-        config.pdf_preview_enabled,
-        config.pdf_metadata_enabled,
-        config.markdown_preview_enabled,
-        config.ffprobe_enabled,
-        config.mediainfo_enabled,
-    );
-
-    // Rust-only key, written only when set so the file keeps the C# layout
-    let mut content = content;
     if config.image_protocol != crate::imaging::ImageProtocolSetting::Auto {
         content.push_str(&format!("image_protocol = {}\n", config.image_protocol.name()));
     }
@@ -365,7 +307,8 @@ pub fn save_config(config: &AppConfig, path: &Path) -> std::io::Result<()> {
     std::fs::write(path, content)
 }
 
-/// Port of `WadeConfig.ParseBool`.
+/// `true`/`1`/`yes` or `false`/`0`/`no`, in any case; anything else
+/// keeps `default`.
 fn parse_bool(value: &str, default: bool) -> bool {
     match value.to_lowercase().as_str() {
         "true" | "1" | "yes" => true,
@@ -374,9 +317,7 @@ fn parse_bool(value: &str, default: bool) -> bool {
     }
 }
 
-/// `Enum.TryParse<SortMode>(value, ignoreCase: true)`: member names or
-/// their numeric values (C# would also store undefined numbers; those are
-/// ignored here).
+/// A sort mode name in any case, or its number (`0`-`3`).
 fn parse_sort_mode(value: &str) -> Option<SortMode> {
     match ["0", "1", "2", "3"].iter().position(|number| *number == value) {
         Some(index) => Some(SortMode::ALL[index]),
@@ -688,14 +629,7 @@ mediainfo_enabled = true
         assert_eq!(load("image_protocol = iterm\n"), Setting::Iterm);
         assert_eq!(load("image_protocol = iterm2\n"), Setting::Auto, "unknown values keep the default");
 
-        save_config(
-            &AppConfig {
-                image_protocol: Setting::Kitty,
-                ..config
-            },
-            &path,
-        )
-        .unwrap();
+        save_config(&AppConfig { image_protocol: Setting::Kitty, ..config }, &path).unwrap();
         assert!(
             std::fs::read_to_string(&path)
                 .unwrap()
@@ -722,14 +656,7 @@ mediainfo_enabled = true
         assert!(!load("csv_preview_enabled = false\n"));
         assert!(load("csv_preview_enabled = maybe\n"), "invalid values keep the default");
 
-        save_config(
-            &AppConfig {
-                csv_preview_enabled: false,
-                ..config
-            },
-            &path,
-        )
-        .unwrap();
+        save_config(&AppConfig { csv_preview_enabled: false, ..config }, &path).unwrap();
         let saved = std::fs::read_to_string(&path).unwrap();
         assert!(saved.ends_with("mediainfo_enabled = true\ncsv_preview_enabled = false\n"), "{saved}");
         assert!(!load(&saved));
