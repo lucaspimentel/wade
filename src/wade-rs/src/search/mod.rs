@@ -1,9 +1,9 @@
-//! Port of `src/Wade.Search`: fuzzy/exact path scoring, query parsing, and
-//! a thread-safe index that streams scored results over a channel.
+//! Fuzzy/exact path scoring, query parsing, and a thread-safe index that
+//! streams scored results over a channel.
 //!
 //! Strings are scored as `&[char]` (code points), so match positions index
-//! the `Vec<char>` of the relative path. For BMP-only paths these equal the
-//! C# UTF-16 indices.
+//! the `Vec<char>` of the relative path. For BMP-only paths these equal
+//! UTF-16 indices (as in the frozen goldens).
 
 pub mod index;
 pub mod query;
@@ -13,7 +13,7 @@ pub mod segmenter;
 pub use index::{SearchIndex, SearchOptions};
 pub use query::{QueryMode, SearchQuery};
 
-/// Port of `SearchResult`: an indexed absolute path, its score (higher is
+/// An indexed absolute path, its score (higher is
 /// better), and the matched character positions within its relative path.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SearchResult {
@@ -33,7 +33,6 @@ pub fn is_separator(c: char) -> bool {
 mod tests {
     use super::SearchResult;
 
-    /// Port of `SearchResultTests.Score_ReflectsConstructorValue`.
     #[test]
     fn score_reflects_constructor_value() {
         for (path, score) in [("path/file.txt", 100), ("other/file.cs", 0), ("deep/nested/path.rs", -5)] {

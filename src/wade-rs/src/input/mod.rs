@@ -1,5 +1,4 @@
-//! Port of the terminal-relevant subset of src/Wade/Terminal/InputEvent.cs
-//! and src/Wade/Terminal/InputMode.cs.
+//! Input events, input modes and the platform input sources.
 
 pub mod decode;
 pub mod input_pipeline;
@@ -14,7 +13,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::console_key::ConsoleKey;
 
-/// Port of src/Wade/Terminal/InputMode.cs
+/// Which part of the UI keys go to.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum InputMode {
     Normal,
@@ -46,9 +45,8 @@ pub enum MouseButton {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct KeyEvent {
     pub key: ConsoleKey,
-    /// The typed character, `'\0'` when the key types none. Rust only: a
-    /// `char`, not C#'s UTF-16 unit, so characters beyond U+FFFF (emoji)
-    /// arrive as one key.
+    /// The typed character, `'\0'` when the key types none. Characters
+    /// beyond U+FFFF (emoji) arrive as one key.
     pub key_char: char,
     pub shift: bool,
     pub alt: bool,
@@ -62,7 +60,7 @@ impl KeyEvent {
         self.key.0 == 16 || self.key.0 == 17 || self.key.0 == 18
     }
 
-    /// Rust only: the typed character when neither Ctrl nor Alt is held
+    /// The typed character when neither Ctrl nor Alt is held
     /// (Shift is already in the character: `K` is Shift+k). Ctrl+Alt
     /// together counts as plain: Windows reports AltGr that way, and
     /// layouts type `[`, `{`, `/` ... with it.
@@ -120,8 +118,7 @@ pub enum InputEvent {
     CombinedPreviewReady(CombinedPreviewReadyEvent),
     MetadataReady(MetadataReadyEvent),
     PreviewLoadingComplete(PreviewLoadingCompleteEvent),
-    /// The background open of a cloud placeholder finished (C# shows the
-    /// notification from the download task itself).
+    /// The background open of a cloud placeholder finished.
     CloudDownloadComplete(CloudDownloadCompleteEvent),
 }
 
@@ -130,15 +127,14 @@ pub struct CloudDownloadCompleteEvent {
     pub error: Option<String>,
 }
 
-/// Port of the `DirectorySizeReadyEvent` record
-/// (src/Wade/Terminal/InputEvent.cs).
+/// The properties overlay's directory size.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DirectorySizeReadyEvent {
     pub path: String,
     pub total_bytes: i64,
 }
 
-/// Port of the `InlineDirSizeReadyEvent` record.
+/// One listed directory's size.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlineDirSizeReadyEvent {
     pub parent_path: String,
@@ -146,28 +142,26 @@ pub struct InlineDirSizeReadyEvent {
     pub total_bytes: i64,
 }
 
-/// Port of the `InlineDirSizeCompleteEvent` record.
+/// All listed directory sizes are in.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlineDirSizeCompleteEvent {
     pub parent_path: String,
 }
 
-/// Port of the `FileFinderPartialResultEvent` record: a batch of entries
-/// from the finder's directory walk.
+/// A batch of entries from the finder's directory walk.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FileFinderPartialResultEvent {
     pub base_path: String,
     pub entries: Vec<crate::fs::FileSystemEntry>,
 }
 
-/// Port of the `FileFinderScanCompleteEvent` record.
+/// The finder's directory walk finished.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FileFinderScanCompleteEvent {
     pub base_path: String,
 }
 
-/// Port of the `FileFinderSearchResultEvent` record: a batch of scored
-/// results for search `search_id`.
+/// A batch of scored results for search `search_id`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FileFinderSearchResultEvent {
     pub base_path: String,
@@ -176,7 +170,7 @@ pub struct FileFinderSearchResultEvent {
     pub search_id: u64,
 }
 
-/// Port of the `PreviewReadyEvent` record: text preview lines for `path`.
+/// Text preview lines for `path`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PreviewReadyEvent {
     pub path: String,
@@ -184,11 +178,11 @@ pub struct PreviewReadyEvent {
     pub file_type_label: Option<String>,
     pub is_rendered: bool,
     pub is_placeholder: bool,
-    /// Rust only: the last line is a truncation marker.
+    /// The last line is a truncation marker.
     pub has_truncation_marker: bool,
 }
 
-/// Port of the `ImagePreviewReadyEvent` record: the encoded image for `path`.
+/// The encoded image for `path`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ImagePreviewReadyEvent {
     pub path: String,
@@ -198,7 +192,7 @@ pub struct ImagePreviewReadyEvent {
     pub file_type_label: String,
 }
 
-/// Port of the `CombinedPreviewReadyEvent` record: text above an image.
+/// Text above an image.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CombinedPreviewReadyEvent {
     pub path: String,
@@ -210,8 +204,8 @@ pub struct CombinedPreviewReadyEvent {
     pub is_rendered: bool,
 }
 
-/// Port of the `MetadataReadyEvent` record: merged metadata sections, plus
-/// the text encoding and line ending for non-binary files.
+/// Merged metadata sections, plus the text encoding and line ending for
+/// non-binary files.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MetadataReadyEvent {
     pub path: String,
@@ -221,20 +215,20 @@ pub struct MetadataReadyEvent {
     pub line_ending: Option<String>,
 }
 
-/// Port of the `PreviewLoadingCompleteEvent` record (no preview provider).
+/// The preview load finished without a preview (no preview provider).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PreviewLoadingCompleteEvent {
     pub path: String,
 }
 
-/// Port of the `FileSystemChangedEvent` record.
+/// The watched directory changed.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FileSystemChangedEvent {
     pub directory_path: String,
     pub full_refresh: bool,
 }
 
-/// Port of the `FileOperationCompleteEvent` record (src/Wade/Terminal/InputEvent.cs:22).
+/// A file operation finished: success and error counts.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FileOperationCompleteEvent {
     pub success_count: usize,
@@ -242,8 +236,7 @@ pub struct FileOperationCompleteEvent {
     pub was_cut: bool,
 }
 
-/// ENHANCEMENT over C#: per-item progress for the file-operation overlay
-/// (C# shows only the operation label).
+/// Per-item progress for the file-operation overlay.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FileOperationProgressEvent {
     pub index: usize,
@@ -251,14 +244,14 @@ pub struct FileOperationProgressEvent {
     pub current_name: String,
 }
 
-/// Port of the `GitActionCompleteEvent` record (src/Wade/Terminal/InputEvent.cs:80).
+/// A git action finished.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GitActionCompleteEvent {
     pub success: bool,
     pub error_message: Option<String>,
 }
 
-/// Port of the `GitStatusReadyEvent` record (src/Wade/Terminal/InputEvent.cs:73).
+/// A repo's branch, statuses and ahead/behind counts.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct GitStatusReadyEvent {
     pub repo_root: String,
@@ -289,13 +282,13 @@ impl CancelToken {
     }
 }
 
-/// Port of src/Wade/Terminal/IInputSource.cs. The source is owned by the
+/// A platform's console input. The source is owned by the
 /// pump thread, so it must be Send.
 pub trait InputSource: Send {
     fn read_next(&mut self, cancel: &CancelToken) -> Option<InputEvent>;
 
     /// Non-blocking poll for an already-available event (drains queued
-    /// events between frames, mirroring `InputPipeline.TryTake`).
+    /// events between frames).
     fn try_take(&mut self) -> Option<InputEvent> {
         None
     }

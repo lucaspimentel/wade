@@ -1,13 +1,13 @@
-//! Port of the unix half of src/Wade/Terminal/TerminalSetup.cs: raw mode
-//! on /dev/tty (`cfmakeraw`), the DA1 + cell-size capability query, the
-//! alternate screen, SGR mouse reporting and bracketed paste.
+//! Unix terminal setup: raw mode on /dev/tty (`cfmakeraw`), the DA1 + cell-size
+//! capability query, the alternate screen, SGR mouse reporting and bracketed
+//! paste.
 
 use std::io::Write;
 
 pub use crate::terminal_caps::TerminalCapabilities;
 
 /// Written by `restore` after the tty modes: leave the alternate screen,
-/// then put the pre-wade title back (Rust-only; C# only clears it).
+/// then put the pre-wade title back.
 pub(crate) const RESTORE_SEQUENCE: &[&str] = &[
     crate::ansi::RESET_ATTRIBUTES,
     crate::ansi::SHOW_CURSOR,
@@ -16,7 +16,7 @@ pub(crate) const RESTORE_SEQUENCE: &[&str] = &[
 ];
 
 /// Applies raw mode and the terminal modes; `restore` (or drop) undoes
-/// them, as C# `Dispose` does.
+/// them.
 pub struct TerminalSetup {
     tty_fd: libc::c_int,
     saved_termios: Option<libc::termios>,
@@ -69,7 +69,7 @@ impl TerminalSetup {
         self.capabilities
     }
 
-    /// Port of `Dispose`. Idempotent.
+    /// Restores the tty modes and the screen. Idempotent.
     pub fn restore(&mut self) {
         if self.restored {
             return;
@@ -112,15 +112,14 @@ impl Drop for TerminalSetup {
     }
 }
 
-/// Port of `DetectCapabilitiesUnix`: sends DA1 and `ESC[16t` (plus the
-/// kitty queries), then reads
-/// replies from the tty until 200ms pass without data.
+/// Sends DA1 and `ESC[16t` (plus the kitty queries), then reads replies from
+/// the tty until 200ms pass without data.
 fn detect_capabilities(tty_fd: libc::c_int) -> TerminalCapabilities {
     if tty_fd < 0 {
         return TerminalCapabilities::DEFAULT;
     }
 
-    // Rust-only: the kitty graphics query and XTVERSION go first; DA1 stays
+    // The kitty graphics query and XTVERSION go first; DA1 stays
     // last so terminals that ignore them still answer
     write_out(&["\x1b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\\x1b[>0q\x1b[c\x1b[16t"]);
     let mut buf = [0u8; 1024];
@@ -143,7 +142,7 @@ fn detect_capabilities(tty_fd: libc::c_int) -> TerminalCapabilities {
     let mut caps = TerminalCapabilities::parse_query_responses(&buf[..total]);
     caps.iterm_images |= crate::terminal_caps::iterm_from_term_program(std::env::var("TERM_PROGRAM").ok().as_deref());
 
-    // Rust-only: inside tmux the replies came from tmux; ask it about the
+    // Inside tmux the replies came from tmux; ask it about the
     // outer terminal and whether image data may pass through
     if std::env::var_os("TMUX").is_some_and(|value| !value.is_empty()) {
         let client = tmux_client().unwrap_or_default();

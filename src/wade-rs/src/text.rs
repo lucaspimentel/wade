@@ -1,45 +1,45 @@
 //! Character classification shared by the search scorer and the syntax
-//! highlighters: .NET `char` predicates, exact for ASCII and approximated
-//! with std's Unicode properties elsewhere (KNOWN_DEVIATIONS.md).
+//! highlighters: exact for ASCII, std's Unicode properties elsewhere
+//! (KNOWN_DEVIATIONS.md).
 
-/// `char.IsUpper`.
+/// An uppercase letter.
 #[must_use]
 pub fn is_upper(c: char) -> bool {
     if c.is_ascii() { c.is_ascii_uppercase() } else { c.is_uppercase() }
 }
 
-/// `char.IsLower`.
+/// A lowercase letter.
 #[must_use]
 pub fn is_lower(c: char) -> bool {
     if c.is_ascii() { c.is_ascii_lowercase() } else { c.is_lowercase() }
 }
 
-/// `char.IsDigit`.
+/// A digit (any numeric character outside ASCII).
 #[must_use]
 pub fn is_digit(c: char) -> bool {
     if c.is_ascii() { c.is_ascii_digit() } else { c.is_numeric() }
 }
 
-/// `char.IsLetter`.
+/// A letter.
 #[must_use]
 pub fn is_letter(c: char) -> bool {
     if c.is_ascii() { c.is_ascii_alphabetic() } else { c.is_alphabetic() }
 }
 
-/// `char.IsLetterOrDigit`.
+/// A letter or digit.
 #[must_use]
 pub fn is_letter_or_digit(c: char) -> bool {
     if c.is_ascii() { c.is_ascii_alphanumeric() } else { c.is_alphanumeric() }
 }
 
-/// `char.IsWhiteSpace` (std's White_Space property matches .NET's set).
+/// Whitespace (the Unicode White_Space property).
 #[must_use]
 pub fn is_whitespace(c: char) -> bool {
     c.is_whitespace()
 }
 
-/// `char.ToLowerInvariant`: the first char of the full lowercase mapping
-/// equals the simple mapping .NET uses (e.g. `İ` -> `i`).
+/// The simple lowercase mapping: the first char of the full mapping (e.g.
+/// `İ` -> `i`).
 #[must_use]
 pub fn to_lower(c: char) -> char {
     if c.is_ascii() {
@@ -49,8 +49,8 @@ pub fn to_lower(c: char) -> char {
     c.to_lowercase().next().unwrap_or(c)
 }
 
-/// Per-char upper-casing for `OrdinalIgnoreCase`: simple mappings only, so
-/// characters whose uppercase expands (`ß` -> `SS`) stay as themselves.
+/// Per-char upper-casing for case-insensitive comparison: simple mappings only,
+/// so characters whose uppercase expands (`ß` -> `SS`) stay as themselves.
 #[must_use]
 pub fn to_upper(c: char) -> char {
     if c.is_ascii() {
@@ -65,8 +65,8 @@ pub fn to_upper(c: char) -> char {
     }
 }
 
-/// `string.Compare(a, b, StringComparison.OrdinalIgnoreCase)`: per-char
-/// simple uppercase, compared as UTF-16 code units.
+/// Case-insensitive ordering: per-char simple uppercase, compared as UTF-16
+/// code units.
 #[must_use]
 pub fn compare_ordinal_ignore_case(a: &str, b: &str) -> std::cmp::Ordering {
     let units = |s: &str| -> Vec<u16> {
@@ -89,7 +89,7 @@ mod tests {
             assert_eq!(is_letter(c), c.is_ascii_alphabetic(), "{c:?}");
         }
 
-        // .NET treats these ASCII controls as whitespace too
+        // These ASCII controls are whitespace too
         for c in ['\t', '\n', '\u{b}', '\u{c}', '\r', ' '] {
             assert!(is_whitespace(c));
         }

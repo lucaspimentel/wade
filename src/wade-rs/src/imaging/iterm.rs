@@ -1,9 +1,8 @@
-//! Rust-only: the iTerm2 inline image protocol
-//! (https://iterm2.com/documentation-images.html), also shown by WezTerm.
-//! The fitted image is sent as PNG, sized in cells so the terminal scales it
-//! into the image area whatever the real cell size is. Like Sixel, it is
-//! written after the flush at the image position and cells drawn over it
-//! erase it.
+//! The iTerm2 inline image protocol
+//! (https://iterm2.com/documentation-images.html), also shown by WezTerm. The
+//! fitted image is sent as PNG, sized in cells so the terminal scales it into
+//! the image area whatever the real cell size is. Like Sixel, it is written
+//! after the flush at the image position and cells drawn over it erase it.
 
 use image::ImageEncoder;
 

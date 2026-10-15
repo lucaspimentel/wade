@@ -1,27 +1,26 @@
-//! Port of `src/Wade/Terminal/TerminalCapabilities.cs`: Sixel support and
-//! cell pixel size, with the parser for the Unix DA1 / cell-size query
-//! responses (the Unix query itself lands with the Phase 9 input work).
-//! Rust-only: kitty graphics detection (a graphics query plus XTVERSION),
-//! and tmux passthrough (the outer terminal as tmux reports it).
+//! Terminal capabilities: Sixel support and cell pixel size, with the
+//! parser for the Unix DA1 / cell-size query responses; kitty graphics and
+//! iTerm2 image detection (a graphics query plus XTVERSION); and tmux
+//! passthrough (the outer terminal as tmux reports it).
 
-/// Port of `TerminalCapabilities`.
+/// What the terminal can show.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TerminalCapabilities {
     pub sixel_supported: bool,
     pub cell_pixel_width: i32,
     pub cell_pixel_height: i32,
-    /// Rust-only: the terminal supports kitty graphics with Unicode
+    /// The terminal supports kitty graphics with Unicode
     /// placeholders (answered the `a=q` query and is kitty or Ghostty).
     pub kitty_graphics: bool,
-    /// Rust-only: the terminal shows iTerm2 inline images (`OSC 1337`):
+    /// The terminal shows iTerm2 inline images (`OSC 1337`):
     /// iTerm2 or WezTerm, by XTVERSION or `TERM_PROGRAM`.
     pub iterm_images: bool,
-    /// Rust-only: inside tmux with `allow-passthrough` on, image output is
+    /// Inside tmux with `allow-passthrough` on, image output is
     /// wrapped for the outer terminal (see `TmuxPassthrough`).
     pub tmux: Option<TmuxPassthrough>,
 }
 
-/// Rust-only: how image output reaches the terminal outside tmux. Data is
+/// How image output reaches the terminal outside tmux. Data is
 /// wrapped in `ESC P tmux; ... ESC \`; Sixel and iTerm2 images also carry
 /// their cursor move, offset by the pane's position in the tmux window.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -94,7 +93,7 @@ pub fn pane_position(pane_top: &str, pane_left: &str, status: &str, status_posit
 }
 
 impl TerminalCapabilities {
-    /// Rust-only: the capabilities inside tmux. `self` holds tmux's own
+    /// The capabilities inside tmux. `self` holds tmux's own
     /// replies (Sixel when tmux shows it itself). With passthrough allowed,
     /// kitty and iTerm2 images follow the outer terminal's name and Sixel
     /// its features; without it only tmux's own Sixel is left.
@@ -153,7 +152,7 @@ pub fn tmux_wrap_each(data: &str) -> String {
 }
 
 impl TerminalCapabilities {
-    /// C# `TerminalCapabilities.Default`: no Sixel, 8x16 px cells.
+    /// No images, 8x16 px cells.
     pub const DEFAULT: Self = Self {
         sixel_supported: false,
         cell_pixel_width: 8,
@@ -163,7 +162,7 @@ impl TerminalCapabilities {
         tmux: None,
     };
 
-    /// Port of `ParseQueryResponses`: DA1 (`ESC[?..c`, Sixel when a param is
+    /// Parses the DA1 (`ESC[?..c`, Sixel when a param is
     /// exactly 4) and cell size (`ESC[6;HEIGHT;WIDTHt`) responses.
     #[must_use]
     pub fn parse_query_responses(data: &[u8]) -> Self {
@@ -214,7 +213,7 @@ impl TerminalCapabilities {
 /// Windows: capabilities without queries (key records carry no replies).
 /// Windows Terminal (`WT_SESSION`) shows Sixel since v1.22 and lays images
 /// out on a fixed virtual 10x20 cell (`SixelParser::CellSizeForLevel`, its
-/// `CSI 16t` reply), whatever the font. Rust-only: WezTerm on Windows
+/// `CSI 16t` reply), whatever the font. WezTerm on Windows
 /// (`TERM_PROGRAM`) shows iTerm2 inline images.
 #[must_use]
 pub fn windows_capabilities(wt_session: bool, term_program: Option<&str>) -> TerminalCapabilities {
@@ -315,7 +314,6 @@ fn parse_cell_size(span: &[u8], caps: &mut TerminalCapabilities) {
 
 #[cfg(test)]
 mod tests {
-    //! Port of TerminalCapabilitiesTests.cs.
 
     use super::TerminalCapabilities as Caps;
 

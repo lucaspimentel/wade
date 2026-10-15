@@ -1,10 +1,7 @@
-//! Port of System.ConsoleKey: a virtual-key code classification.
+//! Keys as Windows virtual-key codes.
 //!
-//! C# code freely casts raw virtual-key codes to ConsoleKey
-//! (`(ConsoleKey)k.wVirtualKeyCode`), so any u16 value is valid. This port
-//! models that honestly with a newtype over u16 plus named constants whose
-//! discriminants match the .NET enum exactly
-//! (dotnet/runtime src/libraries/System.Console/src/System/ConsoleKey.cs).
+//! Raw virtual-key codes from the console arrive unchanged, so any u16
+//! value is valid: a newtype over u16 plus named constants.
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct ConsoleKey(pub u16);

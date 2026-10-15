@@ -1,8 +1,6 @@
-//! Port of src/Wade/Terminal/ScreenBuffer.cs: a double-buffered in-memory
-//! screen grid that serializes diffs as ANSI escape sequences.
-//!
-//! Serialization is separated from writing (the C# side writes to stdout in
-//! `Flush`; this port exposes `serialize` only until the app layer exists).
+//! A double-buffered in-memory screen grid that serializes diffs as ANSI
+//! escape sequences. Serialization is separated from writing, so tests and
+//! goldens read the output directly.
 
 use crate::ansi::{RESET_ATTRIBUTES, append_move_cursor, append_set_bg, append_set_fg};
 use crate::rune_width::rune_width;
@@ -29,7 +27,7 @@ pub struct CellStyle {
 pub struct Cell {
     ch: char,
     style: CellStyle,
-    /// Rust-only: a kitty placeholder's row and column in its image,
+    /// A kitty placeholder's row and column in its image,
     /// written as two diacritics after `ch`.
     placeholder: Option<(u16, u16)>,
 }
@@ -162,7 +160,7 @@ impl ScreenBuffer {
         self.mark_dirty(row);
     }
 
-    /// Rust-only: a kitty placeholder cell showing cell (`image_row`,
+    /// A kitty placeholder cell showing cell (`image_row`,
     /// `image_col`) of image `image_id` (its id is the foreground color).
     pub fn put_placeholder(&mut self, row: i32, col: i32, image_id: u32, image_row: u16, image_col: u16) {
         if row < 0 || row >= self.height || col < 0 || col >= self.width {
@@ -238,10 +236,9 @@ impl ScreenBuffer {
         self.dirty_rows.fill(u64::MAX);
     }
 
-    /// Serializes the diff between front and back buffers into `out`,
-    /// mirroring C# `ScreenBuffer.Serialize`. Clears `out` first and clears
-    /// the dirty bits; calling it again with no writes produces an empty
-    /// string.
+    /// Serializes the diff between front and back buffers into `out`. Clears
+    /// `out` first and clears the dirty bits; calling it again with no writes
+    /// produces an empty string.
     pub fn serialize(&mut self, out: &mut String) {
         out.clear();
         let mut current_style = CellStyle::default();

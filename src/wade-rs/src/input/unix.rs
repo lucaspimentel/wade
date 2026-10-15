@@ -1,7 +1,6 @@
-//! Port of `UnixInputSource` (src/Wade/Terminal/UnixInputSource.cs): reads
-//! raw bytes from /dev/tty and decodes them with `VtParser`. C# blocks in
-//! `read()` (VMIN=1); this port polls with a 100ms timeout so the pump
-//! thread can be cancelled and joined. SIGWINCH sets a flag that becomes a
+//! Unix console input: reads raw bytes from /dev/tty and decodes them with
+//! `VtParser`. Polls with a 100ms timeout so the pump thread can be
+//! cancelled and joined. SIGWINCH sets a flag that becomes a
 //! `ResizeEvent` with the current window size.
 
 use std::collections::VecDeque;

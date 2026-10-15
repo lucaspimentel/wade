@@ -1,4 +1,4 @@
-//! Port of `PathSegmenter`.
+//! Splitting paths into segments.
 
 use super::is_separator;
 

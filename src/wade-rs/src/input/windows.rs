@@ -1,6 +1,6 @@
-//! Port of src/Wade/Terminal/WindowsInputSource.cs: Win32 console input via
-//! ReadConsoleInputW. Windows-only; the decode logic itself lives in the
-//! portable `decode` module so it can be fixture-tested on any platform.
+//! Win32 console input via ReadConsoleInputW. Windows-only; the decode logic
+//! itself lives in the portable `decode` module so it can be fixture-tested on
+//! any platform.
 
 use std::collections::VecDeque;
 
@@ -16,8 +16,8 @@ use windows_sys::Win32::System::Threading::WaitForSingleObject;
 
 const WAIT_TIMEOUT_MS: u32 = 100;
 
-/// Port of `WindowsInputSource`: polls the console input handle with a
-/// 100 ms wait so cancellation is checked between batches.
+/// Polls the console input handle with a 100 ms wait so cancellation is checked
+/// between batches.
 pub struct WindowsInputSource {
     stdin_handle: HANDLE,
     pending: VecDeque<InputEvent>,
@@ -64,7 +64,7 @@ impl WindowsInputSource {
 
 // Safety: stdin_handle is the process-wide stdin HANDLE (valid on any
 // thread), and all access is through &mut self, so the struct is effectively
-// owned during use. Mirrors the C# reader thread using the same handle.
+// owned during use.
 unsafe impl Send for WindowsInputSource {}
 
 impl Default for WindowsInputSource {
@@ -127,8 +127,8 @@ fn to_raw_record(record: &INPUT_RECORD) -> RawRecord {
     }
 }
 
-/// Port of `Console.WindowWidth`/`Console.WindowHeight` via the console
-/// screen buffer info's `srWindow` rectangle.
+/// The console window size from the screen buffer info's `srWindow`
+/// rectangle.
 fn window_size() -> (i32, i32) {
     let handle = unsafe { GetStdHandle(STD_OUTPUT_HANDLE) };
     let mut info = CONSOLE_SCREEN_BUFFER_INFO::default();

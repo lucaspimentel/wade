@@ -1,4 +1,4 @@
-//! Rust-only: the kitty graphics protocol with Unicode placeholders
+//! The kitty graphics protocol with Unicode placeholders
 //! (https://sw.kovidgoyal.net/kitty/graphics-protocol/#unicode-placeholders).
 //! The image is transmitted once with a virtual placement; the screen then
 //! shows it through U+10EEEE cells whose foreground color is the image id

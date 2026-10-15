@@ -1,4 +1,4 @@
-//! wade: TUI file browser (Rust port of the C# Native AOT tool).
+//! wade: TUI file browser.
 
 pub mod ansi;
 pub mod app;

@@ -1,6 +1,5 @@
-//! Port of `src/Wade/Imaging`: the Sixel encoder, image loading for
-//! previews, and the PDF-to-image pipeline. Pixels need not match C#
-//! (ImageSharp): decoding and scaling use the `image` crate
+//! Image previews: loading and fitting with the `image` crate, the Sixel,
+//! kitty and iTerm2 encoders, and the PDF-to-image pipeline
 //! (KNOWN_DEVIATIONS.md).
 
 pub mod image_preview;
@@ -9,7 +8,7 @@ pub mod kitty;
 pub mod pdf;
 pub mod sixel;
 
-/// Rust-only: the image protocol previews are encoded for.
+/// The image protocol previews are encoded for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ImageProtocol {
     Sixel,
@@ -17,7 +16,7 @@ pub enum ImageProtocol {
     Iterm,
 }
 
-/// Rust-only: the `image_protocol` config key.
+/// The `image_protocol` config key.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ImageProtocolSetting {
     /// Kitty, then iTerm2, then Sixel: the first one detected.
@@ -63,7 +62,7 @@ impl ImageProtocolSetting {
     }
 }
 
-/// Rust-only: an encoded image, ready to write.
+/// An encoded image, ready to write.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ImageData {
     /// A Sixel string, written after each frame at the image's position.

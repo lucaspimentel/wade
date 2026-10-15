@@ -1,9 +1,7 @@
-//! Port of `SearchIndex` and `ActiveQuery`: a thread-safe path index whose
-//! queries stream scored results over a channel. A query scans a snapshot
-//! of the index on a background thread, and paths added while it is active
-//! are pushed live; per-query dedup makes the two paths overlap safely
-//! (the C# version iterates a weakly-consistent ConcurrentDictionary).
-//! Consumers sort by score descending.
+//! A thread-safe path index whose queries stream scored results over a
+//! channel. A query scans a snapshot of the index on a background thread,
+//! and paths added while it is active are pushed live; per-query dedup
+//! makes the two paths overlap safely. Consumers sort by score descending.
 
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -15,7 +13,7 @@ use super::scorer::{self, NO_MATCH};
 use super::{SearchResult, is_separator};
 use crate::input::CancelToken;
 
-/// Port of `SearchOptions`.
+/// Search settings.
 #[derive(Clone, Copy, Debug)]
 pub struct SearchOptions {
     /// Maximum number of results to stream (default: no limit).
@@ -28,7 +26,7 @@ impl Default for SearchOptions {
     }
 }
 
-/// Port of `PathEntry`: precomputed scoring data for an indexed path.
+/// Precomputed scoring data for an indexed path.
 struct PathEntry {
     absolute: Arc<str>,
     relative: Vec<char>,
@@ -42,7 +40,7 @@ struct IndexState {
     entries: Vec<Arc<PathEntry>>,
 }
 
-/// Port of `SearchIndex`.
+/// The finder's index of walked paths.
 pub struct SearchIndex {
     base_path: String,
     state: Mutex<IndexState>,
@@ -66,7 +64,7 @@ impl SearchIndex {
         self.state.lock().unwrap().paths.len()
     }
 
-    /// Port of `Add`: indexes a path (ignoring duplicates) and, when a query
+    /// Indexes a path (ignoring duplicates) and, when a query
     /// is active, scores it immediately and pushes a match to its channel.
     pub fn add(&self, path: &str) {
         let entry = {
@@ -94,7 +92,7 @@ impl SearchIndex {
         }
     }
 
-    /// Port of `Search`: replaces (and completes) any active query and
+    /// Replaces (and completes) any active query and
     /// returns a receiver of results. The channel closes when the query is
     /// cancelled or replaced; an empty query returns an already-closed one.
     /// A non-empty query without terms (lone operators) matches everything.
@@ -135,8 +133,7 @@ impl SearchIndex {
         receiver
     }
 
-    /// Port of `CancelSearch`: completes the active query's channel. No-op
-    /// when no query is active.
+    /// Completes the active query's channel. No-op when no query is active.
     pub fn cancel_search(&self) {
         let query = self.active.lock().unwrap().take();
 
@@ -145,7 +142,7 @@ impl SearchIndex {
         }
     }
 
-    /// Port of `Clear`.
+    /// Cancels the active query and empties the index.
     pub fn clear(&self) {
         self.cancel_search();
         let mut state = self.state.lock().unwrap();
@@ -153,9 +150,8 @@ impl SearchIndex {
         state.entries.clear();
     }
 
-    /// Port of `SnapshotCompleteTask`: waits for the active query's initial
-    /// scan. Returns false on timeout; true when it finished or no query is
-    /// active.
+    /// Waits for the active query's initial scan. Returns false on timeout;
+    /// true when it finished or no query is active.
     pub fn wait_for_snapshot(&self, timeout: std::time::Duration) -> bool {
         let query = self.active.lock().unwrap().clone();
         query.is_none_or(|query| query.wait_for_snapshot(timeout))
@@ -208,7 +204,7 @@ struct Term {
     negated: bool,
 }
 
-/// Port of `ActiveQuery`: one query's channel, cancellation, dedup set and
+/// One query's channel, cancellation, dedup set and
 /// matching. `try_match` is safe to call from several threads at once.
 struct ActiveQuery {
     terms: Vec<Term>,
@@ -247,7 +243,7 @@ impl ActiveQuery {
         self.result_count.load(Ordering::SeqCst) >= self.max_results
     }
 
-    /// Port of `TryMatch`: scores the entry and, on a match not yet emitted,
+    /// Scores the entry and, on a match not yet emitted,
     /// sends it.
     fn try_match(&self, entry: &PathEntry) -> bool {
         if self.cancel.is_cancelled() || self.is_max_results_reached() {
@@ -281,10 +277,10 @@ impl ActiveQuery {
         true
     }
 
-    /// Every positive term must match and no negated one may (Rust-only
-    /// multi-term syntax). The score is the sum of the positive terms'
-    /// scores plus one depth penalty; positions are their sorted union. With
-    /// no positive term, every non-excluded entry matches with score 0.
+    /// Every positive term must match and no negated one may. The score is the
+    /// sum of the positive terms' scores plus one depth penalty; positions are
+    /// their sorted union. With no positive term, every non-excluded entry
+    /// matches with score 0.
     fn score(&self, entry: &PathEntry) -> Option<(i32, Vec<usize>)> {
         let mut total = 0;
         let mut positions = Vec::new();
@@ -316,8 +312,7 @@ impl ActiveQuery {
         Some((total + scorer::depth_penalty(&entry.relative), positions))
     }
 
-    /// Port of `MarkSnapshotComplete`: the initial scan finished; the channel
-    /// stays open for live pushes.
+    /// The initial scan finished; the channel stays open for live pushes.
     fn mark_snapshot_complete(&self) {
         let (done, condvar) = &self.snapshot_complete;
         *done.lock().unwrap() = true;
@@ -331,7 +326,7 @@ impl ActiveQuery {
         *guard
     }
 
-    /// Port of `Complete`: cancels outstanding work and closes the channel
+    /// Cancels outstanding work and closes the channel
     /// (receivers drain what was sent, then see the disconnect).
     fn complete(&self) {
         self.cancel.cancel();
@@ -609,8 +604,8 @@ mod tests {
         assert_eq!(results[0].path, abs(&["src", "App.cs"]));
     }
 
-    /// C# returns no results for a lone `'`; Rust treats a query of lone
-    /// operators as termless and matches everything (KNOWN_DEVIATIONS.md).
+    /// A query of lone operators is termless and matches everything
+    /// (KNOWN_DEVIATIONS.md).
     #[test]
     fn search_lone_operators_match_everything() {
         let index = SearchIndex::new(&base_path());

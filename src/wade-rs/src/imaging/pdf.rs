@@ -1,6 +1,5 @@
-//! Port of the PDF-to-image pipeline (`IImageConverter`, `ImageConverter`,
-//! `PdfImageConverter`, `XpdfPdfTool`): page 1 rendered to a temporary PNG
-//! with xpdf's `pdftopng`.
+//! PDF previews: page 1 rendered to a temporary PNG with xpdf's
+//! `pdftopng`.
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -8,8 +7,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use crate::input::CancelToken;
 use crate::preview::cli_tool_hints;
 
-/// A rendered page in a temporary directory, removed on drop (C# removes
-/// the PNG but leaves the directory; KNOWN_DEVIATIONS.md).
+/// A rendered page in a temporary directory, removed on drop.
 pub struct TempImage {
     pub path: PathBuf,
     dir: PathBuf,
@@ -21,13 +19,13 @@ impl Drop for TempImage {
     }
 }
 
-/// Port of `XpdfPdfTool.IsAvailable`.
+/// Whether `pdftopng` is installed.
 #[must_use]
 pub fn pdftopng_available() -> bool {
     cli_tool_hints::is_available("pdftopng", None, false)
 }
 
-/// Port of `PdfImageConverter.CanConvert` / `ImageConverter.CanConvert`.
+/// Whether `path` is a PDF that `pdftopng` can render.
 #[must_use]
 pub fn can_convert(path: &str) -> bool {
     crate::fs::file_preview::extension(path).eq_ignore_ascii_case(".pdf") && pdftopng_available()
@@ -43,8 +41,7 @@ fn unique_temp_dir() -> PathBuf {
     ))
 }
 
-/// Port of `XpdfPdfTool.RenderPage`: `pdftopng -f N -l N -r 150 -q`, 10 s
-/// timeout, output `<root>-NNNNNN.png`.
+/// `pdftopng -f N -l N -r 150 -q`, 10 s timeout, output `<root>-NNNNNN.png`.
 #[must_use]
 pub fn render_page(pdf_path: &str, page: u32, cancel: &CancelToken) -> Option<TempImage> {
     let dir = unique_temp_dir();
@@ -66,7 +63,7 @@ pub fn render_page(pdf_path: &str, page: u32, cancel: &CancelToken) -> Option<Te
     (output.is_some() && image.path.is_file()).then_some(image)
 }
 
-/// Port of `ImageConverter.ConvertToImage`: page 1 of a PDF.
+/// Page 1 of a PDF as an image.
 #[must_use]
 pub fn convert_to_image(path: &str, cancel: &CancelToken) -> Option<TempImage> {
     can_convert(path).then(|| render_page(path, 1, cancel)).flatten()
@@ -74,7 +71,7 @@ pub fn convert_to_image(path: &str, cancel: &CancelToken) -> Option<TempImage> {
 
 #[cfg(test)]
 mod tests {
-    //! Port of PdfPreviewTests.cs (tool availability depends on the host).
+    //! Tool availability depends on the host.
 
     use super::{can_convert, pdftopng_available, render_page};
     use crate::input::CancelToken;

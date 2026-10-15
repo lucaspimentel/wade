@@ -1,6 +1,5 @@
-//! Port of the decode loop in src/Wade/Terminal/WindowsInputSource.cs
-//! (ProcessRecords / DecodeRecords). Pure: no console access, so the fixture
-//! harnesses run identically on every platform.
+//! Decoding of Windows console input records into input events. Pure: no
+//! console access, so the fixture harnesses run identically on every platform.
 
 use super::{InputEvent, KeyEvent, MouseButton, MouseEvent, ResizeEvent};
 use crate::console_key::ConsoleKey;
@@ -29,7 +28,7 @@ pub enum RawRecord {
     Key {
         key_down: bool,
         virtual_key_code: u16,
-        /// UTF-16 code unit, mirroring C# `char UnicodeChar`.
+        /// UTF-16 code unit (`KEY_EVENT_RECORD.uChar.UnicodeChar`).
         unicode_char: u16,
         control_key_state: u32,
     },
@@ -54,9 +53,8 @@ fn make_key_event(virtual_key_code: u16, unicode_char: u16, control_key_state: u
     }
 }
 
-/// Port of `WindowsInputSource.DecodeRecords`: decodes raw console input
-/// records into input events. `window_width`/`window_height` mirror the live
-/// console size the C# call site passes in.
+/// Decodes raw console input records into input events.
+/// `window_width`/`window_height` are the live console size.
 pub fn decode_records(records: &[RawRecord], window_width: i32, window_height: i32) -> Vec<InputEvent> {
     let mut pending = Vec::new();
     let mut i = 0;
@@ -88,7 +86,7 @@ pub fn decode_records(records: &[RawRecord], window_width: i32, window_height: i
                                 continue;
                             }
                             RawRecord::Key { unicode_char: next_char, .. } => {
-                                // Rust only: a line break or tab between pasted
+                                // A line break or tab between pasted
                                 // characters belongs to the paste, so pasting
                                 // several lines never presses Enter in between
                                 if is_paste_whitespace(next_char) && printable_follows(records, i + 1) {

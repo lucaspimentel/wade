@@ -1,5 +1,5 @@
-//! Port of src/Wade/Terminal/RuneWidth.cs: display width of a Unicode rune
-//! in a terminal (1 or 2 columns), based on East Asian Width and emoji ranges.
+//! Display width of a Unicode rune in a terminal (1 or 2 columns), based on
+//! East Asian Width and emoji ranges.
 
 /// Returns the number of terminal columns a rune occupies (1 or 2).
 #[must_use]

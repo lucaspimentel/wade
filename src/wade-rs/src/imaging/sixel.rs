@@ -1,4 +1,4 @@
-//! Port of `SixelEncoder`: median-cut palette (up to 256 colors) over the
+//! Sixel encoding: median-cut palette (up to 256 colors) over the
 //! unique colors, nearest-color mapping, and the DCS Sixel sequence with
 //! run-length encoding.
 
@@ -18,7 +18,7 @@ fn channel_value(color: u32, channel: u32) -> u32 {
     (color >> (16 - 8 * channel)) & 0xff
 }
 
-/// Port of `MakeBox`: the channel with the widest range (red wins ties,
+/// A color box and the channel with the widest range (red wins ties,
 /// then green).
 fn make_box(colors: &[u32], start: usize, len: usize) -> ColorBox {
     let mut min = [255u32; 3];
@@ -49,8 +49,8 @@ fn make_box(colors: &[u32], start: usize, len: usize) -> ColorBox {
     }
 }
 
-/// Port of `MedianCutInPlace`: split the widest splittable box at its
-/// median until `max_colors` boxes, then average each box.
+/// Split the widest splittable box at its median until `max_colors` boxes, then
+/// average each box.
 fn median_cut(colors: &mut [u32], max_colors: usize) -> Vec<u32> {
     let mut boxes = vec![make_box(colors, 0, colors.len())];
 
@@ -90,7 +90,7 @@ fn median_cut(colors: &mut [u32], max_colors: usize) -> Vec<u32> {
         .collect()
 }
 
-/// Port of `FindNearest`: squared RGB distance, first best wins.
+/// The nearest palette entry: squared RGB distance, first best wins.
 fn find_nearest(color: u32, palette: &[u32]) -> u8 {
     let mut best = 0;
     let mut best_distance = i32::MAX;
@@ -111,8 +111,8 @@ fn find_nearest(color: u32, palette: &[u32]) -> u8 {
     best as u8
 }
 
-/// Port of `SixelEncoder.Encode`: RGBA pixels (alpha ignored) to a Sixel
-/// DCS string; empty for a zero-sized image.
+/// RGBA pixels (alpha ignored) to a Sixel DCS string; empty for a zero-sized
+/// image.
 #[must_use]
 pub fn encode(rgba: &[u8], width: usize, height: usize, max_colors: usize) -> String {
     if width == 0 || height == 0 || rgba.len() < width * height * 4 {
@@ -142,8 +142,8 @@ pub fn encode(rgba: &[u8], width: usize, height: usize, max_colors: usize) -> St
     encode_sixel(&indexed, &palette, width, height)
 }
 
-/// Port of `EncodeSixel`. Each band's per-color sixel rows are built in one
-/// pass over its pixels; colors appear in palette order as in C#.
+/// The sixel bands. Each band's per-color sixel rows are built in one pass
+/// over its pixels; colors appear in palette order.
 fn encode_sixel(indexed: &[u8], palette: &[u32], width: usize, height: usize) -> String {
     let mut out = String::with_capacity(width * height / 2);
     let _ = write!(out, "\x1bPq\"1;1;{width};{height}");
@@ -212,7 +212,6 @@ fn encode_sixel(indexed: &[u8], palette: &[u32], width: usize, height: usize) ->
 
 #[cfg(test)]
 mod tests {
-    //! Port of SixelEncoderTests.cs plus palette checks.
 
     use super::encode;
 

@@ -1,10 +1,9 @@
-//! Port of `SearchQuery` / `QueryMode`, extended (Rust only) with fzf's
-//! multi-term syntax: space-separated terms are ANDed; `'foo` is an exact
-//! substring, `^foo` an exact match at the start of a path segment, `foo$`
-//! an exact match at the end of the path, and `!` negates a term (always
-//! exact). `\ ` is a literal space. Every term uses smart case.
+//! Query parsing with fzf's multi-term syntax: space-separated terms are ANDed;
+//! `'foo` is an exact substring, `^foo` an exact match at the start of a path
+//! segment, `foo$` an exact match at the end of the path, and `!` negates a
+//! term (always exact). `\ ` is a literal space. Every term uses smart case.
 
-/// Port of `QueryMode`, plus the anchored modes.
+/// How one term matches: fuzzy, exact substring, or anchored.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum QueryMode {
     Fuzzy,

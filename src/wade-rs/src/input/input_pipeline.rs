@@ -1,8 +1,7 @@
-//! Port of the C# `InputPipeline` (src/Wade/Terminal/InputPipeline.cs): a
-//! single event queue fed by the console reader thread (the pump) and by
+//! A single event queue fed by the console reader thread (the pump) and by
 //! async loader threads. The pipeline owns its sender for the process
 //! lifetime, so the app exits via the Quit action or cancellation, never by
-//! channel disconnect (matching C# semantics).
+//! channel disconnect.
 
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
 use std::time::Duration;
@@ -36,20 +35,19 @@ impl InputPipeline {
         self.sender.clone()
     }
 
-    /// Port of `InputPipeline.Inject`: swallow send errors once the receiver
-    /// is gone (C# catches InvalidOperationException).
+    /// Queues an event; send errors once the receiver is gone are ignored.
     pub fn inject(&self, event: InputEvent) {
         let _ = self.sender.send(event);
     }
 
-    /// Port of `InputPipeline.TryTake`: non-blocking poll.
+    /// Non-blocking poll.
     #[must_use]
     pub fn try_take(&self) -> Option<InputEvent> {
         self.receiver.try_recv().ok()
     }
 
     /// Wait for the next event with a 100ms timeout so cancellation is
-    /// checked regularly (mirrors the reader's wait window). Returns None on
+    /// checked regularly (the reader's wait window). Returns None on
     /// cancellation.
     #[must_use]
     pub fn wait_next(&self, cancel: &CancelToken) -> Option<InputEvent> {

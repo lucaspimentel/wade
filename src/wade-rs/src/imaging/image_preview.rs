@@ -1,12 +1,12 @@
-//! Port of `ImagePreview`: decode an image, fit it to the pane (never
-//! upscaling), and encode it as Sixel (or, Rust-only, for kitty graphics).
+//! Decode an image, fit it to the pane (never upscaling), and encode it for
+//! the terminal's image protocol.
 
 use image::imageops::FilterType;
 
 use super::{ImageData, ImageProtocol};
 use crate::input::CancelToken;
 
-/// Port of `ImagePreviewResult`.
+/// An encoded image and its size.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ImagePreviewResult {
     pub image: ImageData,
@@ -17,14 +17,14 @@ pub struct ImagePreviewResult {
 
 const IMAGE_EXTENSIONS: &[&str] = &[".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".tga", ".tiff", ".pbm"];
 
-/// Port of `IsImageFile`.
+/// Whether `path` has an image extension.
 #[must_use]
 pub fn is_image_file(path: &str) -> bool {
     let ext = crate::fs::file_preview::extension(path);
     !ext.is_empty() && IMAGE_EXTENSIONS.iter().any(|known| known.eq_ignore_ascii_case(ext))
 }
 
-/// The C# fit: the smaller of the two scale factors, capped at 1.0, each
+/// The smaller of the two scale factors, capped at 1.0, each
 /// side at least one pixel.
 #[must_use]
 pub fn fit_size(src_width: u32, src_height: u32, max_width: i32, max_height: i32) -> (u32, u32) {
@@ -37,9 +37,9 @@ pub fn fit_size(src_width: u32, src_height: u32, max_width: i32, max_height: i32
     (width, height)
 }
 
-/// Port of `Load`. `None` when the pane is empty, the file can't be decoded,
-/// or the load is cancelled. Scaling uses a fast triangle filter rather than
-/// ImageSharp's bicubic resampler (KNOWN_DEVIATIONS.md).
+/// Loads, fits and encodes an image. `None` when the pane is empty, the
+/// file can't be decoded, or the load is cancelled. Scaling uses a fast
+/// triangle filter (KNOWN_DEVIATIONS.md).
 #[must_use]
 pub fn load(
     path: &str,
@@ -109,7 +109,6 @@ pub fn load(
 
 #[cfg(test)]
 mod tests {
-    //! Port of ImagePreviewTests.cs.
 
     use super::{ImageData, ImageProtocol};
     use super::{fit_size, is_image_file, load};

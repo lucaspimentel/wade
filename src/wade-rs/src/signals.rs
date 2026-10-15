@@ -1,6 +1,6 @@
-//! Rust only: SIGTERM and SIGHUP end wade the way `q` does, so the terminal
-//! leaves raw mode and the alternate screen (C# and the default action
-//! kill the process and leave the terminal unusable). The handler only
+//! SIGTERM and SIGHUP end wade the way `q` does, so the terminal leaves raw
+//! mode and the alternate screen (the default action kills the process and
+//! leaves the terminal unusable). The handler only
 //! records the signal; a watcher thread cancels the main loop, which then
 //! restores the terminal as on a normal exit.
 

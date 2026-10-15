@@ -1,5 +1,5 @@
-//! Port of the subset of src/Wade/Terminal/AnsiCodes.cs that the
-//! ScreenBuffer serializer needs.
+//! ANSI/VT escape sequences: cursor moves, colors, terminal modes and the
+//! window title.
 
 pub const RESET_ATTRIBUTES: &str = "\x1b[0m";
 
@@ -51,10 +51,10 @@ pub const CLEAR_TITLE: &str = "\x1b]0;\x07";
 /// Pop the title pushed by `SAVE_TITLE` (`CSI 23;0 t`).
 pub const RESTORE_TITLE: &str = "\x1b[23;0t";
 /// Exit: an empty title, then the saved one where the terminal has a title
-/// stack (Rust-only; C# only clears it).
+/// stack.
 pub const EXIT_TITLE: &str = "\x1b]0;\x07\x1b[23;0t";
 /// Title setting turned off: show the saved title again and push it back
-/// so exit can still pop it (Rust-only; C# only clears it).
+/// so exit can still pop it.
 pub const SHOW_SAVED_TITLE: &str = "\x1b]0;\x07\x1b[23;0t\x1b[22;0t";
 pub const ENABLE_MOUSE_REPORTING: &str = "\x1b[?1000h";
 pub const DISABLE_MOUSE_REPORTING: &str = "\x1b[?1000l";
@@ -71,7 +71,7 @@ pub fn move_cursor(row: i32, col: i32) -> String {
     out
 }
 
-/// Terminal title (OSC 0): `ESC ] 0 ; <title> BEL`. Port of `AnsiCodes.SetTitle`.
+/// Terminal title (OSC 0): `ESC ] 0 ; <title> BEL`.
 #[must_use]
 pub fn set_title(title: &str) -> String {
     format!("\u{1b}]0;{title}\u{7}")

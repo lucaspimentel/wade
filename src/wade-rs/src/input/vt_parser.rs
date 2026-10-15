@@ -1,8 +1,7 @@
-//! Port of `VtParser` (src/Wade/Terminal/UnixInputSource.cs): decodes the
-//! bytes a unix terminal sends in raw mode into key, mouse and paste
-//! events. Pure, so it is tested on every platform. C# keeps the
-//! bracketed-paste state in statics; here it lives in the parser instance
-//! (one per input source).
+//! Decodes the bytes a unix terminal sends in raw mode into key, mouse and
+//! paste events. Pure, so it is tested on every platform. The
+//! bracketed-paste state lives in the parser instance (one per input
+//! source).
 
 use super::{InputEvent, KeyEvent, MouseButton, MouseEvent};
 use crate::console_key::ConsoleKey;
@@ -11,7 +10,7 @@ use crate::console_key::ConsoleKey;
 pub struct VtParser {
     in_bracketed_paste: bool,
     paste_buffer: Vec<u8>,
-    /// Rust only: the unfinished end of the last read (an escape sequence
+    /// The unfinished end of the last read (an escape sequence
     /// or UTF-8 character cut by the read boundary, or a lone ESC), joined
     /// with the next read.
     pending: Vec<u8>,
@@ -30,9 +29,8 @@ impl VtParser {
         Self::default()
     }
 
-    /// Port of `VtParser.Parse`. Rust only: bytes that may be the start of
-    /// a sequence the next read completes are held back (`has_pending`);
-    /// C# decoded each read on its own and dropped what was cut off.
+    /// Decodes one read. Bytes that may be the start of a sequence the next
+    /// read completes are held back (`has_pending`).
     pub fn parse(&mut self, data: &[u8]) -> Vec<InputEvent> {
         let mut bytes = std::mem::take(&mut self.pending);
         bytes.extend_from_slice(data);
@@ -120,8 +118,8 @@ impl VtParser {
 
                 Some(3)
             }
-            // Rust only: ESC before a character is Alt+that character, as
-            // terminals send it (C# decoded Escape, then the character)
+            // ESC before a character is Alt+that character, as terminals
+            // send it
             ESC if (0x20..=0x7E).contains(&data[1]) => {
                 let c = data[1];
                 events.push(key(char_to_console_key(c), char::from(c), false, true, false));
@@ -187,7 +185,7 @@ impl VtParser {
     }
 
     /// Paste bytes up to `ESC[201~`. An end marker cut by the read boundary
-    /// is held back (Rust only: C# needed the whole marker in one read).
+    /// is held back.
     fn decode_paste(&mut self, data: &[u8], at_end: bool, events: &mut Vec<InputEvent>) -> Option<usize> {
         if let Some(end) = data.windows(PASTE_END.len()).position(|w| w == PASTE_END) {
             self.paste_buffer.extend_from_slice(&data[..end]);
@@ -211,7 +209,7 @@ impl VtParser {
         (take > 0).then_some(take)
     }
 
-    /// Port of `ParseCsi`: returns the bytes consumed after `ESC [`.
+    /// A CSI sequence: returns the bytes consumed after `ESC [`.
     fn parse_csi(&mut self, data: &[u8], events: &mut Vec<InputEvent>) -> usize {
         let mut i = 0;
 
@@ -282,7 +280,7 @@ impl VtParser {
     }
 }
 
-/// Port of `ParseCsiParams`: the first two `;`-separated numbers.
+/// The first two `;`-separated numbers.
 fn parse_csi_params(data: &[u8]) -> (i32, i32) {
     let mut param1 = 0i32;
     let mut current = 0i32;
@@ -301,7 +299,7 @@ fn parse_csi_params(data: &[u8]) -> (i32, i32) {
     if in_second { (param1, current) } else { (current, 0) }
 }
 
-/// Port of `ParseSgrMouse`.
+/// An SGR mouse report (`ESC [ < b ; x ; y M/m`).
 fn parse_sgr_mouse(params: &[u8], final_byte: u8) -> InputEvent {
     let (mut cb, mut cx, mut cy) = (0i32, 0i32, 0i32);
     let mut field = 0;
@@ -346,7 +344,7 @@ fn parse_sgr_mouse(params: &[u8], final_byte: u8) -> InputEvent {
     })
 }
 
-/// Port of `CharToConsoleKey`.
+/// The console key of a typed byte.
 fn char_to_console_key(b: u8) -> ConsoleKey {
     match b {
         b'a'..=b'z' => ConsoleKey(u16::from(b - b'a' + b'A')),
@@ -362,7 +360,7 @@ fn char_to_console_key(b: u8) -> ConsoleKey {
     }
 }
 
-/// Port of `Utf8SequenceLength`.
+/// The byte length of a UTF-8 sequence from its lead byte.
 const fn utf8_sequence_length(lead: u8) -> usize {
     if lead & 0xE0 == 0xC0 {
         2
@@ -375,9 +373,7 @@ const fn utf8_sequence_length(lead: u8) -> usize {
     }
 }
 
-/// Port of `DecodeUtf8Char`: the decoded character, U+FFFD when invalid
-/// or cut off. Rust only: the whole character (C# kept the first UTF-16
-/// unit, half of an emoji).
+/// The decoded character, U+FFFD when invalid or cut off.
 fn decode_utf8_char(bytes: &[u8]) -> char {
     std::str::from_utf8(bytes)
         .ok()

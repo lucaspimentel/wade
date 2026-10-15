@@ -1,7 +1,6 @@
-//! Port of the Windows half of src/Wade/Terminal/TerminalSetup.cs:
-//! VT output enable, raw input mode, UTF-8 code pages, the alternate
-//! screen, and WT_SESSION Sixel detection.
-//! The Unix termios half is deferred to Phase 9 (see docs/rust-port-plan.md).
+//! Windows terminal setup: VT output enable, raw input mode, UTF-8 code
+//! pages, the alternate screen, and WT_SESSION Sixel detection. Unix is in
+//! `terminal_setup_unix`.
 
 #![cfg(windows)]
 
@@ -11,8 +10,8 @@ use windows_sys::Win32::System::Console::{
     STD_OUTPUT_HANDLE, SetConsoleCP, SetConsoleMode, SetConsoleOutputCP, SetConsoleTitleW,
 };
 
-/// The console title before wade changed it, NUL-terminated (Rust-only:
-/// restored on exit and when the title setting is turned off).
+/// The console title before wade changed it, NUL-terminated (restored on
+/// exit and when the title setting is turned off).
 static ORIGINAL_TITLE: std::sync::OnceLock<Vec<u16>> = std::sync::OnceLock::new();
 
 fn save_console_title() {
@@ -49,8 +48,7 @@ const ENABLE_EXTENDED_FLAGS: u32 = 0x0080;
 
 pub use crate::terminal_caps::TerminalCapabilities;
 
-/// Applies Windows console modes. C# does this in the constructor and
-/// restores in `Dispose`; the Rust port mirrors that with `new`/`restore`.
+/// Applies Windows console modes in `new`; `restore` undoes them.
 pub struct TerminalSetup {
     original_input_mode: CONSOLE_MODE,
     original_output_mode: CONSOLE_MODE,
@@ -74,7 +72,7 @@ impl TerminalSetup {
         let mut original_input_mode: CONSOLE_MODE = 0;
         let (original_input_cp, original_output_cp);
         unsafe {
-            // C# Console.OutputEncoding/InputEncoding = UTF8
+            // UTF-8 input and output code pages
             original_input_cp = GetConsoleCP();
             original_output_cp = GetConsoleOutputCP();
             SetConsoleOutputCP(CP_UTF8);
@@ -135,7 +133,7 @@ impl TerminalSetup {
         self.capabilities
     }
 
-    /// Port of `Dispose`: leave the alternate screen, then restore the
+    /// Leave the alternate screen, then restore the
     /// console modes and code pages. Idempotent.
     pub fn restore(&mut self) {
         if self.restored {

@@ -1,11 +1,11 @@
-//! Port of `FuzzyScorer`: greedy subsequence scorer with boundary-aware
-//! scoring, inspired by fzf v1. Matches query characters in order against a
-//! target with gaps allowed; boundary bonuses (path separators, dots,
-//! camelCase) reward matches at meaningful positions.
+//! Greedy subsequence scorer with boundary-aware scoring, inspired by fzf v1.
+//! Matches query characters in order against a target with gaps allowed;
+//! boundary bonuses (path separators, dots, camelCase) reward matches at
+//! meaningful positions.
 //!
-//! Scores use the C# `int.MinValue` sentinel (`NO_MATCH`) for "not a match".
-//! Character classification approximates .NET's `char` methods with std
-//! (exact for ASCII; see KNOWN_DEVIATIONS.md).
+//! Scores use the `i32::MIN` sentinel (`NO_MATCH`) for "not a match".
+//! Character classification is exact for ASCII and uses std's Unicode
+//! properties elsewhere (KNOWN_DEVIATIONS.md).
 
 use super::is_separator;
 use super::query::QueryMode;
@@ -192,7 +192,7 @@ pub fn exact_score_with_file_name_priority_positions(
     )
 }
 
-/// Rust-only: scores one query term (any mode) against a relative path with
+/// Scores one query term (any mode) against a relative path with
 /// filename priority. Returns the score before the depth penalty (so terms
 /// can be summed) and positions into the full relative path.
 #[must_use]
@@ -693,17 +693,17 @@ mod tests {
 
     #[test]
     fn non_ascii_case_mapping() {
-        // İ lowercases to i (the .NET simple mapping), so "i" matches it
+        // İ lowercases to i (the simple mapping), so "i" matches it
         assert!(s("i", "\u{130}") > NO_MATCH);
-        // ß has no single-char uppercase: OrdinalIgnoreCase keeps it distinct from "s"
+        // ß has no single-char uppercase: case folding keeps it distinct from "s"
         assert_eq!(exact_score(&c("s"), &c("\u{df}"), false), NO_MATCH);
         assert!(exact_score(&c("\u{e9}"), &c("\u{c9}"), false) > NO_MATCH);
     }
 
-    /// Exact parity with C#: every case in tests/golden/search/scorer.cases.txt
-    /// must reproduce the score and positions C# wrote to scorer.golden.txt.
+    /// Every case in the frozen tests/golden/search/scorer.cases.txt must
+    /// reproduce the score and positions in scorer.golden.txt.
     #[test]
-    fn scorer_cases_match_csharp_golden() {
+    fn scorer_cases_match_golden() {
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/golden/search");
         let cases = std::fs::read_to_string(dir.join("scorer.cases.txt")).unwrap();
         let golden = std::fs::read_to_string(dir.join("scorer.golden.txt")).unwrap().replace("\r\n", "\n");
