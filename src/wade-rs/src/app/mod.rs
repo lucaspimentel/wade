@@ -44,7 +44,7 @@ const MAX_EVENTS_PER_FRAME: usize = 256;
 
 /// The saved settings: the keys of `config.toml`, edited by the config
 /// dialog. Per-run inputs live in `StartOptions`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AppConfig {
     /// `icons = nerd|unicode|emoji|ascii|none` (Rust-only; replaces the C#
     /// `show_icons_enabled`, which still loads as nerd or none).

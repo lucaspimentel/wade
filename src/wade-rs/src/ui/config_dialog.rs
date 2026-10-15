@@ -1,46 +1,21 @@
-//! Port of `src/Wade/UI/ConfigItem.cs` and `src/Wade/UI/ConfigDialogState.cs`:
-//! the data-driven config dialog state. The C# model uses closures
-//! (`FormatValue: Func<string>`, `Toggle: Action`, `EnabledWhen: Func<bool>`);
-//! the Rust port models each item as a `ConfigField` + `ConfigGate` pair and
-//! dispatches on those, which is equivalent and borrow-checker friendly.
+//! The config dialog (`,`): a list of rows over a draft copy of the
+//! settings, saved back on close. Each row names the setting it edits and
+//! the gate that greys it out.
 
-use crate::fs::directory_contents::SortMode;
-use crate::ui::file_icons::IconSet;
+use crate::app::AppConfig;
 
-/// Identifies which `ConfigDialogState` setting an item edits.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ConfigField {
+/// The setting a row edits.
+#[derive(Clone, Copy)]
+pub enum Setting {
+    /// Cycles through the icon sets.
     Icons,
-    ImagePreviews,
-    ShowHiddenFiles,
-    ShowSystemFiles,
+    /// Cycles through the sort modes.
     SortMode,
-    SortAscending,
-    ConfirmDelete,
-    ParentPane,
-    PreviewPane,
-    SizeColumn,
-    DateColumn,
-    ColumnHeaders,
-    ZipPreview,
-    PdfPreview,
-    PdfMetadata,
-    MarkdownPreview,
-    CsvPreview,
-    Ffprobe,
-    Mediainfo,
-    CopySymlinksAsLinks,
-    TerminalTitle,
-    GitStatus,
-    FileMetadata,
-    FilePreviews,
-    ArchiveMetadata,
-    DirSizeSsd,
-    DirSizeHdd,
-    DirSizeNetwork,
+    /// An on/off setting.
+    Flag(fn(&mut AppConfig) -> &mut bool),
 }
 
-/// Mirrors the C# `EnabledWhen` predicates. `None` means always enabled.
+/// When a row is enabled; the others are greyed out and skipped.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ConfigGate {
     None,
@@ -51,219 +26,65 @@ pub enum ConfigGate {
     FilePreviews,
 }
 
-/// Port of `ConfigItem` (pure data; behavior dispatched on `field`).
 pub struct ConfigItem {
     pub label: &'static str,
     pub indent: usize,
-    pub field: ConfigField,
+    pub setting: Setting,
     pub gate: ConfigGate,
 }
 
 impl ConfigItem {
-    fn new(label: &'static str, indent: usize, field: ConfigField, gate: ConfigGate) -> Self {
-        Self { label, indent, field, gate }
+    fn new(label: &'static str, indent: usize, setting: Setting, gate: ConfigGate) -> Self {
+        Self { label, indent, setting, gate }
+    }
+
+    fn flag(label: &'static str, indent: usize, flag: fn(&mut AppConfig) -> &mut bool, gate: ConfigGate) -> Self {
+        Self::new(label, indent, Setting::Flag(flag), gate)
     }
 }
 
-/// Port of `ConfigDialogState`.
 pub struct ConfigDialogState {
-    pub icon_set: IconSet,
-    pub image_previews: bool,
-    pub show_hidden_files: bool,
-    pub show_system_files: bool,
-    pub sort_mode: SortMode,
-    pub sort_ascending: bool,
-    pub confirm_delete: bool,
-    pub parent_pane: bool,
-    pub preview_pane: bool,
-    pub size_column: bool,
-    pub date_column: bool,
-    pub column_headers: bool,
-    pub zip_preview: bool,
-    pub pdf_preview: bool,
-    pub pdf_metadata: bool,
-    pub markdown_preview: bool,
-    pub csv_preview: bool,
-    pub ffprobe: bool,
-    pub mediainfo: bool,
-    pub copy_symlinks_as_links: bool,
-    pub terminal_title: bool,
-    pub git_status: bool,
-    pub file_metadata: bool,
-    pub file_previews: bool,
-    pub archive_metadata: bool,
-    pub dir_size_ssd: bool,
-    pub dir_size_hdd: bool,
-    pub dir_size_network: bool,
-
+    /// The settings being edited; copied back by `apply_to`.
+    pub draft: AppConfig,
     pub items: Vec<ConfigItem>,
     pub selected_index: usize,
 }
 
 impl ConfigDialogState {
-    /// Port of `ConfigDialogState.FromConfig(AppConfig)`.
     #[must_use]
-    pub fn from_app_config(config: &crate::app::AppConfig) -> Self {
-        let mut state = Self {
-            icon_set: config.icon_set,
-            image_previews: config.image_previews_enabled,
-            show_hidden_files: config.show_hidden_files,
-            show_system_files: config.show_system_files,
-            sort_mode: config.sort_mode,
-            sort_ascending: config.sort_ascending,
-            confirm_delete: config.confirm_delete_enabled,
-            parent_pane: config.parent_pane_enabled,
-            preview_pane: config.preview_pane_enabled,
-            size_column: config.size_column_enabled,
-            date_column: config.date_column_enabled,
-            column_headers: config.column_headers_enabled,
-            zip_preview: config.zip_preview_enabled,
-            pdf_preview: config.pdf_preview_enabled,
-            pdf_metadata: config.pdf_metadata_enabled,
-            markdown_preview: config.markdown_preview_enabled,
-            csv_preview: config.csv_preview_enabled,
-            ffprobe: config.ffprobe_enabled,
-            mediainfo: config.mediainfo_enabled,
-            copy_symlinks_as_links: config.copy_symlinks_as_links_enabled,
-            terminal_title: config.terminal_title_enabled,
-            git_status: config.git_status_enabled,
-            file_metadata: config.file_metadata_enabled,
-            file_previews: config.file_previews_enabled,
-            archive_metadata: config.archive_metadata_enabled,
-            dir_size_ssd: config.dir_size_ssd_enabled,
-            dir_size_hdd: config.dir_size_hdd_enabled,
-            dir_size_network: config.dir_size_network_enabled,
-            items: Vec::new(),
+    pub fn from_app_config(config: &AppConfig) -> Self {
+        Self {
+            draft: *config,
+            items: build_items(),
             selected_index: 0,
-        };
-
-        state.build_items();
-        state
+        }
     }
 
-    /// Port of `ApplyTo(WadeConfig)`: copies the dialog state into the config,
-    /// including the `ShowSystemFiles = ShowHiddenFiles && ShowSystemFiles`
-    /// clamp with write-back into the dialog state.
-    pub fn apply_to(&mut self, config: &mut crate::app::AppConfig) {
-        config.icon_set = self.icon_set;
-        config.image_previews_enabled = self.image_previews;
-        config.show_hidden_files = self.show_hidden_files;
-        config.show_system_files = self.show_hidden_files && self.show_system_files;
-        self.show_system_files = config.show_system_files;
-        config.sort_mode = self.sort_mode;
-        config.sort_ascending = self.sort_ascending;
-        config.confirm_delete_enabled = self.confirm_delete;
-        config.parent_pane_enabled = self.parent_pane;
-        config.preview_pane_enabled = self.preview_pane;
-        config.size_column_enabled = self.size_column;
-        config.date_column_enabled = self.date_column;
-        config.column_headers_enabled = self.column_headers;
-        config.zip_preview_enabled = self.zip_preview;
-        config.pdf_preview_enabled = self.pdf_preview;
-        config.pdf_metadata_enabled = self.pdf_metadata;
-        config.markdown_preview_enabled = self.markdown_preview;
-        config.csv_preview_enabled = self.csv_preview;
-        config.ffprobe_enabled = self.ffprobe;
-        config.mediainfo_enabled = self.mediainfo;
-        config.copy_symlinks_as_links_enabled = self.copy_symlinks_as_links;
-        config.terminal_title_enabled = self.terminal_title;
-        config.git_status_enabled = self.git_status;
-        config.file_metadata_enabled = self.file_metadata;
-        config.file_previews_enabled = self.file_previews;
-        config.archive_metadata_enabled = self.archive_metadata;
-        config.dir_size_ssd_enabled = self.dir_size_ssd;
-        config.dir_size_hdd_enabled = self.dir_size_hdd;
-        config.dir_size_network_enabled = self.dir_size_network;
+    /// Copies the draft into `config`. System files show only with hidden
+    /// files, so that setting is cleared in both when hidden files are off.
+    pub fn apply_to(&mut self, config: &mut AppConfig) {
+        self.draft.show_system_files &= self.draft.show_hidden_files;
+        *config = self.draft;
     }
 
-    /// Port of `BuildItems`: the exact C# item order and gating. The
-    /// Windows-only "Show System Files" item is behind `#[cfg(windows)]`,
-    /// matching the C# `OperatingSystem.IsWindows()` check (both sides omit
-    /// it on non-Windows, so golden parity holds per-platform).
-    fn build_items(&mut self) {
-        let mut items = vec![
-            ConfigItem::new("Icons", 0, ConfigField::Icons, ConfigGate::None),
-            ConfigItem::new("Show Hidden Files", 0, ConfigField::ShowHiddenFiles, ConfigGate::None),
-        ];
-
-        #[cfg(windows)]
-        items.push(ConfigItem::new("Show System Files", 1, ConfigField::ShowSystemFiles, ConfigGate::HiddenFiles));
-
-        items.extend([
-            ConfigItem::new("Sort Mode", 0, ConfigField::SortMode, ConfigGate::None),
-            ConfigItem::new("Sort Ascending", 0, ConfigField::SortAscending, ConfigGate::None),
-            ConfigItem::new("Show Size Column", 0, ConfigField::SizeColumn, ConfigGate::None),
-            ConfigItem::new("Directory Sizes on SSD", 1, ConfigField::DirSizeSsd, ConfigGate::SizeColumn),
-            ConfigItem::new("Directory Sizes on HDD", 1, ConfigField::DirSizeHdd, ConfigGate::SizeColumn),
-            ConfigItem::new("Directory Sizes on Network", 1, ConfigField::DirSizeNetwork, ConfigGate::SizeColumn),
-            ConfigItem::new("Show Date Column", 0, ConfigField::DateColumn, ConfigGate::None),
-            ConfigItem::new("Show Column Headers", 0, ConfigField::ColumnHeaders, ConfigGate::None),
-            ConfigItem::new("Confirm Delete", 0, ConfigField::ConfirmDelete, ConfigGate::None),
-            ConfigItem::new("Copy Symlinks as Link", 0, ConfigField::CopySymlinksAsLinks, ConfigGate::None),
-            ConfigItem::new("Change Terminal Title", 0, ConfigField::TerminalTitle, ConfigGate::None),
-            ConfigItem::new("Show Git Status", 0, ConfigField::GitStatus, ConfigGate::None),
-            ConfigItem::new("Show Left Pane", 0, ConfigField::ParentPane, ConfigGate::None),
-            ConfigItem::new("Show Right Pane", 0, ConfigField::PreviewPane, ConfigGate::None),
-            ConfigItem::new("Show File Details", 1, ConfigField::FileMetadata, ConfigGate::PreviewPane),
-            ConfigItem::new(
-                "Show Archive Details",
-                2,
-                ConfigField::ArchiveMetadata,
-                ConfigGate::PreviewPaneAndFileMetadata,
-            ),
-            ConfigItem::new(
-                "Show PDF Details (pdfinfo)",
-                2,
-                ConfigField::PdfMetadata,
-                ConfigGate::PreviewPaneAndFileMetadata,
-            ),
-            ConfigItem::new(
-                "Show Media Details (ffprobe)",
-                2,
-                ConfigField::Ffprobe,
-                ConfigGate::PreviewPaneAndFileMetadata,
-            ),
-            ConfigItem::new(
-                "Show Media Details (mediainfo)",
-                2,
-                ConfigField::Mediainfo,
-                ConfigGate::PreviewPaneAndFileMetadata,
-            ),
-            ConfigItem::new("Show File Previews", 0, ConfigField::FilePreviews, ConfigGate::None),
-            ConfigItem::new("Show Image Previews", 1, ConfigField::ImagePreviews, ConfigGate::FilePreviews),
-            ConfigItem::new("Show PDF Previews (pdftopng)", 1, ConfigField::PdfPreview, ConfigGate::FilePreviews),
-            ConfigItem::new("Show Archive Contents", 1, ConfigField::ZipPreview, ConfigGate::FilePreviews),
-            ConfigItem::new(
-                "Show Markdown Preview (built-in)",
-                1,
-                ConfigField::MarkdownPreview,
-                ConfigGate::FilePreviews,
-            ),
-            // Rust only
-            ConfigItem::new("Show CSV/TSV Tables", 1, ConfigField::CsvPreview, ConfigGate::FilePreviews),
-        ]);
-
-        self.items = items;
-    }
-
-    /// Port of `IsEnabled`.
     #[must_use]
     pub fn is_enabled(&self, index: usize) -> bool {
         let Some(item) = self.items.get(index) else {
             return false;
         };
 
+        let draft = &self.draft;
         match item.gate {
             ConfigGate::None => true,
-            ConfigGate::HiddenFiles => self.show_hidden_files,
-            ConfigGate::SizeColumn => self.size_column,
-            ConfigGate::PreviewPane => self.preview_pane,
-            ConfigGate::PreviewPaneAndFileMetadata => self.preview_pane && self.file_metadata,
-            ConfigGate::FilePreviews => self.file_previews,
+            ConfigGate::HiddenFiles => draft.show_hidden_files,
+            ConfigGate::SizeColumn => draft.size_column_enabled,
+            ConfigGate::PreviewPane => draft.preview_pane_enabled,
+            ConfigGate::PreviewPaneAndFileMetadata => draft.preview_pane_enabled && draft.file_metadata_enabled,
+            ConfigGate::FilePreviews => draft.file_previews_enabled,
         }
     }
 
-    /// Port of `MoveUp`: previous enabled item, wrapping to the last enabled
+    /// Previous enabled item, wrapping to the last enabled
     /// item before the current selection when none precede it.
     pub fn move_up(&mut self) {
         let mut prev = self.selected_index as isize - 1;
@@ -285,7 +106,7 @@ impl ConfigDialogState {
         }
     }
 
-    /// Port of `MoveDown`: next enabled item, wrapping to the first enabled
+    /// Next enabled item, wrapping to the first enabled
     /// item after the start when none follow it.
     pub fn move_down(&mut self) {
         let max_index = self.items.len() - 1;
@@ -308,117 +129,112 @@ impl ConfigDialogState {
         }
     }
 
-    /// Port of `ToggleSelected`.
     pub fn toggle_selected(&mut self) {
         self.toggle(self.selected_index);
     }
 
-    /// Toggle the item at `index` (the `Toggle` delegate).
+    /// Enter or Space: flips a flag, or steps a cycling row forward.
     pub fn toggle(&mut self, index: usize) {
-        let Some(field) = self.items.get(index).map(|item| item.field) else {
+        let Some(setting) = self.items.get(index).map(|item| item.setting) else {
             return;
         };
 
-        match field {
-            ConfigField::Icons => self.icon_set = self.icon_set.next(),
-            ConfigField::ImagePreviews => self.image_previews = !self.image_previews,
-            ConfigField::ShowHiddenFiles => self.show_hidden_files = !self.show_hidden_files,
-            ConfigField::ShowSystemFiles => self.show_system_files = !self.show_system_files,
-            ConfigField::SortMode => self.sort_mode = self.sort_mode.next(),
-            ConfigField::SortAscending => self.sort_ascending = !self.sort_ascending,
-            ConfigField::ConfirmDelete => self.confirm_delete = !self.confirm_delete,
-            ConfigField::ParentPane => self.parent_pane = !self.parent_pane,
-            ConfigField::PreviewPane => self.preview_pane = !self.preview_pane,
-            ConfigField::SizeColumn => self.size_column = !self.size_column,
-            ConfigField::DateColumn => self.date_column = !self.date_column,
-            ConfigField::ColumnHeaders => self.column_headers = !self.column_headers,
-            ConfigField::ZipPreview => self.zip_preview = !self.zip_preview,
-            ConfigField::PdfPreview => self.pdf_preview = !self.pdf_preview,
-            ConfigField::PdfMetadata => self.pdf_metadata = !self.pdf_metadata,
-            ConfigField::MarkdownPreview => self.markdown_preview = !self.markdown_preview,
-            ConfigField::CsvPreview => self.csv_preview = !self.csv_preview,
-            ConfigField::Ffprobe => self.ffprobe = !self.ffprobe,
-            ConfigField::Mediainfo => self.mediainfo = !self.mediainfo,
-            ConfigField::CopySymlinksAsLinks => self.copy_symlinks_as_links = !self.copy_symlinks_as_links,
-            ConfigField::TerminalTitle => self.terminal_title = !self.terminal_title,
-            ConfigField::GitStatus => self.git_status = !self.git_status,
-            ConfigField::FileMetadata => self.file_metadata = !self.file_metadata,
-            ConfigField::FilePreviews => self.file_previews = !self.file_previews,
-            ConfigField::ArchiveMetadata => self.archive_metadata = !self.archive_metadata,
-            ConfigField::DirSizeSsd => self.dir_size_ssd = !self.dir_size_ssd,
-            ConfigField::DirSizeHdd => self.dir_size_hdd = !self.dir_size_hdd,
-            ConfigField::DirSizeNetwork => self.dir_size_network = !self.dir_size_network,
+        match setting {
+            Setting::Icons => self.draft.icon_set = self.draft.icon_set.next(),
+            Setting::SortMode => self.draft.sort_mode = self.draft.sort_mode.next(),
+            Setting::Flag(flag) => {
+                let value = flag(&mut self.draft);
+                *value = !*value;
+            }
         }
     }
 
-    /// Port of `CycleNextSelected` (Sort Mode and the Rust-only Icons are
-    /// cycleable).
+    /// Right arrow: steps a cycling row forward; flags are unchanged.
     pub fn cycle_next_selected(&mut self) {
-        match self.items.get(self.selected_index).map(|item| item.field) {
-            Some(ConfigField::SortMode) => self.sort_mode = self.sort_mode.next(),
-            Some(ConfigField::Icons) => self.icon_set = self.icon_set.next(),
+        match self.items.get(self.selected_index).map(|item| item.setting) {
+            Some(Setting::SortMode) => self.draft.sort_mode = self.draft.sort_mode.next(),
+            Some(Setting::Icons) => self.draft.icon_set = self.draft.icon_set.next(),
             _ => {}
         }
     }
 
-    /// Port of `CyclePrevSelected`.
+    /// Left arrow: steps a cycling row back; flags are unchanged.
     pub fn cycle_prev_selected(&mut self) {
-        match self.items.get(self.selected_index).map(|item| item.field) {
-            Some(ConfigField::SortMode) => self.sort_mode = self.sort_mode.prev(),
-            Some(ConfigField::Icons) => self.icon_set = self.icon_set.prev(),
+        match self.items.get(self.selected_index).map(|item| item.setting) {
+            Some(Setting::SortMode) => self.draft.sort_mode = self.draft.sort_mode.prev(),
+            Some(Setting::Icons) => self.draft.icon_set = self.draft.icon_set.prev(),
             _ => {}
         }
     }
 
-    /// Port of `item.FormatValue()`.
+    /// The value column: `◄ name ►` for cycling rows, `[X]`/`[ ]` for flags.
     #[must_use]
     pub fn format_value(&self, index: usize) -> String {
         let Some(item) = self.items.get(index) else {
             return String::new();
         };
 
-        match item.field {
-            ConfigField::SortMode => format!("\u{25c4} {} \u{25ba}", self.sort_mode.name()),
-            ConfigField::Icons => format!("\u{25c4} {} \u{25ba}", self.icon_set.name()),
-            _ => format_bool(self.get_field(item.field)).to_string(),
-        }
-    }
-
-    fn get_field(&self, field: ConfigField) -> bool {
-        match field {
-            ConfigField::Icons => false, // the icon set renders its own value
-            ConfigField::ImagePreviews => self.image_previews,
-            ConfigField::ShowHiddenFiles => self.show_hidden_files,
-            ConfigField::ShowSystemFiles => self.show_system_files,
-            ConfigField::SortMode => false, // sort mode renders its own value
-            ConfigField::SortAscending => self.sort_ascending,
-            ConfigField::ConfirmDelete => self.confirm_delete,
-            ConfigField::ParentPane => self.parent_pane,
-            ConfigField::PreviewPane => self.preview_pane,
-            ConfigField::SizeColumn => self.size_column,
-            ConfigField::DateColumn => self.date_column,
-            ConfigField::ColumnHeaders => self.column_headers,
-            ConfigField::ZipPreview => self.zip_preview,
-            ConfigField::PdfPreview => self.pdf_preview,
-            ConfigField::PdfMetadata => self.pdf_metadata,
-            ConfigField::MarkdownPreview => self.markdown_preview,
-            ConfigField::CsvPreview => self.csv_preview,
-            ConfigField::Ffprobe => self.ffprobe,
-            ConfigField::Mediainfo => self.mediainfo,
-            ConfigField::CopySymlinksAsLinks => self.copy_symlinks_as_links,
-            ConfigField::TerminalTitle => self.terminal_title,
-            ConfigField::GitStatus => self.git_status,
-            ConfigField::FileMetadata => self.file_metadata,
-            ConfigField::FilePreviews => self.file_previews,
-            ConfigField::ArchiveMetadata => self.archive_metadata,
-            ConfigField::DirSizeSsd => self.dir_size_ssd,
-            ConfigField::DirSizeHdd => self.dir_size_hdd,
-            ConfigField::DirSizeNetwork => self.dir_size_network,
+        match item.setting {
+            Setting::SortMode => format!("\u{25c4} {} \u{25ba}", self.draft.sort_mode.name()),
+            Setting::Icons => format!("\u{25c4} {} \u{25ba}", self.draft.icon_set.name()),
+            Setting::Flag(flag) => format_bool(*flag(&mut { self.draft })).to_string(),
         }
     }
 }
 
-/// Port of `ConfigDialogState.FormatBool`.
+/// The rows in display order. "Show System Files" is Windows-only.
+fn build_items() -> Vec<ConfigItem> {
+    use ConfigGate as G;
+
+    let mut items = vec![
+        ConfigItem::new("Icons", 0, Setting::Icons, G::None),
+        ConfigItem::flag("Show Hidden Files", 0, |c| &mut c.show_hidden_files, G::None),
+    ];
+
+    #[cfg(windows)]
+    items.push(ConfigItem::flag("Show System Files", 1, |c| &mut c.show_system_files, G::HiddenFiles));
+
+    items.extend([
+        ConfigItem::new("Sort Mode", 0, Setting::SortMode, G::None),
+        ConfigItem::flag("Sort Ascending", 0, |c| &mut c.sort_ascending, G::None),
+        ConfigItem::flag("Show Size Column", 0, |c| &mut c.size_column_enabled, G::None),
+        ConfigItem::flag("Directory Sizes on SSD", 1, |c| &mut c.dir_size_ssd_enabled, G::SizeColumn),
+        ConfigItem::flag("Directory Sizes on HDD", 1, |c| &mut c.dir_size_hdd_enabled, G::SizeColumn),
+        ConfigItem::flag("Directory Sizes on Network", 1, |c| &mut c.dir_size_network_enabled, G::SizeColumn),
+        ConfigItem::flag("Show Date Column", 0, |c| &mut c.date_column_enabled, G::None),
+        ConfigItem::flag("Show Column Headers", 0, |c| &mut c.column_headers_enabled, G::None),
+        ConfigItem::flag("Confirm Delete", 0, |c| &mut c.confirm_delete_enabled, G::None),
+        ConfigItem::flag("Copy Symlinks as Link", 0, |c| &mut c.copy_symlinks_as_links_enabled, G::None),
+        ConfigItem::flag("Change Terminal Title", 0, |c| &mut c.terminal_title_enabled, G::None),
+        ConfigItem::flag("Show Git Status", 0, |c| &mut c.git_status_enabled, G::None),
+        ConfigItem::flag("Show Left Pane", 0, |c| &mut c.parent_pane_enabled, G::None),
+        ConfigItem::flag("Show Right Pane", 0, |c| &mut c.preview_pane_enabled, G::None),
+        ConfigItem::flag("Show File Details", 1, |c| &mut c.file_metadata_enabled, G::PreviewPane),
+        ConfigItem::flag("Show Archive Details", 2, |c| &mut c.archive_metadata_enabled, G::PreviewPaneAndFileMetadata),
+        ConfigItem::flag(
+            "Show PDF Details (pdfinfo)",
+            2,
+            |c| &mut c.pdf_metadata_enabled,
+            G::PreviewPaneAndFileMetadata,
+        ),
+        ConfigItem::flag("Show Media Details (ffprobe)", 2, |c| &mut c.ffprobe_enabled, G::PreviewPaneAndFileMetadata),
+        ConfigItem::flag(
+            "Show Media Details (mediainfo)",
+            2,
+            |c| &mut c.mediainfo_enabled,
+            G::PreviewPaneAndFileMetadata,
+        ),
+        ConfigItem::flag("Show File Previews", 0, |c| &mut c.file_previews_enabled, G::None),
+        ConfigItem::flag("Show Image Previews", 1, |c| &mut c.image_previews_enabled, G::FilePreviews),
+        ConfigItem::flag("Show PDF Previews (pdftopng)", 1, |c| &mut c.pdf_preview_enabled, G::FilePreviews),
+        ConfigItem::flag("Show Archive Contents", 1, |c| &mut c.zip_preview_enabled, G::FilePreviews),
+        ConfigItem::flag("Show Markdown Preview (built-in)", 1, |c| &mut c.markdown_preview_enabled, G::FilePreviews),
+        ConfigItem::flag("Show CSV/TSV Tables", 1, |c| &mut c.csv_preview_enabled, G::FilePreviews),
+    ]);
+
+    items
+}
+
 #[must_use]
 pub fn format_bool(value: bool) -> &'static str {
     if value { "[X]" } else { "[ ]" }
@@ -427,6 +243,8 @@ pub fn format_bool(value: bool) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fs::directory_contents::SortMode;
+    use crate::ui::file_icons::IconSet;
 
     fn default_state() -> ConfigDialogState {
         ConfigDialogState::from_app_config(&crate::app::AppConfig::default())
@@ -481,22 +299,22 @@ mod tests {
         let hdd = index_of("Directory Sizes on HDD", &state);
         assert!(state.is_enabled(hdd));
 
-        state.size_column = false;
+        state.draft.size_column_enabled = false;
         assert!(!state.is_enabled(hdd));
 
-        state.size_column = true;
+        state.draft.size_column_enabled = true;
         assert!(state.is_enabled(hdd));
 
         let file_details = index_of("Show File Details", &state);
         assert!(state.is_enabled(file_details));
-        state.preview_pane = false;
+        state.draft.preview_pane_enabled = false;
         assert!(!state.is_enabled(file_details));
 
         let archive_details = index_of("Show Archive Details", &state);
-        state.preview_pane = true;
-        state.file_metadata = false;
+        state.draft.preview_pane_enabled = true;
+        state.draft.file_metadata_enabled = false;
         assert!(!state.is_enabled(archive_details));
-        state.file_metadata = true;
+        state.draft.file_metadata_enabled = true;
         assert!(state.is_enabled(archive_details));
     }
 
@@ -511,7 +329,7 @@ mod tests {
         let date_column = index_of("Show Date Column", &state);
 
         // With Size Column off, the three dir-size items are skipped
-        state.size_column = false;
+        state.draft.size_column_enabled = false;
         state.selected_index = size_column;
         state.move_down();
         assert_eq!(state.selected_index, date_column);
@@ -525,7 +343,7 @@ mod tests {
     #[test]
     fn move_up_wraps_to_last_enabled() {
         let mut state = default_state();
-        state.size_column = false;
+        state.draft.size_column_enabled = false;
         state.selected_index = 0; // Icons (enabled)
         state.move_up();
         // Wraps to the last item (Show CSV/TSV Tables, enabled)
@@ -535,46 +353,49 @@ mod tests {
     #[test]
     fn toggle_and_cycle() {
         let mut state = default_state();
-        assert_eq!(state.icon_set, IconSet::Nerd);
+        assert_eq!(state.draft.icon_set, IconSet::Nerd);
         state.toggle_selected(); // Icons: Enter steps forward
-        assert_eq!(state.icon_set, IconSet::Unicode);
+        assert_eq!(state.draft.icon_set, IconSet::Unicode);
         state.cycle_next_selected();
-        assert_eq!(state.icon_set, IconSet::Emoji);
+        assert_eq!(state.draft.icon_set, IconSet::Emoji);
         state.cycle_prev_selected();
         state.cycle_prev_selected();
         state.cycle_prev_selected();
-        assert_eq!(state.icon_set, IconSet::None, "wraps backwards");
+        assert_eq!(state.draft.icon_set, IconSet::None, "wraps backwards");
         assert_eq!(state.format_value(0), "\u{25c4} none \u{25ba}");
 
-        state.selected_index =
-            state.items.iter().position(|item| item.field == ConfigField::SortMode).expect("sort mode item");
-        assert_eq!(state.sort_mode, SortMode::Name);
+        state.selected_index = state
+            .items
+            .iter()
+            .position(|item| matches!(item.setting, Setting::SortMode))
+            .expect("sort mode item");
+        assert_eq!(state.draft.sort_mode, SortMode::Name);
         state.cycle_next_selected();
-        assert_eq!(state.sort_mode, SortMode::Modified);
+        assert_eq!(state.draft.sort_mode, SortMode::Modified);
         state.cycle_prev_selected();
-        assert_eq!(state.sort_mode, SortMode::Name);
-        assert_eq!(state.icon_set, IconSet::None, "sort mode cycling leaves the icon set alone");
+        assert_eq!(state.draft.sort_mode, SortMode::Name);
+        assert_eq!(state.draft.icon_set, IconSet::None, "sort mode cycling leaves the icon set alone");
 
         // Cycle on a bool item is a no-op (not cycleable)
         state.selected_index = index_of(&state, "Show Hidden Files");
         state.cycle_next_selected();
-        assert_eq!(state.sort_mode, SortMode::Name);
-        assert!(!state.show_hidden_files);
+        assert_eq!(state.draft.sort_mode, SortMode::Name);
+        assert!(!state.draft.show_hidden_files);
     }
 
     #[test]
     fn apply_to_clamps_system_files() {
         let mut config = crate::app::AppConfig::default();
         let mut state = ConfigDialogState::from_app_config(&config);
-        state.show_hidden_files = false;
-        state.show_system_files = true;
+        state.draft.show_hidden_files = false;
+        state.draft.show_system_files = true;
         state.apply_to(&mut config);
         // Clamped: system files require hidden files
         assert!(!config.show_system_files);
-        assert!(!state.show_system_files);
+        assert!(!state.draft.show_system_files);
 
-        state.show_hidden_files = true;
-        state.show_system_files = true;
+        state.draft.show_hidden_files = true;
+        state.draft.show_system_files = true;
         state.apply_to(&mut config);
         assert!(config.show_system_files);
     }
@@ -586,7 +407,7 @@ mod tests {
     #[test]
     fn move_up_skips_disabled_items() {
         let mut state = default_state();
-        state.size_column = false;
+        state.draft.size_column_enabled = false;
         state.selected_index = index_of(&state, "Show Date Column");
         state.move_up();
         assert_eq!(state.selected_index, index_of(&state, "Show Size Column"));
@@ -596,9 +417,9 @@ mod tests {
     fn toggling_a_tool_item_flips_it() {
         let mut state = default_state();
         state.selected_index = index_of(&state, "Show PDF Details (pdfinfo)");
-        let before = state.pdf_metadata;
+        let before = state.draft.pdf_metadata_enabled;
         state.toggle_selected();
-        assert_eq!(state.pdf_metadata, !before);
+        assert_eq!(state.draft.pdf_metadata_enabled, !before);
         assert_eq!(state.format_value(state.selected_index), format_bool(!before));
     }
 
@@ -609,14 +430,14 @@ mod tests {
         let mut seen = Vec::new();
         for _ in 0..4 {
             state.cycle_next_selected();
-            seen.push(state.sort_mode);
+            seen.push(state.draft.sort_mode);
         }
         assert_eq!(seen, [SortMode::Modified, SortMode::Size, SortMode::Extension, SortMode::Name]);
 
         seen.clear();
         for _ in 0..4 {
             state.cycle_prev_selected();
-            seen.push(state.sort_mode);
+            seen.push(state.draft.sort_mode);
         }
         assert_eq!(seen, [SortMode::Extension, SortMode::Size, SortMode::Modified, SortMode::Name]);
     }
@@ -642,16 +463,16 @@ mod tests {
         };
 
         assert_eq!(enabled(&state, &details), [true; 4]);
-        state.file_metadata = false;
+        state.draft.file_metadata_enabled = false;
         assert_eq!(enabled(&state, &details), [false; 4]);
-        state.file_metadata = true;
-        state.preview_pane = false;
+        state.draft.file_metadata_enabled = true;
+        state.draft.preview_pane_enabled = false;
         assert_eq!(enabled(&state, &details), [false; 4]);
 
         assert_eq!(enabled(&state, &previews), [true; 5], "previews do not depend on the right pane");
-        state.file_previews = false;
+        state.draft.file_previews_enabled = false;
         assert_eq!(enabled(&state, &previews), [false; 5]);
-        state.file_previews = true;
+        state.draft.file_previews_enabled = true;
         assert_eq!(enabled(&state, &previews), [true; 5]);
     }
 
@@ -693,10 +514,13 @@ mod tests {
         assert_eq!(format_bool(false), "[ ]");
 
         let mut state = default_state();
-        let sort_index =
-            state.items.iter().position(|item| item.field == ConfigField::SortMode).expect("sort mode item");
+        let sort_index = state
+            .items
+            .iter()
+            .position(|item| matches!(item.setting, Setting::SortMode))
+            .expect("sort mode item");
         assert_eq!(state.format_value(sort_index), "\u{25c4} name \u{25ba}");
-        state.sort_mode = SortMode::Extension;
+        state.draft.sort_mode = SortMode::Extension;
         assert_eq!(state.format_value(sort_index), "\u{25c4} extension \u{25ba}");
     }
 }

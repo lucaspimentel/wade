@@ -691,7 +691,7 @@ mediainfo_enabled = true
         save_config(
             &AppConfig {
                 image_protocol: Setting::Kitty,
-                ..config.clone()
+                ..config
             },
             &path,
         )
@@ -725,7 +725,7 @@ mediainfo_enabled = true
         save_config(
             &AppConfig {
                 csv_preview_enabled: false,
-                ..config.clone()
+                ..config
             },
             &path,
         )
@@ -759,7 +759,7 @@ mediainfo_enabled = true
             &AppConfig {
                 preview_max_lines: 500,
                 preview_max_bytes: 1_048_576,
-                ..config.clone()
+                ..config
             },
             &path,
         )

@@ -713,7 +713,7 @@ fn run_scenario(path: &Path) -> String {
                 let mut state =
                     wade::ui::config_dialog::ConfigDialogState::from_app_config(&wade::app::AppConfig::default());
                 // Rust-only items would shift the list against the C# frames
-                state.items.retain(|item| item.field != wade::ui::config_dialog::ConfigField::CsvPreview);
+                state.items.retain(|item| item.label != "Show CSV/TSV Tables");
                 config_state = Some(state);
             }
             "csel" => {

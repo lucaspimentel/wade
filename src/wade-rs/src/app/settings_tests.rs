@@ -48,13 +48,13 @@ fn settings() -> Vec<Setting> {
         Setting {
             name: "parent_pane_enabled",
             config: |c, v| c.parent_pane_enabled = v,
-            dialog: |d, v| d.parent_pane = v,
+            dialog: |d, v| d.draft.parent_pane_enabled = v,
             probe: |app, _| app.layout.left_pane.width > 0 && frame_has(app, CURRENT_DIR),
         },
         Setting {
             name: "preview_pane_enabled",
             config: |c, v| c.preview_pane_enabled = v,
-            dialog: |d, v| d.preview_pane = v,
+            dialog: |d, v| d.draft.preview_pane_enabled = v,
             probe: |app, _| {
                 select(app, "sub");
                 app.layout.right_pane.width > 0 && frame_has(app, "inner.txt")
@@ -63,13 +63,13 @@ fn settings() -> Vec<Setting> {
         Setting {
             name: "show_hidden_files",
             config: |c, v| c.show_hidden_files = v,
-            dialog: |d, v| d.show_hidden_files = v,
+            dialog: |d, v| d.draft.show_hidden_files = v,
             probe: |app, _| visible_names(app).iter().any(|name| name == ".hidden"),
         },
         Setting {
             name: "sort_ascending",
             config: |c, v| c.sort_ascending = v,
-            dialog: |d, v| d.sort_ascending = v,
+            dialog: |d, v| d.draft.sort_ascending = v,
             probe: |app, _| {
                 let names = visible_names(app);
                 let index = |name: &str| names.iter().position(|n| n == name).unwrap();
@@ -79,32 +79,32 @@ fn settings() -> Vec<Setting> {
         Setting {
             name: "icons",
             config: |c, v| c.icon_set = if v { IconSet::Nerd } else { IconSet::None },
-            dialog: |d, v| d.icon_set = if v { IconSet::Nerd } else { IconSet::None },
+            dialog: |d, v| d.draft.icon_set = if v { IconSet::Nerd } else { IconSet::None },
             probe: |app, _| row_with(app, "a.txt").chars().any(is_icon),
         },
         Setting {
             name: "size_column_enabled",
             config: |c, v| c.size_column_enabled = v,
-            dialog: |d, v| d.size_column = v,
+            dialog: |d, v| d.draft.size_column_enabled = v,
             probe: |app, _| row_with(app, "a.txt").contains("1.2 KB"),
         },
         Setting {
             name: "date_column_enabled",
             config: |c, v| c.date_column_enabled = v,
-            dialog: |d, v| d.date_column = v,
+            dialog: |d, v| d.draft.date_column_enabled = v,
             // Only the center pane's header has a Date column
             probe: |app, _| frame_has(app, "Date"),
         },
         Setting {
             name: "column_headers_enabled",
             config: |c, v| c.column_headers_enabled = v,
-            dialog: |d, v| d.column_headers = v,
+            dialog: |d, v| d.draft.column_headers_enabled = v,
             probe: |app, _| frame_has(app, "Name"),
         },
         Setting {
             name: "confirm_delete_enabled",
             config: |c, v| c.confirm_delete_enabled = v,
-            dialog: |d, v| d.confirm_delete = v,
+            dialog: |d, v| d.draft.confirm_delete_enabled = v,
             probe: |app, _| {
                 select(app, "b.txt");
                 app.dispatch(AppAction::Delete);
@@ -114,7 +114,7 @@ fn settings() -> Vec<Setting> {
         Setting {
             name: "git_status_enabled",
             config: |c, v| c.git_status_enabled = v,
-            dialog: |d, v| d.git_status = v,
+            dialog: |d, v| d.draft.git_status_enabled = v,
             probe: |app, root| {
                 std::fs::create_dir_all(root.join(".git")).unwrap();
                 app.refresh_git_status();
@@ -124,13 +124,13 @@ fn settings() -> Vec<Setting> {
         Setting {
             name: "terminal_title_enabled",
             config: |c, v| c.terminal_title_enabled = v,
-            dialog: |d, v| d.terminal_title = v,
+            dialog: |d, v| d.draft.terminal_title_enabled = v,
             probe: |app, _| app.terminal_title_sequence().contains("wade - "),
         },
         Setting {
             name: "image_previews_enabled",
             config: |c, v| c.image_previews_enabled = v,
-            dialog: |d, v| d.image_previews = v,
+            dialog: |d, v| d.draft.image_previews_enabled = v,
             probe: |app, _| {
                 app.set_capabilities(crate::terminal_caps::TerminalCapabilities {
                     sixel_supported: true,
@@ -142,19 +142,19 @@ fn settings() -> Vec<Setting> {
         Setting {
             name: "file_previews_enabled",
             config: |c, v| c.file_previews_enabled = v,
-            dialog: |d, v| d.file_previews = v,
+            dialog: |d, v| d.draft.file_previews_enabled = v,
             probe: |app, _| provider_labels(app, "a.txt", false).is_some_and(|labels| labels.contains(&"Text")),
         },
         Setting {
             name: "file_metadata_enabled",
             config: |c, v| c.file_metadata_enabled = v,
-            dialog: |d, v| d.file_metadata = v,
+            dialog: |d, v| d.draft.file_metadata_enabled = v,
             probe: |app, _| provider_labels(app, "a.txt", true).is_some_and(|labels| labels.contains(&"File info")),
         },
         Setting {
             name: "zip_preview_enabled",
             config: |c, v| c.zip_preview_enabled = v,
-            dialog: |d, v| d.zip_preview = v,
+            dialog: |d, v| d.draft.zip_preview_enabled = v,
             probe: |app, _| {
                 provider_labels(app, "empty.zip", false).is_some_and(|labels| labels.contains(&"Archive contents"))
             },
@@ -162,7 +162,7 @@ fn settings() -> Vec<Setting> {
         Setting {
             name: "archive_metadata_enabled",
             config: |c, v| c.archive_metadata_enabled = v,
-            dialog: |d, v| d.archive_metadata = v,
+            dialog: |d, v| d.draft.archive_metadata_enabled = v,
             probe: |app, _| {
                 provider_labels(app, "empty.zip", true).is_some_and(|labels| labels.contains(&"Archive metadata"))
             },
@@ -170,7 +170,7 @@ fn settings() -> Vec<Setting> {
         Setting {
             name: "markdown_preview_enabled",
             config: |c, v| c.markdown_preview_enabled = v,
-            dialog: |d, v| d.markdown_preview = v,
+            dialog: |d, v| d.draft.markdown_preview_enabled = v,
             probe: |app, _| {
                 provider_labels(app, "readme.md", false)
                     .is_some_and(|labels| labels.contains(&"Rendered markdown (built-in)"))
@@ -179,7 +179,7 @@ fn settings() -> Vec<Setting> {
         Setting {
             name: "csv_preview_enabled",
             config: |c, v| c.csv_preview_enabled = v,
-            dialog: |d, v| d.csv_preview = v,
+            dialog: |d, v| d.draft.csv_preview_enabled = v,
             probe: |app, _| {
                 let current = app.current_path.clone();
                 std::fs::write(std::path::Path::new(&current).join("data.csv"), "a,b\n1,2\n").unwrap();
@@ -193,50 +193,50 @@ fn settings() -> Vec<Setting> {
         Setting {
             name: "pdf_preview_enabled",
             config: |c, v| c.pdf_preview_enabled = v,
-            dialog: |d, v| d.pdf_preview = v,
+            dialog: |d, v| d.draft.pdf_preview_enabled = v,
             probe: |app, _| app.build_preview_context(40, 20).pdf_preview_enabled,
         },
         Setting {
             name: "pdf_metadata_enabled",
             config: |c, v| c.pdf_metadata_enabled = v,
-            dialog: |d, v| d.pdf_metadata = v,
+            dialog: |d, v| d.draft.pdf_metadata_enabled = v,
             probe: |app, _| app.build_preview_context(40, 20).pdf_metadata_enabled,
         },
         Setting {
             name: "ffprobe_enabled",
             config: |c, v| c.ffprobe_enabled = v,
-            dialog: |d, v| d.ffprobe = v,
+            dialog: |d, v| d.draft.ffprobe_enabled = v,
             probe: |app, _| app.build_preview_context(40, 20).ffprobe_enabled,
         },
         Setting {
             name: "mediainfo_enabled",
             config: |c, v| c.mediainfo_enabled = v,
-            dialog: |d, v| d.mediainfo = v,
+            dialog: |d, v| d.draft.mediainfo_enabled = v,
             probe: |app, _| app.build_preview_context(40, 20).mediainfo_enabled,
         },
         Setting {
             name: "dir_size_ssd_enabled",
             config: |c, v| c.dir_size_ssd_enabled = v,
-            dialog: |d, v| d.dir_size_ssd = v,
+            dialog: |d, v| d.draft.dir_size_ssd_enabled = v,
             probe: |app, _| inline_sizes_requested(app, DriveMediaType::Ssd),
         },
         Setting {
             name: "dir_size_hdd_enabled",
             config: |c, v| c.dir_size_hdd_enabled = v,
-            dialog: |d, v| d.dir_size_hdd = v,
+            dialog: |d, v| d.draft.dir_size_hdd_enabled = v,
             probe: |app, _| inline_sizes_requested(app, DriveMediaType::Hdd),
         },
         Setting {
             name: "dir_size_network_enabled",
             config: |c, v| c.dir_size_network_enabled = v,
-            dialog: |d, v| d.dir_size_network = v,
+            dialog: |d, v| d.draft.dir_size_network_enabled = v,
             probe: |app, _| inline_sizes_requested(app, DriveMediaType::Network),
         },
         #[cfg(unix)]
         Setting {
             name: "copy_symlinks_as_links_enabled",
             config: |c, v| c.copy_symlinks_as_links_enabled = v,
-            dialog: |d, v| d.copy_symlinks_as_links = v,
+            dialog: |d, v| d.draft.copy_symlinks_as_links_enabled = v,
             probe: pasted_symlink_is_link,
         },
         #[cfg(windows)]
@@ -246,8 +246,8 @@ fn settings() -> Vec<Setting> {
             // The dialog nests it under hidden files and saves it only with
             // them (ConfigDialogState.ApplyTo)
             dialog: |d, v| {
-                d.show_hidden_files = true;
-                d.show_system_files = v;
+                d.draft.show_hidden_files = true;
+                d.draft.show_system_files = v;
             },
             probe: |app, root| {
                 mark_system(&root.join("a.txt"));
@@ -357,8 +357,8 @@ fn sort_mode_takes_effect_at_startup_and_from_the_dialog() {
     let mut app = app_at(AppConfig::default(), &root);
     app.show_config_dialog();
     let state = app.modal.config_state.as_mut().unwrap();
-    state.sort_mode = SortMode::Size;
-    state.sort_ascending = false;
+    state.draft.sort_mode = SortMode::Size;
+    state.draft.sort_ascending = false;
     app.apply_config_changes();
     assert_eq!(size_order(&mut app), ["a.txt", "b.txt"], "largest first from the dialog");
 
@@ -393,7 +393,7 @@ fn every_icon_set_draws_its_glyphs_at_startup_and_from_the_dialog() {
 
         let mut app = app_at(AppConfig::default(), &root);
         app.show_config_dialog();
-        app.modal.config_state.as_mut().unwrap().icon_set = set;
+        app.modal.config_state.as_mut().unwrap().draft.icon_set = set;
         app.apply_config_changes();
         assert!(row_with(&mut app, "a.txt").contains(&file), "{set:?} from the dialog");
         let _ = std::fs::remove_dir_all(&parent);
