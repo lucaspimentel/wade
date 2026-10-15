@@ -1,6 +1,5 @@
-//! Port of `ExecutableMetadataProvider`: PE headers, Windows version info
-//! (`FileVersionInfo`, Windows only) and .NET assembly metadata, read
-//! through the in-tree `pe` module.
+//! Executable metadata: PE headers, Windows version info (Windows only) and
+//! .NET assembly metadata, read through the in-tree `pe` module.
 
 use super::pe::{self, BadImage, Image, MetadataReader};
 use super::{MetadataEntry, MetadataProvider, MetadataResult, MetadataSection, PreviewContext};
@@ -31,7 +30,7 @@ impl MetadataProvider for ExecutableMetadataProvider {
     }
 }
 
-/// `Err` and `Ok(None)` are both the C# `null` result.
+/// `Err` and `Ok(None)` both mean no metadata.
 fn read_metadata(path: &str, cancel: &CancelToken) -> Result<Option<MetadataResult>, BadImage> {
     let mut image = Image::open(path).map_err(|_| BadImage)?;
     let headers = pe::read_headers(&mut image)?;
@@ -78,7 +77,7 @@ fn read_metadata(path: &str, cancel: &CancelToken) -> Result<Option<MetadataResu
     if headers.has_metadata() {
         let block = pe::read_metadata_block(&mut image, &headers)?;
 
-        // C# catches BadImageFormatException from GetMetadataReader only
+        // A malformed metadata root only drops the assembly sections
         if let Ok(reader) = MetadataReader::new(&block)
             && !assembly_sections(&mut sections, &reader, cancel)?
         {
@@ -92,9 +91,8 @@ fn read_metadata(path: &str, cancel: &CancelToken) -> Result<Option<MetadataResu
     }))
 }
 
-/// Port of `GetAssemblyMetadataSections`; false when the image is not an
-/// assembly (C# `GetAssemblyDefinition` throws InvalidOperationException,
-/// which nulls the whole result).
+/// The .NET assembly sections; false when the image is not an assembly,
+/// which drops the whole result.
 fn assembly_sections(
     sections: &mut Vec<MetadataSection>,
     reader: &MetadataReader,
@@ -144,8 +142,8 @@ fn format_version(version: [u16; 4]) -> String {
     format!("{}.{}.{}.{}", version[0], version[1], version[2], version[3])
 }
 
-/// Port of `FormatMachine`; other values print as .NET's `Machine` enum
-/// `ToString()` (member name, or the number when undefined).
+/// The machine type's name; other values print as the PE spec's constant
+/// name, or the number when undefined.
 #[must_use]
 pub fn format_machine(machine: u16) -> String {
     let name = match machine {
@@ -184,8 +182,8 @@ pub fn format_machine(machine: u16) -> String {
     name.to_string()
 }
 
-/// Port of `FormatSubsystem`; other values print as .NET's `Subsystem`
-/// enum `ToString()`.
+/// The subsystem's name; other values print as the PE spec's constant
+/// name, or the number when undefined.
 #[must_use]
 pub fn format_subsystem(subsystem: u16) -> String {
     let name = match subsystem {
@@ -208,9 +206,8 @@ pub fn format_subsystem(subsystem: u16) -> String {
     name.to_string()
 }
 
-/// Port of `GetFileVersionInfoSection` over `FileVersionInfo`'s Win32
-/// lookup: the `\VarFileInfo\Translation` code page, then .NET's fallback
-/// code pages until one yields a FileVersion string.
+/// The version info section: the `\VarFileInfo\Translation` code page,
+/// then fallback code pages until one yields a FileVersion string.
 #[cfg(windows)]
 mod version_info {
     use super::{MetadataEntry, MetadataSection};
@@ -372,7 +369,6 @@ mod tests {
         std::fs::remove_file(path).unwrap();
     }
 
-    /// Port of `GetMetadata_ZeroTimestamp_ShowsReproducibleBuild`.
     #[test]
     fn zero_timestamp_shows_reproducible_build() {
         let mut pe = vec![0u8; 512];

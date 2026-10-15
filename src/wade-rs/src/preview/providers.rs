@@ -1,6 +1,5 @@
-//! Port of the providers in `PreviewProviders.cs` ported so far: image,
-//! PDF, rendered Markdown, archive contents (zip, tar/gzip), Text, Hex dump, None and
-//! Git diff.
+//! Preview providers: image, PDF, rendered Markdown, archive contents (zip,
+//! tar/gzip), text, hex dump, none and git diff.
 
 use super::{PreviewContext, PreviewProvider, PreviewResult};
 use crate::fs::{GitFileStatus, file_preview, git_utils, hex_preview, tar_preview, zip_preview};
@@ -12,7 +11,7 @@ fn label_or(path: &str, fallback: &str) -> Option<String> {
     Some(file_preview::get_file_type_label(path).unwrap_or(fallback).to_string())
 }
 
-/// Port of `ImagePreviewProvider`: Sixel (or kitty) previews of image files.
+/// Sixel, kitty or iTerm2 previews of image files.
 pub struct ImagePreviewProvider;
 
 impl PreviewProvider for ImagePreviewProvider {
@@ -45,8 +44,7 @@ impl PreviewProvider for ImagePreviewProvider {
     }
 }
 
-/// Port of `PdfPreviewProvider`: page 1 rendered by `pdftopng`, shown as a
-/// Sixel image.
+/// Page 1 rendered by `pdftopng`, shown as an image.
 pub struct PdfPreviewProvider;
 
 impl PreviewProvider for PdfPreviewProvider {
@@ -82,10 +80,10 @@ impl PreviewProvider for PdfPreviewProvider {
     }
 }
 
-/// Port of `MarkdigMarkdownPreviewProvider`: rendered .md/.markdown files.
-pub struct MarkdigMarkdownPreviewProvider;
+/// Rendered .md/.markdown files.
+pub struct MarkdownPreviewProvider;
 
-impl PreviewProvider for MarkdigMarkdownPreviewProvider {
+impl PreviewProvider for MarkdownPreviewProvider {
     fn label(&self) -> &'static str {
         "Rendered markdown (built-in)"
     }
@@ -124,8 +122,7 @@ fn archive_result(path: &str, body: Vec<StyledLine>) -> PreviewResult {
     }
 }
 
-/// Port of `ZipContentsPreviewProvider`: the central-directory listing of
-/// zip-based archives.
+/// The central-directory listing of zip-based archives.
 pub struct ZipContentsPreviewProvider;
 
 impl PreviewProvider for ZipContentsPreviewProvider {
@@ -143,8 +140,7 @@ impl PreviewProvider for ZipContentsPreviewProvider {
     }
 }
 
-/// Port of `TarContentsPreviewProvider`: tar and tar.gz listings, and the
-/// head of plain .gz files.
+/// Tar and tar.gz listings, and the head of plain .gz files.
 pub struct TarContentsPreviewProvider;
 
 impl PreviewProvider for TarContentsPreviewProvider {
@@ -168,7 +164,7 @@ impl PreviewProvider for TarContentsPreviewProvider {
     }
 }
 
-/// Port of `TextPreviewProvider`: highlighted text for non-binary files.
+/// Highlighted text for non-binary files.
 pub struct TextPreviewProvider;
 
 impl PreviewProvider for TextPreviewProvider {
@@ -202,7 +198,7 @@ impl PreviewProvider for TextPreviewProvider {
         let lines: Vec<&str> = raw_lines.iter().map(String::as_str).collect();
         let mut text_lines = highlight::highlight(&lines, path);
 
-        // Rust only: the full-screen preview says where it stopped
+        // The full-screen preview says where it stopped
         let truncation = truncation.filter(|_| limits.mark_truncation);
         if let Some(truncation) = truncation {
             text_lines.push(crate::preview::truncation_marker(limits, truncation));
@@ -219,7 +215,7 @@ impl PreviewProvider for TextPreviewProvider {
     }
 }
 
-/// Port of `HexPreviewProvider` (always applicable, opt-in via the menu).
+/// A hex dump (always applicable, opt-in via the menu).
 pub struct HexPreviewProvider;
 
 impl PreviewProvider for HexPreviewProvider {
@@ -244,7 +240,7 @@ impl PreviewProvider for HexPreviewProvider {
     }
 }
 
-/// Port of `NonePreviewProvider`: always applicable, shows nothing.
+/// Always applicable, shows nothing.
 pub struct NonePreviewProvider;
 
 impl PreviewProvider for NonePreviewProvider {
@@ -267,8 +263,8 @@ impl PreviewProvider for NonePreviewProvider {
     }
 }
 
-/// Port of `DiffPreviewProvider`: colored `git diff` for modified or staged
-/// files (unstaged changes win when both apply).
+/// Colored `git diff` for modified or staged files (unstaged changes win when
+/// both apply).
 pub struct DiffPreviewProvider;
 
 impl PreviewProvider for DiffPreviewProvider {
@@ -309,9 +305,7 @@ impl PreviewProvider for DiffPreviewProvider {
 
 #[cfg(test)]
 mod tests {
-    //! Port of the DiffPreviewProvider and NonePreviewProvider cases in
-    //! PreviewProviderTests.cs (text and hex results are covered by the
-    //! preview golden).
+    //! Text and hex results are covered by the preview golden.
 
     use super::{DiffPreviewProvider, NonePreviewProvider};
     use crate::fs::GitFileStatus;
@@ -348,21 +342,21 @@ mod tests {
 
     #[test]
     fn markdown_applies_to_md_and_markdown_when_enabled() {
-        use super::MarkdigMarkdownPreviewProvider;
+        use super::MarkdownPreviewProvider;
 
         for path in ["readme.md", "README.MD", "notes.markdown"] {
-            assert!(MarkdigMarkdownPreviewProvider.can_preview(path, &test_context()), "{path}");
+            assert!(MarkdownPreviewProvider.can_preview(path, &test_context()), "{path}");
         }
         for path in ["notes.txt", "md", "file.mdx"] {
-            assert!(!MarkdigMarkdownPreviewProvider.can_preview(path, &test_context()), "{path}");
+            assert!(!MarkdownPreviewProvider.can_preview(path, &test_context()), "{path}");
         }
 
         let disabled = PreviewContext {
             markdown_preview_enabled: false,
             ..test_context()
         };
-        assert!(!MarkdigMarkdownPreviewProvider.can_preview("readme.md", &disabled));
-        assert_eq!(MarkdigMarkdownPreviewProvider.label(), "Rendered markdown (built-in)");
+        assert!(!MarkdownPreviewProvider.can_preview("readme.md", &disabled));
+        assert_eq!(MarkdownPreviewProvider.label(), "Rendered markdown (built-in)");
     }
 
     #[test]

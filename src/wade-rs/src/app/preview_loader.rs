@@ -215,7 +215,7 @@ mod tests {
             image_previews_enabled: true,
             image_protocol: Some(crate::imaging::ImageProtocol::Sixel),
             archive_metadata_enabled: true,
-            limits: crate::preview::PreviewLimits::CSHARP,
+            limits: crate::preview::PreviewLimits::GOLDEN,
         }
     }
 

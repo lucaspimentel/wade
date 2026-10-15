@@ -1,6 +1,4 @@
-//! Metadata providers ported so far: `FileMetadataProvider`,
-//! `ShortcutMetadataProvider`, `ArchiveMetadataProvider` and
-//! `PdfMetadataProvider`.
+//! The file, shortcut, archive and PDF metadata providers.
 
 use super::{MetadataEntry, MetadataProvider, MetadataResult, MetadataSection, PreviewContext};
 use crate::fs::{GitFileStatus, lnk, tar_preview, zip_preview};
@@ -8,8 +6,8 @@ use crate::input::CancelToken;
 use crate::ui::format_helpers::{format_percent_p0, format_size_string};
 use crate::ui::properties_overlay::format_git_status;
 
-/// Port of `FileMetadataProvider`: the file name as the section header,
-/// plus cloud and git status when they apply. No file content is read.
+/// The file name as the section header, plus cloud and git status when they
+/// apply. No file content is read.
 pub struct FileMetadataProvider;
 
 impl MetadataProvider for FileMetadataProvider {
@@ -46,8 +44,8 @@ impl MetadataProvider for FileMetadataProvider {
     }
 }
 
-/// Port of `ShortcutMetadataProvider`: .lnk target, string data, hotkey,
-/// window state and link info. Unparsable files give nothing.
+/// .lnk target, string data, hotkey, window state and link info. Unparsable
+/// files give nothing.
 pub struct ShortcutMetadataProvider;
 
 impl MetadataProvider for ShortcutMetadataProvider {
@@ -126,8 +124,7 @@ impl MetadataProvider for ShortcutMetadataProvider {
     }
 }
 
-/// Port of `ArchiveMetadataProvider`: file count, sizes and ratio for zip,
-/// tar, tar.gz and plain gzip files.
+/// File count, sizes and ratio for zip, tar, tar.gz and plain gzip files.
 pub struct ArchiveMetadataProvider;
 
 impl MetadataProvider for ArchiveMetadataProvider {
@@ -166,7 +163,7 @@ fn archive_section(entries: Vec<MetadataEntry>) -> MetadataResult {
     }
 }
 
-/// Port of `GetZipMetadata`; `None` for unreadable archives.
+/// Zip archive stats; `None` for unreadable archives.
 fn zip_metadata(path: &str, cancel: &CancelToken) -> Option<MetadataResult> {
     let entries = zip_preview::read_entries(path).ok()?;
 
@@ -192,7 +189,7 @@ fn zip_metadata(path: &str, cancel: &CancelToken) -> Option<MetadataResult> {
     ]))
 }
 
-/// Port of `GetTarMetadata`.
+/// Tar and gzip archive stats.
 fn tar_metadata(path: &str, cancel: &CancelToken) -> Option<MetadataResult> {
     let stats = tar_preview::get_stats(path, cancel)?;
 
@@ -219,11 +216,11 @@ fn tar_metadata(path: &str, cancel: &CancelToken) -> Option<MetadataResult> {
     Some(archive_section(entries))
 }
 
-/// Port of `PdfMetadataProvider`: document fields from `pdfinfo`.
+/// Document fields from `pdfinfo`.
 pub struct PdfMetadataProvider;
 
 impl PdfMetadataProvider {
-    /// Port of `IsAvailable`.
+    /// Whether `pdfinfo` is installed.
     #[must_use]
     pub fn is_available() -> bool {
         crate::preview::cli_tool_hints::is_available("pdfinfo", Some("-v"), false)
@@ -258,9 +255,8 @@ impl MetadataProvider for PdfMetadataProvider {
     }
 }
 
-/// Port of `ParsePdfInfoOutput`: the known `Key: value` lines, renamed.
-/// Dates stay as pdfinfo prints them (C# reformats ones .NET can parse;
-/// KNOWN_DEVIATIONS.md).
+/// The known `Key: value` lines, renamed. Dates stay as pdfinfo prints them
+/// (KNOWN_DEVIATIONS.md).
 #[must_use]
 pub fn parse_pdf_info_output(output: &str) -> Option<Vec<MetadataSection>> {
     if output.trim().is_empty() {
@@ -293,7 +289,6 @@ pub fn parse_pdf_info_output(output: &str) -> Option<Vec<MetadataSection>> {
 
 #[cfg(test)]
 mod tests {
-    //! Port of FileMetadataProviderTests.cs.
 
     use super::FileMetadataProvider;
     use crate::fs::GitFileStatus;

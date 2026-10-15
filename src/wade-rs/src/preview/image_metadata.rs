@@ -1,8 +1,6 @@
-//! Port of `ImageMetadataProvider`: resolution, format, color depth and
-//! frame count from the image header, plus an EXIF section. Uses the
-//! `image` crate's decoders and `kamadak-exif` instead of ImageSharp, so
-//! format names, bit depths and frame counts follow those crates
-//! (KNOWN_DEVIATIONS.md).
+//! Image metadata: resolution, format, color depth and frame count from the
+//! image header, plus an EXIF section. Format names, bit depths and frame
+//! counts follow the `image` and `kamadak-exif` crates (KNOWN_DEVIATIONS.md).
 
 use std::io::{BufReader, Read};
 
@@ -236,13 +234,13 @@ fn read_exif(path: &str) -> Option<Vec<MetadataEntry>> {
     Some(entries)
 }
 
-/// .NET `{value:0.#}`: at most one decimal, no trailing ".0".
+/// At most one decimal, no trailing ".0".
 fn format_one_decimal(value: f64) -> String {
     let text = format!("{value:.1}");
     text.strip_suffix(".0").map_or(text.clone(), str::to_string)
 }
 
-/// Port of `FormatCamera`: make and model, without repeating the make.
+/// Make and model, without repeating the make.
 #[must_use]
 pub fn format_camera(make: Option<&str>, model: Option<&str>) -> Option<String> {
     match (make, model) {
@@ -262,7 +260,7 @@ pub fn format_camera(make: Option<&str>, model: Option<&str>) -> Option<String> 
     }
 }
 
-/// Port of `FormatExposure`: shutter (`0.#s` or `1/Ns`), aperture, ISO.
+/// Shutter (`0.#s` or `1/Ns`), aperture, ISO.
 #[must_use]
 pub fn format_exposure(exposure_time: Option<(u32, u32)>, f_number: Option<f64>, iso: Option<u16>) -> Option<String> {
     let mut parts = Vec::new();
@@ -288,7 +286,7 @@ pub fn format_exposure(exposure_time: Option<(u32, u32)>, f_number: Option<f64>,
     (!parts.is_empty()).then(|| parts.join(", "))
 }
 
-/// Port of `FormatGps`: degrees/minutes/seconds to signed decimal degrees.
+/// Degrees/minutes/seconds to signed decimal degrees.
 #[must_use]
 pub fn format_gps(lat: &[f64], lon: &[f64], lat_ref: Option<&str>, lon_ref: Option<&str>) -> Option<String> {
     let [d1, m1, s1] = <[f64; 3]>::try_from(lat).ok()?;
@@ -308,7 +306,6 @@ pub fn format_gps(lat: &[f64], lon: &[f64], lat_ref: Option<&str>, lon_ref: Opti
 
 #[cfg(test)]
 mod tests {
-    //! Port of ImageMetadataProviderTests.cs plus EXIF formatting checks.
 
     use exif::experimental::Writer;
     use exif::{Field, In, Rational, Tag, Value};

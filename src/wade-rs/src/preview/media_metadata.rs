@@ -1,4 +1,4 @@
-//! Port of `MediaMetadataProvider`: shells out to `ffprobe` (preferred) or
+//! Media metadata: shells out to `ffprobe` (preferred) or
 //! `mediainfo` and maps their JSON to Media File / Video / Audio sections.
 
 use std::collections::HashMap;
@@ -15,8 +15,7 @@ const EXTENSIONS: &[&str] = &[
     "mp4", "mkv", "avi", "mov", "wmv", "webm", "flv", "m4v", "ts", "mpg", "mpeg",
 ];
 
-/// .NET throws `InvalidOperationException` when a JSON property is read
-/// from a non-object (and `JsonException` on bad JSON): the result is null.
+/// Reading a property from a non-object, or bad JSON: no result.
 #[derive(Debug, PartialEq, Eq)]
 pub struct JsonError;
 
@@ -127,7 +126,7 @@ fn array(element: &RawValue) -> Result<Option<Vec<Value>>, JsonError> {
     serde_json::from_str(element.get()).map(Some).map_err(|_| JsonError)
 }
 
-/// Port of `GetString`: strings as-is, numbers as their raw JSON text.
+/// A property as text: strings as-is, numbers as their raw JSON text.
 fn get_string(element: &RawValue, name: &str) -> Result<Option<String>, JsonError> {
     let Some(value) = property(element, name)? else {
         return Ok(None);
@@ -149,7 +148,7 @@ fn section(header: &str, entries: Vec<MetadataEntry>, sections: &mut Vec<Metadat
     }
 }
 
-/// Port of `ParseFfprobeJson`.
+/// Sections from `ffprobe -show_format -show_streams` JSON.
 pub fn parse_ffprobe_json(json: &str) -> Sections {
     let root = parse(json)?;
     let mut sections = Vec::new();
@@ -192,7 +191,7 @@ pub fn parse_ffprobe_json(json: &str) -> Sections {
     Ok((!sections.is_empty()).then_some(sections))
 }
 
-/// Port of `ParseMediainfoJson`.
+/// Sections from `mediainfo --Output=JSON`.
 pub fn parse_mediainfo_json(json: &str) -> Sections {
     let root = parse(json)?;
 
@@ -257,10 +256,8 @@ fn add_json_entry(
     Ok(())
 }
 
-/// .NET `double.TryParse(value, InvariantCulture)` (Float | AllowThousands):
-/// decimal or exponent forms, thousands commas, and the invariant
-/// `NaN`/`Infinity` symbols (Rust's own "inf"/"nan" spellings are not
-/// accepted).
+/// A number in decimal or exponent form, with thousands commas, or
+/// `NaN`/`Infinity` (the "inf"/"nan" spellings are not accepted).
 fn parse_double(text: &str) -> Option<f64> {
     let trimmed = text.trim().replace(',', "");
     let unsigned = trimmed.trim_start_matches(['+', '-']);
@@ -387,7 +384,7 @@ fn add_sample_rate_entry(entries: &mut Vec<MetadataEntry>, element: &RawValue, n
     Ok(())
 }
 
-/// Port of `FormatDuration`.
+/// "1h 02m 03s", "2m 03s" or "3s" from seconds.
 #[must_use]
 pub fn format_duration(total_seconds: f64) -> String {
     let hours = (total_seconds / 3600.0) as i32;
@@ -403,7 +400,7 @@ pub fn format_duration(total_seconds: f64) -> String {
     }
 }
 
-/// Port of `FormatFileSize`.
+/// Bytes as "1.5 MB" style text.
 #[must_use]
 pub fn format_file_size(bytes: i64) -> String {
     const KB: f64 = 1024.0;

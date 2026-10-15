@@ -925,12 +925,12 @@ mod tests {
 
     #[test]
     fn cancelled_returns_none() {
-        assert_eq!(get_preview_lines(&fixture("plain.tar"), PreviewLimits::CSHARP, &cancelled()), None);
-        assert_eq!(get_preview_lines(&fixture("plain.tgz"), PreviewLimits::CSHARP, &cancelled()), None);
+        assert_eq!(get_preview_lines(&fixture("plain.tar"), PreviewLimits::GOLDEN, &cancelled()), None);
+        assert_eq!(get_preview_lines(&fixture("plain.tgz"), PreviewLimits::GOLDEN, &cancelled()), None);
 
         let path = crate::preview::test_path("text.txt.gz");
         std::fs::write(&path, gz(b"hello\n")).unwrap();
-        assert!(get_gzip_styled_preview(&path.to_string_lossy(), PreviewLimits::CSHARP, &cancelled()).is_none());
+        assert!(get_gzip_styled_preview(&path.to_string_lossy(), PreviewLimits::GOLDEN, &cancelled()).is_none());
     }
 
     #[test]
@@ -964,7 +964,7 @@ mod tests {
         header[156] = b'S';
         std::fs::write(&path, header).unwrap();
 
-        assert_eq!(get_preview_lines(&path.to_string_lossy(), PreviewLimits::CSHARP, &CancelToken::new()), None);
+        assert_eq!(get_preview_lines(&path.to_string_lossy(), PreviewLimits::GOLDEN, &CancelToken::new()), None);
         assert_eq!(get_stats(&path.to_string_lossy(), &CancelToken::new()), None);
     }
 

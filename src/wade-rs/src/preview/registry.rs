@@ -1,4 +1,4 @@
-//! Ports of `PreviewProviderRegistry` and `MetadataProviderRegistry`: the
+//! The preview and metadata provider registries: the
 //! providers that apply to a file, in priority order (the first preview
 //! provider is the default; every metadata provider contributes).
 
@@ -12,17 +12,16 @@ use super::metadata_providers::{
 };
 use super::msi::{MsiMetadataProvider, MsiPreviewProvider};
 use super::providers::{
-    DiffPreviewProvider, HexPreviewProvider, ImagePreviewProvider, MarkdigMarkdownPreviewProvider, NonePreviewProvider,
+    DiffPreviewProvider, HexPreviewProvider, ImagePreviewProvider, MarkdownPreviewProvider, NonePreviewProvider,
     PdfPreviewProvider, TarContentsPreviewProvider, TextPreviewProvider, ZipContentsPreviewProvider,
 };
 use super::{MetadataProvider, PreviewContext, PreviewProvider};
 
-/// C# order: Image, PDF, Markdown, Zip, MSI, Tar, Text, Diff, None, Hex;
-/// Rust adds Table (CSV/TSV) before Text.
+/// In priority order: the first that applies is the default.
 static PREVIEW_PROVIDERS: [&dyn PreviewProvider; 11] = [
     &ImagePreviewProvider,
     &PdfPreviewProvider,
-    &MarkdigMarkdownPreviewProvider,
+    &MarkdownPreviewProvider,
     &ZipContentsPreviewProvider,
     &MsiPreviewProvider,
     &TarContentsPreviewProvider,
@@ -33,8 +32,7 @@ static PREVIEW_PROVIDERS: [&dyn PreviewProvider; 11] = [
     &HexPreviewProvider,
 ];
 
-/// C# order: File, Image, Executable, Office, Media, NuGet, MSI, Shortcut,
-/// Archive, PDF; Rust adds Table info (CSV/TSV) after File.
+/// In section order.
 static METADATA_PROVIDERS: [&dyn MetadataProvider; 11] = [
     &FileMetadataProvider,
     &CsvMetadataProvider,
@@ -49,7 +47,7 @@ static METADATA_PROVIDERS: [&dyn MetadataProvider; 11] = [
     &PdfMetadataProvider,
 ];
 
-/// Port of `PreviewProviderRegistry.GetApplicableProviders`: nothing for
+/// The preview providers that apply to `path`: nothing for
 /// broken symlinks and cloud placeholders; for secondary archive types
 /// (.docx, .nupkg, ...) archive contents moves after None, so it stays
 /// available without being the default.
@@ -78,7 +76,7 @@ pub fn applicable_preview_providers(path: &str, context: &PreviewContext) -> Vec
     result
 }
 
-/// Port of `MetadataProviderRegistry.GetApplicableProviders`: nothing for
+/// The metadata providers that apply to `path`: nothing for
 /// broken symlinks; only file info for cloud placeholders.
 #[must_use]
 pub fn applicable_metadata_providers(path: &str, context: &PreviewContext) -> Vec<&'static dyn MetadataProvider> {
@@ -97,9 +95,6 @@ pub fn applicable_metadata_providers(path: &str, context: &PreviewContext) -> Ve
 
 #[cfg(test)]
 mod tests {
-    //! Port of the text and archive cases in PreviewProviderRegistryTests.cs
-    //! and MetadataProviderRegistryTests.cs (image and executable cases
-    //! land with their providers).
 
     use super::{applicable_metadata_providers, applicable_preview_providers};
     use crate::fs::GitFileStatus;

@@ -1,13 +1,11 @@
-//! Port of `MarkdigRenderer`: Markdown to styled preview lines. The C#
-//! code walks a Markdig AST (pipe tables enabled); this port builds the
-//! equivalent tree from pulldown-cmark events (tables enabled) and then
-//! renders it with the C# rules.
+//! Markdown to styled preview lines: a block tree built from pulldown-cmark
+//! events (tables enabled), then rendered line by line.
 //!
-//! Layout runs on UTF-16 code units, as C# strings do, so wrapping, padding
-//! and truncation land on the same columns for astral characters (emoji);
-//! lines convert back to `String` with one style per character.
+//! Layout runs on UTF-16 code units, so wrapping, padding and truncation
+//! match the frozen Markdown golden for astral characters (emoji); lines
+//! convert back to `String` with one style per character.
 //!
-//! Markdig specifics reproduced: a link-reference-definition group is a
+//! Also pinned by the golden: a link-reference-definition group is a
 //! (silent) block taking the slot of the first definition paragraph; HTML
 //! blocks render nothing but still separate blocks; HTML entities are
 //! dropped; tight list items are paragraphs; a fenced code block's info is
@@ -537,8 +535,7 @@ fn parse(text: &str) -> Vec<Block> {
 
 type Spans = Vec<(Units, CellStyle)>;
 
-/// Port of `Render`: reads the file (BOM-aware, like `File.ReadAllText`)
-/// and renders it; `None` when unreadable.
+/// Reads the file (BOM-aware) and renders it; `None` when unreadable.
 #[must_use]
 pub fn render(file_path: &str, width: i32, cancel: &CancelToken) -> Option<Vec<StyledLine>> {
     let bytes = std::fs::read(file_path).ok()?;
@@ -564,7 +561,7 @@ fn read_all_text(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes).into_owned()
 }
 
-/// Port of `RenderText`. `None` only when cancelled.
+/// Renders Markdown text. `None` only when cancelled.
 #[must_use]
 pub fn render_text(text: &str, width: i32, cancel: &CancelToken) -> Option<Vec<StyledLine>> {
     let width = width.max(4) as usize;
@@ -595,7 +592,7 @@ fn trim_trailing_empty(lines: &mut Vec<StyledLine>) {
     }
 }
 
-/// Port of `TryExtractFrontmatter`: a leading `---` line through the next
+/// The frontmatter: a leading `---` line through the next
 /// `---` line.
 fn try_extract_frontmatter(text: &str) -> Option<(String, &str)> {
     let first_newline = text.find('\n')?;
@@ -626,7 +623,7 @@ fn try_extract_frontmatter(text: &str) -> Option<(String, &str)> {
     None
 }
 
-/// Port of `RenderFrontmatter`: aligned key/value rows between borders.
+/// Aligned key/value rows between borders.
 fn render_frontmatter(content: &str, lines: &mut Vec<StyledLine>, width: usize) {
     let mut entries: Vec<(Units, Units)> = Vec::new();
     let mut max_key_len = 0;
@@ -703,7 +700,7 @@ fn render_frontmatter(content: &str, lines: &mut Vec<StyledLine>, width: usize) 
     lines.push(to_styled_line(&repeat_unit('\u{2500}', width), Some(&vec![FRONTMATTER_BORDER_STYLE; width])));
 }
 
-/// Port of `WrapFrontmatterValue`.
+/// Wraps a frontmatter value to the value column.
 fn wrap_frontmatter_value(
     value: &[u16],
     value_style: CellStyle,
@@ -751,7 +748,8 @@ fn wrap_frontmatter_value(
     }
 }
 
-/// Port of `GetFrontmatterValueStyle`.
+/// The style of a frontmatter value: quoted strings, constants (true,
+/// false, yes, no, null, ~) and numbers.
 fn frontmatter_value_style(value: &[u16]) -> CellStyle {
     let text = String::from_utf16_lossy(value);
     let mut chars = text.chars();
@@ -767,7 +765,7 @@ fn frontmatter_value_style(value: &[u16]) -> CellStyle {
     }
 }
 
-/// Port of `RenderBlocks`: blocks separated by blank (quoted) lines.
+/// Blocks separated by blank (quoted) lines.
 fn render_blocks(
     blocks: &[Block],
     lines: &mut Vec<StyledLine>,
@@ -837,7 +835,7 @@ fn render_heading(
     emit_wrapped_line(&spans, lines, width, indent, quote_depth, None);
 }
 
-/// Port of `RenderCodeLines`: truncated, highlighted, padded to the width
+/// Code lines: truncated, highlighted, padded to the width
 /// on the code background.
 fn render_code_lines(
     code: &[String],
@@ -914,7 +912,7 @@ fn render_code_lines(
     }
 }
 
-/// Port of `RenderList`.
+/// A list: bullets or numbers, items indented under them.
 #[allow(clippy::too_many_arguments)]
 fn render_list(
     ordered: bool,
@@ -980,14 +978,14 @@ fn render_list(
     Some(())
 }
 
-/// Port of `RenderHorizontalRule`.
+/// A horizontal rule across the content width.
 fn render_horizontal_rule(lines: &mut Vec<StyledLine>, width: usize, indent: usize, quote_depth: usize) {
     let content_width = (width as isize - (indent + quote_depth * 2) as isize).max(3) as usize;
     let text = repeat_unit('\u{2500}', content_width);
     lines.push(make_quoted_line(&text, Some(&vec![HR_STYLE; content_width]), quote_depth, indent));
 }
 
-/// Port of `RenderTable`: plain cell text in padded columns, bold header,
+/// Plain cell text in padded columns, bold header,
 /// a rule under it, truncated to the width.
 fn render_table(
     columns: usize,
@@ -1057,8 +1055,7 @@ fn render_table(
     }
 }
 
-/// Port of `GetPlainText`/`AppendPlainText`: literals, code, container
-/// children, and a space per line break.
+/// Literals, code, container children, and a space per line break.
 fn plain_text(inlines: &[Inline]) -> String {
     let mut out = String::new();
 
@@ -1082,7 +1079,7 @@ fn plain_text(inlines: &[Inline]) -> String {
     out
 }
 
-/// Port of `GetInlineText` (link text compared with its URL).
+/// The inlines' text (link text compared with its URL).
 fn inline_text(inlines: &[Inline]) -> String {
     let mut out = String::new();
 
@@ -1099,7 +1096,7 @@ fn inline_text(inlines: &[Inline]) -> String {
     out
 }
 
-/// Port of `CollectInlines`.
+/// Styled spans for the inlines.
 fn collect_inlines(inlines: &[Inline], spans: &mut Spans, current: CellStyle) {
     for inline in inlines {
         match inline {
@@ -1150,7 +1147,7 @@ fn collect_inlines(inlines: &[Inline], spans: &mut Spans, current: CellStyle) {
     }
 }
 
-/// Port of `EmitWrappedLine`: word wrap with an optional hanging indent.
+/// Word wrap with an optional hanging indent.
 fn emit_wrapped_line(
     spans: &Spans,
     lines: &mut Vec<StyledLine>,
@@ -1200,7 +1197,8 @@ fn emit_wrapped_line(
     }
 }
 
-/// Port of `FindWordBreak`.
+/// Where to break a line of at most `max_chars`: after an embedded newline,
+/// else after the last space, else a hard break.
 fn find_word_break(chars: &[u16], start: usize, max_chars: usize) -> usize {
     let end = start + max_chars;
 
@@ -1220,7 +1218,7 @@ fn find_word_break(chars: &[u16], start: usize, max_chars: usize) -> usize {
     if break_at == start { end } else { break_at }
 }
 
-/// Port of `EmitSingleLine`: splits at embedded newlines.
+/// Unwrapped text: splits at embedded newlines.
 fn emit_single_line(
     chars: &[u16],
     styles: &[CellStyle],
@@ -1253,8 +1251,7 @@ fn emit_single_line(
     ));
 }
 
-/// Port of `MakeQuotedLine`: quote bars and indent before the text; quoted
-/// content is dimmed.
+/// Quote bars and indent before the text; quoted content is dimmed.
 fn make_quoted_line(text: &[u16], char_styles: Option<&[CellStyle]>, quote_depth: usize, indent: usize) -> StyledLine {
     if quote_depth == 0 && indent == 0 {
         return to_styled_line(text, char_styles);
@@ -1304,7 +1301,6 @@ fn make_quoted_line(text: &[u16], char_styles: Option<&[CellStyle]>, quote_depth
 
 #[cfg(test)]
 mod tests {
-    //! Port of MarkdigRendererTests.cs and FrontmatterTests.
 
     use super::{render_text, try_extract_frontmatter};
     use crate::highlight::StyledLine;

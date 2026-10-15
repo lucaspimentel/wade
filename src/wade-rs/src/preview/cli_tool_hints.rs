@@ -1,6 +1,6 @@
-//! Ports of `CliToolHints` and `CliTool`: an install hint when a PDF or
-//! media file has no tool to preview it, the cached availability probe,
-//! and `Run` (a tool's stdout on success).
+//! External preview tools: an install hint when a PDF or media file has no
+//! tool to preview it, the cached availability probe, and `run` (a tool's
+//! stdout on success).
 
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
@@ -10,7 +10,7 @@ const MEDIA_EXTENSIONS: &[&str] = &[
     ".webm", ".flv", ".m4v", ".ts", ".mpg", ".mpeg",
 ];
 
-/// Port of `CliToolHints.GetHint`.
+/// The install hint for the tool `path` would need, if it is missing.
 #[must_use]
 pub fn get_hint(path: &str) -> Option<&'static str> {
     let name = path.rsplit(crate::search::is_separator).next().unwrap_or(path);
@@ -43,8 +43,7 @@ pub fn get_hint(path: &str) -> Option<&'static str> {
     None
 }
 
-/// Port of `CliTool.IsAvailable`: runs the tool once (3 s timeout) and
-/// caches the answer by file name.
+/// Runs the tool once (3 s timeout) and caches the answer by file name.
 #[must_use]
 pub fn is_available(file_name: &str, argument: Option<&str>, require_zero_exit_code: bool) -> bool {
     static CACHE: OnceLock<Mutex<HashMap<String, bool>>> = OnceLock::new();
@@ -88,9 +87,8 @@ fn probe(file_name: &str, argument: Option<&str>, require_zero_exit_code: bool) 
     }
 }
 
-/// Port of `CliTool.Run`: the tool's stdout when it exits 0 within
-/// `timeout_ms`; `None` on failure, timeout or cancellation (the process is
-/// killed).
+/// The tool's stdout when it exits 0 within `timeout_ms`; `None` on failure,
+/// timeout or cancellation (the process is killed).
 #[must_use]
 pub fn run(file_name: &str, args: &[&str], timeout_ms: u64, cancel: &crate::input::CancelToken) -> Option<String> {
     use std::io::Read;
@@ -138,7 +136,6 @@ pub fn run(file_name: &str, args: &[&str], timeout_ms: u64, cancel: &crate::inpu
 
 #[cfg(test)]
 mod tests {
-    //! Ports of CliToolHintsTests.cs and CliToolTests.cs.
 
     use super::{get_hint, is_available, run};
     use crate::input::CancelToken;

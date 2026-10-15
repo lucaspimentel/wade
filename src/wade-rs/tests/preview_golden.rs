@@ -165,7 +165,7 @@ fn contexts(repo_root: &str) -> Vec<(&'static str, PreviewContext)> {
         image_previews_enabled: false,
         image_protocol: None,
         archive_metadata_enabled: true,
-        limits: wade::preview::PreviewLimits::CSHARP,
+        limits: wade::preview::PreviewLimits::GOLDEN,
     };
 
     vec![

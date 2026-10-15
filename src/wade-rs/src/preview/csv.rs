@@ -1,4 +1,4 @@
-//! Rust only: the CSV/TSV table preview and its file details. Records are
+//! The CSV/TSV table preview and its file details. Records are
 //! parsed per RFC 4180 (quoted fields, `""` escapes, separators and line
 //! breaks inside quotes), laid out as aligned columns with a header row,
 //! `│` separators, right-aligned numbers and record numbers.
@@ -618,7 +618,7 @@ mod tests {
         let big: String = std::iter::once("n\n".to_string()).chain((0..20_000).map(|i| format!("{i}\n"))).collect();
         let capped = csv_file("big.csv", &big);
         let small_bytes = PreviewContext {
-            limits: PreviewLimits { bytes: 1000, ..PreviewLimits::CSHARP },
+            limits: PreviewLimits { bytes: 1000, ..PreviewLimits::GOLDEN },
             ..test_context()
         };
         let result = CsvMetadataProvider.get_metadata(&capped, &small_bytes, &CancelToken::new()).unwrap();

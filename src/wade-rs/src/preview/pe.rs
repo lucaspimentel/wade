@@ -1,13 +1,11 @@
-//! A minimal port of the parts of `System.Reflection.PortableExecutable`
-//! (`PEReader`/`PEHeaders`) and `System.Reflection.Metadata`
-//! (`MetadataReader`) that `ExecutableMetadataProvider` uses: COFF and
-//! optional headers, section mapping, the CLI header, and the Assembly,
-//! AssemblyRef, TypeRef, MemberRef and CustomAttribute tables.
+//! A minimal PE and .NET metadata reader for what
+//! `ExecutableMetadataProvider` shows: COFF and optional headers, section
+//! mapping, the CLI header, and the Assembly, AssemblyRef, TypeRef,
+//! MemberRef and CustomAttribute tables.
 //!
-//! Errors mirror the .NET exception split: `PeError::BadImage` is what
-//! `PEHeaders` or a metadata read throws (the provider shows nothing),
-//! while a malformed metadata root only drops the .NET sections, as C#
-//! catches `BadImageFormatException` from `GetMetadataReader`.
+//! `PeError::BadImage` from the headers or a metadata read means the
+//! provider shows nothing, while a malformed metadata root only drops the
+//! .NET sections.
 
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
@@ -86,12 +84,12 @@ pub struct OptionalHeader {
     pub subsystem: u16,
 }
 
-/// Port of the `PEHeaders` facts the provider reads.
+/// The PE header fields the provider reads.
 #[derive(Clone, Debug)]
 pub struct PeHeaders {
     pub machine: u16,
     pub characteristics: u16,
-    /// `CoffHeader.TimeDateStamp` (a signed int in .NET).
+    /// The COFF header's TimeDateStamp, as a signed int.
     pub time_date_stamp: i32,
     pub pe_header: Option<OptionalHeader>,
     /// Metadata block (file offset, size); size 0 means no metadata.
@@ -107,7 +105,7 @@ impl PeHeaders {
     }
 }
 
-/// Port of the `PEHeaders` constructor over a file image.
+/// Reads and validates the headers of a file image.
 pub fn read_headers(image: &mut Image) -> Result<PeHeaders> {
     let size = image.len;
     let dos = image.read(0, 2)?;
@@ -154,7 +152,7 @@ pub fn read_headers(image: &mut Image) -> Result<PeHeaders> {
             PE32_PLUS_MAGIC => 112,
             _ => return Err(BadImage),
         };
-        // .NET reads every field plus all 16 data directories
+        // Read every field plus all 16 data directories
         let header = image.read(offset, fixed + 128)?;
         offset += i64::try_from(fixed + 128).unwrap_or(0);
 
@@ -242,7 +240,7 @@ pub fn read_headers(image: &mut Image) -> Result<PeHeaders> {
     })
 }
 
-/// Port of `TryGetDirectoryOffset(canCrossSectionBoundary: false)`.
+/// The file offset of a data directory, which must fit in one section.
 fn directory_offset(sections: &[Section], directory: Directory) -> Result<Option<i64>> {
     let Some(section) = sections
         .iter()
@@ -400,7 +398,7 @@ fn schema(table: usize) -> &'static [Col] {
     }
 }
 
-/// Port of the `MetadataReader` subset: heaps plus the tables stream.
+/// The .NET metadata heaps plus the tables stream.
 pub struct MetadataReader<'a> {
     strings: &'a [u8],
     blobs: &'a [u8],
@@ -419,7 +417,7 @@ fn read_u16(data: &[u8], at: usize) -> Result<u16> {
 }
 
 impl<'a> MetadataReader<'a> {
-    /// Port of the `MetadataReader` constructor's validation.
+    /// Validates the metadata root and locates the streams.
     pub fn new(metadata: &'a [u8]) -> Result<Self> {
         if read_u32(metadata, 0)? != 0x424A_5342 {
             return Err(BadImage);
@@ -544,8 +542,8 @@ impl<'a> MetadataReader<'a> {
         data.get(header..header + len as usize).ok_or(BadImage)
     }
 
-    /// `GetAssemblyDefinition()` name and version; None for a module
-    /// without an Assembly row (.NET throws InvalidOperationException).
+    /// The assembly's name and version; None for a module without an
+    /// Assembly row.
     pub fn assembly(&self) -> Result<Option<(String, [u16; 4])>> {
         if self.rows[TABLE_ASSEMBLY] == 0 {
             return Ok(None);
@@ -574,9 +572,9 @@ impl<'a> MetadataReader<'a> {
             .collect()
     }
 
-    /// Port of `ReadTargetFramework`: the first assembly-level attribute
-    /// whose constructor is a MemberRef on a TypeRef named
-    /// `TargetFrameworkAttribute`, decoded by `DecodeTargetFrameworkValue`.
+    /// The first assembly-level attribute whose constructor is a MemberRef on a
+    /// TypeRef named `TargetFrameworkAttribute`, decoded by
+    /// `decode_target_framework_value`.
     pub fn target_framework(&self) -> Result<Option<String>> {
         let assembly_parent = (1u32 << HAS_CUSTOM_ATTRIBUTE.0) | 14;
 
@@ -627,7 +625,7 @@ fn decode_compressed(data: &[u8]) -> Option<(u32, usize)> {
     }
 }
 
-/// Port of `DecodeTargetFrameworkValue`: prolog 0x0001 then a SerString
+/// The attribute blob: prolog 0x0001 then a SerString
 /// (0xFF is a null string); any read failure is null.
 fn decode_target_framework_value(blob: &[u8]) -> Option<String> {
     if blob.len() < 4 || u16_at(blob, 0) != 0x0001 {

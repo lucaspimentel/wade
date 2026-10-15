@@ -1,7 +1,6 @@
-//! Ports of `MsiInterop`, `MsiPreviewProvider` and `MsiMetadataProvider`.
-//! C# reads installers through msi.dll on Windows only; Rust reads the
-//! database with the pure-Rust `msi` crate on every OS (accepted
-//! deviation, KNOWN_DEVIATIONS.md).
+//! MSI installer previews (the File table) and metadata (summary info and
+//! the Property table), read with the `msi` crate on every OS
+//! (KNOWN_DEVIATIONS.md).
 
 use std::fs::File;
 
@@ -28,7 +27,7 @@ pub struct MsiSummaryInfo {
     pub comments: Option<String>,
 }
 
-/// Port of `MsiFileName.ParseLongName`: "short|long" -> "long" (first pipe).
+/// "short|long" -> "long" (first pipe).
 #[must_use]
 pub fn parse_long_name(raw_name: &str) -> &str {
     raw_name.split_once('|').map_or(raw_name, |(_, long)| long)
@@ -52,7 +51,7 @@ fn cell_string(value: &msi::Value) -> String {
     }
 }
 
-/// Port of `QueryPropertyTable`: (name, value) pairs in table order;
+/// The Property table: (name, value) pairs in table order;
 /// lookups are case-insensitive and the last duplicate wins.
 fn query_property_table(db: &mut Package) -> Vec<(String, String)> {
     let Ok(rows) = db.select_rows(msi::Select::table("Property").columns(&["Property", "Value"])) else {
@@ -70,7 +69,7 @@ fn property<'a>(properties: &'a [(String, String)], name: &str) -> Option<&'a st
         .map(|(_, value)| value.as_str())
 }
 
-/// Port of `QueryFileTable`.
+/// The File table's names and sizes.
 fn query_file_table(db: &mut Package) -> Vec<MsiFileEntry> {
     let Ok(rows) = db.select_rows(msi::Select::table("File").columns(&["FileName", "FileSize"])) else {
         return Vec::new();
@@ -84,7 +83,7 @@ fn query_file_table(db: &mut Package) -> Vec<MsiFileEntry> {
     .collect()
 }
 
-/// Port of `GetSummaryInfo`. The crate splits the Template property into
+/// The summary information. The crate splits the Template property into
 /// architecture and languages; it is rejoined as `arch;lang,lang`.
 fn summary_info(db: &Package) -> MsiSummaryInfo {
     let summary = db.summary_info();
@@ -151,8 +150,8 @@ impl PreviewProvider for MsiPreviewProvider {
     }
 }
 
-/// The listing body of `GetPreview`: sorted by name (OrdinalIgnoreCase),
-/// capped at `entry_limit` rows (C#: 100).
+/// The listing body of the preview: sorted by name (case-insensitive),
+/// capped at `entry_limit` rows.
 #[must_use]
 pub fn file_listing(files: &mut [MsiFileEntry], entry_limit: usize) -> Vec<StyledLine> {
     files.sort_by(|a, b| crate::text::compare_ordinal_ignore_case(&a.file_name, &b.file_name));

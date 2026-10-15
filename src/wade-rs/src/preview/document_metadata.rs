@@ -1,9 +1,8 @@
-//! Ports of `OfficeMetadataProvider` (OPC `docProps/core.xml` and
-//! `docProps/app.xml`) and `NuGetMetadataProvider` (the root `.nuspec`),
-//! reading the package with `fs::zip_preview` and the XML with roxmltree.
+//! Office metadata (OPC `docProps/core.xml` and `docProps/app.xml`) and
+//! NuGet metadata (the root `.nuspec`), reading the package with
+//! `fs::zip_preview` and the XML with roxmltree.
 //!
-//! Malformed XML: C# lets the `XmlException` escape, which faults the
-//! preview load; Rust treats it as no result (KNOWN_DEVIATIONS.md).
+//! Malformed XML gives no result (KNOWN_DEVIATIONS.md).
 
 use roxmltree::{Document, Node};
 
@@ -62,8 +61,7 @@ fn parse_document(text: &str) -> Option<Document<'_>> {
 
 const XML_NS: &str = "http://www.w3.org/XML/1998/namespace";
 
-/// `XElement.Value` of an `XDocument.Load`ed tree: the concatenated text of
-/// all descendants. Without `LoadOptions.PreserveWhitespace`, .NET drops
+/// An element's value: the concatenated text of all descendants, dropping
 /// whitespace-only text segments (each run between CDATA sections,
 /// elements, comments and PIs) unless `xml:space="preserve"` applies;
 /// CDATA content is always kept. roxmltree merges text with adjacent
@@ -268,7 +266,8 @@ fn office_file_type_label(path: &str) -> &'static str {
     }
 }
 
-/// Port of `AddCoreProperties`; `None` when the part can't be read or parsed.
+/// The core properties (title, author, dates); `None` when the part can't
+/// be read or parsed.
 fn add_core_properties(
     sections: &mut Vec<MetadataSection>,
     path: &str,
@@ -320,7 +319,7 @@ fn add_core_properties(
     Some(true)
 }
 
-/// Port of `AddAppProperties`.
+/// The app properties (application, page/word/slide counts).
 fn add_app_properties(sections: &mut Vec<MetadataSection>, path: &str, zip: &[ZipEntry]) -> Option<bool> {
     let Some(bytes) = read_entry(path, zip, "docProps/app.xml").ok()? else {
         return Some(false);
@@ -377,8 +376,8 @@ fn add_app_properties(sections: &mut Vec<MetadataSection>, path: &str, zip: &[Zi
     Some(true)
 }
 
-/// Port of `AddDateEntry`: ISO 8601 dates print as `yyyy-MM-dd HH:mm:ss`
-/// in their own offset; anything else prints as written.
+/// ISO 8601 dates print as `yyyy-MM-dd HH:mm:ss` in their own offset; anything
+/// else prints as written.
 fn add_date_entry(entries: &mut Vec<MetadataEntry>, label: &str, value: Option<String>) {
     let Some(value) = value.filter(|v| !v.trim().is_empty()) else {
         return;
@@ -445,7 +444,7 @@ pub fn parse_iso_date_time(value: &str) -> Option<String> {
     Some(format!("{year:04}-{month:02}-{day:02} {hour:02}:{minute:02}:{second:02}"))
 }
 
-/// Port of `AddFormattedIntEntry`.
+/// An integer with thousands separators; other text as written.
 fn add_formatted_int_entry(entries: &mut Vec<MetadataEntry>, label: &str, value: Option<String>) {
     let Some(value) = value.filter(|v| !v.trim().is_empty()) else {
         return;
@@ -538,7 +537,7 @@ fn children_by_local_name<'a, 'input>(node: Node<'a, 'input>, name: &'a str) -> 
     node.children().filter(move |c| c.is_element() && c.tag_name().name() == name)
 }
 
-/// Port of `GetElementValue`: local name matched case-insensitively.
+/// A child element's value, local name matched case-insensitively.
 fn element_value_ignore_case(node: Node, name: &str) -> Option<String> {
     node.children()
         .find(|c| c.is_element() && c.tag_name().name().eq_ignore_ascii_case(name))
@@ -586,7 +585,7 @@ fn dependency_entries(parent: Node) -> Vec<MetadataEntry> {
         .collect()
 }
 
-/// Port of `AddDependencies`: grouped by target framework, or flat.
+/// NuGet dependencies: grouped by target framework, or flat.
 fn add_dependencies(sections: &mut Vec<MetadataSection>, metadata: Node) {
     let Some(deps) = child_by_local_name(metadata, "dependencies") else {
         return;

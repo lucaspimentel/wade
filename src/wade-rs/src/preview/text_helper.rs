@@ -1,9 +1,9 @@
-//! Port of src/Wade/Preview/TextHelper.cs plus the invariant-culture
-//! number formatting the metadata providers share.
+//! Text wrapping and the number formatting and parsing the metadata
+//! providers share.
 
-/// Port of `TextHelper.WrapText`: collapses whitespace runs to single
-/// spaces, then breaks at the last space within `max_width` (or hard-breaks
-/// a longer word). Widths count code points (KNOWN_DEVIATIONS.md).
+/// Collapses whitespace runs to single spaces, then breaks at the last space
+/// within `max_width` (or hard-breaks a longer word). Widths count code points
+/// (KNOWN_DEVIATIONS.md).
 #[must_use]
 pub fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
     let normalized: Vec<char> = text.split_whitespace().collect::<Vec<_>>().join(" ").chars().collect();
@@ -35,7 +35,7 @@ pub fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
     result
 }
 
-/// .NET `{value:N0}` (invariant/en-US): thousands separators, no decimals.
+/// Thousands separators (commas), no decimals.
 #[must_use]
 pub fn format_n0(value: i64) -> String {
     let digits = value.unsigned_abs().to_string();
@@ -52,8 +52,8 @@ pub fn format_n0(value: i64) -> String {
     if value < 0 { format!("-{out}") } else { out }
 }
 
-/// .NET `int.TryParse`/`long.TryParse` with `NumberStyles.Integer`:
-/// surrounding whitespace and one leading sign are allowed.
+/// Parses an integer: surrounding whitespace and one leading sign are
+/// allowed.
 #[must_use]
 pub fn parse_integer<T: std::str::FromStr>(text: &str) -> Option<T> {
     let trimmed = text.trim();
@@ -78,7 +78,7 @@ mod tests {
     #[test]
     fn wraps_at_last_space_and_hard_breaks_long_words() {
         assert_eq!(wrap_text("the quick brown fox jumps", 10), ["the quick", "brown fox", "jumps"]);
-        // Like C#, a hard break skips the character after it (pos = breakAt + 1)
+        // A hard break skips the character after it
         assert_eq!(wrap_text("abcdefghijklmno", 5), ["abcde", "ghijk", "mno"]);
         assert_eq!(wrap_text("ab abcdefghij", 5), ["ab", "abcde", "ghij"]);
     }

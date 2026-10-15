@@ -1,9 +1,5 @@
-//! Port of `src/Wade/Preview`: preview and metadata providers, their
-//! registries, and the shared result types.
-//!
-//! Providers for formats that land in later phases (images and PDF:
-//! Phase 8; MSI, executables, Office, NuGet, media: Phase 9) are absent
-//! from the registries (KNOWN_DEVIATIONS.md).
+//! Preview and metadata providers, their registries, and the shared result
+//! types.
 
 pub mod cli_tool_hints;
 pub mod csv;
@@ -24,8 +20,7 @@ use crate::highlight::StyledLine;
 use crate::imaging::{ImageData, ImageProtocol};
 use crate::input::CancelToken;
 
-/// Port of `PreviewContext`: pane size, file facts and the config flags
-/// providers consult.
+/// Pane size, file facts and the config flags providers consult.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PreviewContext {
     pub pane_width_cells: i32,
@@ -39,7 +34,7 @@ pub struct PreviewContext {
     pub pdf_preview_enabled: bool,
     pub pdf_metadata_enabled: bool,
     pub markdown_preview_enabled: bool,
-    /// Rust only: the CSV/TSV table preview.
+    /// The CSV/TSV table preview.
     pub csv_preview_enabled: bool,
     pub ffprobe_enabled: bool,
     pub mediainfo_enabled: bool,
@@ -50,13 +45,13 @@ pub struct PreviewContext {
     /// need just a protocol).
     pub image_protocol: Option<ImageProtocol>,
     pub archive_metadata_enabled: bool,
-    /// How much text and how many archive entries to read (Rust only).
+    /// How much text and how many archive entries to read.
     pub limits: PreviewLimits,
 }
 
-/// How much a preview reads (Rust only; C# reads 100 lines or entries).
-/// The right pane reads its own height; the full-screen preview reads
-/// `preview_max_lines` and `preview_max_bytes` and marks a cut-off text.
+/// How much a preview reads. The right pane reads its own height; the
+/// full-screen preview reads `preview_max_lines` and `preview_max_bytes` and
+/// marks a cut-off text.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PreviewLimits {
     /// Text lines, archive entries and gzip text lines.
@@ -73,8 +68,9 @@ impl PreviewLimits {
     pub const MIN_MAX_LINES: usize = 100;
     pub const MIN_MAX_BYTES: u64 = 64 * 1024;
 
-    /// C#'s 100 lines or entries, without a marker (tests and goldens).
-    pub const CSHARP: Self = Self {
+    /// 100 lines or entries, without a marker: what the frozen goldens were
+    /// generated with (tests and goldens).
+    pub const GOLDEN: Self = Self {
         lines: 100,
         bytes: Self::DEFAULT_MAX_BYTES,
         mark_truncation: false,
@@ -134,7 +130,7 @@ pub(crate) fn group_thousands(value: u64) -> String {
     out
 }
 
-/// Port of `PreviewResult`.
+/// A preview: styled text lines, an image, or both.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct PreviewResult {
     pub text_lines: Option<Vec<StyledLine>>,
@@ -149,11 +145,11 @@ pub struct PreviewResult {
     pub image_pixel_width: i32,
     pub image_pixel_height: i32,
     /// The last text line is a truncation marker: drawn without a line
-    /// number (Rust only).
+    /// number.
     pub has_truncation_marker: bool,
 }
 
-/// Port of `MetadataEntry`. An empty label renders as a list item.
+/// A label and value row. An empty label renders as a list item.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MetadataEntry {
     pub label: String,
@@ -170,35 +166,35 @@ impl MetadataEntry {
     }
 }
 
-/// Port of `MetadataSection`.
+/// A titled group of metadata entries.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MetadataSection {
     pub header: Option<String>,
     pub entries: Vec<MetadataEntry>,
 }
 
-/// Port of `MetadataResult`.
+/// A metadata provider's sections and file-type label.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MetadataResult {
     pub sections: Vec<MetadataSection>,
     pub file_type_label: Option<String>,
 }
 
-/// Port of `IPreviewProvider`.
+/// One way to preview a file; the registry lists those that apply.
 pub trait PreviewProvider: Sync {
     fn label(&self) -> &'static str;
     fn can_preview(&self, path: &str, context: &PreviewContext) -> bool;
     fn get_preview(&self, path: &str, context: &PreviewContext, cancel: &CancelToken) -> Option<PreviewResult>;
 }
 
-/// Port of `IMetadataProvider`.
+/// One source of metadata sections; every applicable one contributes.
 pub trait MetadataProvider: Sync {
     fn label(&self) -> &'static str;
     fn can_provide_metadata(&self, path: &str, context: &PreviewContext) -> bool;
     fn get_metadata(&self, path: &str, context: &PreviewContext, cancel: &CancelToken) -> Option<MetadataResult>;
 }
 
-/// The context the C# provider tests build (`MakeContext`): every flag on.
+/// A provider test context: every flag on.
 #[cfg(test)]
 pub(crate) fn test_context() -> PreviewContext {
     PreviewContext {
@@ -220,7 +216,7 @@ pub(crate) fn test_context() -> PreviewContext {
         image_previews_enabled: true,
         image_protocol: Some(ImageProtocol::Sixel),
         archive_metadata_enabled: true,
-        limits: PreviewLimits::CSHARP,
+        limits: PreviewLimits::GOLDEN,
     }
 }
 
