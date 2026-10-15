@@ -62,10 +62,13 @@ pub(crate) fn linux_fat_dir() -> Option<PathBuf> {
 /// An App at `root` with `config` applied as startup applies it, laid out
 /// as `run` does. The config and bookmark files live in the fixture so
 /// tests never touch the user's files.
-pub(crate) fn app_at(mut config: AppConfig, root: &Path) -> App {
-    config.start_path = root.to_string_lossy().into_owned();
-    config.config_file_path = Some(root.join("config.toml").to_string_lossy().into_owned());
-    let mut app = App::new(config);
+pub(crate) fn app_at(config: AppConfig, root: &Path) -> App {
+    let start = crate::app::StartOptions {
+        start_path: root.to_string_lossy().into_owned(),
+        start_file_name: None,
+        config_file: Some(root.join("config.toml")),
+    };
+    let mut app = App::new(config, start);
     app.bookmark_store = crate::fs::bookmark_store::BookmarkStore::new(Some(root.join("bookmarks.txt")));
     // Outside the listed directory, so saving a sort doesn't add an entry
     let sorts_file = root.parent().unwrap_or(root).join("sorts.txt");

@@ -14,32 +14,61 @@ fn default_config_path() -> Option<PathBuf> {
     Some(Path::new(&home).join(".config").join("wade").join("config.toml"))
 }
 
-/// The path `save_config` writes to: the `--config-file=` override when the
-/// config was loaded with one, otherwise the default location.
+/// The path `save_config` writes to: the `--config-file=` override,
+/// otherwise the default location (`config.toml` in the current directory
+/// when there is no home directory).
 #[must_use]
-pub fn config_path(config: &AppConfig) -> PathBuf {
-    config
-        .config_file_path
-        .as_ref()
-        .map_or_else(|| default_config_path().unwrap_or_else(|| PathBuf::from("config.toml")), PathBuf::from)
+pub fn config_path(config_file: Option<&Path>) -> PathBuf {
+    config_file
+        .map(Path::to_path_buf)
+        .or_else(default_config_path)
+        .unwrap_or_else(|| PathBuf::from("config.toml"))
 }
 
-/// Port of `WadeConfig.Load`.
-pub fn load_config(args: &[String]) -> AppConfig {
-    let mut config = AppConfig::default();
+/// The command line: `[options] [path]`. Unknown flags are ignored.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct CliArgs {
+    /// `--config-file=<path>`; the first one counts.
+    pub config_file: Option<PathBuf>,
+    /// `--cwd-file=<path>`: receives the final directory; the last one counts.
+    pub cwd_file: Option<String>,
+    /// The first argument that isn't a flag, normalized.
+    pub start_path: Option<String>,
+    pub show_config: bool,
+    pub show_help: bool,
+    pub show_version: bool,
+}
 
-    // Allow --config-file=<path> to override the config file location
-    let mut config_file_path = default_config_path();
+#[must_use]
+pub fn parse_args(args: &[String]) -> CliArgs {
+    let mut cli = CliArgs::default();
+
     for arg in args {
         if let Some(path) = arg.strip_prefix("--config-file=") {
-            config_file_path = Some(PathBuf::from(path));
-            break;
+            cli.config_file.get_or_insert_with(|| PathBuf::from(path));
+        } else if let Some(path) = arg.strip_prefix("--cwd-file=") {
+            cli.cwd_file = Some(path.to_string());
+        } else {
+            match arg.as_str() {
+                "--show-config" => cli.show_config = true,
+                "--help" | "-h" => cli.show_help = true,
+                "--version" => cli.show_version = true,
+                _ => {}
+            }
         }
     }
 
-    config.config_file_path = config_file_path.as_ref().map(|p| p.to_string_lossy().to_string());
+    cli.start_path = args.iter().find(|arg| !arg.starts_with('-')).map(|start| normalize_start_path(start));
+    cli
+}
 
-    let Some(config_path) = config_file_path else {
+/// Reads `config_file`, or the default location when `None`. A missing or
+/// unreadable file gives the defaults.
+#[must_use]
+pub fn load_config(config_file: Option<&Path>) -> AppConfig {
+    let mut config = AppConfig::default();
+
+    let Some(config_path) = config_file.map(Path::to_path_buf).or_else(default_config_path) else {
         return config;
     };
     let Ok(text) = std::fs::read_to_string(&config_path) else {
@@ -170,29 +199,6 @@ pub fn load_config(args: &[String]) -> AppConfig {
     config
 }
 
-/// The CLI half of `WadeConfig.Load`: `--cwd-file=`, `--show-config`,
-/// `--help`/`-h`, `--version`, and the first non-flag argument as the start
-/// path.
-pub fn apply_cli_args(config: &mut AppConfig, args: &[String]) {
-    for arg in args {
-        if let Some(path) = arg.strip_prefix("--cwd-file=") {
-            config.cwd_file_path = Some(path.to_string());
-            continue;
-        }
-
-        match arg.as_str() {
-            "--show-config" => config.show_config = true,
-            "--help" | "-h" => config.show_help = true,
-            "--version" => config.show_version = true,
-            _ => {}
-        }
-    }
-
-    if let Some(start) = args.iter().find(|arg| !arg.starts_with('-')) {
-        config.start_path = normalize_start_path(start);
-    }
-}
-
 /// The start-path half of `WadeConfig.Load`: expands a leading `~` to the
 /// home directory, then strips trailing separators (both kinds, on every
 /// OS) while keeping a root (`/`, `C:\`).
@@ -218,7 +224,7 @@ pub fn normalize_start_path(path: &str) -> String {
 
 /// Port of `WadeConfig.ToJson` (`--show-config`).
 #[must_use]
-pub fn to_json(config: &AppConfig) -> String {
+pub fn to_json(config: &AppConfig, start_path: &str) -> String {
     let flag = |value: bool| if value { "true" } else { "false" };
     let sort_mode = config.sort_mode.name();
     let fields = [
@@ -269,14 +275,13 @@ pub fn to_json(config: &AppConfig) -> String {
     json.push_str(&format!("\"preview_max_lines\":{},", config.preview_max_lines));
     json.push_str(&format!("\"preview_max_bytes\":{},", config.preview_max_bytes));
     // C# escapes only backslashes in the start path
-    json.push_str(&format!("\"start_path\":\"{}\"}}", config.start_path.replace('\\', "\\\\")));
+    json.push_str(&format!("\"start_path\":\"{}\"}}", start_path.replace('\\', "\\\\")));
     json
 }
 
 /// Port of `WadeConfig.Save`: all 27 keys in the C# order, except that the
 /// Rust-only `icons` takes the place of `show_icons_enabled`.
-pub fn save_config(config: &AppConfig) -> std::io::Result<()> {
-    let path = config_path(config);
+pub fn save_config(config: &AppConfig, path: &Path) -> std::io::Result<()> {
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)?;
     }
@@ -383,16 +388,8 @@ fn parse_sort_mode(value: &str) -> Option<SortMode> {
 mod tests {
     use super::*;
 
-    #[expect(clippy::field_reassign_with_default)]
-    fn config_with_path(file_name: &str) -> AppConfig {
-        let mut config = AppConfig::default();
-        config.config_file_path = Some(
-            std::env::temp_dir()
-                .join(format!("wade-config-test-{}-{file_name}", std::process::id()))
-                .to_string_lossy()
-                .to_string(),
-        );
-        config
+    fn temp_config_path(file_name: &str) -> PathBuf {
+        std::env::temp_dir().join(format!("wade-config-test-{}-{file_name}", std::process::id()))
     }
 
     /// The saved file must match the C# `WadeConfig.Save()` layout: 27 keys,
@@ -400,9 +397,9 @@ mod tests {
     /// place of `show_icons_enabled`).
     #[test]
     fn save_writes_exact_csharp_layout() {
-        let config = config_with_path("save.txt");
-        save_config(&config).expect("save");
-        let text = std::fs::read_to_string(config_path(&config)).expect("read back");
+        let path = temp_config_path("save.txt");
+        save_config(&AppConfig::default(), &path).expect("save");
+        let text = std::fs::read_to_string(&path).expect("read back");
         let expected = "\
 icons = nerd
 image_previews_enabled = true
@@ -437,41 +434,36 @@ mediainfo_enabled = true
 
     #[test]
     fn load_round_trips_saved_config() {
-        let mut config = config_with_path("roundtrip.txt");
-        config.show_hidden_files = true;
-        config.sort_mode = SortMode::Size;
-        config.dir_size_hdd_enabled = true;
-        save_config(&config).expect("save");
+        let path = temp_config_path("roundtrip.txt");
+        let config = AppConfig {
+            show_hidden_files: true,
+            sort_mode: SortMode::Size,
+            dir_size_hdd_enabled: true,
+            ..AppConfig::default()
+        };
+        save_config(&config, &path).expect("save");
 
-        let args: Vec<String> = vec![format!("--config-file={}", config_path(&config).display())];
-        let loaded = load_config(&args);
+        let loaded = load_config(Some(&path));
         assert!(loaded.show_hidden_files);
         assert_eq!(loaded.sort_mode, SortMode::Size);
         assert!(loaded.dir_size_hdd_enabled);
         assert!(loaded.mediainfo_enabled);
-        assert_eq!(loaded.config_file_path, config.config_file_path);
     }
 
     #[test]
     fn cli_args_set_flags_and_first_non_flag_start_path() {
-        let mut config = AppConfig::default();
-        let args: Vec<String> = ["--cwd-file=/tmp/out", "-h", "--version", "--show-config", "/start", "/ignored"]
-            .iter()
-            .map(|s| (*s).to_string())
-            .collect();
-        apply_cli_args(&mut config, &args);
-        assert_eq!(config.cwd_file_path.as_deref(), Some("/tmp/out"));
-        assert!(config.show_help && config.show_version && config.show_config);
-        assert_eq!(config.start_path, "/start");
+        let parsed = cli(&["--cwd-file=/tmp/out", "-h", "--version", "--show-config", "/start", "/ignored"]);
+        assert_eq!(parsed.cwd_file.as_deref(), Some("/tmp/out"));
+        assert!(parsed.show_help && parsed.show_version && parsed.show_config);
+        assert_eq!(parsed.start_path.as_deref(), Some("/start"));
     }
 
     #[test]
     fn disabled_tools_and_detail_columns_keys() {
-        let config = config_with_path("legacy.toml");
-        let path = config.config_file_path.clone().unwrap();
+        let path = temp_config_path("legacy.toml");
         std::fs::write(&path, "disabled_tools = pdftopng, markdown_preview ,mediainfo\ndetail_columns_enabled = no\n")
             .unwrap();
-        let loaded = load_config(&[format!("--config-file={path}")]);
+        let loaded = load_config(Some(&path));
         assert!(!loaded.pdf_preview_enabled && !loaded.markdown_preview_enabled && !loaded.mediainfo_enabled);
         assert!(loaded.pdf_metadata_enabled && loaded.ffprobe_enabled);
         assert!(!loaded.size_column_enabled && !loaded.date_column_enabled);
@@ -480,11 +472,7 @@ mediainfo_enabled = true
 
     #[test]
     fn to_json_escapes_backslashes_only() {
-        let config = AppConfig {
-            start_path: "C:\\a \"b\"".to_string(),
-            ..AppConfig::default()
-        };
-        let json = to_json(&config);
+        let json = to_json(&AppConfig::default(), "C:\\a \"b\"");
         assert!(json.starts_with("{\"icons\":\"nerd\","));
         assert!(json.contains("\"sort_mode\":\"name\","));
         assert!(json.ends_with("\"start_path\":\"C:\\\\a \"b\"\"}"));
@@ -492,9 +480,9 @@ mediainfo_enabled = true
 
     /// Loads `text` as a config file (port of the WadeConfigTests helper).
     fn load_text(name: &str, text: &str) -> AppConfig {
-        let path = config_with_path(name).config_file_path.unwrap();
+        let path = temp_config_path(name);
         std::fs::write(&path, text).unwrap();
-        let loaded = load_config(&[format!("--config-file={path}")]);
+        let loaded = load_config(Some(&path));
         let _ = std::fs::remove_file(&path);
         loaded
     }
@@ -534,13 +522,12 @@ mediainfo_enabled = true
 
     #[test]
     fn defaults_when_nothing_provided() {
-        let config = load_config(&["--config-file=/nonexistent/wade/config.toml".to_string()]);
+        let config = load_config(Some(Path::new("/nonexistent/wade/config.toml")));
         for (key, field, default) in bool_keys() {
             assert_eq!(field(&config), default, "{key} default");
         }
         assert_eq!(config.sort_mode, SortMode::Name);
-        assert!(config.cwd_file_path.is_none());
-        assert!(!config.show_config && !config.show_help && !config.show_version);
+        assert_eq!(cli(&[]), CliArgs::default());
     }
 
     #[test]
@@ -602,9 +589,8 @@ mediainfo_enabled = true
 
     #[test]
     fn missing_config_file_uses_defaults() {
-        let loaded = load_config(&["--config-file=/nonexistent/wade/nope.toml".to_string()]);
+        let loaded = load_config(Some(Path::new("/nonexistent/wade/nope.toml")));
         assert_eq!(loaded.icon_set, IconSet::Nerd);
-        assert_eq!(loaded.config_file_path.as_deref(), Some("/nonexistent/wade/nope.toml"));
     }
 
     #[test]
@@ -630,26 +616,26 @@ mediainfo_enabled = true
     #[test]
     fn saved_icon_set_round_trips() {
         for set in IconSet::ALL {
-            let mut config = config_with_path(&format!("icons-{}.toml", set.name()));
-            config.icon_set = set;
-            save_config(&config).expect("save");
-            let path = config_path(&config);
+            let path = temp_config_path(&format!("icons-{}.toml", set.name()));
+            let config = AppConfig { icon_set: set, ..AppConfig::default() };
+            save_config(&config, &path).expect("save");
             let text = std::fs::read_to_string(&path).unwrap();
             assert!(text.starts_with(&format!("icons = {}\n", set.name())), "{text}");
             assert!(!text.contains("show_icons_enabled"));
-            assert_eq!(load_config(&[format!("--config-file={}", path.display())]).icon_set, set);
+            assert_eq!(load_config(Some(&path)).icon_set, set);
             let _ = std::fs::remove_file(path);
         }
     }
 
     #[test]
     fn only_the_first_config_file_flag_counts() {
-        let path = config_with_path("first.toml").config_file_path.unwrap();
-        std::fs::write(&path, "show_hidden_files = true\n").unwrap();
-        let loaded =
-            load_config(&[format!("--config-file={path}"), "--config-file=/nonexistent/second.toml".to_string()]);
-        assert!(loaded.show_hidden_files);
-        let _ = std::fs::remove_file(&path);
+        let parsed = cli(&["--config-file=/first.toml", "--config-file=/second.toml"]);
+        assert_eq!(parsed.config_file.as_deref(), Some(Path::new("/first.toml")));
+        assert_eq!(
+            cli(&["--cwd-file=/a", "--cwd-file=/b"]).cwd_file.as_deref(),
+            Some("/b"),
+            "the last cwd file counts"
+        );
     }
 
     #[test]
@@ -674,14 +660,10 @@ mediainfo_enabled = true
         let dir = std::env::temp_dir().join(format!("wade-config-dir-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let path = dir.join("nested").join("config.toml");
-        save_config(&AppConfig {
-            config_file_path: Some(path.to_string_lossy().into_owned()),
-            ..flipped
-        })
-        .unwrap();
+        save_config(&flipped, &path).unwrap();
         assert!(path.exists(), "save creates the missing directory");
 
-        let reloaded = load_config(&[format!("--config-file={}", path.display())]);
+        let reloaded = load_config(Some(&path));
         for (key, field, default) in bool_keys() {
             assert_eq!(field(&reloaded), !default, "{key} round trip");
         }
@@ -693,11 +675,11 @@ mediainfo_enabled = true
     fn image_protocol_parses_round_trips_and_is_saved_only_when_set() {
         use crate::imaging::ImageProtocolSetting as Setting;
 
-        let config = config_with_path("image-protocol.txt");
-        let path = config_path(&config);
+        let config = AppConfig::default();
+        let path = temp_config_path("image-protocol.txt");
         let load = |text: &str| {
             std::fs::write(&path, text).unwrap();
-            load_config(&[format!("--config-file={}", path.display())]).image_protocol
+            load_config(Some(&path)).image_protocol
         };
 
         assert_eq!(load(""), Setting::Auto);
@@ -706,10 +688,13 @@ mediainfo_enabled = true
         assert_eq!(load("image_protocol = iterm\n"), Setting::Iterm);
         assert_eq!(load("image_protocol = iterm2\n"), Setting::Auto, "unknown values keep the default");
 
-        save_config(&AppConfig {
-            image_protocol: Setting::Kitty,
-            ..config.clone()
-        })
+        save_config(
+            &AppConfig {
+                image_protocol: Setting::Kitty,
+                ..config.clone()
+            },
+            &path,
+        )
         .unwrap();
         assert!(
             std::fs::read_to_string(&path)
@@ -718,47 +703,50 @@ mediainfo_enabled = true
         );
         assert_eq!(load(&std::fs::read_to_string(&path).unwrap()), Setting::Kitty);
 
-        save_config(&config).unwrap();
+        save_config(&config, &path).unwrap();
         assert!(!std::fs::read_to_string(&path).unwrap().contains("image_protocol"), "auto keeps the C# layout");
-        assert!(to_json(&config).contains("\"image_protocol\":\"auto\","));
+        assert!(to_json(&config, "").contains("\"image_protocol\":\"auto\","));
         let _ = std::fs::remove_file(&path);
     }
 
     #[test]
     fn csv_preview_parses_and_is_saved_only_when_off() {
-        let config = config_with_path("csv-preview.txt");
-        let path = config_path(&config);
+        let config = AppConfig::default();
+        let path = temp_config_path("csv-preview.txt");
         let load = |text: &str| {
             std::fs::write(&path, text).unwrap();
-            load_config(&[format!("--config-file={}", path.display())]).csv_preview_enabled
+            load_config(Some(&path)).csv_preview_enabled
         };
 
         assert!(load(""));
         assert!(!load("csv_preview_enabled = false\n"));
         assert!(load("csv_preview_enabled = maybe\n"), "invalid values keep the default");
 
-        save_config(&AppConfig {
-            csv_preview_enabled: false,
-            ..config.clone()
-        })
+        save_config(
+            &AppConfig {
+                csv_preview_enabled: false,
+                ..config.clone()
+            },
+            &path,
+        )
         .unwrap();
         let saved = std::fs::read_to_string(&path).unwrap();
         assert!(saved.ends_with("mediainfo_enabled = true\ncsv_preview_enabled = false\n"), "{saved}");
         assert!(!load(&saved));
 
-        save_config(&config).unwrap();
+        save_config(&config, &path).unwrap();
         assert!(!std::fs::read_to_string(&path).unwrap().contains("csv_preview"), "on keeps the C# layout");
-        assert!(to_json(&config).contains("\"csv_preview_enabled\":true,"));
+        assert!(to_json(&config, "").contains("\"csv_preview_enabled\":true,"));
         let _ = std::fs::remove_file(&path);
     }
 
     #[test]
     fn preview_limits_parse_clamp_and_are_saved_only_when_set() {
-        let config = config_with_path("preview-limits.txt");
-        let path = config_path(&config);
+        let config = AppConfig::default();
+        let path = temp_config_path("preview-limits.txt");
         let load = |text: &str| {
             std::fs::write(&path, text).unwrap();
-            let loaded = load_config(&[format!("--config-file={}", path.display())]);
+            let loaded = load_config(Some(&path));
             (loaded.preview_max_lines, loaded.preview_max_bytes)
         };
 
@@ -767,19 +755,22 @@ mediainfo_enabled = true
         assert_eq!(load("preview_max_lines = 5\npreview_max_bytes = 10\n"), (100, 64 * 1024), "raised to the minimum");
         assert_eq!(load("preview_max_lines = lots\npreview_max_bytes = -1\n"), (10_000, 4 * 1024 * 1024));
 
-        save_config(&AppConfig {
-            preview_max_lines: 500,
-            preview_max_bytes: 1_048_576,
-            ..config.clone()
-        })
+        save_config(
+            &AppConfig {
+                preview_max_lines: 500,
+                preview_max_bytes: 1_048_576,
+                ..config.clone()
+            },
+            &path,
+        )
         .unwrap();
         let saved = std::fs::read_to_string(&path).unwrap();
         assert!(saved.ends_with("mediainfo_enabled = true\npreview_max_lines = 500\npreview_max_bytes = 1048576\n"));
         assert_eq!(load(&saved), (500, 1_048_576));
 
-        save_config(&config).unwrap();
+        save_config(&config, &path).unwrap();
         assert!(!std::fs::read_to_string(&path).unwrap().contains("preview_max"), "defaults keep the C# layout");
-        assert!(to_json(&config).contains("\"preview_max_lines\":10000,\"preview_max_bytes\":4194304,"));
+        assert!(to_json(&config, "").contains("\"preview_max_lines\":10000,\"preview_max_bytes\":4194304,"));
         let _ = std::fs::remove_file(&path);
     }
 
@@ -788,10 +779,9 @@ mediainfo_enabled = true
         let config = AppConfig {
             sort_mode: SortMode::Modified,
             show_hidden_files: true,
-            start_path: "/x".to_string(),
             ..AppConfig::default()
         };
-        let json = to_json(&config);
+        let json = to_json(&config, "/x");
         let mut keys: Vec<&str> = bool_keys().iter().map(|(key, _, _)| *key).collect();
         keys.insert(0, "icons");
         keys.insert(4, "sort_mode");
@@ -814,24 +804,22 @@ mediainfo_enabled = true
         assert_eq!(json.matches(':').count(), expected_keys.len());
     }
 
-    fn cli(args: &[&str]) -> AppConfig {
-        let mut config = AppConfig::default();
-        apply_cli_args(&mut config, &args.iter().map(|arg| (*arg).to_string()).collect::<Vec<_>>());
-        config
+    fn cli(args: &[&str]) -> CliArgs {
+        parse_args(&args.iter().map(|arg| (*arg).to_string()).collect::<Vec<_>>())
     }
 
     #[test]
     fn cli_flags_and_positional_start_path() {
         assert!(cli(&["--help"]).show_help);
         assert!(cli(&["-h"]).show_help);
-        assert!(cli(&["-h"]).start_path.is_empty(), "-h is not a start path");
+        assert!(cli(&["-h"]).start_path.is_none(), "-h is not a start path");
         assert!(cli(&["--show-config"]).show_config);
         assert!(cli(&["--version"]).show_version);
-        assert_eq!(cli(&["--cwd-file=/tmp/cwd"]).cwd_file_path.as_deref(), Some("/tmp/cwd"));
-        assert_eq!(cli(&["/some/path"]).start_path, "/some/path");
-        assert_eq!(cli(&["--show-config", "/some/path"]).start_path, "/some/path");
-        assert_eq!(cli(&["/first", "/second"]).start_path, "/first");
-        assert!(cli(&["--show-config"]).start_path.is_empty(), "main defaults it to the current directory");
+        assert_eq!(cli(&["--cwd-file=/tmp/cwd"]).cwd_file.as_deref(), Some("/tmp/cwd"));
+        assert_eq!(cli(&["/some/path"]).start_path.as_deref(), Some("/some/path"));
+        assert_eq!(cli(&["--show-config", "/some/path"]).start_path.as_deref(), Some("/some/path"));
+        assert_eq!(cli(&["/first", "/second"]).start_path.as_deref(), Some("/first"));
+        assert!(cli(&["--show-config"]).start_path.is_none(), "main defaults it to the current directory");
     }
 
     #[test]

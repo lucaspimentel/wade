@@ -1065,10 +1065,13 @@ mod tests {
     // --- App-level flow ---
 
     fn app_at(root: &Path) -> App {
-        let mut app = App::new(AppConfig {
-            git_status_enabled: false,
-            ..AppConfig::default()
-        });
+        let mut app = App::new(
+            AppConfig {
+                git_status_enabled: false,
+                ..AppConfig::default()
+            },
+            crate::app::StartOptions::default(),
+        );
         app.current_path = root.to_string_lossy().into_owned();
         app
     }
@@ -1338,7 +1341,7 @@ mod tests {
 
     #[test]
     fn drives_view_does_not_open_the_finder() {
-        let mut app = App::new(AppConfig::default());
+        let mut app = App::new(AppConfig::default(), crate::app::StartOptions::default());
         app.current_path = crate::fs::DRIVES_PATH.to_string();
         app.show_file_finder();
         assert!(app.file_finder.is_none());

@@ -91,7 +91,11 @@ impl SortStore {
 
         let mut content = String::new();
         for (path, (mode, ascending)) in entries {
-            content.push_str(&format!("{} {} {path}\n", SortMode::name(*mode), if *ascending { "asc" } else { "desc" }));
+            content.push_str(&format!(
+                "{} {} {path}\n",
+                SortMode::name(*mode),
+                if *ascending { "asc" } else { "desc" }
+            ));
         }
 
         std::fs::write(file_path, content)

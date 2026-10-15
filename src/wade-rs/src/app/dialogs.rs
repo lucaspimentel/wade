@@ -1666,7 +1666,10 @@ impl App {
         self.update_terminal_title();
         self.refresh_git_status();
 
-        match crate::app::config_io::save_config(&self.config) {
+        match crate::app::config_io::save_config(
+            &self.config,
+            &crate::app::config_io::config_path(self.start.config_file.as_deref()),
+        ) {
             Ok(()) => self.show_notification("Configuration saved", NotificationKind::Success),
             Err(err) => {
                 self.show_notification(&format!("Save failed: {err}"), NotificationKind::Error);
@@ -2377,7 +2380,7 @@ mod tests {
 
     #[test]
     fn palette_activate_pushes_submenu_and_dispatches_leaf() {
-        let mut app = App::new(AppConfig::default());
+        let mut app = App::new(AppConfig::default(), crate::app::StartOptions::default());
         app.push_palette_level(
             "Root",
             vec![
@@ -2401,7 +2404,7 @@ mod tests {
 
     #[test]
     fn confirm_dialog_dispatches_yes_action() {
-        let mut app = App::new(AppConfig::default());
+        let mut app = App::new(AppConfig::default(), crate::app::StartOptions::default());
         app.show_confirm_dialog("Delete", "Sure?", ConfirmAction::Dispatch(AppAction::Refresh));
         assert_eq!(app.input_mode, InputMode::Confirm);
 

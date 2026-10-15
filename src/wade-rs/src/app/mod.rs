@@ -42,12 +42,10 @@ const NOTIFICATION_DURATION_MS: i64 = 4000;
 /// Queued events handled before the next render.
 const MAX_EVENTS_PER_FRAME: usize = 256;
 
-/// Port of the 3a subset of `WadeConfig` (same config.toml keys).
-/// 3c adds the remaining `WadeConfig` settings so the config dialog can
-/// round-trip all 27 of them.
+/// The saved settings: the keys of `config.toml`, edited by the config
+/// dialog. Per-run inputs live in `StartOptions`.
 #[derive(Clone, Debug)]
 pub struct AppConfig {
-    pub start_path: String,
     /// `icons = nerd|unicode|emoji|ascii|none` (Rust-only; replaces the C#
     /// `show_icons_enabled`, which still loads as nerd or none).
     pub icon_set: crate::ui::file_icons::IconSet,
@@ -84,22 +82,23 @@ pub struct AppConfig {
     pub markdown_preview_enabled: bool,
     pub ffprobe_enabled: bool,
     pub mediainfo_enabled: bool,
-    /// C# `WadeConfig.ConfigFilePath`: where `Save()` writes. `None` means
-    /// the default `~/.config/wade/config.toml`.
-    pub config_file_path: Option<String>,
-    /// C# `StartFileName`: selected at startup when the start path is a file.
+}
+
+/// Per-run inputs that are never saved.
+#[derive(Clone, Debug, Default)]
+pub struct StartOptions {
+    /// The directory to open; empty means the current directory.
+    pub start_path: String,
+    /// Selected at startup when the start path named a file.
     pub start_file_name: Option<String>,
-    /// C# `CwdFilePath` (`--cwd-file=`): receives the final directory.
-    pub cwd_file_path: Option<String>,
-    pub show_config: bool,
-    pub show_help: bool,
-    pub show_version: bool,
+    /// `--config-file=`: where the config dialog saves. `None` means
+    /// `~/.config/wade/config.toml`.
+    pub config_file: Option<std::path::PathBuf>,
 }
 
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
-            start_path: String::new(),
             icon_set: crate::ui::file_icons::IconSet::Nerd,
             image_previews_enabled: true,
             image_protocol: crate::imaging::ImageProtocolSetting::Auto,
@@ -131,12 +130,6 @@ impl Default for AppConfig {
             markdown_preview_enabled: true,
             ffprobe_enabled: true,
             mediainfo_enabled: true,
-            config_file_path: None,
-            start_file_name: None,
-            cwd_file_path: None,
-            show_config: false,
-            show_help: false,
-            show_version: false,
         }
     }
 }
@@ -144,6 +137,7 @@ impl Default for AppConfig {
 /// The app state machine plus main loop.
 pub struct App {
     pub config: AppConfig,
+    pub(crate) start: StartOptions,
     pub directory_contents: DirectoryContents,
     pub layout: Layout,
 
@@ -223,9 +217,10 @@ pub struct App {
 
 impl App {
     #[must_use]
-    pub fn new(config: AppConfig) -> Self {
+    pub fn new(config: AppConfig, start: StartOptions) -> Self {
         let mut app = Self {
             config,
+            start,
             directory_contents: {
                 let mut contents = DirectoryContents::new();
                 // Unit tests never touch the user's saved sorts
@@ -350,10 +345,10 @@ impl App {
     /// copies the config into the listing and pane state. Split out of
     /// `run` so tests apply settings exactly as startup does.
     pub fn apply_startup_config(&mut self) {
-        let start = if self.config.start_path.is_empty() {
+        let start = if self.start.start_path.is_empty() {
             App::default_start_path()
         } else {
-            self.config.start_path.clone()
+            self.start.start_path.clone()
         };
         self.current_path = capitalize_drive_letter(&dialogs::get_full_path(&start));
         self.directory_contents.show_hidden_files = self.config.show_hidden_files;
@@ -364,7 +359,7 @@ impl App {
         self.parent_pane_enabled = self.config.parent_pane_enabled;
         self.preview_pane_enabled = self.config.preview_pane_enabled;
 
-        if let Some(start_file_name) = self.config.start_file_name.clone() {
+        if let Some(start_file_name) = self.start.start_file_name.clone() {
             let entries = self.directory_contents.get_entries(&self.current_path);
 
             let names = entries.iter().map(|e| e.name.as_str());
@@ -2476,10 +2471,13 @@ mod tests {
             std::fs::write(root.join(file), "x").unwrap();
         }
 
-        let mut app = App::new(AppConfig {
-            git_status_enabled: false,
-            ..AppConfig::default()
-        });
+        let mut app = App::new(
+            AppConfig {
+                git_status_enabled: false,
+                ..AppConfig::default()
+            },
+            super::StartOptions::default(),
+        );
         app.current_path = root.to_string_lossy().into_owned();
         app
     }
@@ -2488,10 +2486,13 @@ mod tests {
     fn cycle_sort_mode_wraps_back_to_name() {
         use crate::fs::directory_contents::SortMode;
 
-        let mut app = App::new(AppConfig {
-            git_status_enabled: false,
-            ..AppConfig::default()
-        });
+        let mut app = App::new(
+            AppConfig {
+                git_status_enabled: false,
+                ..AppConfig::default()
+            },
+            super::StartOptions::default(),
+        );
         let mut seen = Vec::new();
         for _ in 0..4 {
             app.dispatch(AppAction::CycleSortMode);
@@ -2539,11 +2540,14 @@ mod tests {
     /// An App over `root` with icons off (so screen columns equal string
     /// indices), laid out at 100x30.
     fn plain_app(root: &std::path::Path) -> App {
-        let mut app = App::new(AppConfig {
-            git_status_enabled: false,
-            icon_set: crate::ui::file_icons::IconSet::None,
-            ..AppConfig::default()
-        });
+        let mut app = App::new(
+            AppConfig {
+                git_status_enabled: false,
+                icon_set: crate::ui::file_icons::IconSet::None,
+                ..AppConfig::default()
+            },
+            super::StartOptions::default(),
+        );
         app.current_path = root.to_string_lossy().into_owned();
         app.set_screen_size(100, 30);
         app.layout.calculate(100, 30, true, true);
@@ -2644,10 +2648,13 @@ mod tests {
 
     #[test]
     fn toggling_the_parent_pane_requests_a_full_redraw() {
-        let mut app = App::new(AppConfig {
-            git_status_enabled: false,
-            ..AppConfig::default()
-        });
+        let mut app = App::new(
+            AppConfig {
+                git_status_enabled: false,
+                ..AppConfig::default()
+            },
+            super::StartOptions::default(),
+        );
         app.dispatch(AppAction::ToggleParentPane);
         assert!(app.request_full_redraw);
     }

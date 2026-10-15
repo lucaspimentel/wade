@@ -4,61 +4,63 @@
 use std::path::Path;
 use std::process::ExitCode;
 
-use wade::app::App;
+use wade::app::config_io::{load_config, parse_args, to_json};
+use wade::app::{App, StartOptions};
 use wade::input::CancelToken;
 
 fn main() -> ExitCode {
-    // C# WadeConfig.Load: config file first, then args
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let mut config = wade::app::config_io::load_config(&args);
-    wade::app::config_io::apply_cli_args(&mut config, &args);
+    let cli = parse_args(&args);
+    let config = load_config(cli.config_file.as_deref());
+    let mut start = StartOptions {
+        start_path: cli
+            .start_path
+            .filter(|path| !path.is_empty())
+            .unwrap_or_else(|| std::env::current_dir().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default()),
+        start_file_name: None,
+        config_file: cli.config_file,
+    };
 
-    if config.start_path.is_empty() {
-        // C# StartPath defaults to Directory.GetCurrentDirectory()
-        config.start_path = std::env::current_dir().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default();
-    }
-
-    if config.show_version {
+    if cli.show_version {
         println!("wade {}", version_string());
         return ExitCode::SUCCESS;
     }
 
-    if config.show_help {
+    if cli.show_help {
         print_help();
         return ExitCode::SUCCESS;
     }
 
-    if config.show_config {
-        println!("{}", wade::app::config_io::to_json(&config));
+    if cli.show_config {
+        println!("{}", to_json(&config, &start.start_path));
         return ExitCode::SUCCESS;
     }
 
     // Validate the start path before entering the TUI
-    let full_start_path = wade::app::dialogs::get_full_path(&config.start_path);
+    let full_start_path = wade::app::dialogs::get_full_path(&start.start_path);
     // macOS: the stored spelling, so path-keyed state (bookmarks, saved
     // sorts, git status) matches; unchanged elsewhere
     let stored = wade::fs::file_operations::on_disk_case(&full_start_path);
     if stored != full_start_path {
-        config.start_path.clone_from(&stored);
+        start.start_path.clone_from(&stored);
     }
     let full = Path::new(&stored);
 
     if full.is_file() {
         // Path points to a file: open its parent directory and select the file
         if let Some(parent) = full.parent() {
-            config.start_file_name = full.file_name().map(|name| name.to_string_lossy().into_owned());
-            config.start_path = parent.to_string_lossy().into_owned();
+            start.start_file_name = full.file_name().map(|name| name.to_string_lossy().into_owned());
+            start.start_path = parent.to_string_lossy().into_owned();
         }
     } else if !full.is_dir() {
-        eprintln!("wade: path does not exist: {}", config.start_path);
+        eprintln!("wade: path does not exist: {}", start.start_path);
         return ExitCode::from(1);
     }
 
-    let cwd_file_path = config.cwd_file_path.clone();
     let cancel = CancelToken::new();
     #[cfg(unix)]
     wade::signals::install(&cancel);
-    let final_path = App::new(config).run(&cancel);
+    let final_path = App::new(config, start).run(&cancel);
 
     // Rust only: ended by SIGTERM/SIGHUP (the terminal is restored): the
     // shell's exit status for that signal, and no cwd file
@@ -67,7 +69,7 @@ fn main() -> ExitCode {
         return ExitCode::from(u8::try_from(128 + signal).unwrap_or(1));
     }
 
-    if let (Some(cwd_file), Some(final_path)) = (cwd_file_path, final_path) {
+    if let (Some(cwd_file), Some(final_path)) = (cli.cwd_file, final_path) {
         // C# silently ignores write failures
         let _ = std::fs::write(cwd_file, final_path);
     }

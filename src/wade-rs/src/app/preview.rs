@@ -802,10 +802,13 @@ mod tests {
             std::fs::write(root.join(file), contents).unwrap();
         }
 
-        let mut app = App::new(AppConfig {
-            git_status_enabled: false,
-            ..AppConfig::default()
-        });
+        let mut app = App::new(
+            AppConfig {
+                git_status_enabled: false,
+                ..AppConfig::default()
+            },
+            crate::app::StartOptions::default(),
+        );
         app.current_path = root.to_string_lossy().into_owned();
         app.set_screen_size(80, 25);
         app.layout.calculate(80, 25, true, true);
