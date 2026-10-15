@@ -150,7 +150,7 @@ pub(crate) fn wait_readable(fd: libc::c_int, timeout_ms: i32) -> bool {
     }
 }
 
-/// `Console.WindowWidth`/`WindowHeight`: TIOCGWINSZ on stdout, then on
+/// The window size: TIOCGWINSZ on stdout, then on
 /// the controlling terminal.
 #[must_use]
 pub fn window_size() -> Option<(i32, i32)> {

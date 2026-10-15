@@ -39,7 +39,7 @@ fn open_database(path: &str) -> Option<Package> {
     msi::Package::open(File::open(path).ok()?).ok()
 }
 
-/// `MsiRecordGetString` of a column: null cells read as "". The tables
+/// A cell as text: null cells read as "". The tables
 /// wade queries hold only strings and ints; a binary stream column (new in
 /// msi 0.10) also reads as "", like null.
 fn cell_string(value: &msi::Value) -> String {
@@ -77,7 +77,7 @@ fn query_file_table(db: &mut Package) -> Vec<MsiFileEntry> {
 
     rows.map(|row| MsiFileEntry {
         file_name: parse_long_name(&cell_string(&row[0])).to_string(),
-        // MsiRecordGetInteger returns MSI_NULL_INTEGER for null cells
+        // Null cells are MSI_NULL_INTEGER
         file_size: row[1].as_int().unwrap_or(i32::MIN),
     })
     .collect()
@@ -206,7 +206,7 @@ impl MetadataProvider for MsiMetadataProvider {
     }
 }
 
-/// The section building of `MsiMetadataProvider.GetMetadata`.
+/// The metadata sections from the properties and summary info.
 #[must_use]
 pub fn metadata_sections(properties: &[(String, String)], summary: &MsiSummaryInfo) -> Vec<MetadataSection> {
     let mut sections = Vec::new();

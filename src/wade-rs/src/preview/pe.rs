@@ -10,7 +10,7 @@
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 
-/// `BadImageFormatException` (or an I/O failure) while reading.
+/// A malformed image (or an I/O failure) while reading.
 #[derive(Debug, PartialEq, Eq)]
 pub struct BadImage;
 
@@ -98,7 +98,7 @@ pub struct PeHeaders {
 }
 
 impl PeHeaders {
-    /// `PEReader.HasMetadata`.
+    /// Whether the image has .NET metadata.
     #[must_use]
     pub const fn has_metadata(&self) -> bool {
         self.metadata_size > 0
@@ -258,7 +258,7 @@ fn directory_offset(sections: &[Section], directory: Directory) -> Result<Option
     Ok(Some(section.pointer_to_raw_data + relative))
 }
 
-/// Reads the metadata block `PEReader.GetMetadata` would expose.
+/// Reads the .NET metadata block.
 pub fn read_metadata_block(image: &mut Image, headers: &PeHeaders) -> Result<Vec<u8>> {
     image.read(headers.metadata_start, usize::try_from(headers.metadata_size).map_err(|_| BadImage)?)
 }

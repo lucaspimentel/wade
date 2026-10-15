@@ -20,7 +20,7 @@ use crate::ui::dialog_box::{self, BG_COLOR};
 use crate::ui::file_icons;
 use crate::ui::text_input::TextInput;
 
-/// `ScanFilesForFinder`'s entry cap.
+/// `scan_files_for_finder`'s entry cap.
 pub const MAX_ENTRIES: usize = 50_000;
 /// Partial-result flush throttle of the walk.
 pub const SCAN_FLUSH_INTERVAL: Duration = Duration::from_millis(200);
@@ -693,7 +693,7 @@ pub fn scan_files_for_finder(
             return;
         }
 
-        // EnumerateFiles then EnumerateDirectories: one read_dir, split by kind
+        // Files then directories: one read_dir, split by kind
         let (files, dirs) = list_directory(&current_dir);
 
         for item in files {
@@ -778,7 +778,7 @@ fn list_directory(dir: &std::path::Path) -> (Vec<WalkItem>, Vec<WalkItem>) {
     let mut dirs = Vec::new();
 
     let Ok(read_dir) = std::fs::read_dir(dir) else {
-        return (files, dirs); // IgnoreInaccessible
+        return (files, dirs); // unreadable: skipped
     };
 
     for item in read_dir.flatten() {

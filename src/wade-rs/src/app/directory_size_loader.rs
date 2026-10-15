@@ -46,8 +46,7 @@ impl DirectorySizeLoader {
     }
 }
 
-/// Core of `DirectorySizeLoader.Calculate`: recursive walk summing file
-/// lengths (IgnoreInaccessible semantics: unreadable entries are skipped),
+/// Recursive walk summing file lengths (unreadable entries are skipped),
 /// checking cancellation every 500 files, injecting on success.
 pub fn calculate(directory_path: &str, cancel: &CancelToken, out: &Sender<InputEvent>) {
     let total_bytes = crate::app::inline_dir_size_loader::sum_directory(directory_path, cancel);

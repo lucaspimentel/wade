@@ -21,7 +21,7 @@ pub fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
             break;
         }
 
-        // LastIndexOf(' ', pos + maxWidth, maxWidth): searches (pos, pos + maxWidth]
+        // The last space in (pos, pos + max_width]
         let mut break_at = (pos + 1..=pos + max_width).rev().find(|&i| normalized[i] == ' ').unwrap_or(pos);
 
         if break_at <= pos {

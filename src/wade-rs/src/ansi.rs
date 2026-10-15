@@ -63,7 +63,7 @@ pub const DISABLE_SGR_MOUSE_MODE: &str = "\x1b[?1006l";
 pub const ENABLE_BRACKETED_PASTE: &str = "\x1b[?2004h";
 pub const DISABLE_BRACKETED_PASTE: &str = "\x1b[?2004l";
 
-/// `AnsiCodes.MoveCursor`: 0-based row/col to a CUP sequence.
+/// 0-based row/col to a CUP sequence.
 #[must_use]
 pub fn move_cursor(row: i32, col: i32) -> String {
     let mut out = String::new();

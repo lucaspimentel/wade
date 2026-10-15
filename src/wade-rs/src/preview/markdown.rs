@@ -142,7 +142,7 @@ fn to_styled_line(text: &[u16], styles: Option<&[CellStyle]>) -> StyledLine {
     StyledLine { text: decoded, spans: None, char_styles }
 }
 
-// ── Document model (the Markdig AST subset the renderer reads) ─────────
+// ── Document model (the block and inline tree the renderer reads) ──────
 
 #[derive(Debug)]
 enum Inline {
@@ -164,7 +164,7 @@ enum Inline {
         hard: bool,
     },
     Html(String),
-    /// Markdig's `HtmlEntityInline`: a leaf the renderer ignores.
+    /// An HTML entity: a leaf the renderer ignores.
     Entity,
 }
 
@@ -191,7 +191,7 @@ enum Block {
         columns: usize,
         rows: Vec<Vec<Vec<Inline>>>,
     },
-    /// `LinkReferenceDefinitionGroup` and `HtmlBlock`: render nothing.
+    /// Link reference definitions and HTML blocks: render nothing.
     Silent,
 }
 
@@ -313,8 +313,7 @@ impl<'a> Builder<'a> {
                     return;
                 }
 
-                // Markdig keeps entities as HtmlEntityInline, which no
-                // renderer path reads
+                // Entities stay entities, which no renderer path reads
                 let raw = &self.source[range];
                 if raw.len() > 2 && raw.starts_with('&') && raw.ends_with(';') && *raw != *text {
                     self.push_inline(Inline::Entity);
@@ -496,7 +495,7 @@ impl<'a> Builder<'a> {
 }
 
 /// Parses `text` into root blocks, inserting the silent definition group
-/// where Markdig puts it.
+/// where the frozen golden expects it.
 fn parse(text: &str) -> Vec<Block> {
     let parser = Parser::new_ext(text, Options::ENABLE_TABLES);
     let first_definition = parser
@@ -516,7 +515,7 @@ fn parse(text: &str) -> Vec<Block> {
         let mut index = starts.iter().position(|&start| start >= span.start).unwrap_or(blocks.len());
 
         // Definitions followed directly (no blank line) by paragraph text
-        // share Markdig's paragraph, which closes before the group is added
+        // share one paragraph, which closes before the group is added
         if index < blocks.len()
             && matches!(blocks[index], Block::Paragraph(_))
             && !text[span.end.min(starts[index])..starts[index]].contains("\n\n")
@@ -543,7 +542,7 @@ pub fn render(file_path: &str, width: i32, cancel: &CancelToken) -> Option<Vec<S
     render_text(&text, width, cancel)
 }
 
-/// `File.ReadAllText`: UTF-8 unless a UTF-16 or UTF-8 BOM says otherwise.
+/// UTF-8 unless a UTF-16 or UTF-8 BOM says otherwise.
 fn read_all_text(bytes: &[u8]) -> String {
     if let Some(rest) = bytes.strip_prefix(b"\xEF\xBB\xBF") {
         return String::from_utf8_lossy(rest).into_owned();
@@ -925,7 +924,7 @@ fn render_list(
     quote_depth: usize,
     cancel: &CancelToken,
 ) -> Option<()> {
-    // int.TryParse of the start; 1 when it doesn't fit an int
+    // The list start; 1 when it doesn't fit an i32
     let mut item_number: u64 = if ordered { start.filter(|&n| n <= i32::MAX as u64).unwrap_or(1) } else { 0 };
 
     for (i, item) in items.iter().enumerate() {
@@ -941,7 +940,7 @@ fn render_list(
             collect_inlines(inlines, &mut spans, PLAIN_STYLE);
             emit_wrapped_line(&spans, lines, width, indent, quote_depth, Some(child_indent));
         } else {
-            // Only the marker: Markdig doesn't render a non-paragraph first block
+            // Only the marker: a non-paragraph first block is not rendered
             let mut text = vec![SPACE; indent];
             text.extend(&marker);
             let mut styles = vec![DEFAULT_STYLE; indent];

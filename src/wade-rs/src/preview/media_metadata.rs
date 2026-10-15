@@ -95,7 +95,7 @@ impl MetadataProvider for MediaMetadataProvider {
 }
 
 /// A parsed JSON value kept as its raw text, so numbers print exactly as
-/// written (`JsonElement.GetRawText`).
+/// written.
 type Value = Box<RawValue>;
 
 fn parse(json: &str) -> Result<Value, JsonError> {
@@ -106,7 +106,7 @@ fn first_byte(element: &RawValue) -> Option<u8> {
     element.get().trim_start().bytes().next()
 }
 
-/// `JsonElement.TryGetProperty`: throws on a non-object element; a
+/// A property of an object: an error on a non-object element; a
 /// repeated property name yields the last value.
 fn property(element: &RawValue, name: &str) -> Result<Option<Value>, JsonError> {
     if first_byte(element) != Some(b'{') {

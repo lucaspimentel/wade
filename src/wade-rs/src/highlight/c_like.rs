@@ -214,7 +214,7 @@ pub fn scan_line<L: CLikeLanguage + ?Sized>(
     }
 }
 
-/// Base `TryMatchString`: single- and double-quoted strings.
+/// Default string hook: single- and double-quoted strings.
 pub fn base_try_match_string(line: &[char], pos: usize, spans: &mut Vec<StyledSpan>) -> Option<usize> {
     let ch = line[pos];
 
@@ -252,7 +252,7 @@ pub fn scan_quoted_string(line: &[char], start: usize, quote: char, spans: &mut 
     pos
 }
 
-/// Base `TryMatchNumber`: hex, ints and floats with `_` separators and
+/// Default number hook: hex, ints and floats with `_` separators and
 /// trailing letter suffixes.
 pub fn base_try_match_number(line: &[char], pos: usize) -> Option<usize> {
     let ch = line[pos];
@@ -303,7 +303,7 @@ pub fn base_try_match_number(line: &[char], pos: usize) -> Option<usize> {
     (pos > start).then_some(pos)
 }
 
-/// Base `ClassifyWord`: keyword, constant, builtin, then the PascalCase
+/// Default word classification: keyword, constant, builtin, then the PascalCase
 /// -> Type heuristic.
 #[must_use]
 pub fn base_classify_word(keywords: &[&str], constants: &[&str], builtins: &[&str], word: &str) -> TokenKind {

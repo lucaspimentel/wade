@@ -313,9 +313,9 @@ Investigated enabling `ENABLE_VIRTUAL_TERMINAL_INPUT` under Windows Terminal. No
 - [x] Groundwork refactors (no behavior change): `SortMode::name`/`parse`/`next`/`prev`; per-run state moved from `AppConfig` to `StartOptions`, with one `parse_args` → `CliArgs`; the config dialog edits a draft `AppConfig` with an accessor per row; one `KEYS` table drives load, save and `--show-config`; a shared `home_dir()`
 - [ ] Later, behavior changes: save keeping comments and unknown keys; reporting invalid values
 
-### Doc comments without the C# port history
+### ~~Doc comments without the C# port history~~ (Done)
 
-- [ ] About 760 comments in 108 files still say "Port of `X`" or compare with C# (the config files are done). Describe what the code does instead; keep the reason where a comment explains a deliberate choice (and move lasting ones to `KNOWN_DEVIATIONS.md`).
+- [x] Comments describe what the code does instead of naming the C# or .NET original. The golden test suites say once that the frozen root goldens came from the deleted C# implementation; comments that explain golden-pinned behavior (UTF-16 indices, Markdown layout, PowerShell word sets) name the frozen golden. Test names drop "csharp"; `PreviewLimits::CSHARP` is `GOLDEN` and `MarkdigMarkdownPreviewProvider` is `MarkdownPreviewProvider`.
 
 ### Keyboard shortcut convention audit
 

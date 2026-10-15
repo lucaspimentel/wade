@@ -211,7 +211,7 @@ fn issue_read(
             directory,
             read.buffer.as_mut_ptr().cast(),
             buffer_bytes,
-            0, // IncludeSubdirectories = false
+            0, // not recursive
             NOTIFY_FILTER,
             std::ptr::null_mut(),
             &mut *read.overlapped,
@@ -223,10 +223,9 @@ fn issue_read(
 /// Spawns the overlapped ReadDirectoryChangesW watch thread.
 ///
 /// The thread waits on the I/O event and the worker's stop event, so
-/// `WatchWorker`'s drop can cancel the pending read and join. Mirrors
-/// `FileSystemWatcher` error semantics: a buffer overflow (0 bytes
-/// returned) requests a full refresh and keeps watching; any other failure
-/// requests one full refresh and stops watching.
+/// `WatchWorker`'s drop can cancel the pending read and join. Errors: a buffer
+/// overflow (0 bytes returned) requests a full refresh and keeps watching; any
+/// other failure requests one full refresh and stops watching.
 #[cfg(windows)]
 fn spawn_watch_thread(directory_path: &str, event_tx: std::sync::mpsc::Sender<bool>) -> Result<WatchWorker, ()> {
     use std::os::windows::ffi::OsStrExt;
@@ -344,7 +343,7 @@ fn spawn_watch_thread(directory_path: &str, event_tx: std::sync::mpsc::Sender<bo
             }
 
             if !issue_read(dir_raw, handles[0], &mut read) {
-                // Directory gone or inaccessible: report once (OnError) and stop
+                // Directory gone or inaccessible: report once and stop
                 let _ = event_tx.send(true);
                 break;
             }
@@ -556,7 +555,7 @@ mod tests {
         None
     }
 
-    /// Counts FileSystemChangedEvents arriving within `window`.
+    /// Counts `FileSystemChangedEvent`s arriving within `window`.
     fn count_changes(pipeline: &InputPipeline, window: std::time::Duration) -> usize {
         let deadline = std::time::Instant::now() + window;
         let mut count = 0;
@@ -690,9 +689,9 @@ mod tests {
 
         watcher.stop();
 
-        // The pending read fails once the directory is gone; like
-        // FileSystemWatcher.Error that requests a full refresh, and the
-        // watcher then stops instead of re-issuing the failing read.
+        // The pending read fails once the directory is gone; that requests
+        // a full refresh, and the watcher then stops instead of re-issuing
+        // the failing read.
         assert!(events.len() <= 2, "watcher kept firing after its directory vanished: {}", events.len());
 
         // Wine's ReadDirectoryChangesW never completes for a deleted

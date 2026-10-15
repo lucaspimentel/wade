@@ -317,7 +317,7 @@ fn metadata_renderer_cases_match_golden() {
     assert_matches(&read(&golden_path), &out, &golden_path.display().to_string());
 }
 
-/// The P0 ratio cases of PreviewGoldenTests.RatioCases.
+/// The whole-percent ratio cases of the frozen golden.
 const RATIO_CASES: &[(i64, i64)] = &[
     (0, 5),
     (1, 8),

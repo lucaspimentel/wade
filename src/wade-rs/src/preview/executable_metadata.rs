@@ -67,7 +67,7 @@ fn read_metadata(path: &str, cancel: &CancelToken) -> Result<Option<MetadataResu
         return Ok(None);
     }
 
-    // ── FileVersionInfo (Windows only) ──
+    // ── Version info (Windows only) ──
     #[cfg(windows)]
     if let Some(section) = version_info::section(path) {
         sections.push(section);

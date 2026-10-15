@@ -22,8 +22,8 @@ pub struct SearchResult {
     pub match_positions: Vec<usize>,
 }
 
-/// `Path.DirectorySeparatorChar` / `AltDirectorySeparatorChar` set used by
-/// `FuzzyScorer`, `PathSegmenter` and `SearchIndex`.
+/// The path separators (`/` and, on Windows, `\`) the scorer, the
+/// segmenter and the index split on.
 #[must_use]
 pub fn is_separator(c: char) -> bool {
     c == std::path::MAIN_SEPARATOR || (cfg!(windows) && c == '/')

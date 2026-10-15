@@ -136,7 +136,7 @@ pub fn month_abbrev(month: u32) -> &'static str {
     }
 }
 
-/// `FormatSize` into an owned string.
+/// `format_size` into an owned string.
 #[must_use]
 pub fn format_size_string(bytes: i64) -> String {
     let mut buf = ['\0'; 32];

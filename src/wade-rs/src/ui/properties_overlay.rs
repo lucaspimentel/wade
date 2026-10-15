@@ -109,7 +109,7 @@ pub fn render(
 
     let mut max_value_len = values.iter().map(|value| value.chars().count()).max().unwrap_or(0);
 
-    // Metadata rows (Phase 7 populates these)
+    // Metadata rows from the metadata providers
     if let Some(sections) = metadata_sections
         && !sections.is_empty()
     {
@@ -182,7 +182,7 @@ pub fn render(
         content_width = max_content_width;
     }
 
-    // DialogBox uses: borders + title + separator + blank + footer = content + 6
+    // The dialog box uses: borders + title + separator + blank + footer = content + 6
     let max_visible_height = (screen_height - 8).max(1);
     let scrollable = total_content_height as i32 > max_visible_height;
     let visible_height = if scrollable { max_visible_height } else { total_content_height as i32 };
@@ -473,7 +473,7 @@ fn format_windows_attributes(entry: &FileSystemEntry, metadata: &std::fs::Metada
     }
 }
 
-/// `FileAttributes.ReadOnly` / `FileInfo.IsReadOnly`.
+/// The read-only attribute on Windows; no write permission on unix.
 fn is_read_only(metadata: &std::fs::Metadata) -> bool {
     #[cfg(unix)]
     {

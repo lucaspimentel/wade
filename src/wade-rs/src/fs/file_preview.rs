@@ -53,7 +53,7 @@ pub fn get_file_type_label(path: &str) -> Option<&'static str> {
     file_type_labels::get_file_type_label(path)
 }
 
-/// `Path.GetExtension` of the file name (with the dot; empty when none).
+/// The file name's extension (with the dot; empty when none).
 pub(crate) fn extension(path: &str) -> &str {
     let name = path.rsplit(crate::search::is_separator).next().unwrap_or(path);
 
@@ -241,11 +241,11 @@ pub fn get_preview_lines_limited(
     (lines, metadata, truncation)
 }
 
-/// `StreamReader.ReadLine` up to `line_limit` times: decodes as UTF-16
-/// when detected (BOM or not), otherwise UTF-8 (BOM skipped, invalid bytes
-/// as U+FFFD); lines end at `\r`, `\n` or `\r\n`, and a final unterminated
-/// line counts. Reads at most `byte_limit` bytes. Also returns where the
-/// text was cut off when content remained.
+/// Up to `line_limit` lines: decodes as UTF-16 when detected (BOM or not),
+/// otherwise UTF-8 (BOM skipped, invalid bytes as U+FFFD); lines end at `\r`,
+/// `\n` or `\r\n`, and a final unterminated line counts. Reads at most
+/// `byte_limit` bytes. Also returns where the text was cut off when content
+/// remained.
 fn read_lines(
     path: &str,
     encoding: &str,
@@ -357,7 +357,7 @@ fn take_line(current: &mut Vec<char>) -> String {
     line.replace('\t', "    ")
 }
 
-/// Streaming byte -> char decoder for the encodings `FilePreview` reads.
+/// Streaming byte -> char decoder for the encodings text previews read.
 struct Decoder {
     kind: Encoding,
     pending: Vec<u8>,
@@ -415,7 +415,7 @@ impl Decoder {
         }
     }
 
-    /// StreamReader drops a leading BOM matching its encoding.
+    /// Drops a leading BOM matching the encoding.
     fn skip_bom(&mut self) {
         if !self.at_start {
             return;

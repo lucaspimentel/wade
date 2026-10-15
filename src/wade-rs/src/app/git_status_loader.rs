@@ -8,7 +8,7 @@ use std::sync::mpsc::Sender;
 use crate::fs::directory_contents::GitFileStatus;
 use crate::fs::git_utils::{self};
 
-/// Concrete queries backed by the real GitUtils implementations.
+/// Queries backed by `git_utils`.
 #[derive(Debug, Default)]
 pub struct GitUtilsQueries;
 use crate::input::{CancelToken, GitStatusReadyEvent, InputEvent};

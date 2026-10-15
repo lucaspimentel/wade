@@ -100,12 +100,12 @@ pub fn get_language(file_path: &str) -> Option<&'static dyn Language> {
     NO_EXTENSION_SHELL_NAMES.contains(&lower_name.as_str()).then_some(&SHELL as &'static dyn Language)
 }
 
-/// `Path.GetFileName`: the text after the last directory separator.
+/// The text after the last directory separator.
 fn file_name(path: &str) -> &str {
     path.rsplit(crate::search::is_separator).next().unwrap_or(path)
 }
 
-/// `Path.GetExtension` of a file name: from the last '.', or empty when
+/// The extension of a file name: from the last '.', or empty when
 /// there is none or it is the final character.
 fn extension(name: &str) -> &str {
     match name.rfind('.') {

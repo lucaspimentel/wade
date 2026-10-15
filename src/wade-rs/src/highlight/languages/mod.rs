@@ -1,4 +1,4 @@
-//! The language modules (ports of `src/Wade/Highlighting/Languages`).
+//! The language modules.
 
 pub mod c;
 pub mod cpp;

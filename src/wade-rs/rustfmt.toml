@@ -1,4 +1,4 @@
-# Tuned to stay close to the hand formatting the port started with.
+# Close to the existing hand formatting: long lines, short struct literals.
 max_width = 120
 fn_call_width = 120
 attr_fn_like_width = 120

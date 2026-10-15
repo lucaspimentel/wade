@@ -268,8 +268,7 @@ fn pick(set: IconSet, (nerd, unicode, emoji, ascii): (u32, char, char, char)) ->
     }
 }
 
-/// Mirrors `FileIcons.GetIcon(FileSystemEntry)`, per icon set; `None` for
-/// [`IconSet::None`].
+/// The icon for an entry in `set`; `None` for [`IconSet::None`].
 #[must_use]
 pub fn get_icon(entry: &FileSystemEntry, set: IconSet) -> Option<char> {
     let dir = std::path::MAIN_SEPARATOR;
@@ -328,7 +327,7 @@ fn nerd_extension_icon(ext: &str, name_lower: &str) -> Option<u32> {
     None
 }
 
-/// Mirrors `FileIcons.GetGitStatusIcon(GitFileStatus)`, per icon set.
+/// The git status icon in `set`.
 #[must_use]
 pub fn get_git_status_icon(status: crate::fs::directory_contents::GitFileStatus, set: IconSet) -> Option<char> {
     use crate::fs::directory_contents::GitFileStatus as S;
@@ -346,7 +345,7 @@ pub fn get_git_status_icon(status: crate::fs::directory_contents::GitFileStatus,
     Some(status_glyph(set, glyphs))
 }
 
-/// Mirrors `FileIcons.GetCloudIcon()`, per icon set.
+/// The cloud placeholder icon in `set`.
 #[must_use]
 pub fn get_cloud_icon(set: IconSet) -> char {
     status_glyph(set, (0xF0163, '\u{21E3}', '^')) // nf-md-cloud_outline, ⇣

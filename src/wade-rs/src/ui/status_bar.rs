@@ -227,7 +227,7 @@ fn build_right_text(
     out
 }
 
-// Month abbreviations come from FormatHelpers to stay in sync.
+// Month abbreviations come from format_helpers to stay in sync.
 #[allow(dead_code)]
 fn month_name(month: u32) -> &'static str {
     month_abbrev(month)

@@ -114,7 +114,7 @@ pub struct FileSystemEntry {
     pub full_path: String,
     pub is_directory: bool,
     pub size: i64,
-    /// Wall-clock local time fields of `LastWriteTime`.
+    /// Last modified time, as local wall-clock fields.
     pub last_modified: super::super::ui::format_helpers::DateParts,
     pub link_target: Option<String>,
     pub is_broken_symlink: bool,
@@ -171,7 +171,7 @@ impl DirectoryContents {
         Self::default()
     }
 
-    /// Mirrors `GetEntries`: drives list, cached entries, or a fresh load.
+    /// The drive list, cached entries, or a fresh load.
     pub fn get_entries(&mut self, path: &str) -> Vec<FileSystemEntry> {
         if path == DRIVES_PATH {
             return get_drive_entries();

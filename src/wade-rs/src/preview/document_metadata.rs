@@ -193,7 +193,7 @@ fn add_entry_if_present(entries: &mut Vec<MetadataEntry>, label: &str, value: Op
     }
 }
 
-/// Reads the first entry named exactly `name` (`ZipArchive.GetEntry`).
+/// Reads the first entry named exactly `name`.
 fn read_entry(path: &str, entries: &[ZipEntry], name: &str) -> Result<Option<Vec<u8>>, ()> {
     match entries.iter().find(|entry| entry.full_name == name) {
         None => Ok(None),
@@ -387,7 +387,7 @@ fn add_date_entry(entries: &mut Vec<MetadataEntry>, label: &str, value: Option<S
     entries.push(MetadataEntry::new(label, &formatted));
 }
 
-/// The ISO 8601 subset of `DateTimeOffset.TryParse`: `yyyy-MM-dd`, then
+/// The ISO 8601 dates accepted: `yyyy-MM-dd`, then
 /// optionally `T`/space `HH:mm[:ss[.fff]]` and `Z` or `±HH:mm`.
 #[must_use]
 pub fn parse_iso_date_time(value: &str) -> Option<String> {

@@ -57,7 +57,7 @@ pub(crate) fn sum_directory(directory_path: &str, cancel: &CancelToken) -> i64 {
 
     while let Some(dir) = stack.pop() {
         let Ok(read_dir) = std::fs::read_dir(&dir) else {
-            continue; // IgnoreInaccessible
+            continue; // unreadable: skipped
         };
 
         for entry in read_dir.flatten() {

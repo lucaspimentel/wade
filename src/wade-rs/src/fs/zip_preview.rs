@@ -29,8 +29,7 @@ const ZIP_EXTENSIONS: &[&str] = &[
     ".ods", ".odp", ".apk", ".vsix", ".whl", ".epub",
 ];
 
-/// A central-directory entry: `ZipArchiveEntry.FullName`, `Length` and
-/// `CompressedLength`.
+/// A central-directory entry: full name, length and compressed length.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ZipEntry {
     pub full_name: String,
@@ -112,8 +111,8 @@ fn find_eocd(file: &mut (impl Read + Seek), length: u64) -> Result<u64, ZipError
         .ok_or(ZipError::InvalidData)
 }
 
-/// The central-directory location and entry count (`ReadEndOfCentralDirectory`
-/// and `TryReadZip64EndOfCentralDirectory`).
+/// The central-directory location and entry count, from the EOCD or its
+/// Zip64 record.
 fn read_end_of_central_directory(file: &mut (impl Read + Seek), length: u64) -> Result<(u64, u64), ZipError> {
     let eocd_start = find_eocd(file, length)?;
     let mut eocd = [0u8; EOCD_SIZE as usize];
@@ -338,7 +337,7 @@ pub fn get_preview_lines(path: &str, entry_limit: usize, cancel: &CancelToken) -
         return Some(vec!["[empty archive]".to_string()]);
     }
 
-    // File entries only, sorted case-insensitively (stable, like OrderBy)
+    // File entries only, sorted case-insensitively (stable)
     let mut files: Vec<&ZipEntry> = entries.iter().filter(|entry| !entry.full_name.ends_with('/')).collect();
     if files.is_empty() {
         return Some(vec!["[empty archive]".to_string()]);

@@ -499,8 +499,8 @@ fn unquote_git_path(inner: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
-/// Path.GetFullPath normalizes separators and collapses `.`/`..` segments;
-/// reuse the dialogs path helpers for the same effect.
+/// Normalizes separators and collapses `.`/`..` segments with the dialogs
+/// path helper.
 fn normalize_full_path(path: &str) -> String {
     crate::app::dialogs::get_full_path(path)
 }
@@ -549,7 +549,7 @@ fn parent_of(path: &str) -> Option<String> {
     std::path::Path::new(path).parent().map(|p| p.to_string_lossy().to_string())
 }
 
-/// Pure parse of `GetAheadBehind` stdout: format is
+/// Pure parse of `git rev-list --left-right --count` stdout: format is
 /// `"<behind>\t<ahead>\n"` (behind first). Returns (ahead, behind) or None
 /// on malformed output.
 #[must_use]
@@ -1165,7 +1165,7 @@ mod integration {
         };
 
         // Lookup failure dumps the map so CI failures are diagnosable: the
-        // keys are platform-shaped by the parser (Path join + GetFullPath),
+        // keys are platform-shaped by the parser (join + normalize),
         // so a mismatch here means the parser's key shaping drifted.
         let lookup = |map: &HashMap<String, GitFileStatus>, name: &str, what: &str| {
             let key = join(name);

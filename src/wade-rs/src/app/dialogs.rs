@@ -1044,7 +1044,7 @@ impl App {
         }
     }
 
-    /// The navigation and filter-editing arms of `HandleActionPaletteKey`.
+    /// The navigation and filter-editing keys of the action palette.
     fn handle_action_palette_navigation_key(&mut self, key: KeyEvent) {
         {
             let level = self.modal.action_menu_stack.last_mut().expect("checked above");
@@ -2178,7 +2178,7 @@ fn join_absolute(base: &str, relative: &str) -> String {
     }
 }
 
-/// Minimal stand-in for `Path.GetFullPath`: expand tilde, normalize
+/// The absolute form of a typed path: expand tilde, normalize
 /// separators, absolutize against the process working directory, and
 /// collapse `.`/`..` segments lexically.
 #[must_use]
@@ -2258,8 +2258,8 @@ mod collapse_dots_tests {
         #[cfg(windows)]
         {
             assert_eq!(collapse_dots(r"C:\foo\..\bar"), r"C:\bar");
-            // Bare drive prefix collapses to "C:" (pre-existing behavior;
-            // GetFullPath would return "C:\" but nothing feeds it that)
+            // Bare drive prefix collapses to "C:" (nothing feeds it a bare
+            // drive)
         }
         // Unix leading separator
         #[cfg(not(windows))]

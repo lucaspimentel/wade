@@ -673,7 +673,7 @@ fn uncompressed_hint(path: &str, compressed: i64) -> Option<i64> {
     ((compressed as u64) < ISIZE_SAFETY_LIMIT).then_some(i64::from(isize))
 }
 
-/// `Path.GetFileNameWithoutExtension`.
+/// The file name without its last extension.
 fn file_name_without_extension(path: &str) -> &str {
     let name = path.rsplit(crate::search::is_separator).next().unwrap_or(path);
     name.rfind('.').map_or(name, |dot| &name[..dot])
@@ -799,8 +799,8 @@ fn utf8_prefix_lossy(data: &[u8], cut: bool) -> String {
     String::from_utf8_lossy(data).into_owned()
 }
 
-/// `StringReader.ReadLine` until null: lines end at \r, \n or \r\n, and a
-/// final unterminated segment counts only when non-empty.
+/// Lines end at \r, \n or \r\n, and a final unterminated segment counts only
+/// when non-empty.
 fn string_reader_lines(text: &str) -> Vec<String> {
     let mut lines = Vec::new();
     let mut current = String::new();

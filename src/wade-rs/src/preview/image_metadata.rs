@@ -69,7 +69,7 @@ impl MetadataProvider for ImageMetadataProvider {
     }
 }
 
-/// ImageSharp's format names, uppercased.
+/// The format's name, uppercased (as the frozen goldens show it).
 fn format_name(format: image::ImageFormat) -> &'static str {
     use image::ImageFormat as F;
 

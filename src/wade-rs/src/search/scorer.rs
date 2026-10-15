@@ -26,7 +26,7 @@ pub const PENALTY_TRAILING_GAP: i32 = -1;
 pub const FILE_NAME_BONUS: i32 = 1000;
 pub const PENALTY_DEPTH: i32 = -5;
 
-/// `int.MinValue`: the query is not a match.
+/// The query is not a match.
 pub const NO_MATCH: i32 = i32::MIN;
 
 /// Score a query against a target using greedy subsequence matching.
@@ -326,7 +326,7 @@ fn chars_equal(a: char, b: char, case_sensitive: bool) -> bool {
     if case_sensitive { a == b } else { a == b || to_upper(a) == to_upper(b) }
 }
 
-/// Shared candidate selection of the `*WithFileNamePriority` methods: a
+/// Shared candidate selection of the filename-priority scorers: a
 /// root file (`file_name_start == 0`) is all filename; otherwise the
 /// filename score (plus bonus) must strictly beat the full-path score.
 /// Returns `(best score before depth penalty, filename won)`.
@@ -354,7 +354,7 @@ fn best_with_file_name_priority(
     }
 }
 
-/// `ReadOnlySpan<char>.IndexOf` with `Ordinal` / `OrdinalIgnoreCase`.
+/// The first index of `needle` in `target`, exact or case-insensitive.
 fn index_of(target: &[char], needle: &[char], case_sensitive: bool) -> Option<usize> {
     if needle.len() > target.len() {
         return None;

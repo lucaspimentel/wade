@@ -166,8 +166,8 @@ impl App {
         }
     }
 
-    /// The selection-change half of `SetApplicableProviders` shared by the
-    /// right pane and `EnterExpandedPreview`.
+    /// Picks the providers for the selection and starts loading: shared by
+    /// the right pane and `enter_expanded_preview`.
     pub(crate) fn set_applicable_providers(&mut self, path: &str, pane_width: i32, pane_height: i32) {
         self.preview.active_provider_index = 0;
         let context = self.build_preview_context(pane_width, pane_height);

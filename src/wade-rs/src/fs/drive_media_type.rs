@@ -219,8 +219,8 @@ pub fn drive_type_from_fs_type(fs_type: &str) -> DriveType {
     }
 }
 
-/// Finds the /proc/mounts line for `mount_point` (as `ResolveLinuxBlockDevice`
-/// does): returns (device path, file-system type).
+/// Finds the /proc/mounts line for `mount_point`: returns (device path,
+/// file-system type).
 #[cfg(target_os = "linux")]
 fn linux_mount_entry(mount_point: &str) -> Option<(String, String)> {
     let mounts = std::fs::read_to_string("/proc/mounts").ok()?;

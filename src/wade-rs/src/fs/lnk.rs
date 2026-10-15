@@ -25,7 +25,7 @@ const IS_UNICODE: u32 = 0x80;
 
 const VOLUME_ID_AND_LOCAL_BASE_PATH: u32 = 0x01;
 
-/// `ShowCommand.Normal`.
+/// `SW_SHOWNORMAL`.
 pub const SHOW_NORMAL: u32 = 1;
 
 /// Any failure: the provider shows nothing.
@@ -40,7 +40,7 @@ impl From<io::Error> for LnkError {
 
 type Result<T> = std::result::Result<T, LnkError>;
 
-/// `BinaryReader` over a `FileStream`.
+/// A little-endian reader over the file that tracks its position.
 struct Reader {
     file: BufReader<File>,
     position: u64,
@@ -60,7 +60,7 @@ impl Reader {
         Ok(())
     }
 
-    /// `ReadBytes(count)`: up to `count` bytes.
+    /// Up to `count` bytes.
     fn read_bytes(&mut self, count: usize) -> Result<Vec<u8>> {
         let mut buf = vec![0u8; count];
         let read = crate::fs::gzip::read_fully(&mut self.file, &mut buf)?;
@@ -69,7 +69,7 @@ impl Reader {
         Ok(buf)
     }
 
-    /// Exactly `N` bytes, else `EndOfStreamException`.
+    /// Exactly `N` bytes, else an error.
     fn read_array<const N: usize>(&mut self) -> Result<[u8; N]> {
         let bytes = self.read_bytes(N)?;
         bytes.try_into().map_err(|_| LnkError)
@@ -117,7 +117,7 @@ impl Reader {
     }
 }
 
-/// `Encoding.Unicode.GetString`: lone surrogates and an odd trailing byte
+/// UTF-16LE text: lone surrogates and an odd trailing byte
 /// become U+FFFD.
 #[must_use]
 pub fn decode_utf16le(bytes: &[u8]) -> String {
@@ -177,7 +177,7 @@ fn parse_id_list(reader: &mut Reader) -> Result<Vec<String>> {
             break;
         }
 
-        // ReadBytes(itemIdSize - 2) throws for a size of 1
+        // A size of 1 is too short for its own size field
         let data_size = usize::from(item_size).checked_sub(2).ok_or(LnkError)?;
         reader.read_bytes(data_size)?;
     }
@@ -221,8 +221,8 @@ fn extract_string_list(data: &[u8]) -> Vec<String> {
     strings
 }
 
-/// `string.IsNullOrWhiteSpace` treats NUL as non-white; `str::trim` agrees
-/// for the characters these scans produce.
+/// NUL counts as non-white; `str::trim` agrees for the characters these
+/// scans produce.
 fn likely_unicode_string(data: &[u8], offset: usize) -> Option<usize> {
     let mut length = 0;
     let mut null_terminators = 0;
@@ -410,7 +410,7 @@ fn parse_string_data(reader: &mut Reader, flags: u32) -> Result<StringData> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LnkFile {
     pub header: ShellLinkHeader,
-    /// `LinkTargetIdList.ExtractedStringList`, when the list is present.
+    /// The ID list's strings, when the list is present.
     pub id_list_strings: Option<Vec<String>>,
     pub link_info: Option<LinkInfo>,
     pub string_data: StringData,

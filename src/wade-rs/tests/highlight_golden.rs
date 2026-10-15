@@ -152,7 +152,7 @@ fn run_cases(path: &Path, keep: &dyn Fn(&str) -> bool) -> Vec<(usize, String)> {
         }
     }
 
-    // File.ReadAllLines drops the empty string after the final newline
+    // The empty string after the final newline is not a line
     if let Some(last) = cases.last_mut()
         && last.last() == Some(&"")
     {

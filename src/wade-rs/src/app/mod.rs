@@ -327,7 +327,7 @@ impl App {
     }
 
     /// The end of each main-loop iteration: clamp the selection to the
-    /// visible entries and keep it on screen (`AdjustScroll`).
+    /// visible entries and keep it on screen (`adjust_scroll`).
     fn clamp_selection_and_scroll(&mut self) {
         let entries = self.get_visible_entries();
         if !entries.is_empty() {
@@ -1459,7 +1459,8 @@ impl App {
         }
     }
 
-    /// Mechanics of `ExecutePaste` for explicit sources.
+    /// Pastes explicit sources (wade's clipboard or the OS clipboard's
+    /// files).
     pub fn execute_paste_internal(&mut self, sources: Vec<String>, is_cut: bool, overwrite: bool) {
         let sender = self.pipeline.sender();
         self.file_operation_runner.begin(
@@ -2247,7 +2248,7 @@ pub(crate) fn group_thousands(value: i64) -> String {
     if value < 0 { format!("-{grouped}") } else { grouped }
 }
 
-/// `FormatHelpers.FormatSize` convenience wrapper returning a String.
+/// `format_size` convenience wrapper returning a String.
 #[must_use]
 pub(crate) fn format_size_buf(bytes: i64) -> String {
     let mut buf = ['\0'; 32];
