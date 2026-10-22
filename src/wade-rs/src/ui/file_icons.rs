@@ -178,7 +178,6 @@ enum Category {
     Script,
     Data,
     Text,
-    Document,
     Image,
     Audio,
     Video,
@@ -208,10 +207,12 @@ const CATEGORY_EXTENSIONS: &[(Category, &[&str])] = &[
             ".gradle", ".editorconfig", ".gitignore", ".gitattributes", ".dockerfile", ".dockerignore",
         ],
     ),
-    (Category::Text, &[".txt", ".md", ".markdown", ".rst", ".log"]),
     (
-        Category::Document,
-        &[".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".ods", ".odp", ".rtf", ".epub"],
+        Category::Text,
+        &[
+            ".txt", ".md", ".markdown", ".rst", ".log", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+            ".odt", ".ods", ".odp", ".rtf", ".epub",
+        ],
     ),
     (
         Category::Image,
@@ -251,11 +252,10 @@ fn category(ext: &str, name_lower: &str) -> Category {
 /// blank and marks executables only).
 fn category_glyphs(category: Category) -> (u32, char, char) {
     match category {
-        Category::Code => (0xF1C9, '\u{1F4DC}', ' '),      // nf-fa-file_code_o, 📜
+        Category::Code => (0xF1C9, '\u{1F4BB}', ' '),      // nf-fa-file_code_o, 💻
         Category::Script => (0xF489, '\u{1F41A}', ' '),    // nf-oct-terminal, 🐚
-        Category::Data => (0xF1C9, '\u{1F527}', ' '),      // nf-fa-file_code_o, 🔧
+        Category::Data => (0xF1C9, '\u{1F4CA}', ' '),      // nf-fa-file_code_o, 📊
         Category::Text => (0xF15C, '\u{1F4DD}', ' '),      // nf-fa-file_text, 📝
-        Category::Document => (0xF0219, '\u{1F4D5}', ' '), // nf-md-file_document, 📕
         Category::Image => (0xF1C5, '\u{1F3A8}', ' '),     // nf-fa-file_image_o, 🎨
         Category::Audio => (0xF1C7, '\u{1F3B5}', ' '),     // nf-fa-file_audio_o, 🎵
         Category::Video => (0xF1C8, '\u{1F3AC}', ' '),     // nf-fa-file_video_o, 🎬
@@ -494,6 +494,13 @@ mod tests {
             ("release.tar", 0xF1C6),
             ("app.exe", 0xF17A),
             ("library.dll", 0xF17A),
+            ("report.docx", 0xF1C2),
+            ("report.xlsx", 0xF1C3),
+            ("report.pptx", 0xF1C4),
+            ("report.odt", 0xF1C2),
+            ("report.ods", 0xF1C3),
+            ("report.odp", 0xF1C4),
+            ("report.epub", 0xF02D),
         ] {
             assert_eq!(code(name), expected, "{name}");
         }
@@ -518,7 +525,7 @@ mod tests {
         }
     }
 
-    /// One entry per kind and category.
+    /// Cover every kind and category, plus document files classified as Text.
     fn samples() -> Vec<FileSystemEntry> {
         let mut entries = vec![
             entry("src", true),
@@ -560,6 +567,10 @@ mod tests {
             ("main.c", 0xF1C9),
             ("setup.msi", 0xF013),
             ("Notes.LOG", 0xF15C),
+            ("report.doc", 0xF15C),
+            ("report.xls", 0xF15C),
+            ("report.ppt", 0xF15C),
+            ("report.rtf", 0xF15C),
         ] {
             assert_eq!(code(name), expected, "{name}");
         }
@@ -567,11 +578,24 @@ mod tests {
     }
 
     #[test]
+    fn document_extensions_use_text_icons() {
+        for ext in [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".ods", ".odp", ".rtf", ".epub"]
+        {
+            for name in [format!("report{ext}"), format!("REPORT{ext}")] {
+                let e = entry(&name, false);
+                assert_eq!(get_icon(&e, IconSet::Emoji), Some('\u{1F4DD}'), "{name}");
+                assert_eq!(get_icon(&e, IconSet::Ascii), Some(' '), "{name}");
+                assert_eq!(get_icon(&e, IconSet::None), None, "{name}");
+            }
+        }
+    }
+
+    #[test]
     fn every_set_distinguishes_kinds_and_categories() {
         let glyphs = |set| samples().iter().map(|e| get_icon(e, set).unwrap()).collect::<String>();
         assert_eq!(
             glyphs(IconSet::Emoji),
-            "\u{1F4C1}\u{1F4BD}\u{1F517}\u{1F517}\u{1F517}\u{1F680}\u{1F4DC}\u{1F41A}\u{1F527}\u{1F4DD}\u{1F4D5}\u{1F3A8}\u{1F3B5}\u{1F3AC}\u{1F4E6}\u{26A1}\u{1F524}\u{1F4BE}\u{1F4C4}"
+            "\u{1F4C1}\u{1F4BD}\u{1F517}\u{1F517}\u{1F517}\u{1F680}\u{1F4BB}\u{1F41A}\u{1F4CA}\u{1F4DD}\u{1F4DD}\u{1F3A8}\u{1F3B5}\u{1F3AC}\u{1F4E6}\u{26A1}\u{1F524}\u{1F4BE}\u{1F4C4}"
         );
         let sep = std::path::MAIN_SEPARATOR;
         assert_eq!(
