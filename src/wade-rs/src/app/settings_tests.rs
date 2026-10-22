@@ -6,8 +6,11 @@
 
 use std::path::Path;
 
-use super::test_support::{CURRENT_DIR, app_at, fixture, frame, frame_has, row_with, select, visible_names};
+use super::test_support::{
+    CURRENT_DIR, app_at, ch, fixture, frame, frame_has, key, press, row_with, select, visible_names,
+};
 use super::{App, AppAction, AppConfig};
+use crate::console_key::ConsoleKey;
 use crate::fs::DriveMediaType;
 use crate::fs::directory_contents::SortMode;
 use crate::input::InputMode;
@@ -397,6 +400,37 @@ fn every_icon_set_draws_its_glyphs_at_startup_and_from_the_dialog() {
         assert!(row_with(&mut app, "a.txt").contains(&file), "{set:?} from the dialog");
         let _ = std::fs::remove_dir_all(&parent);
     }
+}
+
+#[test]
+fn cycling_the_icons_row_previews_the_draft_set_without_committing() {
+    let (parent, root) = fixture();
+    let mut app = app_at(AppConfig::default(), &root);
+    assert!(row_with(&mut app, "a.txt").contains("\u{F15C} a.txt"), "starts as Nerd");
+
+    app.show_config_dialog();
+    // The Icons row is the dialog's first row, selected by default
+    press(&mut app, ch('l')); // Nerd -> Emoji
+    assert!(row_with(&mut app, "a.txt").contains("\u{1F4DD} a.txt"), "previewing Emoji");
+    assert_eq!(app.config.icon_set, IconSet::Nerd, "the draft is not committed");
+    press(&mut app, ch('l')); // -> Ascii
+    assert!(row_with(&mut app, "a.txt").contains("  a.txt"), "previewing Ascii");
+    press(&mut app, ch('l')); // -> None
+    assert!(row_with(&mut app, "a.txt").contains(" a.txt"), "previewing None");
+    assert_eq!(app.config.icon_set, IconSet::Nerd, "still not committed");
+
+    press(&mut app, key(ConsoleKey::Escape));
+    assert_eq!(app.input_mode, InputMode::Normal, "Esc closes the dialog");
+    assert!(row_with(&mut app, "a.txt").contains("\u{F15C} a.txt"), "Esc reverts the preview");
+    assert_eq!(app.config.icon_set, IconSet::Nerd);
+
+    // Enter still commits the draft (and saves)
+    app.show_config_dialog();
+    press(&mut app, ch('l')); // Nerd -> Emoji
+    press(&mut app, key(ConsoleKey::Enter));
+    assert_eq!(app.config.icon_set, IconSet::Emoji);
+    assert!(row_with(&mut app, "a.txt").contains("\u{1F4DD} a.txt"), "committed Emoji");
+    let _ = std::fs::remove_dir_all(&parent);
 }
 
 #[test]

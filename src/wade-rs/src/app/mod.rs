@@ -1809,6 +1809,16 @@ impl App {
         }
     }
 
+    /// The icon set to render with: the config dialog's draft while the
+    /// dialog is open (live preview), otherwise the saved config's set.
+    fn effective_icon_set(&self) -> crate::ui::file_icons::IconSet {
+        if self.input_mode == InputMode::Config {
+            self.modal.config_state.as_ref().map_or(self.config.icon_set, |state| state.draft.icon_set)
+        } else {
+            self.config.icon_set
+        }
+    }
+
     /// Draws the frame into `buffer`.
     pub fn render(&mut self, buffer: &mut ScreenBuffer) {
         if self.input_mode == InputMode::ExpandedPreview {
@@ -1834,7 +1844,7 @@ impl App {
             PaneRenderer::render_column_headers(
                 buffer,
                 header_rect,
-                self.config.icon_set,
+                self.effective_icon_set(),
                 self.config.size_column_enabled,
                 self.config.date_column_enabled,
                 is_drive_view,
@@ -1853,7 +1863,7 @@ impl App {
             i32::try_from(self.selected_index).unwrap_or(0),
             scroll,
             true,
-            self.config.icon_set,
+            self.effective_icon_set(),
             self.config.size_column_enabled,
             self.config.date_column_enabled,
             &self.marked_paths,
@@ -1899,7 +1909,7 @@ impl App {
             self.clipboard_is_cut,
             self.current_branch_name.as_deref(),
             self.ahead_behind_text.as_deref(),
-            self.config.icon_set,
+            self.effective_icon_set(),
         );
 
         // Search bar, help overlay, and modal dialogs render last, on top.
@@ -1934,15 +1944,34 @@ impl App {
 
         if self.config.column_headers_enabled && left_pane.height > 2 {
             let header_rect = Rect2::new(left_pane.left, left_pane.top, left_pane.width, 2);
-            PaneRenderer::render_column_headers(buffer, header_rect, self.config.icon_set, false, false, false, false);
+            PaneRenderer::render_column_headers(
+                buffer,
+                header_rect,
+                self.effective_icon_set(),
+                false,
+                false,
+                false,
+                false,
+            );
             left_pane.top += 2;
             left_pane.height -= 2;
         }
 
         let parent_scroll = calculate_scroll(parent_selected as usize, left_pane.height, parent_entries.len());
         PaneRenderer::render_file_list(
-            buffer, left_pane, &parent_entries, parent_selected, parent_scroll, false, self.config.icon_set, false,
-            false, &self.marked_paths, None, None, false,
+            buffer,
+            left_pane,
+            &parent_entries,
+            parent_selected,
+            parent_scroll,
+            false,
+            self.effective_icon_set(),
+            false,
+            false,
+            &self.marked_paths,
+            None,
+            None,
+            false,
         );
     }
 
@@ -1960,15 +1989,32 @@ impl App {
                 if self.config.column_headers_enabled && right_list_pane.height > 2 {
                     let header_rect = Rect2::new(right_list_pane.left, right_list_pane.top, right_list_pane.width, 2);
                     PaneRenderer::render_column_headers(
-                        buffer, header_rect, self.config.icon_set, false, false, false, false,
+                        buffer,
+                        header_rect,
+                        self.effective_icon_set(),
+                        false,
+                        false,
+                        false,
+                        false,
                     );
                     right_list_pane.top += 2;
                     right_list_pane.height -= 2;
                 }
 
                 PaneRenderer::render_file_list(
-                    buffer, right_list_pane, &preview_entries, -1, 0, false, self.config.icon_set, false, false,
-                    &self.marked_paths, None, None, false,
+                    buffer,
+                    right_list_pane,
+                    &preview_entries,
+                    -1,
+                    0,
+                    false,
+                    self.effective_icon_set(),
+                    false,
+                    false,
+                    &self.marked_paths,
+                    None,
+                    None,
+                    false,
                 );
             } else {
                 PaneRenderer::render_message(buffer, self.layout.right_pane, "[empty directory]");
@@ -2009,7 +2055,7 @@ impl App {
             self.clipboard_is_cut,
             self.current_branch_name.as_deref(),
             self.ahead_behind_text.as_deref(),
-            self.config.icon_set,
+            self.effective_icon_set(),
         );
     }
 }

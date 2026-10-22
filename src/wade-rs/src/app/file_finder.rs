@@ -453,7 +453,7 @@ impl App {
     /// Gathers the view and draws it.
     pub fn render_file_finder(&mut self, buffer: &mut ScreenBuffer, width: i32, height: i32) {
         let current_path = self.current_path.clone();
-        let icon_set = self.config.icon_set;
+        let icon_set = self.effective_icon_set();
         let Some(state) = self.file_finder.as_mut() else {
             return;
         };
