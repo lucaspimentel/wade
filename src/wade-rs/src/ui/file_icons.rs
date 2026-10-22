@@ -238,22 +238,23 @@ fn category(ext: &str, name_lower: &str) -> Category {
         .map_or(Category::Other, |&(category, _)| category)
 }
 
-/// Columns: Nerd Fonts, Unicode, emoji, ASCII (ASCII marks executables only).
+/// Columns: Nerd Fonts, Unicode, emoji, ASCII (ASCII leaves ordinary files
+/// blank and marks executables only).
 fn category_glyphs(category: Category) -> (u32, char, char, char) {
     match category {
-        Category::Code => (0xF1C9, '\u{0192}', '\u{1F4DC}', '.'), // nf-fa-file_code_o, ƒ, 📜
-        Category::Script => (0xF489, '\u{203A}', '\u{1F41A}', '.'), // nf-oct-terminal, ›, 🐚
-        Category::Data => (0xF1C9, '\u{229E}', '\u{1F527}', '.'), // nf-fa-file_code_o, ⊞, 🔧
-        Category::Text => (0xF15C, '\u{25AB}', '\u{1F4DD}', '.'), // nf-fa-file_text, ▫, 📝
-        Category::Document => (0xF0219, '\u{25AA}', '\u{1F4D5}', '.'), // nf-md-file_document, ▪, 📕
-        Category::Image => (0xF1C5, '\u{25E9}', '\u{1F3A8}', '.'), // nf-fa-file_image_o, ◩, 🎨
-        Category::Audio => (0xF1C7, '\u{223F}', '\u{1F3B5}', '.'), // nf-fa-file_audio_o, ∿, 🎵
-        Category::Video => (0xF1C8, '\u{25BB}', '\u{1F3AC}', '.'), // nf-fa-file_video_o, ▻, 🎬
-        Category::Archive => (0xF1C6, '\u{22A0}', '\u{1F4E6}', '.'), // nf-fa-file_archive_o, ⊠, 📦
+        Category::Code => (0xF1C9, '\u{0192}', '\u{1F4DC}', ' '), // nf-fa-file_code_o, ƒ, 📜
+        Category::Script => (0xF489, '\u{203A}', '\u{1F41A}', ' '), // nf-oct-terminal, ›, 🐚
+        Category::Data => (0xF1C9, '\u{229E}', '\u{1F527}', ' '), // nf-fa-file_code_o, ⊞, 🔧
+        Category::Text => (0xF15C, '\u{25AB}', '\u{1F4DD}', ' '), // nf-fa-file_text, ▫, 📝
+        Category::Document => (0xF0219, '\u{25AA}', '\u{1F4D5}', ' '), // nf-md-file_document, ▪, 📕
+        Category::Image => (0xF1C5, '\u{25E9}', '\u{1F3A8}', ' '), // nf-fa-file_image_o, ◩, 🎨
+        Category::Audio => (0xF1C7, '\u{223F}', '\u{1F3B5}', ' '), // nf-fa-file_audio_o, ∿, 🎵
+        Category::Video => (0xF1C8, '\u{25BB}', '\u{1F3AC}', ' '), // nf-fa-file_video_o, ▻, 🎬
+        Category::Archive => (0xF1C6, '\u{22A0}', '\u{1F4E6}', ' '), // nf-fa-file_archive_o, ⊠, 📦
         Category::Executable => (0xF013, '\u{2217}', '\u{26A1}', '*'), // nf-fa-cog, ∗, ⚡
-        Category::Font => (0xF031, '\u{A730}', '\u{1F524}', '.'), // nf-fa-font, ꜰ, 🔤
-        Category::Database => (0xF1C0, '\u{229C}', '\u{1F4BE}', '.'), // nf-fa-database, ⊜, 💾
-        Category::Other => (0xF15B, '\u{25E6}', '\u{1F4C4}', '.'), // nf-fa-file, ◦, 📄
+        Category::Font => (0xF031, '\u{A730}', '\u{1F524}', ' '), // nf-fa-font, ꜰ, 🔤
+        Category::Database => (0xF1C0, '\u{229C}', '\u{1F4BE}', ' '), // nf-fa-database, ⊜, 💾
+        Category::Other => (0xF15B, '\u{25E6}', '\u{1F4C4}', ' '), // nf-fa-file, ◦, 📄
     }
 }
 
@@ -571,8 +572,8 @@ mod tests {
         let sep = std::path::MAIN_SEPARATOR;
         assert_eq!(
             glyphs(IconSet::Ascii),
-            format!("{sep}:@@@&.........*..."),
-            "ASCII marks kinds and executables only"
+            format!("{sep}:@@@&{}*{}", " ".repeat(9), " ".repeat(3)),
+            "ASCII leaves ordinary files blank and marks kinds and executables only"
         );
         assert!(samples().iter().all(|e| get_icon(e, IconSet::None).is_none()));
     }

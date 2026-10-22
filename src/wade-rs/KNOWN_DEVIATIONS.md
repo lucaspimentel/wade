@@ -507,7 +507,7 @@ None. Phase 9 closed the last temporary entries.
   loads as `none`. Unicode symbols are East Asian Width neutral and outside
   U+2600-27BF (which `rune_width` counts as two cells); emoji need no
   U+FE0F and take a 3-cell icon column. Unicode and emoji mark file
-  categories; ASCII marks kinds and executables only (`/ : @ & * .`), since
+  categories; ASCII marks kinds and executables only (`/ : @ & *`), since
   more ASCII symbols would be guesswork to read. Git, cloud and branch
   symbols follow the set, except that emoji use the Unicode ones (the
   status column is one cell) and `none` uses ASCII, so hiding icons keeps
