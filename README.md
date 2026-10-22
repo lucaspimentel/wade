@@ -53,7 +53,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 
 - **Mouse support** — click, scroll, right-click context menu in all panes
 - **Action palette** — `Ctrl+P` / `Ctrl+K` searchable command list with submenus
-- **In-app config** — `,` opens hierarchical settings dialog
+- **In-app config** — `,` opens hierarchical settings dialog; the Icons row previews the icon set live as you cycle it
 - **Status bar** — path, git branch, item count, file type, encoding, line endings, size, sort mode
 - **Shell integration** — `T` opens terminal; `wd` wrapper for cd-on-exit (bash, zsh, fish, PowerShell)
 - **Auto-refresh** — watches the current directory for changes, with a 300ms debounce
