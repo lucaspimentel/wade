@@ -175,7 +175,6 @@ enum StatusSet {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Category {
     Code,
-    Script,
     Data,
     Text,
     Image,
@@ -195,10 +194,10 @@ const CATEGORY_EXTENSIONS: &[(Category, &[&str])] = &[
             ".c", ".h", ".cpp", ".cc", ".cxx", ".hpp", ".hh", ".cs", ".csx", ".fs", ".fsx", ".vb", ".go", ".rs",
             ".java", ".kt", ".kts", ".scala", ".swift", ".m", ".mm", ".rb", ".php", ".pl", ".lua", ".r", ".dart",
             ".zig", ".hs", ".ml", ".ex", ".exs", ".erl", ".clj", ".py", ".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx",
-            ".html", ".htm", ".css", ".scss", ".sass", ".less", ".vue", ".svelte", ".sql",
+            ".html", ".htm", ".css", ".scss", ".sass", ".less", ".vue", ".svelte", ".sql", ".sh", ".bash", ".zsh",
+            ".fish", ".ps1", ".psm1", ".psd1", ".bat", ".cmd",
         ],
     ),
-    (Category::Script, &[".sh", ".bash", ".zsh", ".fish", ".ps1", ".psm1", ".psd1", ".bat", ".cmd"]),
     (
         Category::Data,
         &[
@@ -253,7 +252,6 @@ fn category(ext: &str, name_lower: &str) -> Category {
 fn category_glyphs(category: Category) -> (u32, char, char) {
     match category {
         Category::Code => (0xF1C9, '\u{1F4BB}', ' '),      // nf-fa-file_code_o, 💻
-        Category::Script => (0xF489, '\u{1F41A}', ' '),    // nf-oct-terminal, 🐚
         Category::Data => (0xF1C9, '\u{1F4CA}', ' '),      // nf-fa-file_code_o, 📊
         Category::Text => (0xF15C, '\u{1F4DD}', ' '),      // nf-fa-file_text, 📝
         Category::Image => (0xF1C5, '\u{1F3A8}', ' '),     // nf-fa-file_image_o, 🎨
@@ -595,7 +593,7 @@ mod tests {
         let glyphs = |set| samples().iter().map(|e| get_icon(e, set).unwrap()).collect::<String>();
         assert_eq!(
             glyphs(IconSet::Emoji),
-            "\u{1F4C1}\u{1F4BD}\u{1F517}\u{1F517}\u{1F517}\u{1F680}\u{1F4BB}\u{1F41A}\u{1F4CA}\u{1F4DD}\u{1F4DD}\u{1F3A8}\u{1F3B5}\u{1F3AC}\u{1F4E6}\u{26A1}\u{1F524}\u{1F4BE}\u{1F4C4}"
+            "\u{1F4C1}\u{1F4BD}\u{1F517}\u{1F517}\u{1F517}\u{1F680}\u{1F4BB}\u{1F4BB}\u{1F4CA}\u{1F4DD}\u{1F4DD}\u{1F3A8}\u{1F3B5}\u{1F3AC}\u{1F4E6}\u{26A1}\u{1F524}\u{1F4BE}\u{1F4C4}"
         );
         let sep = std::path::MAIN_SEPARATOR;
         assert_eq!(
