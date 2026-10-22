@@ -45,7 +45,7 @@ const MAX_EVENTS_PER_FRAME: usize = 256;
 /// dialog. Per-run inputs live in `StartOptions`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AppConfig {
-    /// `icons = nerd|unicode|emoji|ascii|none` (replaces
+    /// `icons = nerd|emoji|ascii|none` (replaces
     /// `show_icons_enabled`, which still loads as nerd or none).
     pub icon_set: crate::ui::file_icons::IconSet,
     pub image_previews_enabled: bool,

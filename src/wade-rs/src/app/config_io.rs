@@ -540,6 +540,11 @@ mediainfo_enabled = true
         }
         assert_eq!(load_text("icons-case", "icons = ASCII\n").icon_set, IconSet::Ascii);
         assert_eq!(load_text("icons-bad", "icons = fancy\n").icon_set, IconSet::Nerd, "invalid keeps the default");
+        assert_eq!(
+            load_text("icons-removed-unicode", "icons = unicode\n").icon_set,
+            IconSet::Nerd,
+            "the removed unicode set keeps the default"
+        );
 
         // Older configs: show_icons_enabled = false hides icons unless icons is set
         assert_eq!(load_text("legacy-off", "show_icons_enabled = false\n").icon_set, IconSet::None);

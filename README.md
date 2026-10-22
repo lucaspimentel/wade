@@ -18,7 +18,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Column headers** — labeled header row with separator line in all panes; adapts to visible columns and drive view
 - **Detail columns** — file size and modification date with responsive column tiers; async directory sizes (gated per drive type)
 - **Drive navigation** — browse drives on Windows (mounted volumes on macOS) with file system, free/total space, and percent-full bar columns; SSD/HDD detection
-- **File-type icons** — Nerd Fonts v3 glyphs per extension, or Unicode or emoji symbols per file category, or `ls -F`-style ASCII markers (directories, links, executables) for fonts without Nerd Fonts; `icons = none` hides them
+- **File-type icons** — Nerd Fonts v3 glyphs per extension, or emoji symbols per file category, or `ls -F`-style ASCII markers (directories, links, executables) for fonts without Nerd Fonts; `icons = none` hides them
 - **Sort order** — by name, date, size, or extension (`s` to cycle, `S` to reverse)
 - **Filter** — `/` to narrow entries in real-time
 - **Go-to-path** — `Ctrl+G` with Tab autocomplete
@@ -123,7 +123,7 @@ wade C:\Users     # open in a specific directory
 `~/.config/wade/config.toml`
 
 ```toml
-icons = nerd                    # nerd, unicode, emoji, ascii, none (replaces the old show_icons_enabled)
+icons = nerd                    # nerd, emoji, ascii, none (replaces the old show_icons_enabled)
 show_hidden_files = false
 show_system_files = false       # Windows only; requires show_hidden_files
 sort_mode = name                # name, modified, size, extension (default for directories without a saved sort)

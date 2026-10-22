@@ -378,7 +378,6 @@ fn every_icon_set_draws_its_glyphs_at_startup_and_from_the_dialog() {
     let sep = std::path::MAIN_SEPARATOR;
     let expected = [
         (IconSet::Nerd, "\u{F15C} a.txt".to_string(), "\u{F114} sub".to_string()),
-        (IconSet::Unicode, "\u{25AB} a.txt".to_string(), "\u{25B8} sub".to_string()),
         // row_text drops the emoji's continuation cell: the column is 3 wide
         (IconSet::Emoji, "\u{1F4DD} a.txt".to_string(), "\u{1F4C1} sub".to_string()),
         (IconSet::Ascii, "  a.txt".to_string(), format!("{sep} sub")),

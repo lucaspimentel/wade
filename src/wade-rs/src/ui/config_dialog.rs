@@ -355,9 +355,9 @@ mod tests {
         let mut state = default_state();
         assert_eq!(state.draft.icon_set, IconSet::Nerd);
         state.toggle_selected(); // Icons: Enter steps forward
-        assert_eq!(state.draft.icon_set, IconSet::Unicode);
-        state.cycle_next_selected();
         assert_eq!(state.draft.icon_set, IconSet::Emoji);
+        state.cycle_next_selected();
+        assert_eq!(state.draft.icon_set, IconSet::Ascii);
         state.cycle_prev_selected();
         state.cycle_prev_selected();
         state.cycle_prev_selected();
