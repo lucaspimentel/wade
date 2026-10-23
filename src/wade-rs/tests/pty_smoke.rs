@@ -4,6 +4,7 @@
 //! and restore, raw input decoding, resize and the process exit path.
 
 use std::io::{Read, Write};
+use std::num::NonZero;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -12,6 +13,8 @@ use portable_pty::{Child, CommandBuilder, MasterPty, PtySize, native_pty_system}
 
 const COLS: u16 = 100;
 const ROWS: u16 = 30;
+const NZ_COLS: NonZero<u16> = NonZero::new(COLS).unwrap();
+const NZ_ROWS: NonZero<u16> = NonZero::new(ROWS).unwrap();
 const TIMEOUT: Duration = Duration::from_secs(15);
 
 const DOWN: &str = "\x1b[B";
@@ -117,7 +120,7 @@ impl Session {
         let child = pair.slave.spawn_command(cmd).expect("spawn wade");
         drop(pair.slave);
 
-        let parser = Arc::new(Mutex::new(vt100::Parser::new(ROWS, COLS, 0)));
+        let parser = Arc::new(Mutex::new(vt100::Parser::new(NZ_ROWS, NZ_COLS, 0)));
         let mut reader = pair.master.try_clone_reader().unwrap();
         let writer = Arc::new(Mutex::new(pair.master.take_writer().unwrap()));
         let raw = Arc::new(Mutex::new(Vec::new()));
@@ -272,7 +275,11 @@ impl Session {
     }
 
     fn resize(&mut self, rows: u16, cols: u16) {
-        self.parser.lock().unwrap().screen_mut().set_size(rows, cols);
+        self.parser
+            .lock()
+            .unwrap()
+            .screen_mut()
+            .set_size(NonZero::new(rows).expect("non-zero rows"), NonZero::new(cols).expect("non-zero cols"));
         self.master
             .resize(PtySize {
                 rows,
@@ -604,7 +611,7 @@ fn a_long_bracketed_paste_arrives_whole() {
 
 /// The columns of the pane borders on `row`.
 fn borders(screen: &vt100::Screen, row: u16) -> Vec<u16> {
-    (0..screen.size().1)
+    (0..screen.size().1.get())
         .filter(|&col| screen.cell(row, col).is_some_and(|cell| cell.contents() == "│"))
         .collect()
 }
