@@ -17,7 +17,7 @@ unicode-normalization = "0.1"
 
 [dev-dependencies]
 portable-pty = "0.9"
-vt100 = "0.16"
+vt100 = "0.18"
 
 [target.'cfg(not(windows))'.dependencies]
 notify = "8"
