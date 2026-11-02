@@ -204,11 +204,12 @@ impl DirectoryContents {
     pub fn is_drive_root(path: &str) -> bool {
         let full = absolute(path);
         match Path::new(path).components().next() {
-            Some(std::path::Component::Prefix(_)) => {
-                // Windows: compare against the root (e.g. "C:\")
-                let root = drive_root(path);
-                root.is_some_and(|r| r == full)
-            }
+            // Windows: a drive root is the bare drive letter with an
+            // optional trailing separator. Lexical, because canonicalize
+            // returns the verbatim form there ("\\?\C:\\"), which never
+            // equals the root text; C# used Path.GetFullPath, which
+            // returns the path as it is.
+            Some(std::path::Component::Prefix(_)) => windows_drive_root(path).is_some(),
             // Unix: "/", or (macOS) a volume mounted under /Volumes
             _ => full == "/" || drive_root(path).is_some_and(|root| root == full),
         }
@@ -228,6 +229,17 @@ fn absolute(path: &str) -> String {
         .canonicalize()
         .map(|p| p.to_string_lossy().to_string())
         .unwrap_or_else(|_| PathBuf::from(path).to_string_lossy().to_string())
+}
+
+/// The drive part of a Windows path that is only a drive with an optional
+/// trailing separator, e.g. "C:" for "C:" and "C:\\", and None for a path
+/// inside a drive ("C:\\Users") or a UNC share. Only Windows paths reach
+/// this through `is_drive_root`; it is pure, so it is tested everywhere.
+#[must_use]
+fn windows_drive_root(path: &str) -> Option<&str> {
+    let trimmed = path.trim_end_matches(['\\', '/']);
+    let bytes = trimmed.as_bytes();
+    (bytes.len() == 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':').then_some(trimmed)
 }
 
 #[cfg(windows)]
@@ -429,7 +441,7 @@ pub fn system_time_to_date_parts(t: SystemTime) -> super::super::ui::format_help
     }
 }
 
-/// The drive list: one entry per ready drive.
+/// The drive list: one entry per drive, ready or not.
 #[cfg(windows)]
 pub fn get_drive_entries() -> Vec<FileSystemEntry> {
     use windows_sys::Win32::Storage::FileSystem::{
@@ -485,7 +497,9 @@ pub fn get_drive_entries() -> Vec<FileSystemEntry> {
                 };
 
                 if !spaces_ok {
-                    continue; // the drive is not ready
+                    // Not ready (a disconnected share, an empty optical drive):
+                    // listed with blank sizes, and the media type is left
+                    // unknown because probing it opens a volume handle
                 }
 
                 let root = drive.to_uppercase();
@@ -502,11 +516,18 @@ pub fn get_drive_entries() -> Vec<FileSystemEntry> {
                     is_junction_point: false,
                     is_app_exec_link: false,
                     app_exec_link_target: None,
-                    drive_media_type: super::drive_media_type::detect(&drive),
+                    drive_media_type: if spaces_ok {
+                        super::drive_media_type::detect(&drive)
+                    } else {
+                        super::DriveMediaType::Unknown
+                    },
                     drive_format: format,
                     drive_label: label,
-                    drive_free_space: i64::try_from(free).unwrap_or(0),
-                    drive_total_size: i64::try_from(total).unwrap_or(0),
+                    // The space available to the user, as macOS f_bavail and
+                    // C#'s DriveInfo.TotalFreeSpace report it; `free` is the
+                    // volume's total free space (the third out parameter)
+                    drive_free_space: if spaces_ok { i64::try_from(free_for_user).unwrap_or(0) } else { 0 },
+                    drive_total_size: if spaces_ok { i64::try_from(total).unwrap_or(0) } else { 0 },
                 });
             }
         }
@@ -686,6 +707,28 @@ pub(crate) mod tests {
         assert_eq!(drive_name("C:\\"), "C:");
         assert_eq!(drive_name("/"), "/");
         assert_eq!(drive_name("/Volumes/USB"), "/Volumes/USB");
+    }
+
+    /// The Windows drive-root rule is lexical, so it is pinned here on every
+    /// platform: a canonicalize-based comparison never matched on Windows,
+    /// where it returns the verbatim "\\?\C:\\" spelling.
+    #[test]
+    fn windows_drive_roots_are_bare_drive_letters() {
+        for path in ["C:", "C:\\", "C:/"] {
+            assert_eq!(windows_drive_root(path), Some("C:"), "{path}");
+        }
+        assert_eq!(windows_drive_root("c:"), Some("c:"));
+
+        for path in ["C:\\Users", "C:\\Users\\", "C:\\foo\\..", r"\\server\share", "", "/"] {
+            assert_eq!(windows_drive_root(path), None, "{path}");
+        }
+
+        // The path goes through the Windows arm only there
+        #[cfg(windows)]
+        {
+            assert!(DirectoryContents::is_drive_root("C:\\"), "a drive root opens the drive list");
+            assert!(!DirectoryContents::is_drive_root("C:\\Users"));
+        }
     }
 
     #[cfg(unix)]

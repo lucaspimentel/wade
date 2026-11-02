@@ -366,6 +366,43 @@ fn going_up_from_the_root_lists_the_volumes_on_macos() {
     let _ = std::fs::remove_dir_all(&parent);
 }
 
+/// Windows: going up from a drive root lists the drives with that drive
+/// selected. Runs in the CI Windows job; the drive-root rule itself is
+/// unit-tested on every platform in `fs::directory_contents`.
+#[cfg(windows)]
+#[test]
+fn going_up_from_a_drive_root_lists_the_drives_on_windows() {
+    let (mut app, parent, _root) = app();
+    for _ in 0..30 {
+        if crate::fs::directory_contents::DirectoryContents::is_drive_root(&app.current_path) {
+            break;
+        }
+        press(&mut app, ch('h'));
+    }
+    assert!(
+        crate::fs::directory_contents::DirectoryContents::is_drive_root(&app.current_path),
+        "{} is not a drive root",
+        app.current_path
+    );
+    let root = app.current_path.clone();
+    let expected = crate::fs::directory_contents::drive_name(
+        &crate::fs::directory_contents::drive_root(&root).expect("a root for a drive root"),
+    );
+
+    press(&mut app, ch('h'));
+    assert_eq!(app.current_path, crate::fs::DRIVES_PATH);
+    assert_eq!(selected_name(&mut app), expected, "the drive we came from is selected");
+
+    press(&mut app, key(K::Enter));
+    assert_eq!(app.current_path, root);
+
+    // Available to the user, never more than the size (0 for a not-ready drive)
+    for entry in crate::fs::directory_contents::get_drive_entries() {
+        assert!(entry.drive_free_space <= entry.drive_total_size, "{}", entry.name);
+    }
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
 /// macOS: a path typed with another case lands on the stored spelling, so
 /// the directory's bookmark (and other path-keyed state) applies.
 #[cfg(target_os = "macos")]
