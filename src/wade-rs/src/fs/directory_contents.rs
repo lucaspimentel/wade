@@ -589,9 +589,145 @@ pub const fn is_cloud_placeholder_attributes(attribute_bits: u32) -> bool {
     attribute_bits & (RECALL_ON_DATA_ACCESS | RECALL_ON_OPEN) != 0
 }
 
-#[cfg(not(any(windows, target_os = "macos")))]
+/// Any other Unix keeps the empty drive list.
+#[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
 pub fn get_drive_entries() -> Vec<FileSystemEntry> {
     Vec::new()
+}
+
+/// Linux: the file systems that hold data of their own, in the order `df`
+/// lists them. The kernel's file systems and the ones that live in memory
+/// are skipped, as are loop devices (a snap or a mounted image is not a
+/// drive), and a device mounted more than once keeps its shallowest mount
+/// point, so the root always wins. Name is the mount point, label the
+/// device, format the file-system type, and free and total space come from
+/// `statvfs`.
+#[cfg(target_os = "linux")]
+pub fn get_drive_entries() -> Vec<FileSystemEntry> {
+    let mounts = std::fs::read_to_string("/proc/mounts").unwrap_or_default();
+    let selected = select_mounts(&mounts);
+    let mut list = Vec::new();
+
+    for mount in &selected {
+        // A mount point that is not a directory (a bind-mounted file) is not
+        // a drive, and a file system with no blocks to report (proc, cgroup)
+        // has no space to show
+        if !Path::new(&mount.mount_point).is_dir() {
+            continue;
+        }
+
+        let Some((total, free)) = statvfs_usage(&mount.mount_point) else {
+            continue;
+        };
+        if total == 0 && mount.mount_point != "/" {
+            continue;
+        }
+
+        list.push(linux_drive_entry(&mount.mount_point, &mount.device, &mount.fs_type, total, free));
+    }
+
+    if list.is_empty() {
+        // Never leave the drive view empty: the root is always a drive. It
+        // shows 0 sizes when even its statvfs fails.
+        let root = selected.iter().find(|mount| mount.mount_point == "/");
+        let (device, fs_type) = root.map_or(("", ""), |mount| (mount.device.as_str(), mount.fs_type.as_str()));
+        let (total, free) = statvfs_usage("/").unwrap_or((0, 0));
+        list.push(linux_drive_entry("/", device, fs_type, total, free));
+    }
+
+    list
+}
+
+/// Linux: the file-system types that hold no data of their own: the kernel's
+/// own file systems and the ones that live in memory, which `df` skips too.
+#[cfg(target_os = "linux")]
+const VIRTUAL_FS_TYPES: &[&str] = &[
+    "proc", "sysfs", "devtmpfs", "devpts", "tmpfs", "ramfs", "rootfs", "overlay", "cgroup", "cgroup2", "cpuset",
+    "mqueue", "hugetlbfs", "debugfs", "tracefs", "securityfs", "configfs", "bpf", "pstore", "autofs", "binfmt_misc",
+    "efivarfs", "rpc_pipefs", "nfsd", "nsfs", "selinuxfs", "fusectl", "fuse.gvfsd-fuse", "fuse.portal",
+];
+
+/// Linux: the mounts that count as drives, `/` first and then by name. Pure,
+/// so the filtering is tested from a fixture.
+#[cfg(target_os = "linux")]
+#[must_use]
+fn select_mounts(mounts: &str) -> Vec<super::drive_media_type::MountEntry> {
+    let mut kept: Vec<super::drive_media_type::MountEntry> = Vec::new();
+
+    for mount in super::drive_media_type::parse_mounts(mounts) {
+        if mount.mount_point != "/"
+            && (VIRTUAL_FS_TYPES.contains(&mount.fs_type.as_str()) || mount.device.starts_with("/dev/loop"))
+        {
+            continue;
+        }
+
+        match kept.iter().position(|other| other.device == mount.device) {
+            // One row per device: its shallowest mount point names it
+            Some(index) if mount_depth(&mount.mount_point) < mount_depth(&kept[index].mount_point) => {
+                kept[index] = mount;
+            }
+            Some(_) => {}
+            None => kept.push(mount),
+        }
+    }
+
+    kept.sort_by(|a, b| {
+        (a.mount_point != "/")
+            .cmp(&(b.mount_point != "/"))
+            .then_with(|| a.mount_point.to_lowercase().cmp(&b.mount_point.to_lowercase()))
+    });
+    kept
+}
+
+/// Linux: how deeply a mount point is nested: "/" is 0, "/home" 1,
+/// "/mnt/c" 2.
+#[cfg(target_os = "linux")]
+fn mount_depth(mount_point: &str) -> usize {
+    mount_point.split('/').filter(|part| !part.is_empty()).count()
+}
+
+/// Linux: the total size and the space available to the user, in bytes, of
+/// the file system at a mount point.
+#[cfg(target_os = "linux")]
+fn statvfs_usage(mount_point: &str) -> Option<(i64, i64)> {
+    use std::os::unix::ffi::OsStrExt;
+
+    let path = std::ffi::CString::new(Path::new(mount_point).as_os_str().as_bytes()).ok()?;
+    let mut stats: libc::statvfs = unsafe { std::mem::zeroed() };
+    // SAFETY: statvfs only writes to the pointer it is given
+    if unsafe { libc::statvfs(path.as_ptr(), &mut stats) } != 0 {
+        return None;
+    }
+
+    // u128 so the product cannot overflow, whatever the word size
+    let block = u128::from(stats.f_frsize);
+    let total = u128::from(stats.f_blocks) * block;
+    let free = u128::from(stats.f_bavail) * block;
+    Some((i64::try_from(total).unwrap_or(i64::MAX), i64::try_from(free).unwrap_or(i64::MAX)))
+}
+
+/// Linux: the drive entry for a mount.
+#[cfg(target_os = "linux")]
+fn linux_drive_entry(mount_point: &str, device: &str, fs_type: &str, total: i64, free: i64) -> FileSystemEntry {
+    FileSystemEntry {
+        name: drive_name(mount_point),
+        full_path: mount_point.to_string(),
+        is_directory: true,
+        size: 0,
+        last_modified: super::super::ui::format_helpers::DateParts::default(),
+        link_target: None,
+        is_broken_symlink: false,
+        is_drive: true,
+        is_cloud_placeholder: false,
+        is_junction_point: false,
+        is_app_exec_link: false,
+        app_exec_link_target: None,
+        drive_media_type: super::drive_media_type::linux_media_type(fs_type, device),
+        drive_format: (!fs_type.is_empty()).then(|| fs_type.to_string()),
+        drive_label: (!device.is_empty() && device != "none").then(|| device.to_string()),
+        drive_free_space: free,
+        drive_total_size: total,
+    }
 }
 
 /// macOS: the volumes mounted under /Volumes, boot volume
@@ -707,6 +843,81 @@ pub(crate) mod tests {
         assert_eq!(drive_name("C:\\"), "C:");
         assert_eq!(drive_name("/"), "/");
         assert_eq!(drive_name("/Volumes/USB"), "/Volumes/USB");
+    }
+
+    /// /proc/mounts carries octal escapes for spaces and backslashes; a
+    /// device that is not a block device (C:\ on WSL) keeps its backslash.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn parse_mounts_decodes_the_kernel_escapes() {
+        use crate::fs::drive_media_type::parse_mounts;
+
+        let mounts = r"/dev/sda1 / ext4 rw,relatime 0 0
+none /mnt/my\040disk tmpfs rw 0 0
+C:\134 /mnt/c 9p rw,dirsync 0 0
+x\ /y ext4 rw 0 0
+broken line
+
+";
+        let parsed = parse_mounts(mounts);
+        assert_eq!(parsed.len(), 4, "lines with fewer than three fields are skipped");
+
+        assert_eq!(parsed[0].device, "/dev/sda1");
+        assert_eq!(parsed[0].mount_point, "/");
+        assert_eq!(parsed[0].fs_type, "ext4");
+
+        assert_eq!(parsed[1].mount_point, "/mnt/my disk", "\\040 is a space");
+        assert_eq!(parsed[2].device, "C:\\", "\\134 is a backslash");
+        assert_eq!(parsed[3].device, "x\\", "a lone backslash is kept as it is");
+    }
+
+    /// The Linux drive list: virtual and memory-backed file systems and loop
+    /// devices are dropped, a device mounted twice keeps its shallowest mount
+    /// point, and the root comes first.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn select_mounts_keeps_real_file_systems_one_row_per_device() {
+        let mounts = r"proc /proc proc rw 0 0
+sysfs /sys sysfs rw 0 0
+tmpfs /run tmpfs rw 0 0
+devtmpfs /dev devtmpfs rw 0 0
+none /usr/lib/modules/x overlay rw 0 0
+/dev/loop0 /snap/core/1 squashfs ro 0 0
+/dev/sda1 / ext4 rw 0 0
+/dev/sda1 /mnt/wslg/distro ext4 rw 0 0
+C:\134 /mnt/c 9p rw 0 0
+drivers /usr/lib/wsl/drivers 9p rw 0 0
+server:/x /mnt/nfs nfs4 rw 0 0
+";
+        let paths: Vec<String> = select_mounts(mounts).into_iter().map(|mount| mount.mount_point).collect();
+        assert_eq!(paths, ["/", "/mnt/c", "/mnt/nfs", "/usr/lib/wsl/drivers"]);
+
+        // 9p and network mounts stay (WSL's /mnt/c is 9p), the duplicate
+        // mount of /dev/sda1 collapses into the root
+        let devices: Vec<String> = select_mounts(mounts).into_iter().map(|mount| mount.device).collect();
+        assert_eq!(devices, ["/dev/sda1", "C:\\", "server:/x", "drivers"]);
+
+        let all = select_mounts(mounts);
+        for dropped in ["/proc", "/sys", "/run", "/dev", "/usr/lib/modules/x", "/snap/core/1", "/mnt/wslg/distro"] {
+            assert!(!all.iter().any(|mount| mount.mount_point == dropped), "{dropped} is not a drive");
+        }
+    }
+
+    /// The real /proc/mounts always yields at least the root, with the space
+    /// figures filled in.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn the_linux_drive_list_starts_with_the_root() {
+        let drives = get_drive_entries();
+        assert_eq!(drives.first().map(|drive| (drive.name.as_str(), drive.full_path.as_str())), Some(("/", "/")));
+
+        for drive in &drives {
+            assert!(drive.is_drive && drive.is_directory, "{}", drive.full_path);
+            assert!(drive.full_path.starts_with('/'), "{}", drive.full_path);
+            assert!(drive.drive_format.is_some(), "{}", drive.full_path);
+            assert!(drive.drive_total_size > 0, "{}", drive.full_path);
+            assert!(drive.drive_free_space <= drive.drive_total_size, "{}", drive.full_path);
+        }
     }
 
     /// The Windows drive-root rule is lexical, so it is pinned here on every

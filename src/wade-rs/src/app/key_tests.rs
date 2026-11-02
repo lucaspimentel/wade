@@ -366,6 +366,29 @@ fn going_up_from_the_root_lists_the_volumes_on_macos() {
     let _ = std::fs::remove_dir_all(&parent);
 }
 
+/// Linux: going up from "/" lists the mounted file systems with
+/// "/" selected; before, the list was empty and had no way back.
+#[cfg(target_os = "linux")]
+#[test]
+fn going_up_from_the_root_lists_the_mounts_on_linux() {
+    let (mut app, parent, _root) = app();
+    for _ in 0..30 {
+        if app.current_path == "/" {
+            break;
+        }
+        press(&mut app, ch('h'));
+    }
+    assert_eq!(app.current_path, "/");
+
+    press(&mut app, ch('h'));
+    assert_eq!(app.current_path, crate::fs::DRIVES_PATH);
+    assert_eq!(selected_name(&mut app), "/", "the root is selected");
+
+    press(&mut app, key(K::Enter));
+    assert_eq!(app.current_path, "/");
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
 /// Windows: going up from a drive root lists the drives with that drive
 /// selected. Runs in the CI Windows job; the drive-root rule itself is
 /// unit-tested on every platform in `fs::directory_contents`.

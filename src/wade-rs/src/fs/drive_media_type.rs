@@ -4,7 +4,8 @@
 //! `/sys/block/<device>/queue/rotational` for the device mounted at the
 //! root. The drive type it starts from is `GetDriveTypeW` on Windows and,
 //! on Linux, the mount's file-system type (network, RAM and optical file
-//! systems are recognised, everything else is Fixed).
+//! systems are recognised, everything else is Fixed). `parse_mounts` reads
+//! /proc/mounts once, for the mount lookup here and for the drive list.
 //!
 //! macOS: `statfs` gives the file-system type and
 //! `diskutil info -plist` the SolidState and removable-media flags; the
@@ -227,34 +228,102 @@ fn linux_mount_entry(mount_point: &str) -> Option<(String, String)> {
     find_mount_entry(&mounts, mount_point)
 }
 
-/// Pure half of the /proc/mounts lookup: the first line whose mount point
-/// matches (with or without a trailing '/').
+/// One line of /proc/mounts, with the kernel's octal escapes decoded.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MountEntry {
+    pub device: String,
+    pub mount_point: String,
+    pub fs_type: String,
+}
+
+/// The mounts listed in /proc/mounts, in mount order; lines without the
+/// three fields (device, mount point, file-system type) are skipped.
+#[must_use]
+pub fn parse_mounts(mounts: &str) -> Vec<MountEntry> {
+    mounts
+        .lines()
+        .filter_map(|line| {
+            let mut fields = line.split_ascii_whitespace();
+            let (Some(device), Some(mount_point), Some(fs_type)) = (fields.next(), fields.next(), fields.next()) else {
+                return None;
+            };
+
+            Some(MountEntry {
+                device: decode_mount_escapes(device),
+                mount_point: decode_mount_escapes(mount_point),
+                fs_type: decode_mount_escapes(fs_type),
+            })
+        })
+        .collect()
+}
+
+/// Decodes the escapes the kernel writes in /proc/mounts: a backslash and
+/// three octal digits, for a space ("\040"), a tab, a newline or a
+/// backslash. A backslash that is not followed by three octal digits is
+/// kept as it is, so the "C:\" of a Windows mount's device stays intact.
+fn decode_mount_escapes(field: &str) -> String {
+    let bytes = field.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+
+    while index < bytes.len() {
+        if bytes[index] == b'\\'
+            && let Some(digits) = bytes.get(index + 1..index + 4)
+            && digits.iter().all(|digit| matches!(digit, b'0'..=b'7'))
+        {
+            decoded.push(digits.iter().fold(0u8, |value, digit| value * 8 + (digit - b'0')));
+            index += 4;
+            continue;
+        }
+
+        decoded.push(bytes[index]);
+        index += 1;
+    }
+
+    String::from_utf8_lossy(&decoded).into_owned()
+}
+
+/// The (device, file-system type) of the first /proc/mounts line whose mount
+/// point matches (with or without a trailing '/').
 #[must_use]
 pub fn find_mount_entry(mounts: &str, mount_point: &str) -> Option<(String, String)> {
     let trimmed = mount_point.trim_end_matches('/');
 
-    for line in mounts.lines() {
-        let mut parts = line.splitn(4, ' ');
-        let (Some(device), Some(point)) = (parts.next(), parts.next()) else {
-            continue;
-        };
-
-        if point == mount_point || point == trimmed {
-            return Some((device.to_string(), parts.next().unwrap_or("").to_string()));
-        }
-    }
-
-    None
+    parse_mounts(mounts)
+        .into_iter()
+        .find(|entry| entry.mount_point == mount_point || entry.mount_point == trimmed)
+        .map(|entry| (entry.device, entry.fs_type))
 }
 
+/// The media type of a mount, from the facts /proc/mounts carries: the
+/// file-system type names the family and the device answers SSD or HDD.
+/// Linux only: the callers have those fields at hand.
 #[cfg(target_os = "linux")]
-fn detect_linux_media_type(root: &str) -> DriveMediaType {
-    let Some(device) = linux_mount_entry(root).and_then(|(device, _)| extract_base_device(&device)) else {
+#[must_use]
+pub fn linux_media_type(fs_type: &str, device: &str) -> DriveMediaType {
+    match drive_type_from_fs_type(fs_type) {
+        DriveType::Network => DriveMediaType::Network,
+        DriveType::Removable => DriveMediaType::Removable,
+        DriveType::Fixed => rotational_media_type(device),
+        _ => DriveMediaType::Unknown,
+    }
+}
+
+/// SSD or HDD from `/sys/block/<device>/queue/rotational`; unknown for a
+/// device with no block device behind it (9p, network mounts).
+#[cfg(target_os = "linux")]
+fn rotational_media_type(device: &str) -> DriveMediaType {
+    let Some(device) = extract_base_device(device) else {
         return DriveMediaType::Unknown;
     };
 
     std::fs::read_to_string(format!("/sys/block/{device}/queue/rotational"))
         .map_or(DriveMediaType::Unknown, |content| parse_rotational_value(Some(content.trim())))
+}
+
+#[cfg(target_os = "linux")]
+fn detect_linux_media_type(root: &str) -> DriveMediaType {
+    linux_mount_entry(root).map_or(DriveMediaType::Unknown, |(device, _)| rotational_media_type(&device))
 }
 
 /// macOS volume facts: `statfs`/`statvfs` and the cached `diskutil` answer.
@@ -464,9 +533,10 @@ mod tests {
 
     #[test]
     fn find_mount_entry_matches_with_and_without_trailing_slash() {
-        let mounts = "proc /proc proc rw 0 0\n/dev/nvme0n1p2 / ext4 rw,relatime 0 0\nserver:/x /mnt/nfs nfs4 rw 0 0\n";
+        let mounts = "proc /proc proc rw 0 0\n/dev/nvme0n1p2 / ext4 rw,relatime 0 0\nserver:/x /mnt/nfs nfs4 rw 0 0\nnone /mnt/my\\040disk vfat rw 0 0\n";
         assert_eq!(find_mount_entry(mounts, "/"), Some(("/dev/nvme0n1p2".to_string(), "ext4".to_string())));
         assert_eq!(find_mount_entry(mounts, "/mnt/nfs/"), Some(("server:/x".to_string(), "nfs4".to_string())));
+        assert_eq!(find_mount_entry(mounts, "/mnt/my disk"), Some(("none".to_string(), "vfat".to_string())));
         assert_eq!(find_mount_entry(mounts, "/missing"), None);
     }
 
