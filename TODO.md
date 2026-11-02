@@ -184,6 +184,15 @@ Windows file clipboard interop is implemented in both versions. The Rust port al
 
 ## Backlog
 
+### UNC shares in the drive list
+
+- [ ] List connected network shares as drives on Windows, so a `\\server\share` root is reachable
+  from the drive list. Going up from a UNC share root does nothing today (`Path::parent` is `None`
+  there and the share is not a drive letter), and the list only holds drive letters, so such a
+  share can only be reached through Go to path or a bookmark. Needs the connected shares
+  enumerated (WNet/mapped drives) with free and total space where Windows reports them; the
+  drive-root rule in `is_drive_root` would accept a share root as well.
+
 ### ~~Multiple tabs ([#17](https://github.com/lucaspimentel/wade/issues/17))~~ (Done in Rust)
 
 `t` new tab, `{`/`}` and `1`-`9` switch, `w` close (quits on the last tab), click to switch; the bar

@@ -58,6 +58,27 @@ None. Phase 9 closed the last temporary entries.
   (tmpfs, proc, sysfs, ...) and optical (iso9660, udf) families and treats
   every other type as Fixed. Only the inline directory-size gating reads
   it on Linux, and rare file systems may land in a different family.
+- **Windows drive roots are recognized lexically.** A drive root is the
+  bare drive letter with an optional trailing separator (`C:`, `C:\`,
+  `c:/`), compared as text, because `PathBuf::canonicalize` returns the
+  verbatim `\\?\C:\` spelling on Windows, which never equals the root
+  text. C# compared `Path.GetFullPath(path)` with `Path.GetFullPath(root)`,
+  which returns the path as it is. A path such as `C:\foo\..` is not
+  treated as a root (C# resolved it and did).
+- **Windows: drive free space is the space available to the caller.**
+  `lpFreeBytesAvailableToCaller`, as macOS `f_bavail`, Linux `f_bavail`
+  and C#'s `DriveInfo.TotalFreeSpace` report it, not the volume's total
+  free bytes. The figures differ only with quotas or reserved blocks.
+- **Windows: drives that are not ready are listed (Rust-only).** A
+  disconnected network share or an empty optical drive gets a row with
+  blank Size, Free and percent-full (there is no space to report) and no
+  media-type probe, because the probe opens a volume handle that can
+  block on a dead mount. C# skipped them (`DriveInfo.IsReady`).
+- **Windows: a UNC share root is not a drive root (out of scope).** Going
+  up from `\\server\share` does nothing, because `Path::parent` is None
+  there and the share is not a drive letter; C# treated it as a root and
+  opened the drive-letter list, where the share itself did not appear
+  either. Listing connected shares as drives is in the TODO backlog.
 - **Image preview pixels differ from C# (Phase 8b).** Previews decode
   with the `image` crate and scale with a triangle filter instead of
   ImageSharp's bicubic resampler, and the median-cut palette sorts
@@ -408,8 +429,20 @@ None. Phase 9 closed the last temporary entries.
     point (`/` for the boot volume, listed first), label the volume name,
     plus format, free and total space and media type. A volume mounted
     under `/Volumes` is its own drive root, so going up from it (or from
-    `/`) opens the list. C# lists every mount `DriveInfo` reports. Linux
-    keeps the empty list.
+    `/`) opens the list. C# lists every mount `DriveInfo` reports.
+- **Linux drive list (Rust-only).** C# listed every mount
+  `DriveInfo.GetDrives()` reported, the kernel's own file systems and
+  duplicates included; Rust reads `/proc/mounts` and keeps what `df`
+  lists by default: file systems that hold data of their own, one row per
+  device at its shallowest mount point, `/` first and then by name.
+  Skipped are the kernel and memory-backed types (`proc`, `sysfs`,
+  `tmpfs`, `devtmpfs`, `overlay`, `cgroup`, ...), loop devices (a snap or
+  a mounted image is not a drive) and mount points that are not
+  directories (bind-mounted files). Name is the mount point, label the
+  device, format the file-system type, and free and total space come from
+  `statvfs` (`f_bavail`). Network file systems, 9p included (WSL's
+  `/mnt/c`), are kept. Only `/` is a drive root on Linux: going up from
+  `/mnt/c` opens `/mnt`, not the drive list.
 - **Duplicate bookmarks merge on load (Rust-only).** C#'s `BookmarkStore.Load`
   keeps every line, although `Contains`/`Remove` already treat equal paths
   as one bookmark. Rust drops later entries equal to an earlier one by the

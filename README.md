@@ -17,7 +17,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Miller columns** — three-pane layout (parent / current / preview); `[` and `]` toggle the left and right panes (session only; unchanged in saved config)
 - **Column headers** — labeled header row with separator line in all panes; adapts to visible columns and drive view
 - **Detail columns** — file size and modification date with responsive column tiers; async directory sizes (gated per drive type)
-- **Drive navigation** — browse drives on Windows (mounted volumes on macOS) with file system, free/total space, and percent-full bar columns; SSD/HDD detection
+- **Drive navigation** — browse drives on Windows, mounted volumes on macOS and mounted file systems on Linux with file system, free/total space, and percent-full bar columns; SSD/HDD detection
 - **File-type icons** — Nerd Fonts v3 glyphs per extension, or emoji symbols per file category, or `ls -F`-style ASCII markers (directories, links, executables) for fonts without Nerd Fonts; `icons = none` hides them
 - **Sort order** — by name, date, size, or extension (`s` to cycle, `S` to reverse)
 - **Filter** — `/` to narrow entries in real-time

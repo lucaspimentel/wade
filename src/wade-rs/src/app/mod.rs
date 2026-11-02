@@ -866,11 +866,16 @@ impl App {
         let old_path = self.current_path.clone();
 
         if DirectoryContents::is_drive_root(&self.current_path) {
-            // Go up to the drives list
+            // Go up to the drives list, unless there is no drive to show: the
+            // list has no way back, so an empty one would trap the view
+            let drive_entries = self.directory_contents.get_entries(DRIVES_PATH);
+            if drive_entries.is_empty() {
+                return;
+            }
+
             self.current_path = DRIVES_PATH.to_string();
             self.update_terminal_title();
             self.refresh_git_status();
-            let drive_entries = self.directory_contents.get_entries(DRIVES_PATH);
             let root = drive_root(&old_path).map(|r| drive_name(&r)).unwrap_or_default();
             let idx = find_name(drive_entries.iter().map(|e| e.name.as_str()), &root, Path::new(&old_path));
             self.selected_index = idx.unwrap_or(0);
