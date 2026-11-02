@@ -148,6 +148,8 @@ backlog.
   input, mouse, resize, kitty/iTerm2/Sixel images, clipboard round trip with
   Finder, open with the default app, Trash and Terminal/iTerm launch, the
   `/Volumes` drive list with an external disk
+- [ ] Manual Linux checks (need a real terminal): the drive list (going up from
+  `/`) with `/mnt/c` under WSL, a USB stick and a network mount
 - [x] Deleted the merged remote branches and the temporary mutation-check
   branches; only `main` remains
 - [ ] Two weeks of daily use on the Rust binary (ongoing verification, not a gate)
