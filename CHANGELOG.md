@@ -3,14 +3,14 @@
 ## [Unreleased]
 
 ### Added
-- Linux: the drive list shows the mounted file systems (like `df`), with the file system type, free and total space and the percent-full bar, reached by going up from `/`; the file systems that live in memory (`tmpfs`, `overlay`, ...) and loop devices (snaps, mounted images) are left out, and a device mounted in several places is listed once, at its shallowest mount point
+- Linux: the drive list shows the mounted file systems (like `df`) with the file system type, free/total space and percent-full bar; memory-backed file systems (`tmpfs`, `overlay`, ...) and loop devices (snaps, mounted images) are left out, and each device appears once, at its shallowest mount point
 - Icons setting (`icons = nerd|emoji|ascii|none`, and an "Icons" row in the config dialog) for fonts without Nerd Fonts: emoji per file category, ASCII (`ls -F` style) markers for directories, links and executables, or no icons; the dialog previews the set as you cycle it. Git status, cloud and branch symbols follow the set (with no icons they use ASCII). The default stays `nerd`; `show_icons_enabled = false` still loads as `none`
 - Nerd Fonts icons for audio, video, font and database files, and per category for other known extensions
 
 ### Fixed
-- Windows: going up from a drive root (e.g. `C:\`) opens the drives list; it was only reachable on macOS, so the drives and their file system, free/total space and percent-full columns could only be seen in the parent pane
-- Windows: the drive list shows the space available to the user instead of the volume's total free space, matching what macOS and the previous version reported
-- Windows: drives that are not ready (a disconnected network share, an empty optical drive) are listed with blank Size/Free/% Full instead of being hidden
+- Windows: going up from a drive root (`C:\`) opens the drives list, which was only reachable on macOS
+- Windows: the drive list reports the space available to the user, not the volume's total free space
+- Windows: drives that are not ready (a disconnected share, an empty optical drive) are listed with blank sizes instead of hidden
 - The file finder hides icons when icons are off
 
 ## [2.1.0] - 2026-10-13
