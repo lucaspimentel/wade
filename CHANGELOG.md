@@ -5,13 +5,13 @@
 ## [2.2.0] - 2026-11-02
 
 ### Added
-- Linux: the drive list shows the mounted file systems (like `df`) with the file system type, free/total space and percent-full bar; memory-backed file systems (`tmpfs`, `overlay`, ...) and loop devices (snaps, mounted images) are left out, and each device appears once, at its shallowest mount point
+- Linux: the drive list shows the mounted file systems (like `df`) with the file system type, free/total space and percent-full bar; memory-backed file systems (`tmpfs`, `overlay`, ...) and loop devices (snaps, mounted images) are left out, and each device appears once, at its shallowest mount point; the list had been empty since the Rust port (2.0.0), where the C# version listed every mount
 - Icons setting (`icons = nerd|emoji|ascii|none`, and an "Icons" row in the config dialog) for fonts without Nerd Fonts: emoji per file category, ASCII (`ls -F` style) markers for directories, links and executables, or no icons; the dialog previews the set as you cycle it. Git status, cloud and branch symbols follow the set (with no icons they use ASCII). The default stays `nerd`; `show_icons_enabled = false` still loads as `none`
 - Nerd Fonts icons for audio, video, font and database files, and per category for other known extensions
 
 ### Fixed
-- Windows: going up from a drive root (`C:\`) opens the drives list, which was only reachable on macOS
-- Windows: the drive list reports the space available to the user, not the volume's total free space
+- Windows: going up from a drive root (`C:\`) opens the drives list, which was only reachable on macOS (a regression from the Rust port, 2.0.0)
+- Windows: the drive list reports the space available to the user, not the volume's total free space (a regression from the Rust port, 2.0.0)
 - Windows: drives that are not ready (a disconnected share, an empty optical drive) are listed with blank sizes instead of hidden
 - The file finder hides icons when icons are off
 
