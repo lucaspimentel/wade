@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-11-02
+
 ### Added
 - Linux: the drive list shows the mounted file systems (like `df`) with the file system type, free/total space and percent-full bar; memory-backed file systems (`tmpfs`, `overlay`, ...) and loop devices (snaps, mounted images) are left out, and each device appears once, at its shallowest mount point
 - Icons setting (`icons = nerd|emoji|ascii|none`, and an "Icons" row in the config dialog) for fonts without Nerd Fonts: emoji per file category, ASCII (`ls -F` style) markers for directories, links and executables, or no icons; the dialog previews the set as you cycle it. Git status, cloud and branch symbols follow the set (with no icons they use ASCII). The default stays `nerd`; `show_icons_enabled = false` still loads as `none`
