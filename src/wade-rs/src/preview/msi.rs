@@ -88,7 +88,7 @@ fn query_file_table(db: &mut Package) -> Vec<MsiFileEntry> {
 fn summary_info(db: &Package) -> MsiSummaryInfo {
     let summary = db.summary_info();
     let present = |value: Option<&str>| value.filter(|v| !v.trim().is_empty()).map(str::to_string);
-    let languages: Vec<String> = summary.languages().iter().map(|lang| lang.code().to_string()).collect();
+    let languages: Vec<String> = summary.languages().iter().map(|lang| lang.id().to_string()).collect();
     let template = match (summary.arch(), languages.is_empty()) {
         (arch, false) => Some(format!("{};{}", arch.unwrap_or(""), languages.join(","))),
         (Some(arch), true) => Some(arch.to_string()),
@@ -288,7 +288,7 @@ mod tests {
         summary.set_author("Contoso Ltd.");
         summary.set_comments("   ");
         summary.set_arch("x64");
-        summary.set_languages(&[msi::Language::from_code(1033)]);
+        summary.set_languages(&[msi::LanguageId::from_id(1033)]);
 
         package
             .create_table(
