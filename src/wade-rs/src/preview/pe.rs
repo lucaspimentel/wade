@@ -7,6 +7,7 @@
 //! provider shows nothing, while a malformed metadata root only drops the
 //! .NET sections.
 
+use crate::fs::verbatim;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 
@@ -31,7 +32,7 @@ pub struct Image {
 
 impl Image {
     pub fn open(path: &str) -> std::io::Result<Self> {
-        let file = crate::fs::verbatim::open(path)?;
+        let file = verbatim::open(path)?;
         let len = i64::try_from(file.metadata()?.len()).unwrap_or(i64::MAX);
         Ok(Self { file, len })
     }

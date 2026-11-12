@@ -7,6 +7,7 @@ use std::fs::File;
 use super::{
     MetadataEntry, MetadataProvider, MetadataResult, MetadataSection, PreviewContext, PreviewProvider, PreviewResult,
 };
+use crate::fs::verbatim;
 use crate::highlight::StyledLine;
 use crate::input::CancelToken;
 use crate::ui::format_helpers::format_size_string;
@@ -36,7 +37,7 @@ pub fn parse_long_name(raw_name: &str) -> &str {
 type Package = msi::Package<File>;
 
 fn open_database(path: &str) -> Option<Package> {
-    msi::Package::open(crate::fs::verbatim::open(path).ok()?).ok()
+    msi::Package::open(verbatim::open(path).ok()?).ok()
 }
 
 /// A cell as text: null cells read as "". The tables

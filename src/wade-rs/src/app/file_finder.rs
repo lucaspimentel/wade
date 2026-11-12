@@ -787,11 +787,11 @@ fn list_directory(dir: &str) -> (Vec<WalkItem>, Vec<WalkItem>) {
             continue;
         };
 
-        let is_dir = file_type.is_dir() || (file_type.is_symlink() && verbatim::is_dir(&item.path()));
+        let is_dir = file_type.is_dir() || (file_type.is_symlink() && verbatim::is_dir(item.path()));
 
         let walk_item = WalkItem {
             name: item.file_name().to_string_lossy().into_owned(),
-            path: item.path(),
+            path: item.path().to_string(),
             metadata,
         };
 

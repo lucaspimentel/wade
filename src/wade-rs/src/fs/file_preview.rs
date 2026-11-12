@@ -4,6 +4,7 @@
 use std::io::Read;
 
 use super::file_type_labels;
+use crate::fs::verbatim;
 use crate::preview::Truncation;
 
 /// The line limit of `get_preview_lines`, which the frozen goldens use.
@@ -72,7 +73,7 @@ pub fn detect_file_metadata(path: &str) -> FileMetadata {
         return FileMetadata::binary();
     }
 
-    let Ok(mut file) = crate::fs::verbatim::open(path) else {
+    let Ok(mut file) = verbatim::open(path) else {
         return FileMetadata::binary();
     };
 
@@ -252,7 +253,7 @@ fn read_lines(
     line_limit: usize,
     byte_limit: u64,
 ) -> std::io::Result<(Vec<String>, Option<Truncation>)> {
-    let mut file = crate::fs::verbatim::open(path)?;
+    let mut file = verbatim::open(path)?;
     let file_len = file.metadata().map_or(0, |meta| meta.len());
     let mut lines = Vec::new();
     let mut decoder = Decoder::new(encoding);
@@ -325,7 +326,7 @@ pub fn read_text(path: &str, byte_limit: u64) -> Option<(String, bool)> {
         return None;
     }
 
-    let mut file = crate::fs::verbatim::open(path).ok()?;
+    let mut file = verbatim::open(path).ok()?;
     let file_len = file.metadata().map_or(0, |meta| meta.len());
     let mut decoder = Decoder::new(&metadata.encoding);
     let mut text = String::new();

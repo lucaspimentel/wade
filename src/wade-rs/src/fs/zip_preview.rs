@@ -5,6 +5,7 @@
 
 use std::io::{self, Read, Seek, SeekFrom};
 
+use crate::fs::verbatim;
 use crate::input::CancelToken;
 use crate::ui::format_helpers::{format_percent_p0, format_size_string};
 
@@ -255,7 +256,7 @@ fn read_central_header(file: &mut impl Read) -> Result<Option<ZipEntry>, ZipErro
 
 /// Every central-directory entry, in directory order.
 pub fn read_entries(path: &str) -> Result<Vec<ZipEntry>, ZipError> {
-    let mut file = std::io::BufReader::new(crate::fs::verbatim::open(path)?);
+    let mut file = std::io::BufReader::new(verbatim::open(path)?);
     let length = file.get_ref().metadata()?.len();
     let (cd_start, expected_entries) = read_end_of_central_directory(&mut file, length)?;
 
@@ -285,7 +286,7 @@ pub fn read_entry_data(path: &str, entry: &ZipEntry) -> Result<Vec<u8>, ZipError
         return Err(ZipError::InvalidData);
     }
 
-    let mut file = crate::fs::verbatim::open(path)?;
+    let mut file = verbatim::open(path)?;
     file.seek(SeekFrom::Start(entry.local_header_offset))?;
     let mut header = [0u8; LOCAL_HEADER_SIZE];
 

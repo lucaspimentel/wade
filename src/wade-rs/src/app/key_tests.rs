@@ -900,10 +900,11 @@ fn shift_delete_then_y_permanently_deletes() {
 #[cfg(windows)]
 #[test]
 fn delete_warns_and_then_permanently_deletes_a_device_named_file() {
-    let (mut app, parent, root) = app();
+    use crate::fs::verbatim;
 
+    let (mut app, parent, root) = app();
     let path = path_of(&root, "NUL");
-    let spelling = crate::fs::verbatim::verbatim_path(&path).expect("verbatim spelling");
+    let spelling = verbatim::verbatim_path(&path).expect("verbatim spelling");
     std::fs::write(&spelling, "x").expect("write NUL");
     press(&mut app, key(K::F5));
     assert!(visible_names(&mut app).contains(&"NUL".to_string()), "the listing reports it");

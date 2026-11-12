@@ -8,6 +8,7 @@ use exif::{In, Tag, Value};
 use image::ImageDecoder as _;
 
 use super::{MetadataEntry, MetadataProvider, MetadataResult, MetadataSection, PreviewContext};
+use crate::fs::verbatim;
 use crate::imaging::image_preview::is_image_file;
 use crate::input::CancelToken;
 
@@ -90,7 +91,7 @@ fn format_name(format: image::ImageFormat) -> &'static str {
 /// descriptors, the APNG `acTL` chunk, WebP `ANMF` chunks.
 fn frame_count(path: &str, format: image::ImageFormat) -> Option<usize> {
     let mut data = Vec::new();
-    crate::fs::verbatim::open(path).ok()?.read_to_end(&mut data).ok()?;
+    verbatim::open(path).ok()?.read_to_end(&mut data).ok()?;
 
     match format {
         image::ImageFormat::Gif => gif_frames(&data),
@@ -170,7 +171,7 @@ fn webp_frames(data: &[u8]) -> Option<usize> {
 
 /// The EXIF section entries; `None` when the file has no EXIF.
 fn read_exif(path: &str) -> Option<Vec<MetadataEntry>> {
-    let file = crate::fs::verbatim::open(path).ok()?;
+    let file = verbatim::open(path).ok()?;
     let exif = exif::Reader::new().read_from_container(&mut BufReader::new(file)).ok()?;
     exif.fields().next()?;
 

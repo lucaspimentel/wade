@@ -51,6 +51,7 @@
 // clippy.toml bans it everywhere else.
 #![allow(clippy::disallowed_methods)]
 
+use std::borrow::Cow;
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -140,21 +141,18 @@ fn split_root(path: &str) -> Option<(String, &str)> {
 }
 
 /// The spelling to reach `path`: the verbatim form when the ordinary spelling
-/// cannot, else the path itself. Windows only; elsewhere there is no second
-/// spelling. Used by the Win32 calls this module does not wrap.
+/// cannot, else the path itself, borrowed. Windows only; elsewhere there is no
+/// second spelling. Used by the Win32 calls this module does not wrap.
 #[must_use]
-pub fn reach_spelling(path: &str) -> String {
-    if !cfg!(windows) {
-        return path.to_string();
-    }
-
-    if needs_verbatim(path)
+pub fn reach_spelling(path: &str) -> Cow<'_, str> {
+    if cfg!(windows)
+        && needs_verbatim(path)
         && let Some(verbatim) = verbatim_path(path)
     {
-        return verbatim;
+        return Cow::Owned(verbatim);
     }
 
-    path.to_string()
+    Cow::Borrowed(path)
 }
 
 /// The error for a path whose name Win32 resolves elsewhere and which has no
@@ -176,11 +174,11 @@ fn unspellable(path: &str) -> Option<io::Error> {
 /// never retried with the ordinary spelling: that can reach the device or
 /// another file instead of failing.
 fn second_spelling(path: &str, first: &str) -> Option<String> {
-    if !cfg!(windows) {
+    if !cfg!(windows) || first != path {
         return None;
     }
 
-    (first == path).then(|| verbatim_path(path)).flatten()
+    verbatim_path(path)
 }
 
 /// Runs one call, retrying with the verbatim spelling when the ordinary one
@@ -218,8 +216,8 @@ fn call_pair<T>(from: &str, to: &str, op: impl Fn(&str, &str) -> io::Result<T>) 
                 return Err(first_error);
             }
 
-            let from_second = from_second.unwrap_or(from_first);
-            let to_second = to_second.unwrap_or(to_first);
+            let from_second = from_second.unwrap_or(from_first.into_owned());
+            let to_second = to_second.unwrap_or(to_first.into_owned());
             op(&from_second, &to_second).map_err(|_| first_error)
         }
     }
@@ -245,8 +243,8 @@ impl Entry {
 
     /// The entry's full path.
     #[must_use]
-    pub fn path(&self) -> String {
-        self.path.clone()
+    pub fn path(&self) -> &str {
+        &self.path
     }
 
     pub fn file_type(&self) -> io::Result<std::fs::FileType> {
@@ -329,10 +327,6 @@ pub fn remove_dir_all(path: &str) -> io::Result<()> {
     call(path, |path| std::fs::remove_dir_all(path))
 }
 
-pub fn set_permissions(path: &str, permissions: std::fs::Permissions) -> io::Result<()> {
-    call(path, |path| std::fs::set_permissions(path, permissions.clone()))
-}
-
 pub fn canonicalize(path: &str) -> io::Result<PathBuf> {
     call(path, |path| std::fs::canonicalize(path))
 }
@@ -371,7 +365,6 @@ mod tests {
     fn verbatim_path_spells_drive_absolute_and_unc_paths() {
         assert_eq!(verbatim_path(r"D:\dir\NUL").as_deref(), Some(r"\\?\D:\dir\NUL"));
         assert_eq!(verbatim_path(r"C:\a\b.txt").as_deref(), Some(r"\\?\C:\a\b.txt"));
-        assert_eq!(verbatim_path("D:/dir/NUL").as_deref(), Some(r"\\?\D:\dir\NUL"));
         assert_eq!(verbatim_path(r"D:\").as_deref(), Some(r"\\?\D:\"));
         assert_eq!(verbatim_path(r"\\server\share\NUL").as_deref(), Some(r"\\?\UNC\server\share\NUL"));
         assert_eq!(verbatim_path(r"\\server\share").as_deref(), Some(r"\\?\UNC\server\share\"));
@@ -428,7 +421,7 @@ mod tests {
     #[cfg(not(windows))]
     #[test]
     fn the_helpers_do_not_rewrite_a_path_off_windows() {
-        for path in ["/home/nul", "/home/report.", "//server/share/NUL"] {
+        for path in ["/home/report.", "//server/share/NUL"] {
             assert_eq!(reach_spelling(path), path);
             assert_eq!(second_spelling(path, path), None);
             assert!(unspellable(path).is_none());

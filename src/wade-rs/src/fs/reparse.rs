@@ -100,6 +100,7 @@ fn find_null_terminator(buffer: &[u8], offset: usize) -> Option<usize> {
 
 #[cfg(windows)]
 mod windows {
+    use crate::fs::verbatim;
     use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE};
     use windows_sys::Win32::Storage::FileSystem::{
         CreateFileW, FILE_ATTRIBUTE_TAG_INFO, FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT,
@@ -124,8 +125,7 @@ mod windows {
     fn open_reparse_point(path: &str) -> Option<Handle> {
         // A link whose name Win32 resolves elsewhere (a junction called `NUL`)
         // is only reached through the verbatim spelling
-        let wide: Vec<u16> =
-            crate::fs::verbatim::reach_spelling(path).encode_utf16().chain(std::iter::once(0)).collect();
+        let wide: Vec<u16> = verbatim::reach_spelling(path).encode_utf16().chain(std::iter::once(0)).collect();
         let handle = unsafe {
             CreateFileW(
                 wide.as_ptr(),

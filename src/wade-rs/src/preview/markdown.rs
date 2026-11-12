@@ -13,6 +13,7 @@
 
 use pulldown_cmark::{CodeBlockKind, Event, LinkType, Options, Parser, Tag, TagEnd};
 
+use crate::fs::verbatim;
 use crate::highlight::theme::{PLAIN, get_style};
 use crate::highlight::{StyledLine, TokenKind};
 use crate::input::CancelToken;
@@ -537,7 +538,7 @@ type Spans = Vec<(Units, CellStyle)>;
 /// Reads the file (BOM-aware) and renders it; `None` when unreadable.
 #[must_use]
 pub fn render(file_path: &str, width: i32, cancel: &CancelToken) -> Option<Vec<StyledLine>> {
-    let bytes = crate::fs::verbatim::read(file_path).ok()?;
+    let bytes = verbatim::read(file_path).ok()?;
     let text = read_all_text(&bytes);
     render_text(&text, width, cancel)
 }

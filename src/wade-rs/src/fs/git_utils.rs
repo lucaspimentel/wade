@@ -46,7 +46,8 @@ pub fn find_repo_root(path: &str) -> Option<String> {
     let mut dir = dir_path;
     loop {
         let git_path = dir.join(".git");
-        if verbatim::is_dir(&git_path.to_string_lossy()) || verbatim::is_file(&git_path.to_string_lossy()) {
+        let git_path = git_path.to_string_lossy();
+        if verbatim::is_dir(&git_path) || verbatim::is_file(&git_path) {
             return Some(dir.to_string_lossy().to_string());
         }
 
@@ -59,10 +60,10 @@ pub fn find_repo_root(path: &str) -> Option<String> {
 #[must_use]
 pub fn read_branch_name(repo_root: &str) -> Option<String> {
     let git_path = std::path::Path::new(repo_root).join(".git");
-    let head_path = if verbatim::is_file(&git_path.to_string_lossy()) && !verbatim::is_dir(&git_path.to_string_lossy())
-    {
+    let git_path_text = git_path.to_string_lossy();
+    let head_path = if verbatim::is_file(&git_path_text) && !verbatim::is_dir(&git_path_text) {
         // Worktree: .git is a file containing "gitdir: <path>"
-        let content = verbatim::read_to_string(&git_path.to_string_lossy()).ok()?.trim().to_string();
+        let content = verbatim::read_to_string(&git_path_text).ok()?.trim().to_string();
         let git_dir = content.strip_prefix("gitdir: ")?.trim().to_string();
         let git_dir = if std::path::Path::new(&git_dir).is_absolute() {
             std::path::PathBuf::from(git_dir)

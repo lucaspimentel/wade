@@ -96,7 +96,7 @@ pub fn get_suggestion(input: &str, show_hidden: bool, show_system_files: bool) -
         }
 
         if name.to_ascii_lowercase().starts_with(&partial.to_ascii_lowercase()) {
-            return Some(entry.path());
+            return Some(entry.path().to_string());
         }
     }
 
@@ -121,7 +121,7 @@ fn first_entry(dir_path: &str, show_hidden: bool, show_system_files: bool) -> Op
             continue;
         }
 
-        return Some(entry.path());
+        return Some(entry.path().to_string());
     }
 
     None

@@ -71,13 +71,13 @@ pub(crate) fn sum_directory(directory_path: &str, cancel: &CancelToken) -> i64 {
             };
 
             if file_type.is_dir() {
-                stack.push(entry.path());
+                stack.push(entry.path().to_string());
                 continue;
             }
 
             // A symlink/junction to a directory is neither counted nor
             // recursed into
-            if file_type.is_symlink() && verbatim::is_dir(&entry.path()) {
+            if file_type.is_symlink() && verbatim::is_dir(entry.path()) {
                 continue;
             }
 

@@ -41,16 +41,7 @@ pub fn delete_paths(paths: &[String], permanent: bool, cancel: &CancelToken) -> 
         }
 
         if !permanent && HAS_TRASH && !cannot_recycle(path, cancel) {
-            #[cfg(windows)]
-            let trashed = recycle_files(std::slice::from_ref(path)) == 0;
-            #[cfg(target_os = "macos")]
-            let trashed = trash_item(path);
-            #[cfg(all(unix, not(target_os = "macos")))]
-            let trashed = crate::fs::linux_trash::trash(path).is_ok();
-            #[cfg(not(any(windows, unix)))]
-            let trashed = false;
-
-            if trashed {
+            if move_to_trash(path) {
                 success += 1;
             } else {
                 errors += 1;
@@ -68,55 +59,77 @@ pub fn delete_paths(paths: &[String], permanent: bool, cancel: &CancelToken) -> 
     (success, errors, permanent_count)
 }
 
-/// True when the Recycle Bin or Trash must not be handed this item.
-///
-/// Windows: the shell resolves the names it cannot express before the file
-/// system sees them, so such an item goes through the verbatim spelling and a
-/// permanent delete instead. The item's whole tree is checked, because one
-/// such name anywhere below it leaves the shell's own delete half done.
-fn cannot_recycle(path: &str, cancel: &CancelToken) -> bool {
+/// Moves one path to the Recycle Bin (Windows), the Trash (macOS) or the
+/// freedesktop.org Trash (Linux and other Unix). False where there is no such
+/// place, or when it refused the item.
+fn move_to_trash(path: &str) -> bool {
     #[cfg(windows)]
     {
-        tree_needs_verbatim(path, cancel)
+        recycle_files(&[path]) == 0
     }
-    #[cfg(not(windows))]
+    #[cfg(target_os = "macos")]
     {
-        let _ = (path, cancel);
+        trash_item(path)
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        crate::fs::linux_trash::trash(path).is_ok()
+    }
+    #[cfg(not(any(windows, unix)))]
+    {
+        let _ = path;
         false
     }
 }
 
-/// Windows: true when `path` or anything below it has a name Win32 cannot
-/// express. Links and junctions are not followed, as the delete does not
-/// delete through them.
-#[cfg(windows)]
-fn tree_needs_verbatim(path: &str, cancel: &CancelToken) -> bool {
+/// True when the Recycle Bin or Trash must not be handed this item: the shell
+/// resolves the names it cannot express before the file system sees them, so
+/// the item goes through the verbatim spelling and a permanent delete instead.
+/// The whole tree is checked, because one such name anywhere below it leaves
+/// the shell's own delete half done.
+fn cannot_recycle(path: &str, cancel: &CancelToken) -> bool {
+    unexpressible_at(usize::MAX, path, cancel).is_some()
+}
+
+/// The first path at or below `path` whose name Win32 cannot express, at the
+/// item itself or one level down, for the delete confirmation to name it. One
+/// level only: a whole tree cannot be walked before the dialog opens.
+#[must_use]
+pub fn unexpressible_path(path: &str) -> Option<String> {
+    unexpressible_at(1, path, &CancelToken::new())
+}
+
+/// The first item at or below `path` whose name Win32 cannot express, reading
+/// `levels` levels below the item itself (0 reads the item alone). `None` when
+/// there is none, and when the tree cannot be read: the caller then leaves the
+/// item to the Recycle Bin rather than deleting it permanently unseen. Links
+/// and junctions are not followed, as the delete does not delete through them.
+fn unexpressible_at(levels: usize, path: &str, cancel: &CancelToken) -> Option<String> {
+    if !cfg!(windows) {
+        return None;
+    }
+
     if verbatim::needs_verbatim(path) {
-        return true;
+        return Some(path.to_string());
     }
 
     // False for a link, a junction and a missing path alike: nothing of
     // theirs is deleted
-    if !verbatim::symlink_metadata(path).is_ok_and(|meta| meta.is_dir()) {
-        return false;
+    if levels == 0 || !verbatim::symlink_metadata(path).is_ok_and(|meta| meta.is_dir()) {
+        return None;
     }
 
-    let Ok(entries) = verbatim::read_dir(path) else {
-        return false;
-    };
-
-    for entry in entries.flatten() {
+    for entry in verbatim::read_dir(path).ok()?.flatten() {
         if cancel.is_cancelled() {
-            return false;
+            return None;
         }
 
-        let name = entry.file_name().to_string_lossy().into_owned();
-        if verbatim::needs_verbatim(&name) || tree_needs_verbatim(&entry.path(), cancel) {
-            return true;
+        if let Some(found) = unexpressible_at(levels - 1, entry.path(), cancel) {
+            return Some(found);
         }
     }
 
-    false
+    None
 }
 
 /// macOS: moves `argv[0]` to the Trash with NSFileManager. The path is a
@@ -595,10 +608,10 @@ pub fn copy_directory(source: &str, destination: &str, preserve_symlinks: bool) 
         let source_path = entry.path();
         let dest_path = Path::new(destination).join(&name).to_string_lossy().to_string();
 
-        if preserve_symlinks && is_symlink(&source_path) {
-            let target = verbatim::read_link(&source_path).map(|p| p.to_string_lossy().to_string()).ok();
+        if preserve_symlinks && is_symlink(source_path) {
+            let target = verbatim::read_link(source_path).map(|p| p.to_string_lossy().to_string()).ok();
             if let Some(target) = target {
-                match create_symlink(&dest_path, &target, verbatim::is_dir(&source_path)) {
+                match create_symlink(&dest_path, &target, verbatim::is_dir(source_path)) {
                     Ok(()) => continue,
                     Err(err) if is_permission_denied(&err) => {}
                     Err(err) => return Err(err),
@@ -606,11 +619,11 @@ pub fn copy_directory(source: &str, destination: &str, preserve_symlinks: bool) 
             }
         }
 
-        verbatim::symlink_metadata(&source_path)?;
-        if is_directory_following_links(&source_path) {
-            copy_directory(&source_path, &dest_path, preserve_symlinks)?;
+        verbatim::symlink_metadata(source_path)?;
+        if is_directory_following_links(source_path) {
+            copy_directory(source_path, &dest_path, preserve_symlinks)?;
         } else {
-            verbatim::copy(&source_path, &dest_path)?;
+            verbatim::copy(source_path, &dest_path)?;
         }
     }
 
@@ -692,7 +705,7 @@ fn is_permission_denied(err: &std::io::Error) -> bool {
 
 /// Windows recycle-bin delete via `SHFileOperationW`.
 #[cfg(windows)]
-fn recycle_files(paths: &[String]) -> i32 {
+fn recycle_files(paths: &[&str]) -> i32 {
     use windows_sys::Win32::UI::Shell::{
         FO_DELETE, FOF_ALLOWUNDO, FOF_NOCONFIRMATION, FOF_NOERRORUI, FOF_SILENT, SHFILEOPSTRUCTW, SHFileOperationW,
     };
@@ -1156,7 +1169,7 @@ mod tests {
     #[cfg(windows)]
     fn write_reserved(dir: &str, name: &str, contents: &[u8]) -> String {
         let path = format!("{dir}\\{name}");
-        let spelling = crate::fs::verbatim::verbatim_path(&path).expect("verbatim spelling");
+        let spelling = verbatim::verbatim_path(&path).expect("verbatim spelling");
         std::fs::write(&spelling, contents).expect("write reserved");
         path
     }
@@ -1226,7 +1239,7 @@ mod tests {
     fn permanent_delete_reaches_a_device_named_directory() {
         let (_scratch, dir) = reserved_dir("device-dir");
         let path = format!("{dir}\\NUL");
-        let spelling = crate::fs::verbatim::verbatim_path(&path).expect("verbatim spelling");
+        let spelling = verbatim::verbatim_path(&path).expect("verbatim spelling");
         std::fs::create_dir(&spelling).expect("mkdir reserved");
         std::fs::write(format!("{spelling}\\inner.txt"), b"x").expect("write");
 

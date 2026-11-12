@@ -1,6 +1,7 @@
 //! The file, shortcut, archive and PDF metadata providers.
 
 use super::{MetadataEntry, MetadataProvider, MetadataResult, MetadataSection, PreviewContext};
+use crate::fs::verbatim;
 use crate::fs::{GitFileStatus, lnk, tar_preview, zip_preview};
 use crate::input::CancelToken;
 use crate::ui::format_helpers::{format_percent_p0, format_size_string};
@@ -20,7 +21,7 @@ impl MetadataProvider for FileMetadataProvider {
     }
 
     fn get_metadata(&self, path: &str, context: &PreviewContext, cancel: &CancelToken) -> Option<MetadataResult> {
-        if cancel.is_cancelled() || crate::fs::verbatim::metadata(path).is_err() {
+        if cancel.is_cancelled() || verbatim::metadata(path).is_err() {
             return None;
         }
 

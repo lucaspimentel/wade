@@ -423,10 +423,7 @@ fn format_windows_attributes(entry: &FileSystemEntry, metadata: &std::fs::Metada
         FILE_ATTRIBUTE_READONLY, FILE_ATTRIBUTE_REPARSE_POINT, FILE_ATTRIBUTE_SYSTEM, GetFileAttributesW,
     };
 
-    let wide: Vec<u16> = crate::fs::verbatim::reach_spelling(&entry.full_path)
-        .encode_utf16()
-        .chain(std::iter::once(0))
-        .collect();
+    let wide: Vec<u16> = verbatim::reach_spelling(&entry.full_path).encode_utf16().chain(std::iter::once(0)).collect();
     let attrs = unsafe { GetFileAttributesW(wide.as_ptr()) };
 
     if attrs == u32::MAX {

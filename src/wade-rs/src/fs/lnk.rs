@@ -5,6 +5,7 @@
 //!
 //! ExtraData blocks are not parsed: nothing shown comes from them.
 
+use crate::fs::verbatim;
 use std::fs::File;
 use std::io::{self, BufReader, Seek, SeekFrom};
 
@@ -49,7 +50,7 @@ struct Reader {
 impl Reader {
     fn open(path: &str) -> Result<Self> {
         Ok(Self {
-            file: BufReader::new(crate::fs::verbatim::open(path)?),
+            file: BufReader::new(verbatim::open(path)?),
             position: 0,
         })
     }

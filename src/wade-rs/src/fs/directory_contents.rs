@@ -322,18 +322,24 @@ pub fn load_entries(
         #[cfg(windows)]
         let is_directory = attributes & 0x0010 != 0;
         #[cfg(not(windows))]
-        let is_directory = file_type.is_dir() || (file_type.is_symlink() && super::verbatim::is_dir(&item.path()));
+        let is_directory = file_type.is_dir() || (file_type.is_symlink() && super::verbatim::is_dir(item.path()));
         let link_target = if file_type.is_symlink() {
-            super::verbatim::read_link(&item.path()).ok().map(|p| p.to_string_lossy().to_string())
+            super::verbatim::read_link(item.path()).ok().map(|p| p.to_string_lossy().to_string())
         } else {
             None
         };
 
         // Resolve through the entry itself: a relative target is relative
         // to the link's directory, not the process's working directory.
-        let is_broken_symlink = link_target.is_some() && super::verbatim::metadata(&item.path()).is_err();
+        let is_broken_symlink = link_target.is_some() && super::verbatim::metadata(item.path()).is_err();
 
-        let full_path = item.path();
+        let full_path = item.path().to_string();
+        let size = if is_directory {
+            // Inline dir sizes take precedence over the placeholder size
+            dir_sizes.and_then(|sizes| sizes.get(&full_path).copied()).unwrap_or(0)
+        } else {
+            i64::try_from(metadata.len()).unwrap_or(0)
+        };
 
         // Cloud placeholder, junction and app execution alias checks: reparse
         // queries only for entries carrying FILE_ATTRIBUTE_REPARSE_POINT,
@@ -355,12 +361,7 @@ pub fn load_entries(
             name,
             full_path,
             is_directory,
-            size: if is_directory {
-                // Inline dir sizes take precedence over the placeholder size
-                dir_sizes.and_then(|sizes| sizes.get(&item.path()).copied()).unwrap_or(0)
-            } else {
-                i64::try_from(metadata.len()).unwrap_or(0)
-            },
+            size,
             last_modified: system_time_to_date_parts(metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH)),
             link_target,
             is_broken_symlink,
@@ -782,7 +783,7 @@ pub fn volume_mounts(volumes_dir: &Path) -> Vec<(String, String)> {
                 return None;
             }
 
-            let resolved = super::verbatim::canonicalize(&entry.path()).ok()?;
+            let resolved = super::verbatim::canonicalize(entry.path()).ok()?;
             super::verbatim::is_dir(&resolved.to_string_lossy())
                 .then(|| (label, resolved.to_string_lossy().into_owned()))
         })

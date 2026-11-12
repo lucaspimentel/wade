@@ -2433,45 +2433,16 @@ fn permanently_deleted_note(permanent_count: usize) -> String {
 }
 
 /// The note the Delete confirmation adds for an item the Recycle Bin cannot
-/// take (see `fs::verbatim`): it is deleted permanently instead, so the user
-/// agrees to that before it happens. Only the item and its direct children
-/// are checked here, where a full walk before the dialog would stall the
-/// window; the delete itself checks the whole tree and reports what it
-/// deleted permanently.
+/// take: it is deleted permanently instead, so the user agrees to that before
+/// it happens. `unexpressible_path` reads one level, where a full walk before
+/// the dialog would stall the window; the delete itself checks the whole tree
+/// and reports what it deleted permanently.
 fn recycle_warning(targets: &[String]) -> String {
-    if !cfg!(windows) {
-        return String::new();
-    }
-
-    let Some(name) = targets.iter().find_map(|path| unexpressible_name(path)) else {
+    let Some(path) = targets.iter().find_map(|target| crate::fs::file_operations::unexpressible_path(target)) else {
         return String::new();
     };
 
-    format!("\n'{name}' cannot go to the Recycle Bin and will be deleted permanently.")
-}
-
-/// The name of `path`, or of one of its direct children, that Win32 cannot
-/// express, so the Recycle Bin cannot record it.
-#[cfg(not(windows))]
-fn unexpressible_name(_path: &str) -> Option<String> {
-    None
-}
-
-#[cfg(windows)]
-fn unexpressible_name(path: &str) -> Option<String> {
-    if verbatim::needs_verbatim(path) {
-        return Some(file_name_of(path));
-    }
-
-    let entries = verbatim::read_dir(path).ok()?;
-    for entry in entries.flatten() {
-        let name = entry.file_name().to_string_lossy().into_owned();
-        if verbatim::needs_verbatim(&name) {
-            return Some(name);
-        }
-    }
-
-    None
+    format!("\n'{}' cannot go to the Recycle Bin and will be deleted permanently.", file_name_of(&path))
 }
 
 #[cfg(test)]
