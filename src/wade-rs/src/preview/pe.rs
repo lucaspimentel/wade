@@ -31,7 +31,7 @@ pub struct Image {
 
 impl Image {
     pub fn open(path: &str) -> std::io::Result<Self> {
-        let file = File::open(path)?;
+        let file = crate::fs::verbatim::open(path)?;
         let len = i64::try_from(file.metadata()?.len()).unwrap_or(i64::MAX);
         Ok(Self { file, len })
     }

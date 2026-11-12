@@ -458,7 +458,7 @@ impl<'a> TarReader<'a> {
 }
 
 fn open_seekable(path: &str) -> Result<SeekableSource, TarError> {
-    let file = File::open(path)?;
+    let file = crate::fs::verbatim::open(path)?;
     let length = file.metadata()?.len();
     Ok(SeekableSource {
         file: BufReader::new(file),
@@ -469,7 +469,7 @@ fn open_seekable(path: &str) -> Result<SeekableSource, TarError> {
 
 fn open_gzip(path: &str) -> Result<StreamSource<GzipReader<File>>, TarError> {
     Ok(StreamSource {
-        inner: GzipReader::new(File::open(path)?),
+        inner: GzipReader::new(crate::fs::verbatim::open(path)?),
     })
 }
 
@@ -562,7 +562,7 @@ fn count_tar_entries(source: &mut dyn TarSource, cancel: &CancelToken) -> Result
 
 /// The first decompressed record carries the ustar magic.
 fn looks_like_tar_gzip(path: &str, cancel: &CancelToken) -> bool {
-    let Ok(mut gz) = File::open(path).map(GzipReader::new) else {
+    let Ok(mut gz) = crate::fs::verbatim::open(path).map(GzipReader::new) else {
         return false;
     };
 
@@ -613,7 +613,7 @@ pub fn get_preview_lines(path: &str, limits: PreviewLimits, cancel: &CancelToken
 /// Archive stats; `None` on any failure.
 #[must_use]
 pub fn get_stats(path: &str, cancel: &CancelToken) -> Option<TarArchiveStats> {
-    let compressed_size = i64::try_from(std::fs::metadata(path).ok()?.len()).ok()?;
+    let compressed_size = i64::try_from(crate::fs::verbatim::metadata(path).ok()?.len()).ok()?;
 
     if ends_with_ignore_case(path, ".tar") {
         let (files, total) = with_tar_source(path, |source| count_tar_entries(source, cancel)).ok()??;
@@ -657,7 +657,7 @@ pub fn get_stats(path: &str, cancel: &CancelToken) -> Option<TarArchiveStats> {
 
 /// The uncompressed size from the trailer's last four bytes.
 fn read_gzip_isize(path: &str) -> Option<u32> {
-    let mut file = File::open(path).ok()?;
+    let mut file = crate::fs::verbatim::open(path).ok()?;
     if file.metadata().ok()?.len() < 4 {
         return None;
     }
@@ -682,7 +682,7 @@ fn file_name_without_extension(path: &str) -> &str {
 /// The plain .gz header line: inner name, sizes and ratio.
 fn build_gzip_metadata_line(path: &str) -> Result<String, TarError> {
     let inner_name = file_name_without_extension(path);
-    let compressed = i64::try_from(std::fs::metadata(path)?.len()).unwrap_or(i64::MAX);
+    let compressed = i64::try_from(crate::fs::verbatim::metadata(path)?.len()).unwrap_or(i64::MAX);
     let compressed_text = format_size_string(compressed);
 
     Ok(match uncompressed_hint(path, compressed) {
@@ -710,7 +710,7 @@ fn read_gzip_content(path: &str, limits: PreviewLimits, cancel: &CancelToken) ->
         truncation: None,
     };
 
-    let mut gz = match File::open(path) {
+    let mut gz = match crate::fs::verbatim::open(path) {
         Ok(file) => GzipReader::new(file),
         Err(_) => return Ok(Some(placeholder("[read error]"))),
     };

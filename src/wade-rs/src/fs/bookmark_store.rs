@@ -1,5 +1,6 @@
 //! The plain-text bookmark list stored at `~/.config/wade/bookmarks`.
 
+use crate::fs::verbatim;
 use std::path::{Path, PathBuf};
 
 /// Path equality by the shared store key (case-insensitive on Windows, with
@@ -34,7 +35,7 @@ impl BookmarkStore {
     pub fn load(&mut self) {
         self.bookmarks.clear();
 
-        let Ok(text) = std::fs::read_to_string(&self.file_path) else {
+        let Ok(text) = verbatim::read_to_string(&self.file_path.to_string_lossy()) else {
             return;
         };
 
@@ -58,7 +59,7 @@ impl BookmarkStore {
     /// Writes the list, creating the directory if needed.
     pub fn save(&self) -> std::io::Result<()> {
         if let Some(dir) = self.file_path.parent() {
-            std::fs::create_dir_all(dir)?;
+            verbatim::create_dir_all(&dir.to_string_lossy())?;
         }
 
         let mut content = String::new();
@@ -67,7 +68,7 @@ impl BookmarkStore {
             content.push('\n');
         }
 
-        std::fs::write(&self.file_path, content)
+        verbatim::write(&self.file_path.to_string_lossy(), content)
     }
 
     /// Whether `path` is bookmarked.

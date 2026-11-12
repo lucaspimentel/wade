@@ -4,6 +4,9 @@
 //!
 //! Sections listed in KNOWN_DIFFERENCES are parser differences recorded in
 //! KNOWN_DEVIATIONS.md; every other section must match exactly.
+// Fixtures and goldens are set up and checked with `std::fs` directly:
+// the path spellings `fs::verbatim` handles are a production concern.
+#![allow(clippy::disallowed_methods)]
 
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};

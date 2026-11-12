@@ -1,5 +1,9 @@
 //! wade: TUI file browser.
 
+// Tests set up and check their fixtures with `std::fs` directly: the path
+// spellings `fs::verbatim` handles are a production concern (clippy.toml).
+#![cfg_attr(test, allow(clippy::disallowed_methods))]
+
 pub mod ansi;
 pub mod app;
 pub mod console_key;

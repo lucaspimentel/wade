@@ -228,11 +228,14 @@ pub struct FileSystemChangedEvent {
     pub full_refresh: bool,
 }
 
-/// A file operation finished: success and error counts.
+/// A file operation finished: success and error counts, and how many items
+/// were deleted permanently because the Recycle Bin or Trash could not take
+/// them (`fs::verbatim`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FileOperationCompleteEvent {
     pub success_count: usize,
     pub error_count: usize,
+    pub permanent_count: usize,
     pub was_cut: bool,
 }
 

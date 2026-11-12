@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 
 use crate::app::AppConfig;
 use crate::fs::directory_contents::SortMode;
+use crate::fs::verbatim;
 use crate::ui::file_icons::IconSet;
 
 fn default_config_path() -> Option<PathBuf> {
@@ -142,7 +143,7 @@ pub fn load_config(config_file: Option<&Path>) -> AppConfig {
     let Some(config_path) = config_file.map(Path::to_path_buf).or_else(default_config_path) else {
         return config;
     };
-    let Ok(text) = std::fs::read_to_string(&config_path) else {
+    let Ok(text) = verbatim::read_to_string(&config_path.to_string_lossy()) else {
         return config;
     };
 
@@ -282,7 +283,7 @@ pub fn to_json(config: &AppConfig, start_path: &str) -> String {
 /// their default. Creates the directory when needed.
 pub fn save_config(config: &AppConfig, path: &Path) -> std::io::Result<()> {
     if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir)?;
+        verbatim::create_dir_all(&dir.to_string_lossy())?;
     }
 
     let mut content: String = KEYS.iter().map(|key| format!("{} = {}\n", key.name(), key.value(config))).collect();
@@ -303,7 +304,7 @@ pub fn save_config(config: &AppConfig, path: &Path) -> std::io::Result<()> {
         content.push_str(&format!("preview_max_bytes = {}\n", config.preview_max_bytes));
     }
 
-    std::fs::write(path, content)
+    verbatim::write(&path.to_string_lossy(), content)
 }
 
 /// `true`/`1`/`yes` or `false`/`0`/`no`, in any case; anything else

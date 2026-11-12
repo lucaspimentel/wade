@@ -1,0 +1,35 @@
+# File-system calls go through `src/fs/verbatim.rs`, which spells a path so
+# that it reaches the entry it names (Win32 resolves `D:\dir\NUL` to the NUL
+# device and strips a trailing dot or space before the file system sees it).
+# The module is the only place allowed to call these directly; tests are
+# exempt in `src/lib.rs` and in each integration test.
+disallowed-methods = [
+    "std::fs::canonicalize",
+    "std::fs::copy",
+    "std::fs::create_dir",
+    "std::fs::create_dir_all",
+    "std::fs::hard_link",
+    "std::fs::metadata",
+    "std::fs::read",
+    "std::fs::read_dir",
+    "std::fs::read_link",
+    "std::fs::read_to_string",
+    "std::fs::remove_dir",
+    "std::fs::remove_dir_all",
+    "std::fs::remove_file",
+    "std::fs::rename",
+    "std::fs::set_permissions",
+    "std::fs::symlink_metadata",
+    "std::fs::write",
+    "std::fs::File::create",
+    "std::fs::File::open",
+    "std::fs::OpenOptions::open",
+    "std::path::Path::canonicalize",
+    "std::path::Path::exists",
+    "std::path::Path::is_dir",
+    "std::path::Path::is_file",
+    "std::path::Path::metadata",
+    "std::path::Path::read_dir",
+    "std::path::Path::symlink_metadata",
+    "std::path::Path::try_exists",
+]

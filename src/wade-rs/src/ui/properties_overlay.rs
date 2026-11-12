@@ -4,6 +4,7 @@
 use crate::fs::DriveMediaType;
 use crate::fs::directory_contents::{FileSystemEntry, GitFileStatus};
 use crate::fs::file_type_labels::get_file_type_label;
+use crate::fs::verbatim;
 use crate::screen::{CellStyle, Color, ScreenBuffer};
 use crate::ui::dialog_box::{self, BG_COLOR};
 
@@ -286,7 +287,7 @@ fn build_values(
         format!("{} ({} bytes)", format_size_string(entry.size), crate::app::group_thousands(entry.size))
     };
 
-    let file_metadata = std::fs::symlink_metadata(&entry.full_path).ok();
+    let file_metadata = verbatim::symlink_metadata(&entry.full_path).ok();
 
     let (created, accessed, mut attributes, read_only) = collect_platform_facts(entry, file_metadata.as_ref());
 
@@ -417,14 +418,15 @@ fn format_attributes(entry: &FileSystemEntry, metadata: &std::fs::Metadata) -> S
 
 #[cfg(windows)]
 fn format_windows_attributes(entry: &FileSystemEntry, metadata: &std::fs::Metadata) -> String {
-    use std::os::windows::ffi::OsStrExt;
-
     use windows_sys::Win32::Storage::FileSystem::{
         FILE_ATTRIBUTE_ARCHIVE, FILE_ATTRIBUTE_COMPRESSED, FILE_ATTRIBUTE_ENCRYPTED, FILE_ATTRIBUTE_HIDDEN,
         FILE_ATTRIBUTE_READONLY, FILE_ATTRIBUTE_REPARSE_POINT, FILE_ATTRIBUTE_SYSTEM, GetFileAttributesW,
     };
 
-    let wide: Vec<u16> = std::ffi::OsStr::new(&entry.full_path).encode_wide().chain(std::iter::once(0)).collect();
+    let wide: Vec<u16> = crate::fs::verbatim::reach_spelling(&entry.full_path)
+        .encode_utf16()
+        .chain(std::iter::once(0))
+        .collect();
     let attrs = unsafe { GetFileAttributesW(wide.as_ptr()) };
 
     if attrs == u32::MAX {

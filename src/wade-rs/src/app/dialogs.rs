@@ -5,6 +5,7 @@
 use crate::app::input_reader::AppAction;
 use crate::app::{App, InputMode, KeyEvent};
 use crate::fs::directory_contents::capitalize_drive_letter;
+use crate::fs::verbatim;
 use crate::screen::{CellStyle, Color, ScreenBuffer};
 use crate::ui::action_palette::{ActionMenuItem, ActionMenuLevel};
 use crate::ui::config_dialog::ConfigDialogState;
@@ -81,25 +82,9 @@ pub fn is_invalid_file_name(name: &str) -> bool {
 
 /// Names Windows cannot use even though every character is valid: device
 /// names (`CON`, `nul.txt`) and names ending in a dot or space, which Win32
-/// strips silently. Compiled on every OS so it can be tested anywhere.
-#[must_use]
-pub fn windows_name_problem(name: &str) -> Option<String> {
-    const RESERVED: [&str; 22] = [
-        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1",
-        "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
-    ];
-
-    let base = name.split('.').next().unwrap_or(name).trim_end_matches(' ');
-    if RESERVED.iter().any(|reserved| reserved.eq_ignore_ascii_case(base)) {
-        return Some(format!("'{name}' is a reserved name on Windows"));
-    }
-
-    if name.ends_with(['.', ' ']) {
-        return Some("Name cannot end with a dot or space".to_string());
-    }
-
-    None
-}
+/// strips silently. The same rule tells the file-system layer when a path has
+/// to be spelled with the `\\?\` prefix, so it lives beside those calls.
+pub use crate::fs::verbatim::windows_name_problem;
 
 /// The notification for a name the create and rename dialogs refuse, or
 /// `None` when the name is usable.
@@ -552,7 +537,7 @@ impl App {
             crate::fs::file_operations::NameRule::of(std::path::Path::new(&parent)).same(new_name, &old_name);
         let result = if case_only {
             crate::fs::file_operations::rename_case(&target, &new_path)
-        } else if std::path::Path::new(&new_path).symlink_metadata().is_ok() {
+        } else if verbatim::symlink_metadata(&new_path).is_ok() {
             Err(std::io::Error::other("cannot rename to an existing path"))
         } else {
             crate::fs::file_operations::move_path(&target, &new_path)
@@ -584,12 +569,12 @@ impl App {
         }
 
         let dest_path = std::path::Path::new(&self.current_path).join(name).to_string_lossy().to_string();
-        if std::path::Path::new(&dest_path).symlink_metadata().is_ok() {
+        if verbatim::symlink_metadata(&dest_path).is_ok() {
             self.show_notification(&format!("'{name}' already exists"), NotificationKind::Error);
             return;
         }
 
-        match std::fs::File::create(&dest_path) {
+        match verbatim::create(&dest_path) {
             Ok(file) => {
                 drop(file);
                 self.directory_contents.invalidate(&self.current_path);
@@ -616,12 +601,12 @@ impl App {
         }
 
         let dest_path = std::path::Path::new(&self.current_path).join(name).to_string_lossy().to_string();
-        if std::path::Path::new(&dest_path).symlink_metadata().is_ok() {
+        if verbatim::symlink_metadata(&dest_path).is_ok() {
             self.show_notification(&format!("'{name}' already exists"), NotificationKind::Error);
             return;
         }
 
-        match std::fs::create_dir(&dest_path) {
+        match verbatim::create_dir(&dest_path) {
             Ok(()) => {
                 self.directory_contents.invalidate(&self.current_path);
                 self.invalidate_filtered_entries();
@@ -652,13 +637,13 @@ impl App {
         }
 
         let link_path = std::path::Path::new(&self.current_path).join(link_name).to_string_lossy().to_string();
-        if std::path::Path::new(&link_path).symlink_metadata().is_ok() {
+        if verbatim::symlink_metadata(&link_path).is_ok() {
             self.show_notification(&format!("'{link_name}' already exists"), NotificationKind::Error);
             return;
         }
 
         #[cfg(windows)]
-        let result = if std::path::Path::new(&target).is_dir() {
+        let result = if verbatim::is_dir(&target) {
             std::os::windows::fs::symlink_dir(&target, &link_path)
         } else {
             std::os::windows::fs::symlink_file(&target, &link_path)
@@ -890,7 +875,7 @@ impl App {
                 let accepted = self.modal.go_to_path_suggestion.clone().map(|accepted| {
                     // Completing a directory appends a separator so the
                     // next completion round descends into it
-                    if std::path::Path::new(&accepted).is_dir() {
+                    if verbatim::is_dir(&accepted) {
                         format!("{accepted}{}", std::path::MAIN_SEPARATOR)
                     } else {
                         accepted
@@ -935,7 +920,7 @@ impl App {
                         .go_to_path_suggestion
                         .clone()
                         .map(|accepted| {
-                            if std::path::Path::new(&accepted).is_dir() {
+                            if verbatim::is_dir(&accepted) {
                                 format!("{accepted}{}", std::path::MAIN_SEPARATOR)
                             } else {
                                 accepted
@@ -1774,7 +1759,7 @@ pub fn render_bookmarks(
 
         let path = &filtered[item_index];
         let is_selected = item_index == selected_index;
-        let exists = std::path::Path::new(path).is_dir() || std::path::Path::new(path).is_file();
+        let exists = verbatim::is_dir(path) || verbatim::is_file(path);
         let row = content.top + 2 + i;
 
         let label_style = if is_selected {
@@ -2162,11 +2147,11 @@ pub fn render_action_palette(
 }
 
 fn is_directory(path: &str) -> bool {
-    std::fs::metadata(path).map(|m| m.is_dir()).unwrap_or(false)
+    verbatim::metadata(path).map(|m| m.is_dir()).unwrap_or(false)
 }
 
 fn is_file(path: &str) -> bool {
-    std::fs::metadata(path).map(|m| m.is_file()).unwrap_or(false)
+    verbatim::metadata(path).map(|m| m.is_file()).unwrap_or(false)
 }
 
 fn join_absolute(base: &str, relative: &str) -> String {

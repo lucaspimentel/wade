@@ -537,7 +537,7 @@ type Spans = Vec<(Units, CellStyle)>;
 /// Reads the file (BOM-aware) and renders it; `None` when unreadable.
 #[must_use]
 pub fn render(file_path: &str, width: i32, cancel: &CancelToken) -> Option<Vec<StyledLine>> {
-    let bytes = std::fs::read(file_path).ok()?;
+    let bytes = crate::fs::verbatim::read(file_path).ok()?;
     let text = read_all_text(&bytes);
     render_text(&text, width, cancel)
 }

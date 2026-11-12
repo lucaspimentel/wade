@@ -2,6 +2,9 @@
 //! ConPTY on Windows), sends key bytes and reads the screen back through a
 //! VT emulator. Covers what the in-process App tests skip: terminal setup
 //! and restore, raw input decoding, resize and the process exit path.
+// Fixtures and goldens are set up and checked with `std::fs` directly:
+// the path spellings `fs::verbatim` handles are a production concern.
+#![allow(clippy::disallowed_methods)]
 
 use std::io::{Read, Write};
 use std::num::NonZero;

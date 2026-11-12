@@ -358,6 +358,43 @@ None. Phase 9 closed the last temporary entries.
   creates a different name.
   - The rename dialog also checks for invalid characters on every OS. C#
     does not, and fails in the rename itself.
+- **A name Win32 cannot express is reached through the `\\?\` spelling
+  (Rust-only).** Win32 resolves a path's last components before the file
+  system sees them, so `D:\dir\NUL` names the NUL device and
+  `D:\dir\Report.` names `Report`. Such an entry still appears in a
+  listing, but a call made with the ordinary spelling fails, reaches
+  another file, or writes to a device and reports success, so C# (which
+  spelled every path the ordinary way, with no `\\?\` handling anywhere)
+  could not open, preview, copy, rename or delete one. Every file-system
+  call in Rust goes through `src/fs/verbatim.rs`, which spells the path
+  with the prefix when a component needs it (first normalizing it the way
+  Win32 reads an ordinary path: repeats and a trailing separator collapse,
+  and `.`/`..` resolve lexically), retries a failed call with the prefix
+  otherwise, and never retries the ordinary spelling of a path it already
+  tried that way. A path with such a component that has no prefix form (a
+  relative path, or one rooted without a drive) fails with `InvalidInput`
+  instead of running, and on other platforms every helper is plain
+  `std::fs`. `clippy.toml` bans `std::fs` outside that module.
+  - Delete: the Recycle Bin cannot record such a name, so the item is
+    deleted permanently instead. The confirmation says so before the
+    delete - naming the item, or the direct child that needs it - and the
+    completion message reports `(N permanently)`. Shift+Delete is
+    unchanged.
+  - An item whose tree holds such a name (a folder containing a `NUL`, for
+    example) goes through the same permanent path: the shell's own delete
+    refuses the name after moving the entries it already recycled, and for
+    a trailing dot it moves whatever the stripped name names. That check
+    walks the item first (cancellable, links not followed), the only cost
+    the ordinary delete does not pay. It reads one level for the dialog, so
+    a name deeper in a folder is only reported in the completion message,
+    and a tree it cannot read is left to the Recycle Bin rather than
+    deleted permanently unseen.
+  - Paths handed to other programs (the default app, `git`, the terminal,
+    7z) keep the ordinary spelling, which those programs expect.
+  - The one pre-existing gap: a path whose component is a name Win32
+    resolves but these rules do not list (the superscript `COM`/`LPT`
+    digits, for example) is only reached by the retry, so it can still
+    succeed against the wrong entry.
 - **Enter opens the full-screen preview with the right pane hidden
   (Rust-only).** In C#, Enter on a file opens the expanded preview only when
   the right pane has already picked a preview for it, so with the pane

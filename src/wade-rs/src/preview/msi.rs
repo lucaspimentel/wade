@@ -36,7 +36,7 @@ pub fn parse_long_name(raw_name: &str) -> &str {
 type Package = msi::Package<File>;
 
 fn open_database(path: &str) -> Option<Package> {
-    msi::Package::open(File::open(path).ok()?).ok()
+    msi::Package::open(crate::fs::verbatim::open(path).ok()?).ok()
 }
 
 /// A cell as text: null cells read as "". The tables

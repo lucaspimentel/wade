@@ -28,6 +28,7 @@ use std::path::Path;
 
 use crate::fs::directory_contents::SortMode;
 use crate::fs::directory_contents::{DRIVES_PATH, DirectoryContents, FileSystemEntry, GitFileStatus};
+use crate::fs::verbatim;
 pub use crate::input::InputMode;
 use crate::input::{InputEvent, KeyEvent, ResizeEvent};
 use crate::screen::ScreenBuffer;
@@ -1447,9 +1448,9 @@ impl App {
                 // Pasting into the source's own folder makes a "- Copy", so it
                 // is not a conflict
                 !crate::fs::file_operations::same_location(path, &self.current_path)
-                    && Path::new(path.as_str())
-                        .file_name()
-                        .is_some_and(|name| Path::new(&self.current_path).join(name).exists())
+                    && Path::new(path.as_str()).file_name().is_some_and(|name| {
+                        verbatim::exists(&Path::new(&self.current_path).join(name).to_string_lossy())
+                    })
             })
             .count();
 
@@ -1503,12 +1504,23 @@ impl App {
 
         if event.error_count > 0 {
             self.show_notification(
-                &format!("{} {}, {} failed", self.file_op_label, event.success_count, event.error_count),
+                &format!(
+                    "{} {}, {} failed{}",
+                    self.file_op_label,
+                    event.success_count,
+                    event.error_count,
+                    permanently_deleted_note(event.permanent_count)
+                ),
                 NotificationKind::Error,
             );
         } else {
             self.show_notification(
-                &format!("{} {} item(s)", self.file_op_label, event.success_count),
+                &format!(
+                    "{} {} item(s){}",
+                    self.file_op_label,
+                    event.success_count,
+                    permanently_deleted_note(event.permanent_count)
+                ),
                 NotificationKind::Success,
             );
         }
@@ -1586,7 +1598,11 @@ impl App {
                 let permanent = action == A::DeletePermanently;
                 let is_permanent = permanent || !crate::fs::file_operations::HAS_TRASH;
                 let title = if is_permanent { "Permanently Delete" } else { "Delete" };
-                let warning = if is_permanent { "\nThis cannot be undone!" } else { "" };
+                let warning = if is_permanent {
+                    "\nThis cannot be undone!".to_string()
+                } else {
+                    recycle_warning(&targets)
+                };
 
                 if self.config.confirm_delete_enabled {
                     self.show_confirm_dialog(
@@ -2148,7 +2164,7 @@ fn is_executable_file(path: &str) -> bool {
         return false;
     };
 
-    std::fs::metadata(path).is_ok_and(|m| !m.is_dir()) && unsafe { libc::access(c_path.as_ptr(), libc::X_OK) } == 0
+    verbatim::metadata(path).is_ok_and(|m| !m.is_dir()) && unsafe { libc::access(c_path.as_ptr(), libc::X_OK) } == 0
 }
 
 #[cfg(unix)]
@@ -2324,7 +2340,7 @@ pub fn calculate_scroll(selected_index: usize, visible_height: i32, total_count:
 /// OneDrive placeholders are recall-on-data-access: opening the file
 /// without reading it does not hydrate it.
 pub(crate) fn hydrate_file(path: &str) -> std::io::Result<()> {
-    let mut file = std::fs::File::open(path)?;
+    let mut file = verbatim::open(path)?;
     std::io::copy(&mut file, &mut std::io::sink())?;
     Ok(())
 }
@@ -2405,11 +2421,104 @@ fn flush_buffer(buffer: &mut ScreenBuffer) {
     }
 }
 
+/// The note a completion notification adds for items the Recycle Bin or Trash
+/// could not take (see `fs::verbatim`): they were deleted permanently, which
+/// the user has to be told because it cannot be undone.
+fn permanently_deleted_note(permanent_count: usize) -> String {
+    if permanent_count == 0 {
+        String::new()
+    } else {
+        format!(" ({permanent_count} permanently)")
+    }
+}
+
+/// The note the Delete confirmation adds for an item the Recycle Bin cannot
+/// take (see `fs::verbatim`): it is deleted permanently instead, so the user
+/// agrees to that before it happens. Only the item and its direct children
+/// are checked here, where a full walk before the dialog would stall the
+/// window; the delete itself checks the whole tree and reports what it
+/// deleted permanently.
+fn recycle_warning(targets: &[String]) -> String {
+    if !cfg!(windows) {
+        return String::new();
+    }
+
+    let Some(name) = targets.iter().find_map(|path| unexpressible_name(path)) else {
+        return String::new();
+    };
+
+    format!("\n'{name}' cannot go to the Recycle Bin and will be deleted permanently.")
+}
+
+/// The name of `path`, or of one of its direct children, that Win32 cannot
+/// express, so the Recycle Bin cannot record it.
+#[cfg(not(windows))]
+fn unexpressible_name(_path: &str) -> Option<String> {
+    None
+}
+
+#[cfg(windows)]
+fn unexpressible_name(path: &str) -> Option<String> {
+    if verbatim::needs_verbatim(path) {
+        return Some(file_name_of(path));
+    }
+
+    let entries = verbatim::read_dir(path).ok()?;
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if verbatim::needs_verbatim(&name) {
+            return Some(name);
+        }
+    }
+
+    None
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{App, AppAction, AppConfig, InputMode};
+    use super::{App, AppAction, AppConfig, InputMode, permanently_deleted_note, recycle_warning};
     use crate::fs::DriveMediaType;
     use crate::input::FileSystemChangedEvent;
+
+    #[test]
+    fn only_deletes_windows_cannot_recycle_add_the_note() {
+        assert_eq!(permanently_deleted_note(0), "");
+        assert_eq!(permanently_deleted_note(1), " (1 permanently)");
+        assert_eq!(permanently_deleted_note(3), " (3 permanently)");
+    }
+
+    #[test]
+    fn the_delete_confirmation_names_the_item_the_recycle_bin_cannot_take() {
+        let reserved = recycle_warning(&[r"D:\dir\NUL".to_string()]);
+        let expected = if cfg!(windows) {
+            "\n'NUL' cannot go to the Recycle Bin and will be deleted permanently."
+        } else {
+            ""
+        };
+        assert_eq!(reserved, expected);
+        assert_eq!(recycle_warning(&[r"D:\dir\notes.txt".to_string()]), "");
+    }
+
+    /// Windows: a folder whose own name is fine is still named in the warning
+    /// when one of its children cannot go to the Recycle Bin.
+    #[cfg(windows)]
+    #[test]
+    fn the_delete_confirmation_names_a_child_the_recycle_bin_cannot_take() {
+        use crate::fs::verbatim;
+
+        let root = std::env::temp_dir().join(format!("wade-delete-warning-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).expect("mkdir");
+        let nested = root.join("NUL");
+        let spelling = verbatim::verbatim_path(&nested.to_string_lossy()).expect("verbatim spelling");
+        std::fs::write(&spelling, b"x").expect("write");
+
+        let warning = recycle_warning(&[root.to_string_lossy().into_owned()]);
+
+        assert_eq!(warning, "\n'NUL' cannot go to the Recycle Bin and will be deleted permanently.");
+        std::fs::remove_file(&spelling).expect("cleanup");
+        let _ = std::fs::remove_dir_all(&root);
+    }
 
     #[test]
     fn linux_terminal_candidates_put_terminal_env_first() {
@@ -2928,12 +3037,14 @@ mod tests {
         app.handle_file_operation_complete(crate::input::FileOperationCompleteEvent {
             success_count: 1,
             error_count: 1,
+            permanent_count: 0,
             was_cut: true,
         });
         assert_eq!(app.clipboard_paths.len(), 1, "errors keep the clipboard");
         app.handle_file_operation_complete(crate::input::FileOperationCompleteEvent {
             success_count: 1,
             error_count: 0,
+            permanent_count: 0,
             was_cut: true,
         });
         assert!(app.clipboard_paths.is_empty());

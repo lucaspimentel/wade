@@ -10,6 +10,7 @@ use std::time::{Duration, Instant};
 use crate::app::{App, InputMode, KeyEvent};
 use crate::console_key::ConsoleKey;
 use crate::fs::directory_contents::{is_hidden_entry, is_system_entry, system_time_to_date_parts};
+use crate::fs::verbatim;
 use crate::fs::{DRIVES_PATH, FileSystemEntry};
 use crate::input::{
     CancelToken, FileFinderPartialResultEvent, FileFinderScanCompleteEvent, FileFinderSearchResultEvent, InputEvent,
@@ -675,7 +676,7 @@ pub fn scan_files_for_finder(
     let mut total_count = 0usize;
     let mut batch: Vec<FileSystemEntry> = Vec::new();
     let mut last_flush = Instant::now();
-    let mut queue: VecDeque<std::path::PathBuf> = VecDeque::from([std::path::PathBuf::from(base_path)]);
+    let mut queue: VecDeque<String> = VecDeque::from([base_path.to_string()]);
 
     let send_batch = |batch: Vec<FileSystemEntry>| {
         let _ = out.send(InputEvent::FileFinderPartialResult(FileFinderPartialResultEvent {
@@ -765,7 +766,7 @@ pub fn scan_files_for_finder(
 
 struct WalkItem {
     name: String,
-    path: std::path::PathBuf,
+    path: String,
     /// Metadata of the item itself (links not followed)
     metadata: std::fs::Metadata,
 }
@@ -773,11 +774,11 @@ struct WalkItem {
 /// One directory's children split into (files, directories). A symlink or
 /// junction to a directory counts as a directory (so the walk follows it);
 /// unreadable directories yield nothing.
-fn list_directory(dir: &std::path::Path) -> (Vec<WalkItem>, Vec<WalkItem>) {
+fn list_directory(dir: &str) -> (Vec<WalkItem>, Vec<WalkItem>) {
     let mut files = Vec::new();
     let mut dirs = Vec::new();
 
-    let Ok(read_dir) = std::fs::read_dir(dir) else {
+    let Ok(read_dir) = verbatim::read_dir(dir) else {
         return (files, dirs); // unreadable: skipped
     };
 
@@ -786,8 +787,7 @@ fn list_directory(dir: &std::path::Path) -> (Vec<WalkItem>, Vec<WalkItem>) {
             continue;
         };
 
-        let is_dir = file_type.is_dir()
-            || (file_type.is_symlink() && std::fs::metadata(item.path()).is_ok_and(|target| target.is_dir()));
+        let is_dir = file_type.is_dir() || (file_type.is_symlink() && verbatim::is_dir(&item.path()));
 
         let walk_item = WalkItem {
             name: item.file_name().to_string_lossy().into_owned(),
@@ -807,14 +807,14 @@ fn list_directory(dir: &std::path::Path) -> (Vec<WalkItem>, Vec<WalkItem>) {
 
 fn make_entry(item: &WalkItem, is_directory: bool) -> FileSystemEntry {
     let link_target = if item.metadata.file_type().is_symlink() {
-        std::fs::read_link(&item.path).ok().map(|target| target.to_string_lossy().into_owned())
+        verbatim::read_link(&item.path).ok().map(|target| target.to_string_lossy().into_owned())
     } else {
         None
     };
 
     FileSystemEntry {
         name: item.name.clone(),
-        full_path: item.path.to_string_lossy().into_owned(),
+        full_path: item.path.clone(),
         is_directory,
         size: if is_directory { 0 } else { i64::try_from(item.metadata.len()).unwrap_or(0) },
         last_modified: system_time_to_date_parts(item.metadata.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH)),

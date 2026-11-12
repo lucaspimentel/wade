@@ -14,6 +14,7 @@
 //! into `files/`, which reserves the name; it is removed again when the
 //! rename fails. The optional `directorysizes` cache is not written.
 
+use super::verbatim;
 use std::ffi::{OsStr, OsString};
 use std::fs::DirBuilder;
 use std::io::{self, Write};
@@ -39,21 +40,21 @@ pub fn trash(path: &str) -> io::Result<PathBuf> {
 fn trash_with(path: &Path, data_home: &Path, uid: u32) -> io::Result<PathBuf> {
     let name = path.file_name().ok_or_else(|| invalid("nothing to trash"))?;
     let parent = match path.parent() {
-        Some(parent) if !parent.as_os_str().is_empty() => parent.canonicalize()?,
+        Some(parent) if !parent.as_os_str().is_empty() => verbatim::canonicalize(&parent.to_string_lossy())?,
         _ => std::env::current_dir()?,
     };
     let original = parent.join(name);
 
     // Fails for a missing item before anything is written
-    std::fs::symlink_metadata(&original)?;
-    let device = std::fs::metadata(&parent)?.dev();
+    verbatim::symlink_metadata(&original.to_string_lossy())?;
+    let device = verbatim::metadata(&parent.to_string_lossy())?.dev();
 
     let home_trash = data_home.join("Trash");
     let home_trash_device = DirBuilder::new()
         .recursive(true)
         .mode(0o700)
         .create(&home_trash)
-        .and_then(|()| std::fs::metadata(&home_trash))
+        .and_then(|()| verbatim::metadata(&home_trash.to_string_lossy()))
         .map(|metadata| metadata.dev());
 
     if home_trash_device.as_ref().is_ok_and(|&dev| dev == device) {
@@ -72,7 +73,7 @@ fn top_dir(dir: &Path, device: u64) -> io::Result<PathBuf> {
     let mut top = dir.to_path_buf();
 
     while let Some(parent) = top.parent() {
-        if std::fs::metadata(parent)?.dev() != device {
+        if verbatim::metadata(&parent.to_string_lossy())?.dev() != device {
             break;
         }
 
@@ -87,7 +88,7 @@ fn top_dir(dir: &Path, device: u64) -> io::Result<PathBuf> {
 /// directory, else `$top/.Trash-$uid`.
 fn top_dir_trash(top: &Path, uid: u32) -> io::Result<PathBuf> {
     let shared = top.join(".Trash");
-    let shared_ok = std::fs::symlink_metadata(&shared)
+    let shared_ok = verbatim::symlink_metadata(&shared.to_string_lossy())
         .is_ok_and(|metadata| metadata.is_dir() && !metadata.file_type().is_symlink() && metadata.mode() & 0o1000 != 0);
 
     if shared_ok {
@@ -111,7 +112,7 @@ fn ensure_private_dir(dir: &Path, uid: u32) -> io::Result<()> {
         Err(err) => return Err(err),
     }
 
-    let metadata = std::fs::symlink_metadata(dir)?;
+    let metadata = verbatim::symlink_metadata(&dir.to_string_lossy())?;
     if !metadata.is_dir() || metadata.file_type().is_symlink() || metadata.uid() != uid {
         return Err(invalid("unusable trash directory"));
     }
@@ -138,11 +139,14 @@ fn move_into(trash_dir: &Path, original: &Path, info_path: &OsStr) -> io::Result
         info_name.push(".trashinfo");
         let info_file = info.join(info_name);
 
-        if std::fs::symlink_metadata(&destination).is_ok() {
+        if verbatim::symlink_metadata(&destination.to_string_lossy()).is_ok() {
             continue;
         }
 
-        let mut file = match std::fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(&info_file) {
+        let mut options = std::fs::OpenOptions::new();
+        options.write(true).create_new(true).mode(0o600);
+
+        let mut file = match verbatim::open_with(&options, &info_file.to_string_lossy()) {
             Ok(file) => file,
             Err(err) if err.kind() == io::ErrorKind::AlreadyExists => continue,
             Err(err) => return Err(err),
@@ -151,12 +155,12 @@ fn move_into(trash_dir: &Path, original: &Path, info_path: &OsStr) -> io::Result
         let moved = file
             .write_all(contents.as_bytes())
             .and_then(|()| file.sync_all())
-            .and_then(|()| std::fs::rename(original, &destination));
+            .and_then(|()| verbatim::rename(&original.to_string_lossy(), &destination.to_string_lossy()));
 
         return match moved {
             Ok(()) => Ok(destination),
             Err(err) => {
-                let _ = std::fs::remove_file(&info_file);
+                let _ = verbatim::remove_file(&info_file.to_string_lossy());
                 Err(err)
             }
         };

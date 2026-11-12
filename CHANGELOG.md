@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Fixed
+- Windows: files and folders whose name Win32 reads as a device (`NUL`, `CON`, `COM1`, ...) or ends in a dot or space can be opened, previewed, copied, renamed and deleted; Delete deletes such an item permanently (the Recycle Bin cannot record the name), says so in the confirmation and in the "(1 permanently)" completion message, and no longer half-deletes a folder that holds one
+
 ## [2.2.0] - 2026-11-02
 
 ### Added

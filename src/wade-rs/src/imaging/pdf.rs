@@ -15,7 +15,7 @@ pub struct TempImage {
 
 impl Drop for TempImage {
     fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.dir);
+        let _ = crate::fs::verbatim::remove_dir_all(&self.dir.to_string_lossy());
     }
 }
 
@@ -45,7 +45,7 @@ fn unique_temp_dir() -> PathBuf {
 #[must_use]
 pub fn render_page(pdf_path: &str, page: u32, cancel: &CancelToken) -> Option<TempImage> {
     let dir = unique_temp_dir();
-    std::fs::create_dir_all(&dir).ok()?;
+    crate::fs::verbatim::create_dir_all(&dir.to_string_lossy()).ok()?;
     let root = dir.join("page");
     let page_text = page.to_string();
     let root_text = root.to_string_lossy().into_owned();
@@ -60,7 +60,7 @@ pub fn render_page(pdf_path: &str, page: u32, cancel: &CancelToken) -> Option<Te
     let expected = PathBuf::from(format!("{root_text}-{page:06}.png"));
     let image = TempImage { path: expected, dir };
 
-    (output.is_some() && image.path.is_file()).then_some(image)
+    (output.is_some() && crate::fs::verbatim::is_file(&image.path.to_string_lossy())).then_some(image)
 }
 
 /// Page 1 of a PDF as an image.

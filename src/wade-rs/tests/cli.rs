@@ -1,6 +1,9 @@
 //! Runs the built `wade` binary for the flags that exit before the TUI
 //! starts: --version, --help, --show-config and start-path validation.
 //! Every run passes --config-file so the user's config is never read.
+// Fixtures and goldens are set up and checked with `std::fs` directly:
+// the path spellings `fs::verbatim` handles are a production concern.
+#![allow(clippy::disallowed_methods)]
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};

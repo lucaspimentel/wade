@@ -6,6 +6,7 @@ use std::process::ExitCode;
 
 use wade::app::config_io::{load_config, parse_args, to_json};
 use wade::app::{App, StartOptions};
+use wade::fs::verbatim;
 use wade::input::CancelToken;
 
 fn main() -> ExitCode {
@@ -46,13 +47,13 @@ fn main() -> ExitCode {
     }
     let full = Path::new(&stored);
 
-    if full.is_file() {
+    if verbatim::is_file(&stored) {
         // Path points to a file: open its parent directory and select the file
         if let Some(parent) = full.parent() {
             start.start_file_name = full.file_name().map(|name| name.to_string_lossy().into_owned());
             start.start_path = parent.to_string_lossy().into_owned();
         }
-    } else if !full.is_dir() {
+    } else if !verbatim::is_dir(&stored) {
         eprintln!("wade: path does not exist: {}", start.start_path);
         return ExitCode::from(1);
     }
@@ -71,7 +72,7 @@ fn main() -> ExitCode {
 
     if let (Some(cwd_file), Some(final_path)) = (cli.cwd_file, final_path) {
         // Write failures are ignored
-        let _ = std::fs::write(cwd_file, final_path);
+        let _ = verbatim::write(&cwd_file, final_path);
     }
 
     ExitCode::SUCCESS

@@ -894,6 +894,34 @@ fn shift_delete_then_y_permanently_deletes() {
     let _ = std::fs::remove_dir_all(&parent);
 }
 
+/// Windows: `NUL` names the NUL device to every ordinary call, so it cannot
+/// go to the Recycle Bin. The listing still reports it, Delete warns first,
+/// and the delete reports that it was permanent.
+#[cfg(windows)]
+#[test]
+fn delete_warns_and_then_permanently_deletes_a_device_named_file() {
+    let (mut app, parent, root) = app();
+
+    let path = path_of(&root, "NUL");
+    let spelling = crate::fs::verbatim::verbatim_path(&path).expect("verbatim spelling");
+    std::fs::write(&spelling, "x").expect("write NUL");
+    press(&mut app, key(K::F5));
+    assert!(visible_names(&mut app).contains(&"NUL".to_string()), "the listing reports it");
+
+    select(&mut app, "NUL");
+    press(&mut app, key(K::Delete));
+    assert_eq!(app.modal.confirm_title.as_deref(), Some("Delete"));
+    let prompt = app.modal.confirm_message.clone().unwrap_or_default();
+    assert!(prompt.contains("cannot go to the Recycle Bin"), "{prompt}");
+
+    press(&mut app, ch('y'));
+    finish_file_operation(&mut app);
+    assert!(std::fs::symlink_metadata(&spelling).is_err(), "gone");
+    let notice = app.notification.as_ref().map(|notice| notice.message.clone()).unwrap_or_default();
+    assert_eq!(notice, "Deleting 1 item(s) (1 permanently)");
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
 #[test]
 fn n_in_the_confirm_dialog_keeps_the_file() {
     let (mut app, parent, root) = app();

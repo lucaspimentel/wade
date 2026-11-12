@@ -224,7 +224,7 @@ pub fn drive_type_from_fs_type(fs_type: &str) -> DriveType {
 /// file-system type).
 #[cfg(target_os = "linux")]
 fn linux_mount_entry(mount_point: &str) -> Option<(String, String)> {
-    let mounts = std::fs::read_to_string("/proc/mounts").ok()?;
+    let mounts = super::verbatim::read_to_string("/proc/mounts").ok()?;
     find_mount_entry(&mounts, mount_point)
 }
 
@@ -317,7 +317,7 @@ fn rotational_media_type(device: &str) -> DriveMediaType {
         return DriveMediaType::Unknown;
     };
 
-    std::fs::read_to_string(format!("/sys/block/{device}/queue/rotational"))
+    super::verbatim::read_to_string(&format!("/sys/block/{device}/queue/rotational"))
         .map_or(DriveMediaType::Unknown, |content| parse_rotational_value(Some(content.trim())))
 }
 

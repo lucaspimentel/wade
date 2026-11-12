@@ -20,7 +20,7 @@ impl MetadataProvider for FileMetadataProvider {
     }
 
     fn get_metadata(&self, path: &str, context: &PreviewContext, cancel: &CancelToken) -> Option<MetadataResult> {
-        if cancel.is_cancelled() || std::fs::metadata(path).is_err() {
+        if cancel.is_cancelled() || crate::fs::verbatim::metadata(path).is_err() {
             return None;
         }
 

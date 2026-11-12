@@ -2,6 +2,7 @@
 //! one `InlineDirSizeReadyEvent` per directory and a final
 //! `InlineDirSizeCompleteEvent`.
 
+use crate::fs::verbatim;
 use std::sync::mpsc::Sender;
 
 use crate::input::{CancelToken, InlineDirSizeCompleteEvent, InlineDirSizeReadyEvent, InputEvent};
@@ -53,10 +54,10 @@ impl InlineDirSizeLoader {
 pub(crate) fn sum_directory(directory_path: &str, cancel: &CancelToken) -> i64 {
     let mut total_bytes: i64 = 0;
     let mut file_count: usize = 0;
-    let mut stack = vec![std::path::PathBuf::from(directory_path)];
+    let mut stack = vec![directory_path.to_string()];
 
     while let Some(dir) = stack.pop() {
-        let Ok(read_dir) = std::fs::read_dir(&dir) else {
+        let Ok(read_dir) = verbatim::read_dir(&dir) else {
             continue; // unreadable: skipped
         };
 
@@ -76,7 +77,7 @@ pub(crate) fn sum_directory(directory_path: &str, cancel: &CancelToken) -> i64 {
 
             // A symlink/junction to a directory is neither counted nor
             // recursed into
-            if file_type.is_symlink() && std::fs::metadata(entry.path()).is_ok_and(|target| target.is_dir()) {
+            if file_type.is_symlink() && verbatim::is_dir(&entry.path()) {
                 continue;
             }
 

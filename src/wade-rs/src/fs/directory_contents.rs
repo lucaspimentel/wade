@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 #[cfg(windows)]
 use std::os::windows::fs::MetadataExt;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::SystemTime;
 
 /// Git status flags of a path.
@@ -225,10 +225,9 @@ impl DirectoryContents {
 }
 
 fn absolute(path: &str) -> String {
-    PathBuf::from(path)
-        .canonicalize()
+    super::verbatim::canonicalize(path)
         .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_else(|_| PathBuf::from(path).to_string_lossy().to_string())
+        .unwrap_or_else(|_| path.to_string())
 }
 
 /// The drive part of a Windows path that is only a drive with an optional
@@ -291,7 +290,7 @@ pub fn load_entries(
     dir_sizes: Option<&HashMap<String, i64>>,
 ) -> Vec<FileSystemEntry> {
     let mut list = Vec::new();
-    let dir_info = match std::fs::read_dir(path) {
+    let dir_info = match super::verbatim::read_dir(path) {
         Ok(rd) => rd,
         Err(_) => return list, // silently skip inaccessible directories
     };
@@ -323,19 +322,18 @@ pub fn load_entries(
         #[cfg(windows)]
         let is_directory = attributes & 0x0010 != 0;
         #[cfg(not(windows))]
-        let is_directory =
-            file_type.is_dir() || (file_type.is_symlink() && std::fs::metadata(item.path()).is_ok_and(|m| m.is_dir()));
+        let is_directory = file_type.is_dir() || (file_type.is_symlink() && super::verbatim::is_dir(&item.path()));
         let link_target = if file_type.is_symlink() {
-            std::fs::read_link(item.path()).ok().map(|p| p.to_string_lossy().to_string())
+            super::verbatim::read_link(&item.path()).ok().map(|p| p.to_string_lossy().to_string())
         } else {
             None
         };
 
         // Resolve through the entry itself: a relative target is relative
         // to the link's directory, not the process's working directory.
-        let is_broken_symlink = link_target.is_some() && std::fs::metadata(item.path()).is_err();
+        let is_broken_symlink = link_target.is_some() && super::verbatim::metadata(&item.path()).is_err();
 
-        let full_path = item.path().to_string_lossy().to_string();
+        let full_path = item.path();
 
         // Cloud placeholder, junction and app execution alias checks: reparse
         // queries only for entries carrying FILE_ATTRIBUTE_REPARSE_POINT,
@@ -359,9 +357,7 @@ pub fn load_entries(
             is_directory,
             size: if is_directory {
                 // Inline dir sizes take precedence over the placeholder size
-                dir_sizes
-                    .and_then(|sizes| sizes.get(&item.path().to_string_lossy().to_string()).copied())
-                    .unwrap_or(0)
+                dir_sizes.and_then(|sizes| sizes.get(&item.path()).copied()).unwrap_or(0)
             } else {
                 i64::try_from(metadata.len()).unwrap_or(0)
             },
@@ -604,7 +600,7 @@ pub fn get_drive_entries() -> Vec<FileSystemEntry> {
 /// `statvfs`.
 #[cfg(target_os = "linux")]
 pub fn get_drive_entries() -> Vec<FileSystemEntry> {
-    let mounts = std::fs::read_to_string("/proc/mounts").unwrap_or_default();
+    let mounts = super::verbatim::read_to_string("/proc/mounts").unwrap_or_default();
     let selected = select_mounts(&mounts);
     let mut list = Vec::new();
 
@@ -612,7 +608,7 @@ pub fn get_drive_entries() -> Vec<FileSystemEntry> {
         // A mount point that is not a directory (a bind-mounted file) is not
         // a drive, and a file system with no blocks to report (proc, cgroup)
         // has no space to show
-        if !Path::new(&mount.mount_point).is_dir() {
+        if !super::verbatim::is_dir(&mount.mount_point) {
             continue;
         }
 
@@ -774,7 +770,7 @@ pub fn get_drive_entries() -> Vec<FileSystemEntry> {
 #[cfg(unix)]
 #[must_use]
 pub fn volume_mounts(volumes_dir: &Path) -> Vec<(String, String)> {
-    let Ok(read_dir) = std::fs::read_dir(volumes_dir) else {
+    let Ok(read_dir) = super::verbatim::read_dir(&volumes_dir.to_string_lossy()) else {
         return Vec::new();
     };
 
@@ -786,8 +782,9 @@ pub fn volume_mounts(volumes_dir: &Path) -> Vec<(String, String)> {
                 return None;
             }
 
-            let resolved = std::fs::canonicalize(entry.path()).ok()?;
-            resolved.is_dir().then(|| (label, resolved.to_string_lossy().into_owned()))
+            let resolved = super::verbatim::canonicalize(&entry.path()).ok()?;
+            super::verbatim::is_dir(&resolved.to_string_lossy())
+                .then(|| (label, resolved.to_string_lossy().into_owned()))
         })
         .collect();
 
@@ -812,6 +809,7 @@ pub fn capitalize_drive_letter(path: &str) -> String {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn sort_mode_names_parse_and_cycle() {

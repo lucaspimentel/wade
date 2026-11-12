@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use super::SortMode;
+use crate::fs::verbatim;
 
 /// Per-directory sort orders, keyed case-insensitively on Windows.
 pub struct SortStore {
@@ -62,7 +63,9 @@ impl SortStore {
     pub fn load(&mut self) {
         self.sorts.clear();
 
-        let Some(text) = self.file_path.as_ref().and_then(|path| std::fs::read_to_string(path).ok()) else {
+        let Some(text) =
+            self.file_path.as_ref().and_then(|path| verbatim::read_to_string(&path.to_string_lossy()).ok())
+        else {
             return;
         };
 
@@ -82,7 +85,7 @@ impl SortStore {
         };
 
         if let Some(dir) = file_path.parent() {
-            std::fs::create_dir_all(dir)?;
+            verbatim::create_dir_all(&dir.to_string_lossy())?;
         }
 
         let mut entries: Vec<_> = self.sorts.iter().collect();
@@ -97,7 +100,7 @@ impl SortStore {
             ));
         }
 
-        std::fs::write(file_path, content)
+        verbatim::write(&file_path.to_string_lossy(), content)
     }
 
     #[must_use]

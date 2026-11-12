@@ -255,7 +255,7 @@ fn read_central_header(file: &mut impl Read) -> Result<Option<ZipEntry>, ZipErro
 
 /// Every central-directory entry, in directory order.
 pub fn read_entries(path: &str) -> Result<Vec<ZipEntry>, ZipError> {
-    let mut file = std::io::BufReader::new(std::fs::File::open(path)?);
+    let mut file = std::io::BufReader::new(crate::fs::verbatim::open(path)?);
     let length = file.get_ref().metadata()?.len();
     let (cd_start, expected_entries) = read_end_of_central_directory(&mut file, length)?;
 
@@ -285,7 +285,7 @@ pub fn read_entry_data(path: &str, entry: &ZipEntry) -> Result<Vec<u8>, ZipError
         return Err(ZipError::InvalidData);
     }
 
-    let mut file = std::fs::File::open(path)?;
+    let mut file = crate::fs::verbatim::open(path)?;
     file.seek(SeekFrom::Start(entry.local_header_offset))?;
     let mut header = [0u8; LOCAL_HEADER_SIZE];
 

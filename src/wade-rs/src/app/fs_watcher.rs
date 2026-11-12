@@ -8,6 +8,7 @@
 
 use std::sync::mpsc::Sender;
 
+use crate::fs::verbatim;
 use crate::input::{FileSystemChangedEvent, InputEvent};
 
 /// Quiet time after the last change before the event is sent.
@@ -228,7 +229,6 @@ fn issue_read(
 /// other failure requests one full refresh and stops watching.
 #[cfg(windows)]
 fn spawn_watch_thread(directory_path: &str, event_tx: std::sync::mpsc::Sender<bool>) -> Result<WatchWorker, ()> {
-    use std::os::windows::ffi::OsStrExt;
     use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
 
     use windows_sys::Win32::Foundation::{ERROR_OPERATION_ABORTED, GetLastError, INVALID_HANDLE_VALUE, WAIT_OBJECT_0};
@@ -239,7 +239,8 @@ fn spawn_watch_thread(directory_path: &str, event_tx: std::sync::mpsc::Sender<bo
     use windows_sys::Win32::System::IO::{CancelIoEx, GetOverlappedResult};
     use windows_sys::Win32::System::Threading::{CreateEventW, INFINITE, WaitForMultipleObjects};
 
-    let wide_path: Vec<u16> = std::ffi::OsStr::new(directory_path).encode_wide().chain(std::iter::once(0)).collect();
+    let wide_path: Vec<u16> =
+        verbatim::reach_spelling(directory_path).encode_utf16().chain(std::iter::once(0)).collect();
 
     let raw_directory = unsafe {
         CreateFileW(
@@ -405,13 +406,13 @@ fn spawn_watch_thread(
 
     let path = std::path::Path::new(directory_path);
 
-    if !path.is_dir() {
+    if !verbatim::is_dir(directory_path) {
         return Err(());
     }
 
     // FSEvents (macOS) reports resolved paths, e.g. /private/var for /var
     let watched = path.to_path_buf();
-    let watched_resolved = std::fs::canonicalize(path).unwrap_or_else(|_| watched.clone());
+    let watched_resolved = verbatim::canonicalize(directory_path).unwrap_or_else(|_| watched.clone());
     let mut watcher = notify::recommended_watcher(move |result: notify::Result<notify::Event>| {
         let signal = match result {
             Err(_) => Some(true),

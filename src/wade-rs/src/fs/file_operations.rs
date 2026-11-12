@@ -1,6 +1,7 @@
 //! Recursive copy, move, delete (Recycle Bin or Trash), with symlink-first
 //! semantics: a link is copied, moved or deleted as a link.
 
+use crate::fs::verbatim;
 use crate::input::CancelToken;
 use std::path::Path;
 
@@ -8,7 +9,7 @@ use std::path::Path;
 /// any directory test, because those follow links.
 #[must_use]
 pub fn is_symlink(path: &str) -> bool {
-    std::fs::symlink_metadata(path).is_ok_and(|meta| meta.file_type().is_symlink())
+    verbatim::symlink_metadata(path).is_ok_and(|meta| meta.file_type().is_symlink())
 }
 
 /// Whether a non-permanent delete has somewhere to go: the Recycle Bin on
@@ -18,21 +19,28 @@ pub const HAS_TRASH: bool = cfg!(any(windows, unix));
 
 /// Deletes the paths; with permanent=false, sends them to the Recycle Bin via
 /// SHFileOperation on Windows, or to the Trash on macOS and Linux. Returns
-/// (successes, errors).
-pub fn delete_paths(paths: &[String], permanent: bool, cancel: &CancelToken) -> (usize, usize) {
+/// (successes, errors, permanently deleted).
+///
+/// On Windows the Recycle Bin gets an item whose whole tree Win32 can spell
+/// (see `fs::verbatim`): the shell refuses a tree that holds a name it cannot
+/// express, after recycling the entries it already moved, and for a trailing
+/// dot it recycles whatever the stripped name names. Such an item is deleted
+/// permanently instead, and counted, so the completion message can say so.
+pub fn delete_paths(paths: &[String], permanent: bool, cancel: &CancelToken) -> (usize, usize, usize) {
     if paths.is_empty() {
-        return (0, 0);
+        return (0, 0, 0);
     }
 
     let mut success = 0;
     let mut errors = 0;
+    let mut permanent_count = 0;
 
     for path in paths {
         if cancel.is_cancelled() {
             break;
         }
 
-        if !permanent && HAS_TRASH {
+        if !permanent && HAS_TRASH && !cannot_recycle(path, cancel) {
             #[cfg(windows)]
             let trashed = recycle_files(std::slice::from_ref(path)) == 0;
             #[cfg(target_os = "macos")]
@@ -49,12 +57,66 @@ pub fn delete_paths(paths: &[String], permanent: bool, cancel: &CancelToken) -> 
             }
         } else if delete_one(path) {
             success += 1;
+            if !permanent && HAS_TRASH {
+                permanent_count += 1;
+            }
         } else {
             errors += 1;
         }
     }
 
-    (success, errors)
+    (success, errors, permanent_count)
+}
+
+/// True when the Recycle Bin or Trash must not be handed this item.
+///
+/// Windows: the shell resolves the names it cannot express before the file
+/// system sees them, so such an item goes through the verbatim spelling and a
+/// permanent delete instead. The item's whole tree is checked, because one
+/// such name anywhere below it leaves the shell's own delete half done.
+fn cannot_recycle(path: &str, cancel: &CancelToken) -> bool {
+    #[cfg(windows)]
+    {
+        tree_needs_verbatim(path, cancel)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (path, cancel);
+        false
+    }
+}
+
+/// Windows: true when `path` or anything below it has a name Win32 cannot
+/// express. Links and junctions are not followed, as the delete does not
+/// delete through them.
+#[cfg(windows)]
+fn tree_needs_verbatim(path: &str, cancel: &CancelToken) -> bool {
+    if verbatim::needs_verbatim(path) {
+        return true;
+    }
+
+    // False for a link, a junction and a missing path alike: nothing of
+    // theirs is deleted
+    if !verbatim::symlink_metadata(path).is_ok_and(|meta| meta.is_dir()) {
+        return false;
+    }
+
+    let Ok(entries) = verbatim::read_dir(path) else {
+        return false;
+    };
+
+    for entry in entries.flatten() {
+        if cancel.is_cancelled() {
+            return false;
+        }
+
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if verbatim::needs_verbatim(&name) || tree_needs_verbatim(&entry.path(), cancel) {
+            return true;
+        }
+    }
+
+    false
 }
 
 /// macOS: moves `argv[0]` to the Trash with NSFileManager. The path is a
@@ -87,9 +149,9 @@ fn delete_one(path: &str) -> bool {
         return remove_symlink(path).is_ok();
     }
 
-    match std::fs::symlink_metadata(path) {
-        Ok(meta) if meta.is_dir() => std::fs::remove_dir_all(path).is_ok(),
-        Ok(_) => std::fs::remove_file(path).is_ok(),
+    match verbatim::symlink_metadata(path) {
+        Ok(meta) if meta.is_dir() => verbatim::remove_dir_all(path).is_ok(),
+        Ok(_) => verbatim::remove_file(path).is_ok(),
         Err(_) => false,
     }
 }
@@ -137,7 +199,6 @@ pub fn names_case_insensitive(dir: &Path) -> bool {
 /// Windows) keep the default.
 #[cfg(windows)]
 fn windows_case_insensitive(dir: &Path) -> bool {
-    use std::os::windows::ffi::OsStrExt;
     use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
     use windows_sys::Win32::Storage::FileSystem::{
         CreateFileW, FILE_CASE_SENSITIVE_INFO, FILE_FLAG_BACKUP_SEMANTICS, FILE_READ_ATTRIBUTES, FILE_SHARE_DELETE,
@@ -145,7 +206,8 @@ fn windows_case_insensitive(dir: &Path) -> bool {
     };
     const FILE_CS_FLAG_CASE_SENSITIVE_DIR: u32 = 1;
 
-    let wide: Vec<u16> = dir.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
+    let wide: Vec<u16> =
+        verbatim::reach_spelling(&dir.to_string_lossy()).encode_utf16().chain(std::iter::once(0)).collect();
     unsafe {
         let handle = CreateFileW(
             wide.as_ptr(),
@@ -173,7 +235,11 @@ fn windows_case_insensitive(dir: &Path) -> bool {
 }
 
 /// Linux: how a directory matches names, by flag, behavior, then type.
+///
+/// These calls use `std::fs` directly: the verbatim spelling is a Windows
+/// rule, and the probe compares `OsStr` bytes, which need not be UTF-8.
 #[cfg(target_os = "linux")]
+#[allow(clippy::disallowed_methods)]
 mod linux_case {
     use std::ffi::{OsStr, OsString};
     use std::os::unix::ffi::{OsStrExt, OsStringExt};
@@ -393,7 +459,7 @@ fn stored_spelling(path: &str, rule_of: impl Fn(&Path) -> NameRule) -> String {
         }
 
         let key = rule.key(&wanted).into_owned();
-        let stored = std::fs::read_dir(&resolved).ok().and_then(|entries| {
+        let stored = verbatim::read_dir(&resolved.to_string_lossy()).ok().and_then(|entries| {
             let mut folded = None;
             for entry in entries.filter_map(Result::ok) {
                 let candidate = entry.file_name();
@@ -423,7 +489,7 @@ fn stored_spelling(path: &str, rule_of: impl Fn(&Path) -> NameRule) -> String {
 /// Canonical form of `path` for location comparisons, in the volume's name
 /// rule's key form (lowercase, NFC on macOS).
 fn location_key(path: &Path) -> Option<std::path::PathBuf> {
-    let canonical = std::fs::canonicalize(path).ok()?;
+    let canonical = verbatim::canonicalize(&path.to_string_lossy()).ok()?;
     let rule = NameRule::of(&canonical);
     if rule.is_loose() {
         Some(std::path::PathBuf::from(rule.key(&canonical.to_string_lossy()).into_owned()))
@@ -474,7 +540,7 @@ pub fn unique_copy_name(dir: &str, name: &str, is_directory: bool) -> String {
             format!("{stem} - Copy ({number}){extension}")
         };
 
-        if Path::new(dir).join(&candidate).symlink_metadata().is_err() {
+        if verbatim::symlink_metadata(&Path::new(dir).join(&candidate).to_string_lossy()).is_err() {
             return candidate;
         }
 
@@ -487,11 +553,11 @@ pub fn unique_copy_name(dir: &str, name: &str, is_directory: bool) -> String {
 /// Callers delete the destination first when overwrite is set.
 pub fn copy_path(source: &str, dest: &str, preserve_symlinks: bool) -> Result<(), std::io::Error> {
     if preserve_symlinks && is_symlink(source) {
-        let Some(target) = std::fs::read_link(source).ok().map(|p| p.to_string_lossy().to_string()) else {
+        let Some(target) = verbatim::read_link(source).ok().map(|p| p.to_string_lossy().to_string()) else {
             return copy_by_content(source, dest, preserve_symlinks);
         };
 
-        return match create_symlink(dest, &target, Path::new(source).is_dir()) {
+        return match create_symlink(dest, &target, verbatim::is_dir(source)) {
             Ok(()) => Ok(()),
             // No permission to create links: copy the content instead
             Err(err) if is_permission_denied(&err) => copy_by_content(source, dest, preserve_symlinks),
@@ -505,35 +571,34 @@ pub fn copy_path(source: &str, dest: &str, preserve_symlinks: bool) -> Result<()
 /// True for a directory or a link to one. `Directory.Exists` follows links,
 /// so a directory link is copied by content when links are not preserved.
 fn is_directory_following_links(path: &str) -> bool {
-    std::fs::metadata(path).is_ok_and(|meta| meta.is_dir())
+    verbatim::is_dir(path)
 }
 
 fn copy_by_content(source: &str, dest: &str, preserve_symlinks: bool) -> Result<(), std::io::Error> {
-    std::fs::symlink_metadata(source)?;
+    verbatim::symlink_metadata(source)?;
     if is_directory_following_links(source) {
         copy_directory(source, dest, preserve_symlinks)?;
         Ok(())
     } else {
-        std::fs::copy(source, dest)?;
+        verbatim::copy(source, dest)?;
         Ok(())
     }
 }
 
 /// Recursive copy with optional symlink preservation per entry.
 pub fn copy_directory(source: &str, destination: &str, preserve_symlinks: bool) -> Result<(), std::io::Error> {
-    std::fs::create_dir_all(destination)?;
+    verbatim::create_dir_all(destination)?;
 
-    let entries = std::fs::read_dir(source)?;
-    for entry in entries {
+    for entry in verbatim::read_dir(source)? {
         let entry = entry?;
         let name = entry.file_name().to_string_lossy().to_string();
-        let source_path = entry.path().to_string_lossy().to_string();
+        let source_path = entry.path();
         let dest_path = Path::new(destination).join(&name).to_string_lossy().to_string();
 
         if preserve_symlinks && is_symlink(&source_path) {
-            let target = std::fs::read_link(&source_path).map(|p| p.to_string_lossy().to_string()).ok();
+            let target = verbatim::read_link(&source_path).map(|p| p.to_string_lossy().to_string()).ok();
             if let Some(target) = target {
-                match create_symlink(&dest_path, &target, entry.path().is_dir()) {
+                match create_symlink(&dest_path, &target, verbatim::is_dir(&source_path)) {
                     Ok(()) => continue,
                     Err(err) if is_permission_denied(&err) => {}
                     Err(err) => return Err(err),
@@ -541,11 +606,11 @@ pub fn copy_directory(source: &str, destination: &str, preserve_symlinks: bool) 
             }
         }
 
-        std::fs::symlink_metadata(&source_path)?;
+        verbatim::symlink_metadata(&source_path)?;
         if is_directory_following_links(&source_path) {
             copy_directory(&source_path, &dest_path, preserve_symlinks)?;
         } else {
-            std::fs::copy(&source_path, &dest_path)?;
+            verbatim::copy(&source_path, &dest_path)?;
         }
     }
 
@@ -555,7 +620,7 @@ pub fn copy_directory(source: &str, destination: &str, preserve_symlinks: bool) 
 /// Moves or renames a file or directory (same-directory renames and
 /// cross-directory moves).
 pub fn move_path(source: &str, dest: &str) -> Result<(), std::io::Error> {
-    std::fs::rename(source, dest)
+    verbatim::rename(source, dest)
 }
 
 /// Renames `source` to `dest`, a spelling of the same name in another
@@ -565,22 +630,22 @@ pub fn move_path(source: &str, dest: &str) -> Result<(), std::io::Error> {
 pub fn rename_case(source: &str, dest: &str) -> Result<(), std::io::Error> {
     if cfg!(target_os = "linux") {
         let temp = format!("{source}.wade-rename-{}", std::process::id());
-        std::fs::rename(source, &temp)?;
-        return std::fs::rename(&temp, dest).inspect_err(|_| {
-            let _ = std::fs::rename(&temp, source);
+        verbatim::rename(source, &temp)?;
+        return verbatim::rename(&temp, dest).inspect_err(|_| {
+            let _ = verbatim::rename(&temp, source);
         });
     }
 
-    std::fs::rename(source, dest)
+    verbatim::rename(source, dest)
 }
 
 /// Removes a symlink without touching its target. On Windows a directory
 /// symlink needs `remove_dir`; `remove_file` fails with access denied.
 fn remove_symlink(path: &str) -> Result<(), std::io::Error> {
-    let result = std::fs::remove_file(path);
+    let result = verbatim::remove_file(path);
 
     #[cfg(windows)]
-    if result.is_err() && std::fs::remove_dir(path).is_ok() {
+    if result.is_err() && verbatim::remove_dir(path).is_ok() {
         return Ok(());
     }
 
@@ -594,11 +659,11 @@ pub fn delete_existing(path: &str) -> Result<(), std::io::Error> {
         return remove_symlink(path);
     }
 
-    let meta = std::fs::symlink_metadata(path)?;
+    let meta = verbatim::symlink_metadata(path)?;
     if meta.is_dir() {
-        std::fs::remove_dir_all(path)
+        verbatim::remove_dir_all(path)
     } else {
-        std::fs::remove_file(path)
+        verbatim::remove_file(path)
     }
 }
 
@@ -752,8 +817,8 @@ mod tests {
         make_read_only(&tree.join("inner").join("ro.txt"));
         make_read_only(&tree.join("inner"));
 
-        let (success, errors) = delete_paths(&[p(&file), p(&tree)], true, &CancelToken::new());
-        assert_eq!((success, errors), (2, 0));
+        let (success, errors, permanent) = delete_paths(&[p(&file), p(&tree)], true, &CancelToken::new());
+        assert_eq!((success, errors, permanent), (2, 0, 0));
         assert!(!file.exists());
         assert!(!tree.exists());
     }
@@ -780,7 +845,7 @@ mod tests {
         std::fs::write(&file, b"x").expect("write");
         let lock = std::fs::OpenOptions::new().read(true).share_mode(0).open(&file).expect("lock");
 
-        assert_eq!(delete_paths(&[p(&file)], true, &CancelToken::new()), (0, 1));
+        assert_eq!(delete_paths(&[p(&file)], true, &CancelToken::new()), (0, 1, 0));
         assert!(move_path(&p(&file), &p(&dir.join("moved.txt"))).is_err());
         assert!(std::fs::read(&file).is_err(), "reads are refused while the file is locked");
         drop(lock);
@@ -797,8 +862,9 @@ mod tests {
         std::fs::write(nested.join("g.txt"), b"y").expect("write");
 
         let cancel = CancelToken::new();
-        let (success, errors) = delete_paths(&[p(&file), p(&nested), p(&dir.join("missing.txt"))], true, &cancel);
-        assert_eq!((success, errors), (2, 1));
+        let (success, errors, permanent) =
+            delete_paths(&[p(&file), p(&nested), p(&dir.join("missing.txt"))], true, &cancel);
+        assert_eq!((success, errors, permanent), (2, 1, 0));
         assert!(!file.exists());
         assert!(!nested.exists());
     }
@@ -816,8 +882,8 @@ mod tests {
         create_symlink(&p(&link), &p(&target), false).expect("link");
 
         let cancel = CancelToken::new();
-        let (success, errors) = delete_paths(&[p(&link)], true, &cancel);
-        assert_eq!((success, errors), (1, 0));
+        let (success, errors, permanent) = delete_paths(&[p(&link)], true, &cancel);
+        assert_eq!((success, errors, permanent), (1, 0, 0));
         assert!(!link.exists());
         // Target untouched
         assert!(target.exists());
@@ -839,7 +905,7 @@ mod tests {
         }
 
         let cancel = CancelToken::new();
-        assert_eq!(delete_paths(&[p(&link)], true, &cancel), (1, 0));
+        assert_eq!(delete_paths(&[p(&link)], true, &cancel), (1, 0, 0));
         assert!(std::fs::symlink_metadata(&link).is_err());
         assert!(target.join("inner.txt").exists());
 
@@ -1059,8 +1125,115 @@ mod tests {
         std::fs::write(&file, b"x").expect("write");
 
         let cancel = CancelToken::new();
-        let (success, errors) = delete_paths(&[p(&file)], true, &cancel);
-        assert_eq!((success, errors), (1, 0));
+        let (success, errors, permanent) = delete_paths(&[p(&file)], true, &cancel);
+        assert_eq!((success, errors, permanent), (1, 0, 0));
+    }
+
+    /// Scratch directory for the reserved-name tests below: it removes itself
+    /// even when an assertion fails, because an entry with a name Windows
+    /// cannot express is awkward to remove by hand.
+    #[cfg(windows)]
+    struct ReservedDir(PathBuf);
+
+    #[cfg(windows)]
+    impl Drop for ReservedDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[cfg(windows)]
+    fn reserved_dir(name: &str) -> (ReservedDir, String) {
+        let dir = std::env::temp_dir().join(format!("wade-reserved-test-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("mkdir");
+        let text = dir.to_string_lossy().into_owned();
+        (ReservedDir(dir), text)
+    }
+
+    /// Creates `name` in `dir` through the `\\?\` spelling, the only one
+    /// Windows accepts for these names, and returns its ordinary path.
+    #[cfg(windows)]
+    fn write_reserved(dir: &str, name: &str, contents: &[u8]) -> String {
+        let path = format!("{dir}\\{name}");
+        let spelling = crate::fs::verbatim::verbatim_path(&path).expect("verbatim spelling");
+        std::fs::write(&spelling, contents).expect("write reserved");
+        path
+    }
+
+    /// Windows: `NUL` is the NUL device to every ordinary call, so the delete
+    /// reaches it only through the verbatim spelling.
+    #[cfg(windows)]
+    #[test]
+    fn permanent_delete_reaches_a_device_named_file() {
+        let (_scratch, dir) = reserved_dir("device");
+        let path = write_reserved(&dir, "NUL", b"payload");
+
+        let cancel = CancelToken::new();
+        assert_eq!(delete_paths(&[path], true, &cancel), (1, 0, 0));
+        assert!(std::fs::read_dir(&dir).expect("list").next().is_none());
+    }
+
+    /// Windows: the Recycle Bin cannot record such a name, so the Delete key
+    /// deletes the item permanently instead, and counts it.
+    #[cfg(windows)]
+    #[test]
+    fn delete_falls_back_to_permanent_for_a_name_the_recycle_bin_cannot_take() {
+        let (_scratch, dir) = reserved_dir("fallback");
+        let path = write_reserved(&dir, "NUL", b"payload");
+
+        let cancel = CancelToken::new();
+        assert_eq!(delete_paths(std::slice::from_ref(&path), false, &cancel), (1, 0, 1));
+        assert!(std::fs::symlink_metadata(&path).is_err());
+    }
+
+    /// Windows: a trailing dot is stripped by the ordinary spelling, so
+    /// recycling such an item would move whatever its stripped name names.
+    #[cfg(windows)]
+    #[test]
+    fn delete_falls_back_to_permanent_for_a_trailing_dot() {
+        let (_scratch, dir) = reserved_dir("trailing");
+        let neighbour = format!("{dir}\\report");
+        std::fs::write(&neighbour, b"neighbour").expect("write neighbour");
+        let path = write_reserved(&dir, "report.", b"dotted");
+
+        let cancel = CancelToken::new();
+        assert_eq!(delete_paths(std::slice::from_ref(&path), false, &cancel), (1, 0, 1));
+        assert!(std::fs::read_dir(&dir).expect("list").count() == 1, "the neighbour stays");
+        assert_eq!(std::fs::read(&neighbour).expect("read neighbour"), b"neighbour");
+    }
+
+    /// Windows: one such name anywhere below an item leaves the shell's own
+    /// delete half done, so the whole item goes through the permanent path.
+    #[cfg(windows)]
+    #[test]
+    fn delete_falls_back_to_permanent_for_a_tree_that_holds_such_a_name() {
+        let (_scratch, dir) = reserved_dir("tree");
+        let tree = format!("{dir}\\tree");
+        let nested = format!("{tree}\\nested");
+        std::fs::create_dir_all(&nested).expect("mkdir");
+        std::fs::write(format!("{nested}\\plain.txt"), b"x").expect("write");
+        write_reserved(&nested, "NUL", b"payload");
+
+        let cancel = CancelToken::new();
+        assert_eq!(delete_paths(std::slice::from_ref(&tree), false, &cancel), (1, 0, 1));
+        assert!(std::fs::symlink_metadata(&tree).is_err(), "the whole tree is gone");
+    }
+
+    /// Windows: a directory can carry such a name too.
+    #[cfg(windows)]
+    #[test]
+    fn permanent_delete_reaches_a_device_named_directory() {
+        let (_scratch, dir) = reserved_dir("device-dir");
+        let path = format!("{dir}\\NUL");
+        let spelling = crate::fs::verbatim::verbatim_path(&path).expect("verbatim spelling");
+        std::fs::create_dir(&spelling).expect("mkdir reserved");
+        std::fs::write(format!("{spelling}\\inner.txt"), b"x").expect("write");
+
+        let cancel = CancelToken::new();
+        assert_eq!(delete_paths(std::slice::from_ref(&path), true, &cancel), (1, 0, 0));
+        assert!(std::fs::symlink_metadata(&path).is_err());
+        assert!(std::fs::read_dir(&dir).expect("list").next().is_none());
     }
 
     #[cfg(target_os = "macos")]
@@ -1076,8 +1249,8 @@ mod tests {
 
         // One moved, one missing
         let missing = dir.join("missing.txt");
-        let (success, errors) = delete_paths(&[p(&file), p(&missing)], false, &CancelToken::new());
-        assert_eq!((success, errors), (1, 1), "Trash at {} exists: {}", trash.display(), trash.is_dir());
+        let (success, errors, permanent) = delete_paths(&[p(&file), p(&missing)], false, &CancelToken::new());
+        assert_eq!((success, errors, permanent), (1, 1, 0), "Trash at {} exists: {}", trash.display(), trash.is_dir());
         assert!(!file.exists(), "gone from its folder");
         assert!(trashed.is_file(), "in the Trash at {}", trashed.display());
         let _ = std::fs::remove_file(&trashed);
@@ -1093,8 +1266,8 @@ mod tests {
 
         // One moved, one missing
         let missing = dir.join("missing.txt");
-        let (success, errors) = delete_paths(&[p(&file), p(&missing)], false, &CancelToken::new());
-        assert_eq!((success, errors), (1, 1));
+        let (success, errors, permanent) = delete_paths(&[p(&file), p(&missing)], false, &CancelToken::new());
+        assert_eq!((success, errors, permanent), (1, 1, 0));
         assert!(!file.exists(), "gone from its folder");
 
         // The home trash (or, when the temp dir is on another device, that
@@ -1122,8 +1295,8 @@ mod tests {
 
         let cancel = CancelToken::new();
         cancel.cancel();
-        let (success, errors) = delete_paths(&[p(&a), p(&b)], true, &cancel);
-        assert_eq!((success, errors), (0, 0));
+        let (success, errors, permanent) = delete_paths(&[p(&a), p(&b)], true, &cancel);
+        assert_eq!((success, errors, permanent), (0, 0, 0));
         assert!(a.exists());
     }
 

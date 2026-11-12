@@ -36,7 +36,7 @@ const SEPARATOR: CellStyle = style(80, 80, 80, true); // dim separators
 /// an empty file is a single `[empty file]` line.
 #[must_use]
 pub fn get_preview_lines(path: &str, cancel: &CancelToken) -> Option<Vec<StyledLine>> {
-    let file = std::fs::File::open(path).ok()?;
+    let file = crate::fs::verbatim::open(path).ok()?;
     let mut data = Vec::with_capacity(MAX_BYTES);
     let mut limited = file.take(MAX_BYTES as u64);
     let mut chunk = [0u8; 8192];

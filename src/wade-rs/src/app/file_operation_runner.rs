@@ -4,11 +4,13 @@
 use std::sync::mpsc::Sender;
 
 use crate::fs::file_operations;
+use crate::fs::verbatim;
 use crate::input::{CancelToken, FileOperationCompleteEvent, InputEvent};
 
 /// One file operation for the runner thread, built by `paste_operation` or
-/// `delete_operation`. Returns (successes, errors, cancelled).
-pub type FileOperation = Box<dyn FnOnce(&CancelToken, &Sender<InputEvent>) -> (usize, usize, bool) + Send>;
+/// `delete_operation`. Returns (successes, errors, permanently deleted,
+/// cancelled).
+pub type FileOperation = Box<dyn FnOnce(&CancelToken, &Sender<InputEvent>) -> (usize, usize, usize, bool) + Send>;
 
 /// One background file operation at a time.
 pub struct FileOperationRunner {
@@ -39,7 +41,7 @@ impl FileOperationRunner {
         self.cancel = Some(cancel.clone());
 
         std::thread::spawn(move || {
-            let (success_count, error_count, was_cut) = operation(&cancel, &out);
+            let (success_count, error_count, permanent_count, was_cut) = operation(&cancel, &out);
 
             if cancel.is_cancelled() {
                 return;
@@ -48,6 +50,7 @@ impl FileOperationRunner {
             let _ = out.send(InputEvent::FileOperationComplete(FileOperationCompleteEvent {
                 success_count,
                 error_count,
+                permanent_count,
                 was_cut,
             }));
         });
@@ -92,7 +95,7 @@ pub fn paste_operation(
             // moves the link, so it is safe. A copy may fall back to copying
             // the link's contents, so it is not.
             let keeps_link = is_cut && file_operations::is_symlink(source_path);
-            let is_directory = std::fs::metadata(source_path).is_ok_and(|meta| meta.is_dir());
+            let is_directory = verbatim::is_dir(source_path);
             if is_directory && !keeps_link && file_operations::is_within(&destination, source_path) {
                 errors += 1;
                 continue;
@@ -114,7 +117,7 @@ pub fn paste_operation(
 
             let dest_path = std::path::Path::new(&destination).join(&dest_name).to_string_lossy().to_string();
 
-            if std::path::Path::new(&dest_path).symlink_metadata().is_ok() {
+            if verbatim::symlink_metadata(&dest_path).is_ok() {
                 if !overwrite {
                     errors += 1;
                     continue;
@@ -138,7 +141,7 @@ pub fn paste_operation(
             }
         }
 
-        (success, errors, is_cut)
+        (success, errors, 0, is_cut)
     })
 }
 
@@ -149,6 +152,7 @@ pub fn delete_operation(paths: Vec<String>, permanent: bool) -> FileOperation {
         let total = paths.len();
         let mut success = 0;
         let mut errors = 0;
+        let mut permanent_count = 0;
 
         for (i, path) in paths.iter().enumerate() {
             if cancel.is_cancelled() {
@@ -161,13 +165,14 @@ pub fn delete_operation(paths: Vec<String>, permanent: bool) -> FileOperation {
                 current_name: crate::app::dialogs::file_name_of(path),
             }));
 
-            let (item_success, item_errors) =
+            let (item_success, item_errors, item_permanent) =
                 file_operations::delete_paths(std::slice::from_ref(path), permanent, cancel);
             success += item_success;
             errors += item_errors;
+            permanent_count += item_permanent;
         }
 
-        (success, errors, false)
+        (success, errors, permanent_count, false)
     })
 }
 

@@ -117,7 +117,11 @@ backlog.
   trailing dots or spaces, locked, read-only and access-denied files
   (delete, rename, read), paste conflicts (read-only overwrite, paste into
   the source folder or its own subtree, directory over a file), hardlinks
-  and alternate data streams (listing and sizes)
+  and alternate data streams (listing and sizes). One of them,
+  `windows_case_sensitive_folder_is_detected`, only passes in an elevated
+  shell: `fsutil file setCaseSensitiveInfo` prints an access-denied error
+  and still exits 0 without elevation, so the flag never applies and the
+  test fails locally (CI's runner is elevated).
 - [ ] More native Windows checks that need no TUI:
   - PDF and Sixel previews end to end (`pdftopng`, `pdfinfo`, `ffprobe` and
     `mediainfo` are installed on this machine)

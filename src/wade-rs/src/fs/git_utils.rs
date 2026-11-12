@@ -6,6 +6,7 @@ use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 use super::directory_contents::GitFileStatus;
+use super::verbatim;
 use crate::input::CancelToken;
 
 const LOCAL_TIMEOUT_MS: u128 = 10_000;
@@ -36,7 +37,7 @@ pub fn find_repo_root(path: &str) -> Option<String> {
         return None;
     }
 
-    let dir_path = if std::path::Path::new(path).is_dir() {
+    let dir_path = if verbatim::is_dir(path) {
         std::path::PathBuf::from(path)
     } else {
         std::path::Path::new(path).parent()?.to_path_buf()
@@ -45,7 +46,7 @@ pub fn find_repo_root(path: &str) -> Option<String> {
     let mut dir = dir_path;
     loop {
         let git_path = dir.join(".git");
-        if git_path.is_dir() || git_path.is_file() {
+        if verbatim::is_dir(&git_path.to_string_lossy()) || verbatim::is_file(&git_path.to_string_lossy()) {
             return Some(dir.to_string_lossy().to_string());
         }
 
@@ -58,9 +59,10 @@ pub fn find_repo_root(path: &str) -> Option<String> {
 #[must_use]
 pub fn read_branch_name(repo_root: &str) -> Option<String> {
     let git_path = std::path::Path::new(repo_root).join(".git");
-    let head_path = if git_path.is_file() && !git_path.is_dir() {
+    let head_path = if verbatim::is_file(&git_path.to_string_lossy()) && !verbatim::is_dir(&git_path.to_string_lossy())
+    {
         // Worktree: .git is a file containing "gitdir: <path>"
-        let content = std::fs::read_to_string(&git_path).ok()?.trim().to_string();
+        let content = verbatim::read_to_string(&git_path.to_string_lossy()).ok()?.trim().to_string();
         let git_dir = content.strip_prefix("gitdir: ")?.trim().to_string();
         let git_dir = if std::path::Path::new(&git_dir).is_absolute() {
             std::path::PathBuf::from(git_dir)
@@ -72,7 +74,7 @@ pub fn read_branch_name(repo_root: &str) -> Option<String> {
         git_path.join("HEAD")
     };
 
-    let head_content = std::fs::read_to_string(head_path).ok()?.trim().to_string();
+    let head_content = verbatim::read_to_string(&head_path.to_string_lossy()).ok()?.trim().to_string();
     head_content.strip_prefix("ref: refs/heads/").map(str::to_string)
 }
 

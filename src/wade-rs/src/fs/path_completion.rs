@@ -1,5 +1,7 @@
 //! Path completion for the Go to path dialog.
 
+use super::verbatim;
+
 /// Expands a leading `~` to the user's home directory.
 #[must_use]
 pub fn expand_tilde(path: &str) -> String {
@@ -55,7 +57,7 @@ pub fn get_suggestion(input: &str, show_hidden: bool, show_system_files: bool) -
     // If input ends with a separator and the directory exists, suggest the
     // first child entry
     if input.ends_with('\\') || input.ends_with('/') {
-        if std::path::Path::new(&input).is_dir() {
+        if verbatim::is_dir(&input) {
             return first_entry(&input, show_hidden, show_system_files);
         }
 
@@ -65,7 +67,7 @@ pub fn get_suggestion(input: &str, show_hidden: bool, show_system_files: bool) -
     // Split into parent + partial name
     let path = std::path::Path::new(&input);
     let parent_dir = path.parent()?;
-    if !parent_dir.is_dir() {
+    if !verbatim::is_dir(&parent_dir.to_string_lossy()) {
         return None;
     }
 
@@ -78,7 +80,7 @@ pub fn get_suggestion(input: &str, show_hidden: bool, show_system_files: bool) -
     let skip_hidden = !show_hidden && !partial.starts_with('.');
     let skip_system = !show_system_files;
 
-    let Ok(entries) = std::fs::read_dir(parent_dir) else {
+    let Ok(entries) = verbatim::read_dir(&parent_dir.to_string_lossy()) else {
         return None;
     };
 
@@ -94,7 +96,7 @@ pub fn get_suggestion(input: &str, show_hidden: bool, show_system_files: bool) -
         }
 
         if name.to_ascii_lowercase().starts_with(&partial.to_ascii_lowercase()) {
-            return Some(entry.path().to_string_lossy().to_string());
+            return Some(entry.path());
         }
     }
 
@@ -104,7 +106,7 @@ pub fn get_suggestion(input: &str, show_hidden: bool, show_system_files: bool) -
 fn first_entry(dir_path: &str, show_hidden: bool, show_system_files: bool) -> Option<String> {
     let skip_system = !show_system_files;
 
-    let Ok(entries) = std::fs::read_dir(dir_path) else {
+    let Ok(entries) = verbatim::read_dir(dir_path) else {
         return None;
     };
 
@@ -119,7 +121,7 @@ fn first_entry(dir_path: &str, show_hidden: bool, show_system_files: bool) -> Op
             continue;
         }
 
-        return Some(entry.path().to_string_lossy().to_string());
+        return Some(entry.path());
     }
 
     None

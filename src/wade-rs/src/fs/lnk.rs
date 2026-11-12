@@ -49,7 +49,7 @@ struct Reader {
 impl Reader {
     fn open(path: &str) -> Result<Self> {
         Ok(Self {
-            file: BufReader::new(File::open(path)?),
+            file: BufReader::new(crate::fs::verbatim::open(path)?),
             position: 0,
         })
     }

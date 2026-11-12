@@ -122,7 +122,10 @@ mod windows {
     }
 
     fn open_reparse_point(path: &str) -> Option<Handle> {
-        let wide: Vec<u16> = path.encode_utf16().chain(std::iter::once(0)).collect();
+        // A link whose name Win32 resolves elsewhere (a junction called `NUL`)
+        // is only reached through the verbatim spelling
+        let wide: Vec<u16> =
+            crate::fs::verbatim::reach_spelling(path).encode_utf16().chain(std::iter::once(0)).collect();
         let handle = unsafe {
             CreateFileW(
                 wide.as_ptr(),
