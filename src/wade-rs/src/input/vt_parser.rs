@@ -250,7 +250,7 @@ impl VtParser {
 
         // xterm modifier: 1 + flags (Shift=1, Alt=2, Ctrl=4)
         let modifiers = if param2 > 0 { param2 - 1 } else { 0 };
-        let (shift, alt, ctrl) = (modifiers & 1 != 0, modifiers & 2 != 0, modifiers & 4 != 0);
+        let (shift, alt, control) = (modifiers & 1 != 0, modifiers & 2 != 0, modifiers & 4 != 0);
 
         let csi = match final_byte {
             b'A' => ConsoleKey::UpArrow,
@@ -289,7 +289,7 @@ impl VtParser {
             _ => return i,
         };
 
-        events.push(key(csi, '\0', shift, alt, ctrl));
+        events.push(key(csi, '\0', shift, alt, control));
         i
     }
 }
@@ -322,23 +322,17 @@ fn parse_csi_u(params: &[u8]) -> Option<InputEvent> {
     let code = parse_decimal(code_text)?;
 
     // `mods` is 1 + the modifier bits; an absent or empty field means none
-    let (bits, event) = match fields.next() {
-        None => (0, 1),
-        Some(field) => {
-            let (mods_text, event_text) = split_once(field, b':');
-            let bits = if mods_text.is_empty() { 0 } else { parse_decimal(mods_text)?.checked_sub(1)? };
-            let event = if event_text.is_empty() { 1 } else { parse_decimal(event_text)? };
-            (bits, event)
-        }
-    };
+    let (mods_text, event_text) = split_once(fields.next().unwrap_or_default(), b':');
+    let modifiers = if mods_text.is_empty() { 0 } else { parse_decimal(mods_text)?.checked_sub(1)? };
+    let event = if event_text.is_empty() { 1 } else { parse_decimal(event_text)? };
 
     // 3 is a release, which wade has no use for; Super, Hyper and Meta are
     // modifiers it cannot represent
-    if event == 3 || (bits & (8 | 16 | 32)) != 0 {
+    if event == 3 || (modifiers & (8 | 16 | 32)) != 0 {
         return None;
     }
 
-    let (shift, alt, control) = (bits & 1 != 0, bits & 2 != 0, bits & 4 != 0);
+    let (shift, alt, control) = (modifiers & 1 != 0, modifiers & 2 != 0, modifiers & 4 != 0);
 
     let (console_key, mut key_char) = match code {
         13 | 0xE001 => (ConsoleKey::Enter, '\r'),
