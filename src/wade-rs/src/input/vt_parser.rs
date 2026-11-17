@@ -226,6 +226,20 @@ impl VtParser {
         let params = &data[..i];
         i += 1;
 
+        // A key in the extended (`CSI u`) form. Terminals send it unprompted:
+        // iTerm2's per-profile "Report modifiers using CSI u", xterm with
+        // `formatOtherKeys`, tmux with `extended-keys` in the CSI-u format,
+        // and flags a program left pushed when it crashed. wade never pushes
+        // or pops the kitty keyboard protocol: on Windows the input path reads
+        // key records and ConPTY's win32-input-mode already carries the full
+        // detail, and on Unix the protocol would only add Shift+Enter,
+        // Ctrl+Enter and a Ctrl+I / Ctrl+M vocabulary the keymap does not
+        // bind, plus removal of the lone-ESC wait.
+        if final_byte == b'u' {
+            events.extend(parse_csi_u(params));
+            return i;
+        }
+
         // SGR mouse: ESC [ < Cb ; Cx ; Cy M/m
         if params.first() == Some(&b'<') {
             events.push(parse_sgr_mouse(&params[1..], final_byte));
@@ -297,6 +311,92 @@ fn parse_csi_params(data: &[u8]) -> (i32, i32) {
     }
 
     if in_second { (param1, current) } else { (current, 0) }
+}
+
+/// A key reported in the extended form: `code[:alt[:base]] [;mods[:event]]
+/// [;text]`. `None` drops the sequence: a malformed parameter, a release
+/// event, an unmapped key or a modifier combination wade cannot represent.
+fn parse_csi_u(params: &[u8]) -> Option<InputEvent> {
+    let mut fields = params.split(|&b| b == b';');
+    let (code_text, _) = split_once(fields.next()?, b':');
+    let code = parse_decimal(code_text)?;
+
+    // `mods` is 1 + the modifier bits; an absent or empty field means none
+    let (bits, event) = match fields.next() {
+        None => (0, 1),
+        Some(field) => {
+            let (mods_text, event_text) = split_once(field, b':');
+            let bits = if mods_text.is_empty() { 0 } else { parse_decimal(mods_text)?.checked_sub(1)? };
+            let event = if event_text.is_empty() { 1 } else { parse_decimal(event_text)? };
+            (bits, event)
+        }
+    };
+
+    // 3 is a release, which wade has no use for; Super, Hyper and Meta are
+    // modifiers it cannot represent
+    if event == 3 || (bits & (8 | 16 | 32)) != 0 {
+        return None;
+    }
+
+    let (shift, alt, control) = (bits & 1 != 0, bits & 2 != 0, bits & 4 != 0);
+
+    let (console_key, mut key_char) = match code {
+        13 | 0xE001 => (ConsoleKey::Enter, '\r'),
+        9 | 0xE002 => (ConsoleKey::Tab, '\t'),
+        27 | 0xE000 => (ConsoleKey::Escape, '\x1b'),
+        127 | 0xE003 => (ConsoleKey::Backspace, '\x7f'),
+        0xE004 => (ConsoleKey::Insert, '\0'),
+        0xE005 => (ConsoleKey::Delete, '\0'),
+        0xE006 => (ConsoleKey::LeftArrow, '\0'),
+        0xE007 => (ConsoleKey::RightArrow, '\0'),
+        0xE008 => (ConsoleKey::UpArrow, '\0'),
+        0xE009 => (ConsoleKey::DownArrow, '\0'),
+        0xE00A => (ConsoleKey::PageUp, '\0'),
+        0xE00B => (ConsoleKey::PageDown, '\0'),
+        0xE00C => (ConsoleKey::Home, '\0'),
+        0xE00D => (ConsoleKey::End, '\0'),
+        0xE014..=0xE027 => (ConsoleKey(ConsoleKey::F1.vk() + (code - 0xE014) as u16), '\0'),
+        0x0000..=0x007F => (char_to_console_key(code as u8), char::from_u32(code)?),
+        0xE000..=0xF8FF | 0xF0000..=0xFFFFD | 0x100000..=0x10FFFD => return None,
+        _ => (ConsoleKey(0), char::from_u32(code)?),
+    };
+
+    // Ctrl+<letter> carries its control byte, as the legacy encoding and the
+    // Windows console do. Alt means AltGr, which types a character.
+    if control && !alt && (0x20..=0x7E).contains(&code) {
+        key_char = char::from_u32(code & 0x1F)?;
+    } else if shift && !control && (u32::from(b'a')..=u32::from(b'z')).contains(&code) {
+        // The kitty protocol reports the unshifted code point with Shift as a
+        // modifier; xterm, tmux and iTerm2 report the shifted one already
+        key_char = char::from_u32(code - 32)?;
+    }
+
+    Some(key(console_key, key_char, shift, alt, control))
+}
+
+/// The two halves of `data` around its first `sep`, the second empty when
+/// there is none.
+fn split_once(data: &[u8], sep: u8) -> (&[u8], &[u8]) {
+    match data.iter().position(|&b| b == sep) {
+        Some(index) => (&data[..index], &data[index + 1..]),
+        None => (data, &[]),
+    }
+}
+
+/// The decimal value of `data`: `None` when it is empty, carries a non-digit
+/// or does not fit in a `u32`.
+fn parse_decimal(data: &[u8]) -> Option<u32> {
+    let mut value = 0u32;
+
+    for &b in data {
+        if !b.is_ascii_digit() {
+            return None;
+        }
+
+        value = value.checked_mul(10)?.checked_add(u32::from(b - b'0'))?;
+    }
+
+    (!data.is_empty()).then_some(value)
 }
 
 /// An SGR mouse report (`ESC [ < b ; x ; y M/m`).
@@ -455,6 +555,115 @@ mod tests {
     }
 
     #[test]
+    fn csi_u_named_keys_and_text() {
+        for (seq, expected) in [
+            (&b"\x1b[97u"[..], (ConsoleKey::A, 'a')),
+            (b"\x1b[122u", (ConsoleKey::Z, 'z')),
+            (b"\x1b[65u", (ConsoleKey::A, 'A')),
+            (b"\x1b[48u", (ConsoleKey::D0, '0')),
+            (b"\x1b[32u", (ConsoleKey::Spacebar, ' ')),
+            (b"\x1b[46u", (ConsoleKey::OemPeriod, '.')),
+            (b"\x1b[13u", (ConsoleKey::Enter, '\r')),
+            (b"\x1b[9u", (ConsoleKey::Tab, '\t')),
+            (b"\x1b[27u", (ConsoleKey::Escape, '\x1b')),
+            (b"\x1b[127u", (ConsoleKey::Backspace, '\x7f')),
+            ("\x1b[233u".as_bytes(), (ConsoleKey(0), 'é')),
+            ("\x1b[128512u".as_bytes(), (ConsoleKey(0), '😀')),
+        ] {
+            assert_eq!(keys(&parse(seq)), [(expected.0, expected.1, false)], "{seq:?}");
+        }
+    }
+
+    #[test]
+    fn csi_u_extended_keys() {
+        for (seq, expected) in [
+            (&b"\x1b[57352u"[..], ConsoleKey::UpArrow),
+            (b"\x1b[57349u", ConsoleKey::Delete),
+            (b"\x1b[57348u", ConsoleKey::Insert),
+            (b"\x1b[57364u", ConsoleKey::F1),
+            (b"\x1b[57383u", ConsoleKey::F20),
+        ] {
+            assert_eq!(keys(&parse(seq)), [(expected, '\0', false)], "{seq:?}");
+        }
+
+        // Keypad and F21 and above are code points wade has no key for
+        assert!(parse(b"\x1b[57399u").is_empty());
+        assert!(parse(b"\x1b[57384u").is_empty());
+    }
+
+    #[test]
+    fn csi_u_modifiers() {
+        // Ctrl+I is its own key with a control byte, not Tab
+        let key = single_key(b"\x1b[105;5u");
+        assert_eq!((key.key, key.key_char, key.control), (ConsoleKey::I, '\t', true));
+        assert_ne!(key.key, ConsoleKey::Tab);
+
+        let key = single_key(b"\x1b[97;5u");
+        assert_eq!((key.key, key.key_char, key.control), (ConsoleKey::A, '\u{1}', true));
+
+        // Ctrl+[ is its own key, not Escape
+        let key = single_key(b"\x1b[91;5u");
+        assert_eq!((key.key, key.key_char, key.control), (ConsoleKey(0), '\x1b', true));
+
+        // Shift with an unshifted code point (kitty) and with a shifted one
+        // (xterm, tmux, iTerm2) both type the upper-case letter
+        for seq in [&b"\x1b[97;2u"[..], b"\x1b[65;2u"] {
+            let key = single_key(seq);
+            assert_eq!((key.key, key.key_char, key.shift, key.control), (ConsoleKey::A, 'A', true, false), "{seq:?}");
+        }
+
+        // AltGr arrives as Ctrl+Alt and still types its character
+        let key = single_key(b"\x1b[97;7u");
+        assert_eq!((key.key_char, key.control, key.alt), ('a', true, true));
+    }
+
+    #[test]
+    fn csi_u_lock_modifiers_are_ignored() {
+        for mods in [65, 129] {
+            let seq = format!("\x1b[97;{mods}u");
+            assert_eq!(keys(&parse(seq.as_bytes())), [(ConsoleKey::A, 'a', false)], "{seq}");
+        }
+    }
+
+    #[test]
+    fn csi_u_unsupported_modifiers_are_dropped() {
+        // Super, Hyper and Meta, alone and with the modifiers wade knows
+        for mods in [9, 17, 33, 13, 25, 41] {
+            let seq = format!("\x1b[97;{mods}u");
+            assert!(parse(seq.as_bytes()).is_empty(), "{seq}");
+        }
+    }
+
+    #[test]
+    fn csi_u_event_types_and_extra_fields() {
+        assert!(parse(b"\x1b[97;1:3u").is_empty(), "release");
+        assert_eq!(single_key(b"\x1b[97;1:2u").key, ConsoleKey::A, "repeat is a press");
+        assert_eq!(single_key(b"\x1b[97;;97u").key, ConsoleKey::A, "the text field is ignored");
+        assert_eq!(single_key(b"\x1b[97:3;1:1u").key, ConsoleKey::A, "the alternate-key field is ignored");
+        assert_eq!(single_key(b"\x1b[97;5;97u").key_char, '\u{1}', "the text field does not override the control byte");
+    }
+
+    #[test]
+    fn csi_u_invalid_parameters_are_dropped() {
+        for seq in [
+            &b"\x1b[u"[..],
+            b"\x1b[;5u",
+            b"\x1b[<1u",
+            b"\x1b[>4u",
+            b"\x1b[?u",
+            b"\x1b[97;=u",
+            b"\x1b[97;0u",
+            b"\x1b[55296u",
+            b"\x1b[1114112u",
+            b"\x1b[4294967296u",
+            b"\x1b[99999999999u",
+            b"\x1b[97;99999999999u",
+        ] {
+            assert!(parse(seq).is_empty(), "{seq:?}");
+        }
+    }
+
+    #[test]
     fn standalone_escape_and_specials() {
         assert_eq!(single_key(&[0x1B]).key, ConsoleKey::Escape);
         assert_eq!(single_key(&[0x0D]).key, ConsoleKey::Enter);
@@ -555,6 +764,7 @@ mod tests {
             (b"\x1b[1;", b"5C"),
             (b"\x1bO", b"B"),
             (b"\x1b[<0;10", b";5M"),
+            (b"\x1b[97;5", b"u"),
             (b"\xf0\x9f", b"\x98\x80"),
         ] {
             assert!(parser.parse(first).is_empty(), "{first:?} is held back");

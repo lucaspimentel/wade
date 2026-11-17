@@ -4,6 +4,7 @@
 
 ### Fixed
 - Windows: files and folders whose name Win32 reads as a device (`NUL`, `CON`, `COM1`, ...) or ends in a dot or space can be opened, previewed, copied, renamed and deleted; Delete deletes such an item permanently (the Recycle Bin cannot record the name), says so in the confirmation and in the "(1 permanently)" completion message, and no longer half-deletes a folder that holds one
+- Unix: a terminal that reports keys as `CSI u` (iTerm2's per-profile "Report modifiers using CSI u", xterm with `formatOtherKeys`, tmux `extended-keys` in the CSI-u format, or flags a crashed program left pushed) no longer loses those keystrokes: they are decoded with Shift, Alt and Ctrl, and Ctrl+[ , Ctrl+I and Ctrl+M no longer act as Escape, Tab and Enter, matching the Windows console; xterm's default `CSI 27;mod;code~` form and tmux's `xterm` format are still not decoded
 
 ## [2.2.0] - 2026-11-02
 
