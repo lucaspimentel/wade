@@ -456,8 +456,7 @@ impl App {
             self.reload_active_provider(&path, true);
         }
 
-        crate::app::clear_screen();
-        self.request_full_redraw = true;
+        self.request_clear_screen = true;
     }
 
     /// Reloads the preview for the resized pane.

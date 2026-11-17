@@ -142,6 +142,7 @@ impl TerminalSetup {
 
         self.restored = true;
         write_out(&[
+            crate::ansi::END_SYNCHRONIZED_UPDATE,
             crate::ansi::RESET_ATTRIBUTES,
             crate::ansi::SHOW_CURSOR,
             crate::ansi::LEAVE_ALTERNATE_SCREEN,

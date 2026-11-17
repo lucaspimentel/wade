@@ -77,6 +77,7 @@ impl TerminalSetup {
 
         self.restored = true;
         write_out(&[
+            crate::ansi::END_SYNCHRONIZED_UPDATE,
             crate::ansi::DISABLE_BRACKETED_PASTE,
             crate::ansi::DISABLE_SGR_MOUSE_MODE,
             crate::ansi::DISABLE_MOUSE_REPORTING,

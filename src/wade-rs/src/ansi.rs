@@ -41,6 +41,14 @@ fn push_i32(out: &mut String, value: i32) {
 }
 
 pub const CLEAR_SCREEN: &str = "\x1b[2J";
+/// Begin a synchronized update (DECSET 2026): the terminal holds its
+/// presentation until the matching end sequence, so a frame reaches the
+/// screen in one go. No capability query is needed, since an unknown private
+/// mode is ignored (and DECRQM inside tmux answers from tmux's own state, not
+/// the client's).
+pub const BEGIN_SYNCHRONIZED_UPDATE: &str = "\x1b[?2026h";
+/// End a synchronized update (DECRST 2026).
+pub const END_SYNCHRONIZED_UPDATE: &str = "\x1b[?2026l";
 pub const ENTER_ALTERNATE_SCREEN: &str = "\x1b[?1049h";
 pub const LEAVE_ALTERNATE_SCREEN: &str = "\x1b[?1049l";
 pub const HIDE_CURSOR: &str = "\x1b[?25l";

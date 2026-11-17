@@ -582,3 +582,13 @@ None. Phase 9 closed the last temporary entries.
   `none` uses ASCII, so hiding icons keeps git status. Nerd Fonts falls
   back to the category glyph for extensions missing from the C# table. The
   file finder honors the set (C# always drew Nerd Fonts icons there).
+- **Frames are bracketed as synchronized updates (Rust-only).** The cell
+  diff, a requested full clear and the image payload are written between
+  `CSI ?2026h` and `CSI ?2026l`, and both restore paths emit `CSI ?2026l`
+  unconditionally. C# wrote the clear, the diff and the image as separate
+  writes and had no bracket. No capability query is sent: an unknown
+  private mode is ignored, and DECRQM inside tmux would answer from tmux's
+  own state, not the client's. `ScreenBuffer::serialize` and the goldens
+  are unchanged, since the bracket lives in the write path. A clear also
+  forces a full repaint, so the clear and the repaint it needs reach the
+  screen as one presentation.

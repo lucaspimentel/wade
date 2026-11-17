@@ -641,6 +641,29 @@ fn termios_of(master: &dyn MasterPty) -> libc::termios {
     termios
 }
 
+/// A requested clear and its full repaint go out inside one synchronized
+/// update: the frame's bytes sit between a begin and a later end bracket.
+/// Unix only: ConPTY need not pass the private mode through.
+#[cfg(unix)]
+#[test]
+fn a_clear_and_its_repaint_sit_between_synchronized_update_brackets() {
+    let (home, root) = fixture("sync-update");
+    let mut wade = Session::start(&home, &root, &[]);
+    wade.wait_for_text("notes.txt");
+
+    // `[` toggles the parent pane, which asks for a clear
+    wade.send_keys("[");
+    wade.wait_for_output("\x1b[?2026h\x1b[2J");
+
+    let raw = wade.raw_text();
+    let begin = raw.rfind("\x1b[?2026h\x1b[2J").expect("a bracketed clear");
+    let end = raw[begin..].find("\x1b[?2026l").map(|i| begin + i).expect("an end bracket after it");
+    assert!(raw[begin..end].contains("notes.txt"), "the repaint is inside the bracket");
+
+    wade.send("q");
+    assert!(wade.wait_for_exit().success());
+}
+
 /// Raw mode while wade runs; after `q` the terminal modes are back and the
 /// exit sequence turns off mouse and paste, shows the cursor, leaves the
 /// alternate screen and restores the title, in that order.
@@ -660,7 +683,15 @@ fn quit_restores_raw_mode_and_sends_the_exit_sequence() {
     assert_eq!(after.c_lflag & (libc::ICANON | libc::ECHO), libc::ICANON | libc::ECHO, "modes restored");
 
     let raw = wade.raw_text();
-    let order = ["\x1b[?2004l", "\x1b[?1006l", "\x1b[?1000l", "\x1b[?25h", "\x1b[?1049l", "\x1b]0;\x07\x1b[23;0t"];
+    let order = [
+        "\x1b[?2026l",
+        "\x1b[?2004l",
+        "\x1b[?1006l",
+        "\x1b[?1000l",
+        "\x1b[?25h",
+        "\x1b[?1049l",
+        "\x1b]0;\x07\x1b[23;0t",
+    ];
     let positions: Vec<usize> =
         order.iter().map(|part| raw.rfind(part).unwrap_or_else(|| panic!("{part:?} missing"))).collect();
     assert!(positions.is_sorted(), "exit sequence order {positions:?}");

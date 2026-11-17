@@ -1669,8 +1669,12 @@ fn opens_the_full_screen_preview_with_the_right_pane_hidden(open: crate::input::
 
     press(&mut app, ch('Q'));
     assert_eq!(app.input_mode, InputMode::ExpandedPreview, "Shift+Q is not q");
+    app.request_clear_screen = false;
+    app.request_full_redraw = false;
     press(&mut app, ch('q'));
     assert_eq!(app.input_mode, InputMode::Normal);
+    assert!(app.request_clear_screen, "leaving the full-screen preview clears the screen");
+    assert!(!app.request_full_redraw);
     assert!(!app.preview_pane_enabled, "the right pane stays hidden");
     assert!(app.preview.applicable_providers.is_none(), "nothing left over for the next file");
     assert!(!frame_has(&mut app, "Title"));

@@ -57,3 +57,9 @@ was off by the same factor.
   them back into key records: `ReadConsoleInput` gets full key detail as is.
   A full VT input switch would only add bracketed paste, so it is not planned
   (TODO.md, "Windows Terminal VT input mode").
+- Windows Terminal 1.24+ implements synchronized output (`CSI ?2026h` /
+  `CSI ?2026l`, PR microsoft/terminal#18826) and presents everything
+  between the pair at once, and ConPTY passes it through. wade brackets
+  each frame with it and sends no query, since an unknown private mode is
+  ignored; the restore paths write the closing sequence unconditionally.
+  Older consoles ignore the pair.

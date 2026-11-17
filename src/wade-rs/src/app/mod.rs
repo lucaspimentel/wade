@@ -171,6 +171,10 @@ pub struct App {
     /// Set by `handle_file_system_changed`: the next frame repaints the
     /// whole screen.
     request_full_redraw: bool,
+    /// Set by a resize or a pane toggle: the next frame clears the screen
+    /// before repainting it. `write_frame` owns the clear, so the clear and
+    /// the repaint it needs go out as one bracketed write.
+    request_clear_screen: bool,
     /// Ctrl+F file finder state while it is open.
     pub(crate) file_finder: Option<crate::app::file_finder::FileFinderState>,
     /// The finder's query when it last closed; it reopens with it.
@@ -275,6 +279,7 @@ impl App {
                 OsClipboard::System
             },
             request_full_redraw: false,
+            request_clear_screen: false,
             file_finder: None,
             last_finder_query: String::new(),
             file_op_label: String::new(),
@@ -426,12 +431,13 @@ impl App {
             // Render
             buffer.clear();
             self.render(&mut buffer);
-            flush_buffer(&mut buffer);
 
-            // Image data goes out after the flush, bypassing the cell grid
-            if let Some(output) = self.take_pending_image_output() {
-                write_raw(&output);
-            }
+            // One write per frame, between the synchronized-update brackets.
+            // The lock is released at the end of the statement, not held across
+            // the blocking wait below
+            let pending_clear = std::mem::take(&mut self.request_clear_screen);
+            let image = self.take_pending_image_output();
+            write_frame(&mut std::io::stdout().lock(), &mut buffer, pending_clear, image.as_deref());
 
             // Wait for next input event (pump thread feeds the queue; loader
             // threads send into the same queue)
@@ -469,9 +475,8 @@ impl App {
 
         // Free the kitty image still shown
         self.preview.set_image(None);
-        if let Some(output) = self.take_pending_image_output() {
-            write_raw(&output);
-        }
+        let image = self.take_pending_image_output();
+        write_frame(&mut std::io::stdout().lock(), &mut buffer, false, image.as_deref());
 
         terminal.restore();
 
@@ -584,7 +589,7 @@ impl App {
             self.last_height = resize.height;
             buffer.resize(resize.width, resize.height);
             self.recalc_layout();
-            clear_screen();
+            self.request_clear_screen = true;
 
             // A resized tmux pane may have moved
             #[cfg(unix)]
@@ -718,16 +723,13 @@ impl App {
             A::ToggleParentPane => {
                 self.parent_pane_enabled = !self.parent_pane_enabled;
                 self.recalc_layout();
-                clear_screen();
-                // The cleared screen must be repainted fully
-                self.request_full_redraw = true;
+                self.request_clear_screen = true;
             }
             A::TogglePreviewPane => {
                 self.preview_pane_enabled = !self.preview_pane_enabled;
                 self.recalc_layout();
-                clear_screen();
+                self.request_clear_screen = true;
                 self.clear_preview_cache();
-                self.request_full_redraw = true;
             }
             // s/S change the current directory's saved sort; the
             // config sort stays the default for the others
@@ -2396,29 +2398,36 @@ fn spawn_input_pump(
     })
 }
 
-pub(crate) fn clear_screen() {
-    print!("{}", crate::ansi::CLEAR_SCREEN);
-}
-
-/// `ScreenBuffer.WriteRaw`: straight to stdout, flushed.
-fn write_raw(data: &str) {
-    use std::io::Write;
-    let stdout = std::io::stdout();
-    let mut lock = stdout.lock();
-    let _ = lock.write_all(data.as_bytes());
-    let _ = lock.flush();
-}
-
-fn flush_buffer(buffer: &mut ScreenBuffer) {
-    use std::io::Write;
-    let mut out = String::new();
-    buffer.serialize(&mut out);
-    if !out.is_empty() {
-        let stdout = std::io::stdout();
-        let mut lock = stdout.lock();
-        let _ = lock.write_all(out.as_bytes());
-        let _ = lock.flush();
+/// Writes one frame as a synchronized update: the requested clear, the cell
+/// diff, then the image payload the cell grid cannot carry. Writes nothing,
+/// not even the brackets, when there is nothing to show.
+fn write_frame(out: &mut impl std::io::Write, buffer: &mut ScreenBuffer, pending_clear: bool, image: Option<&str>) {
+    if pending_clear {
+        // The clear owns its repaint: every cell goes out again
+        buffer.force_full_redraw();
     }
+
+    let mut diff = String::new();
+    buffer.serialize(&mut diff);
+
+    if !pending_clear && diff.is_empty() && image.is_none() {
+        return;
+    }
+
+    let _ = out.write_all(crate::ansi::BEGIN_SYNCHRONIZED_UPDATE.as_bytes());
+
+    if pending_clear {
+        let _ = out.write_all(crate::ansi::CLEAR_SCREEN.as_bytes());
+    }
+
+    let _ = out.write_all(diff.as_bytes());
+
+    if let Some(image) = image {
+        let _ = out.write_all(image.as_bytes());
+    }
+
+    let _ = out.write_all(crate::ansi::END_SYNCHRONIZED_UPDATE.as_bytes());
+    let _ = out.flush();
 }
 
 /// The note a completion notification adds for items the Recycle Bin or Trash
@@ -2447,9 +2456,114 @@ fn recycle_warning(targets: &[String]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{App, AppAction, AppConfig, InputMode, permanently_deleted_note, recycle_warning};
+    use super::{App, AppAction, AppConfig, InputMode, permanently_deleted_note, recycle_warning, write_frame};
     use crate::fs::DriveMediaType;
     use crate::input::FileSystemChangedEvent;
+
+    /// Records what a frame wrote and how often it flushed.
+    #[derive(Default)]
+    struct FrameSink {
+        bytes: Vec<u8>,
+        flushes: usize,
+    }
+
+    impl std::io::Write for FrameSink {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.bytes.extend_from_slice(buf);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            self.flushes += 1;
+            Ok(())
+        }
+    }
+
+    /// A buffer whose every cell holds `ch`.
+    fn filled_buffer(width: i32, height: i32, ch: char) -> crate::screen::ScreenBuffer {
+        let mut buffer = crate::screen::ScreenBuffer::new(width, height);
+
+        for row in 0..height {
+            for col in 0..width {
+                buffer.put(row, col, ch, crate::screen::CellStyle::default());
+            }
+        }
+
+        buffer
+    }
+
+    #[test]
+    fn an_empty_frame_writes_nothing_at_all() {
+        let mut buffer = crate::screen::ScreenBuffer::new(4, 2);
+        let mut sink = FrameSink::default();
+        write_frame(&mut sink, &mut buffer, false, None);
+        assert!(sink.bytes.is_empty(), "{:?}", String::from_utf8_lossy(&sink.bytes));
+        assert_eq!(sink.flushes, 0, "an empty frame does not even flush");
+    }
+
+    #[test]
+    fn a_pending_clear_is_bracketed_and_repaints_every_cell() {
+        let mut buffer = filled_buffer(4, 2, 'x');
+        let mut sink = FrameSink::default();
+
+        // The first frame consumes the diff, so no cell is dirty any more
+        write_frame(&mut sink, &mut buffer, false, None);
+        assert!(!sink.bytes.is_empty());
+
+        let mut sink = FrameSink::default();
+        write_frame(&mut sink, &mut buffer, true, None);
+
+        let text = String::from_utf8(sink.bytes).unwrap();
+        let rest = text.strip_prefix(crate::ansi::BEGIN_SYNCHRONIZED_UPDATE).expect("begin bracket");
+        let rest = rest.strip_prefix(crate::ansi::CLEAR_SCREEN).expect("the clear follows the bracket");
+        assert!(rest.ends_with(crate::ansi::END_SYNCHRONIZED_UPDATE));
+        assert_eq!(rest.matches('x').count(), 8, "the clear repaints every cell");
+        assert_eq!(sink.flushes, 1);
+    }
+
+    #[test]
+    fn a_diff_without_a_clear_is_bracketed_once() {
+        let mut buffer = filled_buffer(2, 1, 'x');
+        let mut sink = FrameSink::default();
+        write_frame(&mut sink, &mut buffer, false, None);
+
+        let text = String::from_utf8(sink.bytes).unwrap();
+        assert_eq!(text.matches(crate::ansi::BEGIN_SYNCHRONIZED_UPDATE).count(), 1);
+        assert_eq!(text.matches(crate::ansi::END_SYNCHRONIZED_UPDATE).count(), 1);
+        assert!(!text.contains(crate::ansi::CLEAR_SCREEN));
+        assert_eq!(sink.flushes, 1);
+
+        // The diff is consumed: the next frame has nothing to write
+        let mut sink = FrameSink::default();
+        write_frame(&mut sink, &mut buffer, false, None);
+        assert_eq!(sink.flushes, 0);
+    }
+
+    #[test]
+    fn the_image_lands_after_the_diff_and_before_the_end_bracket() {
+        let mut buffer = filled_buffer(2, 1, 'x');
+        let mut sink = FrameSink::default();
+        write_frame(&mut sink, &mut buffer, false, Some("<image>"));
+
+        let text = String::from_utf8(sink.bytes).unwrap();
+        let diff_at = text.find('x').expect("the diff");
+        let image_at = text.find("<image>").expect("the image");
+        let end_at = text.find(crate::ansi::END_SYNCHRONIZED_UPDATE).expect("the end bracket");
+        assert!(diff_at < image_at && image_at < end_at, "{text:?}");
+        assert_eq!(sink.flushes, 1);
+    }
+
+    #[test]
+    fn an_image_alone_is_bracketed() {
+        let mut buffer = crate::screen::ScreenBuffer::new(2, 1);
+        let mut sink = FrameSink::default();
+        write_frame(&mut sink, &mut buffer, false, Some("<image>"));
+
+        let expected =
+            format!("{}<image>{}", crate::ansi::BEGIN_SYNCHRONIZED_UPDATE, crate::ansi::END_SYNCHRONIZED_UPDATE);
+        assert_eq!(String::from_utf8(sink.bytes).unwrap(), expected);
+        assert_eq!(sink.flushes, 1);
+    }
 
     #[test]
     fn only_deletes_windows_cannot_recycle_add_the_note() {
@@ -2769,7 +2883,7 @@ mod tests {
     }
 
     #[test]
-    fn toggling_the_parent_pane_requests_a_full_redraw() {
+    fn toggling_the_parent_pane_requests_a_clear_screen() {
         let mut app = App::new(
             AppConfig {
                 git_status_enabled: false,
@@ -2778,7 +2892,22 @@ mod tests {
             super::StartOptions::default(),
         );
         app.dispatch(AppAction::ToggleParentPane);
-        assert!(app.request_full_redraw);
+        assert!(app.request_clear_screen);
+        assert!(!app.request_full_redraw, "the clear repaints fully on its own");
+    }
+
+    #[test]
+    fn toggling_the_preview_pane_requests_a_clear_screen() {
+        let mut app = App::new(
+            AppConfig {
+                git_status_enabled: false,
+                ..AppConfig::default()
+            },
+            super::StartOptions::default(),
+        );
+        app.dispatch(AppAction::TogglePreviewPane);
+        assert!(app.request_clear_screen);
+        assert!(!app.request_full_redraw);
     }
 
     fn changed(app: &App, full_refresh: bool) -> FileSystemChangedEvent {
