@@ -1,174 +1,46 @@
 # TODO
 
-## Rust port (src/wade-rs)
+## Manual checks
 
-The port to Rust is complete and the C# tree was deleted on 2026-10-11 (see
-`docs/rust-port-plan.md` for history). The unchecked items below are the
-backlog.
+The Rust port replaced the C# tree on 2026-10-11 (`docs/rust-port-plan.md` has the history). What is
+left is the checks that need a real machine or a real terminal.
 
-- [x] Phases 0-9: every C# feature ported; `src/wade-rs/KNOWN_DEVIATIONS.md`
-  lists only accepted differences
-- [x] Phase 10a: golden sweep (all goldens regenerated from C# with no diff;
-  renderer scenarios 041-045 for link/junction/app-alias/cloud/marked rows,
-  inline directory sizes and pane borders; `--version` matches C#)
-- [x] Phase 10b: `install-local.ps1` and `release.yml` build the Rust binary
-  (same release asset names, so `install-remote.ps1` and Scoop are unchanged);
-  `install-local-csharp.ps1` installs the C# build until the cutover
-- [x] Run the test suites natively on Windows (the port was developed on
-  Linux with Wine): `cargo test` and
-  `dotnet test Wade.slnx` pass, including the three Wine-only symlink/git
-  tests; `renderer_frames` (incl. config-dialog
-  goldens 015, 016) passes
-- [x] Native Windows verification of the library code (no TUI): junction, app
-  alias and OneDrive detection, SSD detection, exe/msi/docx/nupkg/mp4
-  metadata, clipboard round trip with PowerShell/WinForms (copy and cut),
-  Recycle Bin delete, ShellExecuteEx, the file watcher, symlinks, junctions,
-  system/hidden filtering on `C:\`, git status with CRLF, long and UNC
-  paths, `install-local-rust.ps1` (built and installed under a temporary
-  home, so your real `~/.local/bin` was not touched), config parity (`--show-config` on 8 config
-  files), and a C# vs Rust diff of listings and sort orders over about 3,000
-  real directories, previews and metadata for 470 real and generated files,
-  the file finder over three large trees (identical entries and ranking for
-  42 queries), and git status over 35 repos. Fixed: directory-symlink delete, relative symlinks shown
-  as broken, copying directory links with links not preserved, sort by
-  modified time ignoring seconds, archive preview of tiny or empty zip files
-  (now "[invalid archive]" like .NET 10), git status for file names with
-  non-ASCII characters (both versions), and the cloud download and
-  `RECALL_ON_OPEN` bugs
-- [x] Bug: sorting stuck on Name/ascending in the Rust port regardless of
-  config or `s`/`S` keys (found during the trial). Fixed: `get_entries` now
-  sorts with `sort_mode`/`sort_ascending` like C# `LoadEntries`, and cycling
-  with `s` wraps from Extension back to Name (it stuck on Extension)
-- [x] Bug: size column not populated (found during the trial). Fixed: the
-  center pane now receives the inline directory sizes (`App::render` passed
-  `None`), and finishing the size scan no longer empties the App's copy
-  (C# shares one dictionary between `_inlineDirSizes` and `DirSizes`)
-- [x] Test coverage review: every `AppConfig` setting is tested for its
-  effect at startup and from the config dialog (`app/settings_tests.rs`);
-  keys, mouse, paste and dialogs are driven through `App::handle_event`
-  (`app/key_tests.rs`, including git stage/unstage/commit in a temp repo);
-  `tests/cli.rs` runs the binary for `--version`/`--help`/`--show-config`
-  and the missing-path error; `config_io` ports `WadeConfigTests`; and the
-  TextInput, FormatHelpers, ContextMenu, FileIcons, CliTool(Hints),
-  SearchFilter and ModalInput C# tests are ported. Fixed along the way:
-  center-pane headers ignoring the status column, the center pane drawn
-  with a different scroll than mouse clicks used, no full redraw after `[`,
-  the start path not normalized (`~`, trailing separators), and background
-  `git status` holding `index.lock` so a stage/commit could fail (both
-  versions; now `--no-optional-locks`)
-- [x] Ported the remaining DirectoryContents, FileActions, GitUtils,
-  PathCompletion, ConfigDialogState and BookmarkStore C# tests (FilePreview
-  was already covered by unit tests and the preview goldens). Symlink and
-  real-git tests now skip where links or git are unavailable, so the Wine
-  run no longer has known failures. The git network actions (push, pull,
-  pull --rebase, force-with-lease, fetch, ahead/behind) are tested against
-  a local bare remote, including palette push clearing the status bar's
-  ahead count
-- [x] PTY smoke tests (`src/wade-rs/tests/pty_smoke.rs`, `portable-pty` +
-  `vt100`): run the binary in a PTY or ConPTY on all three CI jobs and cover
-  terminal setup and restore, raw key input, resize, `--cwd-file` and
-  typeahead. They found two bugs, both fixed: the main loop dropped all but
-  the last queued key, and macOS hung at startup (`poll()` on `/dev/tty`)
-- [x] PTY Batch 1 (`docs/pty-test-plan.md`): Alt+letter, the Esc wait,
-  text and sequences across reads, emoji, Ctrl+C/Ctrl+Z, the filter, rename
-  (both Backspace codes) and bracketed paste. Found and fixed four bugs:
-  Alt+letter read as Esc + letter, input cut by a read lost, characters
-  beyond U+FFFF truncated, wide characters drawn one column wide in text
-  boxes
-- [x] PTY Batch 2: raw mode and the exit sequence after `q`, the title
-  (and `terminal_title_enabled = false`), SIGTERM/SIGHUP, tiny sizes,
-  mouse click and wheel (ConPTY passes SGR mouse, so Windows too) and wide
-  names. Found one gap, fixed: signals left the terminal raw
-- [x] PTY Batch 3: files changed by another program, git status icons,
-  image protocol per terminal answer (kitty, Sixel, iTerm2, none; Windows
-  with `WT_SESSION` only checks it doesn't hang), long names cut with `…`,
-  and delete (`D`, and `d` to the Linux Trash). No bugs found. All three
-  batches of `docs/pty-test-plan.md` are done
-- [x] Launchers and the combined preview: PTY tests run `o` on an
-  executable (runs it) and on a file (fake `xdg-open` on Linux), `T` with a
-  fake `$TERMINAL` (Linux, started in the current folder; no emulator on
-  PATH gives an error) and with a fake `%COMSPEC%` (Windows, no `wt.exe`).
-  An App test covers the combined text+image event, which no provider sends
-  yet; it found the image dropped once metadata had loaded (fixed). macOS
-  paths are covered by the macOS CI job. Still manual: the real apps
-  (`open`, `ShellExecuteEx`, Terminal/iTerm, `wt.exe`) and cloud download,
-  which needs a OneDrive placeholder
-- [ ] Manual Windows Terminal checks (need a real console; none are
-  automated):
-  - the `wd` wrapper (`--cwd-file`)
-  - keyboard, mouse, window resize and bracketed paste
-  - Sixel image previews and terminal capability detection
-  - "Download cloud file" from the action palette on a OneDrive placeholder
-  - paste into Explorer after copy/cut in wade, and copy/cut from Explorer
-  - SSD inline directory sizes and the drive list on screen
-  - filesystem auto-refresh on screen (the PTY tests cover it under
-    ConPTY; a real Windows Terminal check is still worth doing)
-  - the tab title returns to the pre-wade title on exit and when
-    `terminal_title_enabled` is turned off
-- [x] Windows follow-ups from the verification pass:
-  - [x] run `install-local.ps1` for real (it overwrites `~/.local/bin/wade.exe`)
-  - [x] opening a file with an unknown extension reports success while Windows
-    shows the "Open with" dialog; C# behaves the same (probed both: .NET
-    `Process.Start` and `ShellExecuteExW` with `SEE_MASK_FLAG_NO_UI` both return
-    success and spawn the `OpenWith` dialog, so this is shell behavior, not a
-    port deviation; `NO_UI` does not suppress that dialog)
-- [x] Windows file-system edge cases, now `#[cfg(windows)]` tests run by
-  CI's `rust (windows-latest)` job: case-only rename, reserved names and
-  trailing dots or spaces, locked, read-only and access-denied files
-  (delete, rename, read), paste conflicts (read-only overwrite, paste into
-  the source folder or its own subtree, directory over a file), hardlinks
-  and alternate data streams (listing and sizes). One of them,
-  `windows_case_sensitive_folder_is_detected`, only passes in an elevated
-  shell: `fsutil file setCaseSensitiveInfo` prints an access-denied error
-  and still exits 0 without elevation, so the flag never applies and the
-  test fails locally (CI's runner is elevated).
-- [ ] More native Windows checks that need no TUI:
-  - PDF and Sixel previews end to end (`pdftopng`, `pdfinfo`, `ffprobe` and
-    `mediainfo` are installed on this machine)
-- [x] ConPTY smoke harness: `tests/pty_smoke.rs` runs on the Windows CI job
-  too. More scenarios can move from the manual list above into it
-- [x] macOS in CI: the `rust (macos-latest)` job (Apple Silicon) runs the
-  suite. Added for macOS: per-volume case handling, drive type and SSD
-  detection (`statfs`, `diskutil`), Trash on delete, Terminal/iTerm for
-  "open terminal here" and `/Volumes` as the drive list; fixed the watcher
-  missing the removal of a directory reached through a symlink
-- [x] macOS hidden flag: files with `UF_HIDDEN` set (`chflags hidden`,
-  e.g. `~/Library`) are hidden, like Finder. `directory_contents::is_hidden_entry`
-  reads `st_flags & UF_HIDDEN` (shared by the listing, the file finder, path
-  completion and the Properties overlay)
-- [x] Linux Trash on delete (Rust-only): `fs/linux_trash.rs` implements the
-  freedesktop.org Trash spec (home trash, per-mount `.Trash/$uid` or
-  `.Trash-$uid`, no cross-device copies) and `HAS_TRASH` is true on Linux.
-  Still to check by hand: restoring from a desktop file manager's Trash
-- [x] Case-sensitivity detection beyond macOS (`names_case_insensitive`):
-  Windows reads the NTFS per-directory flag (`FileCaseSensitiveInfo`);
-  Linux checks the casefold flag, then looks an entry up under swapped
-  case, then the file-system type. CI mounts a FAT volume on Linux and
-  sets a case-sensitive folder with `fsutil` on Windows
-- [x] macOS Unicode normalization: `NameRule` (case folding where the
-  volume ignores case, NFC on macOS) drives `find_name`, `same_dir_path`,
-  `on_disk_case`, paste's location checks and the case-only rename check
-- [ ] Manual macOS checks (need a real terminal): keyboard and Option-key
-  input, mouse, resize, kitty/iTerm2/Sixel images, clipboard round trip with
-  Finder, open with the default app, Trash and Terminal/iTerm launch, the
-  `/Volumes` drive list with an external disk
-- [ ] Manual Linux checks (need a real terminal): the drive list (going up from
-  `/`) with `/mnt/c` under WSL, a USB stick and a network mount
-- [x] Deleted the merged remote branches and the temporary mutation-check
-  branches; only `main` remains
+Windows needs a real console; none of these are automated:
+
+- [ ] the `wd` wrapper (`--cwd-file`)
+- [ ] keyboard, mouse, window resize and bracketed paste
+- [ ] Sixel image previews and terminal capability detection
+- [ ] "Download cloud file" from the action palette on a OneDrive placeholder
+- [ ] paste into Explorer after copy/cut in wade, and copy/cut from Explorer
+- [ ] SSD inline directory sizes and the drive list on screen
+- [ ] filesystem auto-refresh on screen (the PTY tests cover it under ConPTY; a
+  real Windows Terminal check is still worth doing)
+- [ ] the tab title returns to the pre-wade title on exit and when
+  `terminal_title_enabled` is turned off
+- [ ] PDF and Sixel previews end to end, no TUI needed (`pdftopng`, `pdfinfo`,
+  `ffprobe` and `mediainfo` are installed on this machine)
+
+macOS needs a real terminal:
+
+- [ ] keyboard and Option-key input, mouse, resize, kitty/iTerm2/Sixel images,
+  clipboard round trip with Finder, open with the default app, Trash and
+  Terminal/iTerm launch, the `/Volumes` drive list with an external disk
+
+Linux needs a real terminal:
+
+- [ ] the drive list (going up from `/`) with `/mnt/c` under WSL, a USB stick and
+  a network mount
+- [ ] restoring a file from a desktop file manager's Trash
+
+Image protocols, implemented but never exercised against the real terminal:
+
+- [ ] kitty and Ghostty, which take the Unicode-placeholder path
+- [ ] tmux: the Sixel its own version draws, and passthrough with
+  `allow-passthrough` on
+
 - [ ] Two weeks of daily use on the Rust binary (ongoing verification, not a gate)
-- [x] Cutover: deleted `src/Wade*` and `install-local-csharp.ps1`/`.sh`, removed
-  the dual-build CI and updated README/CLAUDE.md/CHANGELOG (2026-10-11)
 
 ## Features
-
-### ~~File action progress indicator~~ (Done)
-
-Progress dialog with file count, progress bar, current filename, and Esc to cancel. Copy, move, and delete operations run in background via `FileOperationRunner`.
-
-### ~~System clipboard — Unix/macOS file interop~~ (Done in Rust)
-
-Windows file clipboard interop is implemented in both versions. The Rust port also implements Linux (`x-special/gnome-copied-files` / `text/uri-list` via `wl-copy`/`xclip`) and macOS (NSPasteboard via `osascript`); C# remains Windows-only.
 
 ### Format-specific metadata providers
 
@@ -177,16 +49,6 @@ Windows file clipboard interop is implemented in both versions. The Rust port al
 - **Font files** (`.ttf`, `.otf`, `.woff2`) — font family, style, weight, glyph count. Parse OpenType/TrueType `name` and `head` tables.
 - **OpenDocument** (`.odt`, `.ods`, `.odp`) — title, author, dates, page/sheet count. Extract from `meta.xml` inside the ODF zip archive (similar to Office OOXML approach).
 - **EPUB** (`.epub`) — title, author, publisher, language, identifier. Extract from `content.opf` metadata inside the zip archive.
-- ~~**Windows shortcuts** (`.lnk`)~~ (Done) — parser source copied from [lucaspimentel/windows-shortcut-parser](https://github.com/lucaspimentel/windows-shortcut-parser) into `src/Wade/LnkParser/`. `ShortcutMetadataProvider` extracts target path, working dir, arguments, description, icon, hotkey, and volume label, surfaced in the metadata header above the preview pane and in the properties overlay.
-
-### ~~Zip — other archive formats~~ (Done)
-
-- Tar/gzip preview implemented via `System.Formats.Tar` + `System.IO.Compression.GZipStream` in `src/Wade/FileSystem/TarPreview.cs` (NativeAOT-safe, no new packages). Covers `.tar`, `.tar.gz`, `.tgz`, and plain `.gz`.
-- `TarContentsPreviewProvider` registered in `PreviewProviderRegistry` ahead of `TextPreviewProvider`.
-- Plain `.gz` is probed for ustar magic at offset 257 of the decompressed stream; `.gz`-wrapping-tar is auto-detected as `tar.gz`. Single-member gzip shows original filename + ISIZE-based uncompressed hint + head of decompressed text when textual.
-- `ArchiveMetadataProvider` extended to surface tar/gz metadata (Files, Total size, Format, Compressed, Ratio) through the existing `ArchiveMetadataEnabled` gate.
-
----
 
 ## Backlog
 
@@ -198,73 +60,6 @@ Windows file clipboard interop is implemented in both versions. The Rust port al
   share can only be reached through Go to path or a bookmark. Needs the connected shares
   enumerated (WNet/mapped drives) with free and total space where Windows reports them; the
   drive-root rule in `is_drive_root` would accept a share root as well.
-
-### ~~Multiple tabs ([#17](https://github.com/lucaspimentel/wade/issues/17))~~ (Done in Rust)
-
-`t` new tab, `{`/`}` and `1`-`9` switch, `w` close (quits on the last tab), click to switch; the bar
-shows with two or more tabs; each tab keeps its path, selection, marks and filter; not persisted.
-Still open from the issue: a README comparison with yazi.
-
-### ~~Ctrl+C clears search and filter boxes~~ (Done in Rust)
-
-Ctrl+C empties the input of the Ctrl+F finder, the `/` filter, the Ctrl+P palette and the `b`
-bookmarks list. Go to path and the dialog boxes are unchanged (Esc cancels them).
-
-### ~~Syntax highlighting for `Cargo.lock`~~ (Done in Rust)
-
-`Cargo.lock`, `poetry.lock`, `uv.lock` and `pdm.lock` map to the TOML highlighter by file name.
-
-### ~~Kitty graphics protocol for image previews~~ (Done in Rust)
-
-Uses Unicode placeholders (https://sw.kovidgoyal.net/kitty/graphics-protocol/#unicode-placeholders) as an
-alternative to Sixel.
-
-- **Detection:** a graphics query plus XTVERSION; kitty and Ghostty only.
-- **Selection:** the `image_protocol = auto|kitty|iterm|sixel` config key.
-- **Rendering:** placeholder cells in `ScreenBuffer`.
-- **Untested:** not yet checked in a real kitty or Ghostty.
-
-### ~~Image previews under tmux~~ (Done in Rust)
-
-wade asks tmux about the outer terminal (`display-message`, tmux 3.3+) and wraps image data in DCS passthrough
-when `allow-passthrough` is on; tmux's own Sixel (3.4+) is used plainly. Covered by a PTY test with a fake `tmux`.
-Not yet checked in a real tmux.
-
-### ~~iTerm2 inline image protocol for image previews~~ (Done in Rust)
-
-Uses `OSC 1337 ; File=` (https://iterm2.com/documentation-images.html).
-
-- **Detection:** the XTVERSION name (iTerm2, WezTerm), falling back to `TERM_PROGRAM`.
-- **Selection:** `image_protocol = iterm`; `auto` orders kitty, then iTerm2, then Sixel.
-- **Payload:** the fitted image as PNG, sized in cells.
-- **Untested:** not yet checked in a real iTerm2 or WezTerm.
-
-### File finder — deduplicate ScoreWithFileNamePriority paths (Done in Rust)
-
-Rust: `scorer::term_score` dispatches on the query mode and shares one filename-priority helper; the C# copy
-below is unchanged.
-
-`FuzzyScorer.ExactScoreWithFileNamePriority` is a near-verbatim copy of `ScoreWithFileNamePriority` (only the inner scoring call differs). Acceptable at two modes; fix when adding a third `QueryMode` (the `^`/`$`/`!` work below will force this). Extracting a shared helper is non-trivial because `ReadOnlySpan<char>` cannot cross delegate boundaries, so the cleanest fix is likely an enum-dispatched private helper, or `Score`/`ExactScore` becoming overloads of a common generic over a strategy struct.
-
-### ~~File finder — avoid allocating MatchPositions when discarded~~ (Done)
-
-- Extracted `ScoreCore` private method writing into a caller-provided `Span<int>` (no heap alloc).
-- `Score(query, target)` and `ExactScore(query, target, caseSensitive)` no-out overloads are now zero-alloc.
-- `ScoreWithFileNamePriority` and `ExactScoreWithFileNamePriority` compare candidates via score-only calls first, then allocate positions once for the winner (was 2 arrays, now 1).
-- `ScoreWithFileNamePriority` score-only overload is now truly zero-alloc (was delegating to the out overload, silently allocating and discarding).
-- Added `FuzzyScorerBenchmarks` to `Wade.Benchmarks` confirming the reduction.
-
-### ~~File finder — remember search terms~~ (Done in Rust)
-
-Ctrl+F reopens with the last query of the session (cursor at the end, typing appends) and searches
-at once. Not persisted across runs; a navigable history was left out. C# still opens empty
-(`KNOWN_DEVIATIONS.md`).
-
-### ~~File finder — fzf-style query syntax~~ (Done in Rust)
-
-Space-separated AND terms, `'exact`, `^prefix` (at any path segment start), `suffix$`, `^whole$`, and `!`
-negation (exact, prefix or suffix), with `\ ` for a literal space and per-term smart case (fuzzy included).
-No OR (`|`). C# keeps the single-term `'` syntax (`KNOWN_DEVIATIONS.md`).
 
 ### Preview for Office/document formats (DOCX, XLSX, PPTX, etc.)
 
@@ -281,105 +76,11 @@ Research and implement image previews for Office Open XML formats (`.docx`, `.xl
 - Performance concern: LibreOffice startup is slow (~1-2s); consider debouncing or async user feedback
 - Start with DOCX (most common); extend to XLSX/PPTX after proving the concept
 
-### ~~Reparse point type detection — junction points (`IO_REPARSE_TAG_MOUNT_POINT`)~~ (Done)
-
-- [x] Detect junction points via `GetFileInformationByHandleEx` with `FileAttributeTagInfo` to read the reparse tag.
-  - `ReparsePointDetector` queries the reparse tag; `IsJunctionPoint` field on `FileSystemEntry`.
-  - Properties overlay shows "Junction -> Directory" for type and "Junction" instead of "ReparsePoint" in attributes.
-  - Junction-specific icon (`nf-md-folder_arrow_right`). Cyan symlink styling and " -> target" suffix in file list.
-  - Windows-only (junctions don't exist on Unix).
-
-### ~~Reparse point type detection — app execution aliases (`IO_REPARSE_TAG_APPEXECLINK`)~~ (Done)
-
-- [x] Detect app execution aliases (reparse tag `0x8000001B`) via `FSCTL_GET_REPARSE_POINT` and parse the reparse data buffer to extract the target executable path.
-  - `ReparsePointDetector.IsAppExecLink()` and `GetAppExecLinkTarget()` with `ParseAppExecLinkTarget` (internal static, testable).
-  - Properties overlay shows "App Execution Alias" type and target path. Attributes show "AppExecLink" instead of "ReparsePoint".
-  - Dedicated icon (`nf-md-application_outline`). Target shown with " → " suffix in file list.
-  - Windows-only.
-
-### ~~Text input improvements~~ (Done)
-
-- [x] Support paste in text input fields (file finder, filter, go-to-path, rename dialog). Unix: bracketed paste mode (`ESC[200~` ... `ESC[201~`). Windows: heuristic batch detection from `ReadConsoleInput`.
-- [x] Support word-navigation shortcuts in text input fields: `Ctrl+Left`/`Ctrl+Right` to skip words, `Ctrl+Backspace` to delete previous word.
-
-### ~~Windows Terminal VT input mode~~ (Won't do)
-
-Investigated enabling `ENABLE_VIRTUAL_TERMINAL_INPUT` under Windows Terminal. Not worth it; see `docs/windows-terminal-vt.md`:
-
-- Query replies: not needed. Windows Terminal's cell size reply is a fixed 10x20, now used without asking.
-- Modifier keys: already complete. ConPTY turns on win32-input-mode (`CSI ?9001h`) in Windows Terminal and turns its sequences back into key records, so `ReadConsoleInput` gets every key.
-- Bracketed paste is the only gain, and the paste-burst heuristic covers normal pastes. It would cost a second Windows input path (the console host still needs `ReadConsoleInput`) and win32-input-mode parsing in `VtParser` to keep the keys.
-
-### ~~File previews longer than 100 lines~~ (Done in Rust)
-
-- [x] Allow showing more than 100 lines in file previews. The full-screen preview reads up to `preview_max_lines` (default 10,000) and `preview_max_bytes` (default 4 MiB); the right pane reads its own height.
-
-### ~~Full-screen preview with the right pane disabled~~ (Done in Rust)
-
-- [x] Allow opening the full-screen (expanded) file preview even when the right pane (`Show Right Pane`) is disabled.
-
-### ~~CSV preview~~ (Done in Rust)
-
-- [x] File preview for CSV (and TSV) files, e.g. with aligned columns.
-
 ### Consolidate settings sources
 
 - [ ] Settings come from `config.toml` and the config dialog only (plus `--config-file`). Add one layer that also reads environment variables and CLI flags (e.g. `WADE_ICONS`, `--icons=`), with a fixed precedence (CLI > env > file > default), instead of adding each override by hand. Useful per terminal: a Nerd Font in one terminal, none in another.
-- [x] Groundwork refactors (no behavior change): `SortMode::name`/`parse`/`next`/`prev`; per-run state moved from `AppConfig` to `StartOptions`, with one `parse_args` → `CliArgs`; the config dialog edits a draft `AppConfig` with an accessor per row; one `KEYS` table drives load, save and `--show-config`; a shared `home_dir()`
 - [ ] Later, behavior changes: save keeping comments and unknown keys; reporting invalid values
-
-### ~~Doc comments without the C# port history~~ (Done)
-
-- [x] Comments describe what the code does instead of naming the C# or .NET original. The golden test suites say once that the frozen root goldens came from the deleted C# implementation; comments that explain golden-pinned behavior (UTF-16 indices, Markdown layout, PowerShell word sets) name the frozen golden. Test names drop "csharp"; `PreviewLimits::CSHARP` is `GOLDEN` and `MarkdigMarkdownPreviewProvider` is `MarkdownPreviewProvider`.
-
-### Keyboard shortcut convention audit
-
-- [x] Keybinding consistency. Rule: bare keys in lower/upper-case pairs; Ctrl only for the jump tools (Ctrl+P/K palette, Ctrl+F finder, Ctrl+G go to path) and browser/shell conventions (Ctrl+T new tab, Ctrl+L/Ctrl+R refresh). A strict "Ctrl for dialogs" rule is impossible: terminals cannot send Ctrl+`,`/`?`/`/`, and Ctrl+H/I/J/M/[ are Backspace/Tab/Enter/Esc. Done: `d`/`D` delete, `r` rename (Mac laptops have no forward Delete, F2 needs fn), `T` terminal, Ctrl+T new tab, Ctrl+L refresh, symlink palette-only, Esc clears marks then filter then hints at `q` (no longer quits), `q` always quits, and letter keys match the typed character without Ctrl/Alt (Shift+J or Alt+j no longer act as `j`; AltGr still types `[` `{` ...)
-
-### ~~CSS color swatches in preview~~ (Done)
-
-- Hex color literals (`#RGB`, `#RGBA`, `#RRGGBB`, `#RRGGBBAA`) in CSS/SCSS/Sass previews now render a ` ██` swatch (U+2588 full-block × 2, colored to the literal) immediately after the hex text.
-- New `TokenKind.HexColor`; detection added to `CssLanguage.ScanCss` with line-local value-position tracking (`afterColon` flag + `;`/`{`/`}` reset) so ID selectors like `#main` are not false-positived.
-- Alpha discarded for v1. Invalid hex (`#gg0000`) and non-standard lengths (2, 5, 7) are rejected.
-- Implementation emits a full `CellStyle[]` via `SyntaxTheme.GetStyle` lookups for lines with hex colors; lines without hex colors remain on the token-span path with zero extra allocation. Follows the `DiffLanguage` precedent — no renderer or `StyledLine` changes needed.
-- Known v1 limitation: `:pseudo #abc { }` (pseudo-class followed by an ID selector that happens to be valid hex) can produce a false positive. Acceptable — future work can track brace depth multi-line via the `state` byte. `rgb()`/`hsl()` and named colors still TODO.
-
-### ~~CSS color swatches — disambiguate pseudo-class/element selectors~~ (Done in Rust)
-
-Rust tracks brace depth across lines and drops colors in a run that ends in `{`. A nested selector whose `{` is
-on a later line still swatches.
-
-### ~~CSS color swatches — `rgb()` / `rgba()` / `hsl()` / `hsla()` / named colors~~ (Done in Rust)
-
-Modern CSS Color 4 functions (`color()`, `lab()`, `lch()`, `oklab()`, `oklch()`) are out of scope.
-
-### ~~Synchronized Output (DECSET 2026) for frame writes~~ (Done in Rust)
-
-- [x] Bracket each frame's output in `ESC[?2026h` ... `ESC[?2026l` so the terminal presents it atomically. Before this change the cell diff (`flush_buffer`, `src/wade-rs/src/app/mod.rs:2412`) and the image write (kitty deletes/transmit, Sixel/iTerm2 overlay, `take_pending_image_output`, `app/mod.rs:412-434`) are two separate writes, and `clear_screen()` writes `CSI 2J` on its own (`app/mod.rs:2399`, callers at `app/mod.rs:587` resize, `:721`/`:728` pane toggles, `app/preview.rs:459`), so a terminal can show the blank screen before the repaint and can split a large full redraw across paints.
-  - Move the pending `2J` into the bracketed write instead of writing it where it is requested, and emit BSU + `2J` + diff + image + ESU as one write; skip the write entirely when the frame is empty.
-  - Emit ESU in both restore paths (`src/wade-rs/src/terminal_setup.rs`, `src/wade-rs/src/terminal_setup_unix.rs`), which `Drop` and the SIGTERM/SIGHUP path already run, so a panic or signal cannot leave the terminal deferring updates.
-  - No capability query: an unknown private mode is ignored. Supported by Windows Terminal 1.24+ (PR microsoft/terminal#18826, which relies on ConPTY passthrough, so it applies under ConPTY), mintty, kitty, WezTerm, foot, Alacritty 0.13+, iTerm2, Warp, Contour, Zellij, tmux 3.7b+. No gain on VTE/GNOME Terminal or macOS Terminal.app. Do not detect with DECRQM (tmux issue #5470 answers from its own state, not the client's).
-  - Golden tests are unaffected: `tests/golden_frames.rs:163` and `tests/renderer_frames.rs:712` compare `ScreenBuffer::serialize` output, and the bracket belongs in the write path.
-
-### ~~Decode `CSI u` extended keys (xterm `modifyOtherKeys` / Kitty keyboard)~~ (Done in Rust)
-
-- [x] `VtParser::parse_csi` has no case for the `u` final byte, so a `CSI code;mods:eventu` sequence is consumed and the key silently dropped (`src/wade-rs/src/input/vt_parser.rs:275`). Decode it into a `KeyEvent` (keycode/character, xterm-style 1-based modifier field, event type; treat press and repeat the same and ignore release), with tests in `src/wade-rs/src/input/vt_parser.rs` and `tests/input_decode.rs`.
-  - Reaches a real user today: iTerm2's legacy "Report modifiers using CSI u", xterm `modifyOtherKeys=2` with `formatOtherKeys=1`, tmux `extended-keys always`, or a previously crashed program that left its flags pushed.
-  - Decided against opting in (pushing flags after a `CSI ? u` query, popping on restore): on Windows wade reads `KEY_EVENT` records and ConPTY's win32-input-mode already carries full key detail, so the protocol adds nothing there; on Unix the only gains are removing the fixed 50 ms Escape wait (`src/wade-rs/src/input/unix.rs:14`) and making Shift+Enter / Ctrl+Enter / Ctrl+I-vs-Tab available, which the keymap does not bind (and Ctrl+Shift bindings stay off the table). Revisit only if wade needs one of those combinations.
 
 ### Release builds do not restore the terminal on a panic
 
 `Cargo.toml` sets `panic = "abort"` for the release profile, so a panic runs no `Drop` and skips the restore path: the terminal is left in raw mode on the alternate screen, possibly inside a synchronized update. Install a panic hook (`std::panic::set_hook`) that writes the restore sequence and resets the tty modes before aborting; it needs the saved termios reachable from the hook (a global or a shared handle). Left out of the synchronized-output change.
-
-### ~~WezTerm shows no image preview (Windows build, WSL pane)~~ (Done in Rust)
-
-- [x] WezTerm never shows an image preview: the right pane renders the metadata and no image, and in one session a purple wedge appeared clipped into the bottom-right corner of the status bar. The same files appear correctly in Windows Terminal (Sixel), and capturing wade's own output shows the image write is correct: `ESC[<row>;<col>H` immediately before `OSC 1337;File=inline=1;size=...;width=...;height=...;preserveAspectRatio=1;doNotMoveCursor=1:<base64>`, whose payload is byte-identical to the source PNG, all inside a `CSI ?2026h` / `CSI ?2026l` frame.
-  - Ruled out by sending each variant straight to WezTerm and watching where the image landed: the synchronized-update bracket, the payload inside versus after the bracket, `doNotMoveCursor`, 40 sends in a row, writes on the last row, payloads from 6.5 KB to 65 KB, one write per frame versus split writes, and the alternate screen. Each one rendered exactly where it was told. Replaying wade's captured bytes shows no image at all, so the live symptom does not come from the byte stream either.
-  - The next step was WezTerm's own view rather than more guessing: start it with `WEZTERM_LOG=wezterm_term=debug,wezterm_mux=debug,warn` (set the env var before launching) and read the debug overlay with `Ctrl+Shift+L`. `assign_image_to_cells` logs `setting cells for y=<row> x=[<col>..<col+width>]`, `perform` logs every action, and a refusal (unknown cell pixel size, decode failure, zero draw size) is logged as an error.
-  - That log has now been read (Windows: `%USERPROFILE%\.local\share\wezterm\wezterm-gui.exe-log-<pid>.txt`). For the frame that carries the image, the actions arrive as `BSU`, `OperatingSystemCommand(ITermProprietary(File(...)))`, `ESU` with no cursor action at all, and the placement is `image is 54x1 cells` at `setting cells for y=35 x=[123..177]`: the last cell the previous frame painted (the status bar's end), with the height clamped to one row because the cursor sat on the last row. So the `ESC[<row>;<col>H` wade writes immediately before the payload does not reach WezTerm in the live case, while an identical sequence placed correctly in every synthetic test, including an image-only frame with an empty diff. The remaining suspect is conhost's VtEngine, which re-serializes the child's output and emits cursor moves only for cells it paints; a reproducible minimal case for a `microsoft/terminal` report is still missing.
-  - Two workarounds were tried live by Lucas and both changed nothing. Holding a cursor-placed payload back until a frame painted cells made it worse: the image then rode the painting frames and landed against the Size column of the center pane as the async directory sizes arrived. Keeping the payload out of the frame's own write entirely (a `WADE_IMAGE_SPLIT_MS=20` experiment: flush the frame, sleep, then write the payload, first in its own bracket and then bare with no bracket at all) left the image on the last painted cell: four of four attaches in the logged run were at `y=35`, at `x=[124..144]`, `[145..150]`, `[142..147]` and `[124..144]`. The row is always the status bar because it is the lowest changed row in every frame; the column moves with whatever the previous paint ended on. A delayed, bare, unbracketed payload written from a shell renders exactly where it is told, so the reordering sits between wade's writes and the terminal, out of reach of anything the child can do. The experiment is reverted, no environment-variable knob remains, and the committed behavior is unchanged.
-  - The check was run and it exonerates the path: a Python script sending the same two writes from a shell inside a WezTerm WSL pane placed the image exactly where told (row 10, column 40, held on screen for 15 s). So the difference is inside wade's own output, and a third attempt that gave the cursor move its own write, with the payload in a separate write after it, still landed the image in the status bar. That falsifies the last theory (a pass-through sequence overtaking a cursor move ConPTY is still holding), since the move then ends its own write exactly as the working script's does. The working script differs from wade only in these ways, none of them tested yet: the `CSI ?2026h` / `CSI ?2026l` bracket around the cells write (wade's frame is bracketed, the script's is not), the alternate screen, the size of the cells write (kilobytes against hundreds of bytes), raw mode on `/dev/tty`, and wade reading `/dev/tty` concurrently while it writes.
-  - Next instrument, written and run at `/tmp/wade-conpty-variants.py` (`python3 /tmp/wade-conpty-variants.py` inside the WezTerm WSL pane): six labelled screens, each clearing first (including the scrollback), sending the same image payload to row 10 column 40, and holding it for five seconds, so a single run shows which trait breaks the placement. The variants: plain baseline; the cursor hidden (`CSI ?25l`); hidden but shown around the move (the candidate fix: show, move, payload, hide); the alternate screen; the cells write wrapped in `CSI ?2026h` / `CSI ?2026l` with the move after it; and every wade trait at once (hidden cursor, bracket, move in its own write, alternate screen, a kilobytes-large cells write, raw mode) as the positive control. The hidden cursor is ranked first because it is the one wade trait never tested and it would explain why nothing about the write shape mattered: conhost's re-serializer only has to emit a trailing cursor move it is holding when it believes a visible cursor wants it, and the failing frames carry no cursor action at all. If the hidden-cursor screen misplaces the image and the baseline does not, the cause is found; if the candidate fix places it, that is the wade-side change (show, move, payload, hide).
-  - If no variant reproduces it, the trait list is incomplete and the next instrument is a byte-exact replay: `strace -f -e trace=write -xx -s 200000 -o /tmp/wade.trace`, then one `os.write` per captured write from Python with the tty in raw mode. That also rules out the concurrent `/dev/tty` reading by construction, and if it reproduces, stripping pieces finds the trigger.
-  - For the eventual report: no WezTerm directory with a bundled `conpty.dll` or `OpenConsole.exe` was found under `C:\Program Files` or `%LOCALAPPDATA%\Programs`, so it may be using the inbox `conhost.exe` (10.0.26100.1). Record which one it actually uses: an old bundled `OpenConsole.exe` would make this a WezTerm report rather than a microsoft/terminal one.
-  - Fixed, and the cause was the hidden cursor rather than the write shape. One script sending the same payload to the same place once per trait settled it: with the cursor visible the image lands correctly (baseline, alternate screen, bracketed cells write), with the cursor hidden it lands in the bottom-right corner, and a screen that hides the cursor but shows it around the move places it correctly again. So ConPTY holds that move back only while it believes the cursor is hidden, which is why no delay, bracket or write split from wade had any effect. `write_frame` now writes a cursor-placed payload as four writes after the frame: `CSI ?25h`, the leading move, the payload, `CSI ?25l`. Kitty images and the exit-time deletes are untouched, and a payload with no move of its own (a tmux wrapper) still rides the frame.

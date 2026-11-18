@@ -55,8 +55,7 @@ was off by the same factor.
 - ConPTY always writes `CSI ?9001h` to the terminal at startup, so Windows
   Terminal already sends keys as win32-input-mode sequences and ConPTY turns
   them back into key records: `ReadConsoleInput` gets full key detail as is.
-  A full VT input switch would only add bracketed paste, so it is not planned
-  (TODO.md, "Windows Terminal VT input mode").
+  A full VT input switch would only add bracketed paste, so it is not planned.
 - Windows Terminal 1.24+ implements synchronized output (`CSI ?2026h` /
   `CSI ?2026l`, PR microsoft/terminal#18826) and presents everything
   between the pair at once, and ConPTY passes it through; older consoles
@@ -68,4 +67,5 @@ was off by the same factor.
   hidden, and is drawn wherever the last paint ended. wade shows the cursor
   around a cursor-placed image payload for that reason. Seen with WezTerm
   on Windows running wade in WSL; Windows Terminal presents the image
-  correctly either way (`KNOWN_DEVIATIONS.md`).
+  correctly either way (`KNOWN_DEVIATIONS.md`,
+  `docs/conpty-image-placement.md`).
