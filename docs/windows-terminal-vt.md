@@ -59,15 +59,13 @@ was off by the same factor.
   (TODO.md, "Windows Terminal VT input mode").
 - Windows Terminal 1.24+ implements synchronized output (`CSI ?2026h` /
   `CSI ?2026l`, PR microsoft/terminal#18826) and presents everything
-  between the pair at once, and ConPTY passes it through. wade brackets
-  each frame with it and sends no query, since an unknown private mode is
-  ignored; the restore paths write the closing sequence unconditionally.
-  Older consoles ignore the pair.
+  between the pair at once, and ConPTY passes it through; older consoles
+  ignore the pair. wade brackets every frame with it
+  (`KNOWN_DEVIATIONS.md`).
 - ConPTY holds a cursor move back until it believes a visible cursor wants
   it, so a sequence passed straight through that depends on the cursor (an
   iTerm2 image, for example) arrives without the move while the cursor is
   hidden, and is drawn wherever the last paint ended. wade shows the cursor
-  around a cursor-placed image payload for that reason (TODO.md, "WezTerm
-  shows no image preview (Windows build, WSL pane)"). Seen with WezTerm on
-  Windows running wade in WSL; Windows Terminal presents the image
-  correctly either way.
+  around a cursor-placed image payload for that reason. Seen with WezTerm
+  on Windows running wade in WSL; Windows Terminal presents the image
+  correctly either way (`KNOWN_DEVIATIONS.md`).
