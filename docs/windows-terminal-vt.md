@@ -66,6 +66,6 @@ was off by the same factor.
   iTerm2 image, for example) arrives without the move while the cursor is
   hidden, and is drawn wherever the last paint ended. wade shows the cursor
   around a cursor-placed image payload for that reason. Seen with WezTerm
-  on Windows running wade in WSL; Windows Terminal presents the image
+  on Windows; Windows Terminal presents the image
   correctly either way (`KNOWN_DEVIATIONS.md`,
   `docs/conpty-image-placement.md`).

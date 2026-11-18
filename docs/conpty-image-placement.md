@@ -7,11 +7,12 @@ iTerm2 or Sixel image, sent as `CSI <row>;<col>H` followed by the payload) gets
 the payload drawn wherever the last paint ended, with its height clamped to the
 one row the cursor sits on, and no cursor action in between.
 
-wade hit this on 2026-11-18: WezTerm on Windows, running the Linux build inside a
-WSL pane, never showed a preview image at all, while the same files rendered
-correctly in Windows Terminal. wade's own bytes were provably correct, with
-`ESC[<row>;<col>H` immediately before the payload and a payload byte-identical
-to the source PNG.
+wade hit this on 2026-11-18, first in WezTerm on Windows with the Linux build
+inside a WSL pane, where no preview image appeared at all while the same files
+rendered correctly in Windows Terminal. The WSL layer is incidental: the drop
+happens in ConPTY, so the Windows build is affected the same way. wade's own
+bytes were provably correct, with `ESC[<row>;<col>H` immediately before the
+payload and a payload byte-identical to the source PNG.
 
 ## Evidence
 
@@ -33,9 +34,9 @@ whose cursor move ends its own write: all of them landed on row 35.
 ## The variant that isolates it
 
 A script that sends the same payload to row 10 column 40 once per terminal trait
-found the one that matters. Run inside the WezTerm WSL pane, it clears, labels
-itself, paints 30 numbered lines, sends the payload, and holds the screen for
-five seconds:
+found the one that matters. Run inside a WezTerm pane on Windows, it clears,
+labels itself, paints 30 numbered lines, sends the payload, and holds the screen
+for five seconds:
 
 | Variant | Traits | Result |
 | --- | --- | --- |
