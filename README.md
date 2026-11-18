@@ -58,7 +58,7 @@ Inspired by [yazi](https://github.com/sxyazi/yazi), [broot](https://github.com/C
 - **Shell integration** — `T` opens terminal; `wd` wrapper for cd-on-exit (bash, zsh, fish, PowerShell)
 - **Auto-refresh** — watches the current directory for changes, with a 300ms debounce
 - **Terminal title** — shows current directory; clears on exit
-- **Minimal rendering** — raw VT/ANSI, double-buffered with dirty-row tracking
+- **Minimal rendering** — raw VT/ANSI, double-buffered with dirty-row tracking; each frame goes out as a synchronized update (`CSI ?2026h`/`CSI ?2026l`), which terminals that know it present in one go
 
 ## Requirements
 
@@ -255,5 +255,7 @@ cargo test --locked --manifest-path src/wade-rs/Cargo.toml
 This project is licensed under the [MIT License](LICENSE).
 
 ## Development
+
+Contributor conventions (build and test commands, the golden-fixture rules, platform notes) are in `CLAUDE.md`, also reachable as `AGENTS.md`.
 
 This project was developed with [Claude Code](https://claude.ai/code) 🤖

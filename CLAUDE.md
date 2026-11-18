@@ -52,6 +52,7 @@ When an intentional behavior change breaks a frozen fixture, move it to Rust own
 ## Key Conventions
 
 - **No TUI frameworks**: rendering uses raw VT/ANSI escape sequences only (no crossterm, ratatui); output goes through a diffing `ScreenBuffer`.
+- **One frame writer**: `src/frame.rs` owns `write_frame` (one stdout lock, one flush, and the `CSI ?2026h` / `CSI ?2026l` bracket) and `ScreenRequest`, the value that says whether the next frame clears or repaints; no other code writes a frame. A Sixel or iTerm2 payload the terminal places at the cursor goes out after the frame with `CSI ?25h` and `CSI ?25l` around it, since ConPTY drops that cursor move while the cursor is hidden (`docs/conpty-image-placement.md`).
 - **Windows console input**: use Win32 `ReadConsoleInput`; do NOT enable `ENABLE_VIRTUAL_TERMINAL_INPUT`. VT processing is output-side only. Mouse uses `ENABLE_MOUSE_INPUT`. Query replies never arrive; what Windows Terminal and ConPTY answer, and why it is not needed, is in `docs/windows-terminal-vt.md`.
 - **Unix console input**: raw mode on `/dev/tty`. Arrow keys arrive as SS3 sequences (`ESC O A/B/C/D`) in alternate screen mode, not CSI. Mouse uses SGR mouse mode. `ESC` + a character is Alt+character; a lone ESC (or a sequence cut by a read) waits 50ms for the rest (`VtParser::has_pending`/`flush`).
 - **Platform separator**: use the platform path separator, not hardcoded `/` or `\`.
