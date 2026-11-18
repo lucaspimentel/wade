@@ -134,6 +134,19 @@ impl Default for AppConfig {
     }
 }
 
+/// What the next frame owes the screen.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum ScreenRequest {
+    /// Nothing: the frame writes only the cells that changed.
+    #[default]
+    None,
+    /// Repaint every cell: the terminal keeps what it already shows.
+    Repaint,
+    /// Clear the screen, then repaint it. `write_frame` owns the clear, so both
+    /// go out as one bracketed write.
+    Clear,
+}
+
 /// The app state machine plus main loop.
 pub struct App {
     pub config: AppConfig,
@@ -168,13 +181,9 @@ pub struct App {
     pub(crate) clipboard_is_cut: bool,
     /// The OS clipboard; tests swap in a recording fake.
     pub(crate) os_clipboard: OsClipboard,
-    /// Set by `handle_file_system_changed`: the next frame repaints the
-    /// whole screen.
-    request_full_redraw: bool,
-    /// Set by a resize or a pane toggle: the next frame clears the screen
-    /// before repainting it. `write_frame` owns the clear, so the clear and
-    /// the repaint it needs go out as one bracketed write.
-    request_clear_screen: bool,
+    /// Set by a resize, a pane toggle, leaving the expanded preview, a file
+    /// system change or a preview reload: what the next frame owes the screen.
+    request_screen: ScreenRequest,
     /// Ctrl+F file finder state while it is open.
     pub(crate) file_finder: Option<crate::app::file_finder::FileFinderState>,
     /// The finder's query when it last closed; it reopens with it.
@@ -218,6 +227,14 @@ pub struct App {
 }
 
 impl App {
+    /// The next frame repaints every cell. A pending clear already implies that
+    /// repaint, so it is left alone.
+    fn request_repaint(&mut self) {
+        if self.request_screen == ScreenRequest::None {
+            self.request_screen = ScreenRequest::Repaint;
+        }
+    }
+
     #[must_use]
     pub fn new(config: AppConfig, start: StartOptions) -> Self {
         let mut app = Self {
@@ -278,8 +295,7 @@ impl App {
             } else {
                 OsClipboard::System
             },
-            request_full_redraw: false,
-            request_clear_screen: false,
+            request_screen: ScreenRequest::None,
             file_finder: None,
             last_finder_query: String::new(),
             file_op_label: String::new(),
@@ -423,11 +439,6 @@ impl App {
             // Ensure filesystem watcher tracks the current directory
             self.tick_file_system_watcher();
 
-            if self.request_full_redraw {
-                self.request_full_redraw = false;
-                buffer.force_full_redraw();
-            }
-
             // Render
             buffer.clear();
             self.render(&mut buffer);
@@ -436,13 +447,18 @@ impl App {
             // at the cursor adds its own writes after the frame's, with the
             // cursor shown. The lock is released at the end of the statement,
             // not held across the blocking wait below
-            let pending_clear = std::mem::take(&mut self.request_clear_screen);
+            let request = std::mem::take(&mut self.request_screen);
+            if request == ScreenRequest::Repaint {
+                buffer.force_full_redraw();
+            }
+
             let image = self.take_pending_image_output();
-            let image_write = match self.image_protocol {
-                Some(crate::imaging::ImageProtocol::Kitty) => ImageWrite::Freestanding,
-                _ => ImageWrite::AtCursor,
-            };
-            write_frame(&mut std::io::stdout().lock(), &mut buffer, pending_clear, image.as_deref(), image_write);
+            crate::frame::write_frame(
+                &mut std::io::stdout().lock(),
+                &mut buffer,
+                request == ScreenRequest::Clear,
+                &image,
+            );
 
             // Wait for next input event (pump thread feeds the queue; loader
             // threads send into the same queue)
@@ -481,7 +497,7 @@ impl App {
         // Free the kitty image still shown
         self.preview.set_image(None);
         let image = self.take_pending_image_output();
-        write_frame(&mut std::io::stdout().lock(), &mut buffer, false, image.as_deref(), ImageWrite::Freestanding);
+        crate::frame::write_frame(&mut std::io::stdout().lock(), &mut buffer, false, &image);
 
         terminal.restore();
 
@@ -493,30 +509,33 @@ impl App {
     /// the Sixel or iTerm2 image: only while an image is
     /// pending, the preview is visible, and no modal is open, as the cursor
     /// move plus the Sixel data.
-    pub(crate) fn take_pending_image_output(&mut self) -> Option<String> {
-        let mut out = std::mem::take(&mut self.preview.kitty_deletes);
+    /// The image writes the next frame owes the terminal: kitty transmit and
+    /// deletes, then the Sixel or iTerm2 image.
+    pub(crate) fn take_pending_image_output(&mut self) -> crate::frame::FrameImage {
+        let mut freestanding = std::mem::take(&mut self.preview.kitty_deletes);
 
         if self.preview.kitty_transmit_pending {
             self.preview.kitty_transmit_pending = false;
             if let Some(crate::imaging::ImageData::Kitty { transmit, .. }) = &self.preview.cached_image {
-                out.push_str(transmit);
+                freestanding.push_str(transmit);
             }
         }
 
         // Kitty commands pass through tmux one by one
         if self.image_passthrough().is_some() {
-            out = crate::terminal_caps::tmux_wrap_each(&out);
+            freestanding = crate::terminal_caps::tmux_wrap_each(&freestanding);
         }
 
-        if let Some(sixel) = self.take_pending_overlay_image() {
-            out.push_str(&sixel);
+        let mut image = crate::frame::FrameImage::freestanding(freestanding);
+        if let Some(overlay) = self.take_pending_overlay_image() {
+            image.merge(overlay);
         }
 
-        (!out.is_empty()).then_some(out)
+        image
     }
 
     /// The Sixel or iTerm2 image write: drawn over the cells after the flush.
-    fn take_pending_overlay_image(&mut self) -> Option<String> {
+    fn take_pending_overlay_image(&mut self) -> Option<crate::frame::FrameImage> {
         let expanded = self.input_mode == InputMode::ExpandedPreview;
         if !self.preview.sixel_pending
             || !(self.preview_pane_enabled || expanded)
@@ -550,15 +569,15 @@ impl App {
             );
         }
 
-        // Through tmux the cursor move goes to the outer terminal
-        // too, so it is offset by the pane's position
-        match self.image_passthrough() {
-            Some(tmux) => Some(crate::terminal_caps::tmux_wrap(&format!(
+        // Through tmux the cursor move goes to the outer terminal too, so it is
+        // offset by the pane's position and travels inside the wrapper
+        Some(match self.image_passthrough() {
+            Some(tmux) => crate::frame::FrameImage::freestanding(crate::terminal_caps::tmux_wrap(&format!(
                 "{}{sixel}",
                 crate::ansi::move_cursor(row + tmux.pane_top, col + tmux.pane_left)
             ))),
-            None => Some(format!("{}{sixel}", crate::ansi::move_cursor(row, col))),
-        }
+            None => crate::frame::FrameImage::at_cursor(crate::ansi::move_cursor(row, col), sixel.clone()),
+        })
     }
 
     /// The tmux passthrough image output takes, if any. Sixel
@@ -594,7 +613,7 @@ impl App {
             self.last_height = resize.height;
             buffer.resize(resize.width, resize.height);
             self.recalc_layout();
-            self.request_clear_screen = true;
+            self.request_screen = ScreenRequest::Clear;
 
             // A resized tmux pane may have moved
             #[cfg(unix)]
@@ -705,7 +724,7 @@ impl App {
                 self.directory_contents.invalidate_all();
                 self.clear_preview_cache();
                 self.refresh_git_status();
-                self.request_full_redraw = true;
+                self.request_repaint();
             }
             A::ToggleMark => {
                 if !entries.is_empty() && self.selected_index < entries.len() {
@@ -728,12 +747,12 @@ impl App {
             A::ToggleParentPane => {
                 self.parent_pane_enabled = !self.parent_pane_enabled;
                 self.recalc_layout();
-                self.request_clear_screen = true;
+                self.request_screen = ScreenRequest::Clear;
             }
             A::TogglePreviewPane => {
                 self.preview_pane_enabled = !self.preview_pane_enabled;
                 self.recalc_layout();
-                self.request_clear_screen = true;
+                self.request_screen = ScreenRequest::Clear;
                 self.clear_preview_cache();
             }
             // s/S change the current directory's saved sort; the
@@ -1269,7 +1288,7 @@ impl App {
         }
 
         self.refresh_git_status();
-        self.request_full_redraw = true;
+        self.request_repaint();
     }
 
     /// Points the file-system watcher at the current directory.
@@ -2403,93 +2422,6 @@ fn spawn_input_pump(
     })
 }
 
-/// How the terminal places a frame's image payload.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum ImageWrite {
-    /// Sixel and iTerm2 images: the terminal draws them where the cursor is, so
-    /// the payload goes out in writes of its own, with the cursor shown.
-    AtCursor,
-    /// Kitty images (their own placeholder cells carry the position) and the
-    /// deletes written at exit: written with the frame.
-    Freestanding,
-}
-
-/// Splits a payload's leading cursor move (`ESC[<row>;<col>H`) from the rest, for
-/// payloads that have one: Sixel and iTerm2 come prefixed with it, while a
-/// tmux-wrapped payload carries its move inside the wrapper.
-fn split_cursor_move(payload: &str) -> Option<(&str, &str)> {
-    let rest = payload.strip_prefix("\x1b[")?;
-    if !rest.starts_with(|ch: char| ch.is_ascii_digit()) {
-        return None;
-    }
-
-    Some(payload.split_at(payload.find('H')? + 1))
-}
-
-/// Writes one frame as a synchronized update: the requested clear, the cell
-/// diff, then the image payload the cell grid cannot carry. Writes nothing,
-/// not even the brackets, when there is nothing to show.
-///
-/// A payload the terminal places at the cursor is written separately from the
-/// frame, with the cursor shown: ConPTY holds a cursor move back and only emits it
-/// when it believes a visible cursor wants it, so with the cursor hidden the move
-/// never reaches the terminal and the image lands wherever the last paint ended. A
-/// screen with the cursor hidden misplaces the image and the same screen with the
-/// cursor shown places it correctly, while showing the cursor around the payload
-/// fixes the first (TODO.md, "WezTerm shows no image preview").
-fn write_frame(
-    out: &mut impl std::io::Write,
-    buffer: &mut ScreenBuffer,
-    pending_clear: bool,
-    image: Option<&str>,
-    image_write: ImageWrite,
-) {
-    if pending_clear {
-        // The clear owns its repaint: every cell goes out again
-        buffer.force_full_redraw();
-    }
-
-    let mut diff = String::new();
-    buffer.serialize(&mut diff);
-
-    // The move and the payload go out on their own, the frame carries neither
-    let split = if matches!(image_write, ImageWrite::AtCursor) {
-        image.and_then(split_cursor_move)
-    } else {
-        None
-    };
-    let inline = if split.is_some() { None } else { image };
-    let cells = pending_clear || !diff.is_empty() || inline.is_some();
-
-    if !cells && split.is_none() {
-        return;
-    }
-
-    if cells {
-        let _ = out.write_all(crate::ansi::BEGIN_SYNCHRONIZED_UPDATE.as_bytes());
-
-        if pending_clear {
-            let _ = out.write_all(crate::ansi::CLEAR_SCREEN.as_bytes());
-        }
-
-        let _ = out.write_all(diff.as_bytes());
-
-        if let Some(image) = inline {
-            let _ = out.write_all(image.as_bytes());
-        }
-
-        let _ = out.write_all(crate::ansi::END_SYNCHRONIZED_UPDATE.as_bytes());
-        let _ = out.flush();
-    }
-
-    if let Some((cursor_move, payload)) = split {
-        for chunk in [crate::ansi::SHOW_CURSOR, cursor_move, payload, crate::ansi::HIDE_CURSOR] {
-            let _ = out.write_all(chunk.as_bytes());
-            let _ = out.flush();
-        }
-    }
-}
-
 /// The note a completion notification adds for items the Recycle Bin or Trash
 /// could not take (see `fs::verbatim`): they were deleted permanently, which
 /// the user has to be told because it cannot be undone.
@@ -2516,143 +2448,9 @@ fn recycle_warning(targets: &[String]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        App, AppAction, AppConfig, ImageWrite, InputMode, permanently_deleted_note, recycle_warning, write_frame,
-    };
+    use super::{App, AppAction, AppConfig, InputMode, ScreenRequest, permanently_deleted_note, recycle_warning};
     use crate::fs::DriveMediaType;
     use crate::input::FileSystemChangedEvent;
-
-    /// Records what a frame wrote, in how many writes, and how often it flushed.
-    #[derive(Default)]
-    struct FrameSink {
-        bytes: Vec<u8>,
-        chunks: Vec<usize>,
-        flushes: usize,
-    }
-
-    impl std::io::Write for FrameSink {
-        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-            self.bytes.extend_from_slice(buf);
-            self.chunks.push(buf.len());
-            Ok(buf.len())
-        }
-
-        fn flush(&mut self) -> std::io::Result<()> {
-            self.flushes += 1;
-            Ok(())
-        }
-    }
-
-    /// A buffer whose every cell holds `ch`.
-    fn filled_buffer(width: i32, height: i32, ch: char) -> crate::screen::ScreenBuffer {
-        let mut buffer = crate::screen::ScreenBuffer::new(width, height);
-
-        for row in 0..height {
-            for col in 0..width {
-                buffer.put(row, col, ch, crate::screen::CellStyle::default());
-            }
-        }
-
-        buffer
-    }
-
-    #[test]
-    fn an_empty_frame_writes_nothing_at_all() {
-        let mut buffer = crate::screen::ScreenBuffer::new(4, 2);
-        let mut sink = FrameSink::default();
-        write_frame(&mut sink, &mut buffer, false, None, ImageWrite::Freestanding);
-        assert!(sink.bytes.is_empty(), "{:?}", String::from_utf8_lossy(&sink.bytes));
-        assert_eq!(sink.flushes, 0, "an empty frame does not even flush");
-    }
-
-    #[test]
-    fn a_pending_clear_is_bracketed_and_repaints_every_cell() {
-        let mut buffer = filled_buffer(4, 2, 'x');
-        let mut sink = FrameSink::default();
-
-        // The first frame consumes the diff, so no cell is dirty any more
-        write_frame(&mut sink, &mut buffer, false, None, ImageWrite::Freestanding);
-        assert!(!sink.bytes.is_empty());
-
-        let mut sink = FrameSink::default();
-        write_frame(&mut sink, &mut buffer, true, None, ImageWrite::Freestanding);
-
-        let text = String::from_utf8(sink.bytes).unwrap();
-        let rest = text.strip_prefix(crate::ansi::BEGIN_SYNCHRONIZED_UPDATE).expect("begin bracket");
-        let rest = rest.strip_prefix(crate::ansi::CLEAR_SCREEN).expect("the clear follows the bracket");
-        assert!(rest.ends_with(crate::ansi::END_SYNCHRONIZED_UPDATE));
-        assert_eq!(rest.matches('x').count(), 8, "the clear repaints every cell");
-        assert_eq!(sink.flushes, 1);
-    }
-
-    #[test]
-    fn a_diff_without_a_clear_is_bracketed_once() {
-        let mut buffer = filled_buffer(2, 1, 'x');
-        let mut sink = FrameSink::default();
-        write_frame(&mut sink, &mut buffer, false, None, ImageWrite::Freestanding);
-
-        let text = String::from_utf8(sink.bytes).unwrap();
-        assert_eq!(text.matches(crate::ansi::BEGIN_SYNCHRONIZED_UPDATE).count(), 1);
-        assert_eq!(text.matches(crate::ansi::END_SYNCHRONIZED_UPDATE).count(), 1);
-        assert!(!text.contains(crate::ansi::CLEAR_SCREEN));
-        assert_eq!(sink.flushes, 1);
-
-        // The diff is consumed: the next frame has nothing to write
-        let mut sink = FrameSink::default();
-        write_frame(&mut sink, &mut buffer, false, None, ImageWrite::Freestanding);
-        assert_eq!(sink.flushes, 0);
-    }
-
-    #[test]
-    fn the_image_lands_after_the_diff_and_before_the_end_bracket() {
-        let mut buffer = filled_buffer(2, 1, 'x');
-        let mut sink = FrameSink::default();
-        write_frame(&mut sink, &mut buffer, false, Some("<image>"), ImageWrite::AtCursor);
-
-        let text = String::from_utf8(sink.bytes).unwrap();
-        let diff_at = text.find('x').expect("the diff");
-        let image_at = text.find("<image>").expect("the image");
-        let end_at = text.find(crate::ansi::END_SYNCHRONIZED_UPDATE).expect("the end bracket");
-        assert!(diff_at < image_at && image_at < end_at, "{text:?}");
-        assert_eq!(sink.flushes, 1);
-    }
-
-    #[test]
-    fn an_image_alone_is_bracketed() {
-        let mut buffer = crate::screen::ScreenBuffer::new(2, 1);
-        let mut sink = FrameSink::default();
-        write_frame(&mut sink, &mut buffer, false, Some("<image>"), ImageWrite::Freestanding);
-
-        let expected =
-            format!("{}<image>{}", crate::ansi::BEGIN_SYNCHRONIZED_UPDATE, crate::ansi::END_SYNCHRONIZED_UPDATE);
-        assert_eq!(String::from_utf8(sink.bytes).unwrap(), expected);
-        assert_eq!(sink.flushes, 1);
-    }
-
-    #[test]
-    fn a_cursor_placed_image_is_written_with_the_cursor_shown() {
-        let mut buffer = filled_buffer(2, 1, 'x');
-        let mut sink = FrameSink::default();
-        write_frame(&mut sink, &mut buffer, false, Some("\x1b[7;9H<image>"), ImageWrite::AtCursor);
-
-        let text = String::from_utf8(sink.bytes).unwrap();
-        let frame_end = text.find(crate::ansi::END_SYNCHRONIZED_UPDATE).expect("the frame's bracket");
-        assert!(!text[..frame_end].contains("<image>"), "the frame carries no image: {text:?}");
-        assert_eq!(
-            &text[frame_end + crate::ansi::END_SYNCHRONIZED_UPDATE.len()..],
-            format!("{}\x1b[7;9H<image>{}", crate::ansi::SHOW_CURSOR, crate::ansi::HIDE_CURSOR),
-            "the frame, the move, the payload, and the cursor back on"
-        );
-        assert_eq!(sink.chunks.len(), 7, "{:?}", sink.chunks);
-        assert_eq!(&sink.chunks[3..], [6, 6, 7, 6], "show, move, payload, hide: {:?}", sink.chunks);
-        assert_eq!(sink.flushes, 5);
-
-        // A payload with no move of its own stays in the frame's write
-        let mut sink = FrameSink::default();
-        write_frame(&mut sink, &mut buffer, false, Some("<image>"), ImageWrite::AtCursor);
-        assert_eq!(sink.chunks.len(), 3, "{:?}", sink.chunks);
-        assert!(String::from_utf8(sink.bytes).unwrap().contains("<image>"));
-    }
 
     #[test]
     fn only_deletes_windows_cannot_recycle_add_the_note() {
@@ -2972,31 +2770,20 @@ mod tests {
     }
 
     #[test]
-    fn toggling_the_parent_pane_requests_a_clear_screen() {
-        let mut app = App::new(
-            AppConfig {
-                git_status_enabled: false,
-                ..AppConfig::default()
-            },
-            super::StartOptions::default(),
-        );
-        app.dispatch(AppAction::ToggleParentPane);
-        assert!(app.request_clear_screen);
-        assert!(!app.request_full_redraw, "the clear repaints fully on its own");
-    }
+    fn toggling_a_pane_requests_a_clear_screen() {
+        for (label, action) in [("parent", AppAction::ToggleParentPane), ("preview", AppAction::TogglePreviewPane)] {
+            let mut app = App::new(
+                AppConfig {
+                    git_status_enabled: false,
+                    ..AppConfig::default()
+                },
+                super::StartOptions::default(),
+            );
 
-    #[test]
-    fn toggling_the_preview_pane_requests_a_clear_screen() {
-        let mut app = App::new(
-            AppConfig {
-                git_status_enabled: false,
-                ..AppConfig::default()
-            },
-            super::StartOptions::default(),
-        );
-        app.dispatch(AppAction::TogglePreviewPane);
-        assert!(app.request_clear_screen);
-        assert!(!app.request_full_redraw);
+            app.dispatch(action);
+
+            assert_eq!(app.request_screen, ScreenRequest::Clear, "the {label} pane");
+        }
     }
 
     fn changed(app: &App, full_refresh: bool) -> FileSystemChangedEvent {
@@ -3025,7 +2812,7 @@ mod tests {
 
         assert_eq!(app.selected_index, 2);
         assert_eq!(selected_name(&mut app).as_deref(), Some("c.txt"));
-        assert!(app.request_full_redraw);
+        assert_eq!(app.request_screen, ScreenRequest::Repaint);
         let _ = std::fs::remove_dir_all(&root);
     }
 
@@ -3078,7 +2865,7 @@ mod tests {
         // Cache not invalidated, selection and redraw flag untouched
         assert_eq!(app.selected_index, 1);
         assert_eq!(selected_name(&mut app).as_deref(), Some("b.txt"));
-        assert!(!app.request_full_redraw);
+        assert_eq!(app.request_screen, ScreenRequest::None);
         let _ = std::fs::remove_dir_all(&root);
     }
 
@@ -3089,7 +2876,7 @@ mod tests {
         let _ = app.get_visible_entries();
 
         std::fs::write(root.join("a.txt"), "x").unwrap();
-        app.request_full_redraw = false;
+        app.request_screen = ScreenRequest::None;
         app.handle_file_system_changed(FileSystemChangedEvent {
             directory_path: app.current_path.to_uppercase(),
             full_refresh: false,
@@ -3097,7 +2884,12 @@ mod tests {
 
         // Another spelling is the same directory only on a case-insensitive
         // volume; on Linux it is a stale event for another directory
-        assert_eq!(app.request_full_redraw, cfg!(any(windows, target_os = "macos")));
+        let repaint = if cfg!(any(windows, target_os = "macos")) {
+            ScreenRequest::Repaint
+        } else {
+            ScreenRequest::None
+        };
+        assert_eq!(app.request_screen, repaint);
         let _ = std::fs::remove_dir_all(&root);
     }
 

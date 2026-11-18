@@ -9,7 +9,7 @@ use super::test_support::{
     app_at, ch, ctrl, fixture, frame, frame_has, key, press, pump_until, row_with, select, selected_name, shift,
     status_bar, type_text, visible_names,
 };
-use super::{App, AppAction, AppConfig};
+use super::{App, AppAction, AppConfig, ScreenRequest};
 use crate::console_key::ConsoleKey as K;
 use crate::input::{InputEvent, InputMode, MouseButton, MouseEvent};
 
@@ -1375,7 +1375,7 @@ fn sixel_output_is_suppressed_in_modal_modes() {
         app.preview.sixel_pending = true;
         app.preview.cached_image = Some(crate::imaging::ImageData::Sixel("sixel".to_string()));
         app.input_mode = mode;
-        assert_eq!(app.take_pending_image_output().is_some(), expected, "{mode:?}");
+        assert_eq!(!app.take_pending_image_output().is_empty(), expected, "{mode:?}");
         let _ = std::fs::remove_dir_all(&parent);
     }
 }
@@ -1669,12 +1669,10 @@ fn opens_the_full_screen_preview_with_the_right_pane_hidden(open: crate::input::
 
     press(&mut app, ch('Q'));
     assert_eq!(app.input_mode, InputMode::ExpandedPreview, "Shift+Q is not q");
-    app.request_clear_screen = false;
-    app.request_full_redraw = false;
+    app.request_screen = ScreenRequest::None;
     press(&mut app, ch('q'));
     assert_eq!(app.input_mode, InputMode::Normal);
-    assert!(app.request_clear_screen, "leaving the full-screen preview clears the screen");
-    assert!(!app.request_full_redraw);
+    assert_eq!(app.request_screen, ScreenRequest::Clear, "leaving the full-screen preview clears the screen");
     assert!(!app.preview_pane_enabled, "the right pane stays hidden");
     assert!(app.preview.applicable_providers.is_none(), "nothing left over for the next file");
     assert!(!frame_has(&mut app, "Title"));

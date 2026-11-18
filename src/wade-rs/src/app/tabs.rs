@@ -177,7 +177,7 @@ impl App {
         self.refresh_git_status();
         self.clamp_selection_and_scroll();
         self.recalc_layout();
-        self.request_full_redraw = true;
+        self.request_repaint();
     }
 
     /// Switches to tab `index`; no-op when out of range or already active.

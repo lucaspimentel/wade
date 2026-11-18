@@ -7,6 +7,7 @@
 pub mod ansi;
 pub mod app;
 pub mod console_key;
+pub mod frame;
 pub mod fs;
 pub mod highlight;
 pub mod imaging;

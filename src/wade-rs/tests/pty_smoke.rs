@@ -23,6 +23,11 @@ const TIMEOUT: Duration = Duration::from_secs(15);
 const DOWN: &str = "\x1b[B";
 const ENTER: &str = "\r";
 const ESC: &str = "\x1b";
+/// The pair wade brackets every frame with (see `src/wade-rs/src/frame.rs`)
+#[cfg(unix)]
+const BEGIN_SYNC: &str = "\x1b[?2026h";
+#[cfg(unix)]
+const END_SYNC: &str = "\x1b[?2026l";
 /// Backspace as most terminals send it (DEL), and as some send it (BS)
 const BACKSPACE_DEL: &str = "\x7f";
 #[cfg(unix)]
@@ -647,17 +652,20 @@ fn termios_of(master: &dyn MasterPty) -> libc::termios {
 #[cfg(unix)]
 #[test]
 fn a_clear_and_its_repaint_sit_between_synchronized_update_brackets() {
+    const CLEAR: &str = "\x1b[2J";
+
     let (home, root) = fixture("sync-update");
     let mut wade = Session::start(&home, &root, &[]);
     wade.wait_for_text("notes.txt");
 
     // `[` toggles the parent pane, which asks for a clear
+    let bracketed_clear = format!("{BEGIN_SYNC}{CLEAR}");
     wade.send_keys("[");
-    wade.wait_for_output("\x1b[?2026h\x1b[2J");
+    wade.wait_for_output(&bracketed_clear);
 
     let raw = wade.raw_text();
-    let begin = raw.rfind("\x1b[?2026h\x1b[2J").expect("a bracketed clear");
-    let end = raw[begin..].find("\x1b[?2026l").map(|i| begin + i).expect("an end bracket after it");
+    let begin = raw.rfind(&bracketed_clear).expect("a bracketed clear");
+    let end = raw[begin..].find(END_SYNC).map(|i| begin + i).expect("an end bracket after it");
     assert!(raw[begin..end].contains("notes.txt"), "the repaint is inside the bracket");
 
     wade.send("q");
@@ -684,7 +692,7 @@ fn quit_restores_raw_mode_and_sends_the_exit_sequence() {
 
     let raw = wade.raw_text();
     let order = [
-        "\x1b[?2026l",
+        END_SYNC,
         "\x1b[?2004l",
         "\x1b[?1006l",
         "\x1b[?1000l",

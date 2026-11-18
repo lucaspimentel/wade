@@ -3,8 +3,8 @@
 //! right-pane file preview, the "Change preview" menu, full-screen
 //! preview, and the image paths.
 
-use crate::app::App;
 use crate::app::input_reader::AppAction;
+use crate::app::{App, ScreenRequest};
 use crate::highlight::StyledLine;
 use crate::imaging::ImageData;
 use crate::input::{
@@ -236,7 +236,7 @@ impl App {
         }
 
         if self.preview.is_image_preview {
-            self.request_full_redraw = true;
+            self.request_repaint();
         }
 
         self.preview.loader.cancel();
@@ -369,7 +369,7 @@ impl App {
         self.reload_active_provider(&path, true);
 
         if was_image {
-            self.request_full_redraw = true;
+            self.request_repaint();
         }
     }
 
@@ -437,7 +437,7 @@ impl App {
             }
         }
 
-        self.request_full_redraw = true;
+        self.request_repaint();
     }
 
     /// Leaves full-screen preview.
@@ -456,7 +456,7 @@ impl App {
             self.reload_active_provider(&path, true);
         }
 
-        self.request_clear_screen = true;
+        self.request_screen = ScreenRequest::Clear;
     }
 
     /// Reloads the preview for the resized pane.
@@ -791,6 +791,23 @@ mod tests {
     use crate::input::{InputEvent, InputMode, KeyEvent, MetadataReadyEvent, PreviewReadyEvent};
     use crate::screen::ScreenBuffer;
 
+    /// The image bytes the next frame owes, as one string: these tests check
+    /// where a payload is written, not which of the two shapes it took.
+    fn image_output(app: &mut App) -> Option<String> {
+        let image = app.take_pending_image_output();
+        if image.is_empty() {
+            return None;
+        }
+
+        let mut out = image.freestanding;
+        if let Some((cursor_move, payload)) = image.at_cursor {
+            out.push_str(&cursor_move);
+            out.push_str(&payload);
+        }
+
+        Some(out)
+    }
+
     /// An App listing a fresh directory with `files`, git off, laid out at
     /// 80x25 with the right pane shown.
     fn app_with(name: &str, files: &[(&str, &str)]) -> (App, std::path::PathBuf) {
@@ -1021,10 +1038,10 @@ mod tests {
         assert!(app.preview.sixel_pending);
         assert!(app.preview.sixel_image_top > app.layout.right_pane.top);
 
-        let sixel = app.take_pending_image_output().expect("sixel written");
+        let sixel = image_output(&mut app).expect("sixel written");
         let cursor = crate::ansi::move_cursor(app.preview.sixel_image_top, app.layout.right_pane.left);
         assert!(sixel.starts_with(&format!("{cursor}\x1bPq")));
-        assert!(app.take_pending_image_output().is_none(), "written once per render");
+        assert!(image_output(&mut app).is_none(), "written once per render");
     }
 
     #[test]
@@ -1035,7 +1052,7 @@ mod tests {
         render(&mut app);
 
         app.input_mode = InputMode::Help;
-        assert!(app.take_pending_image_output().is_none());
+        assert!(image_output(&mut app).is_none());
 
         let (mut plain, _root) = app_with("app-image-nosixel", &[]);
         image::RgbImage::new(8, 8).save(_root.join("pic.png")).unwrap();
@@ -1057,7 +1074,7 @@ mod tests {
 
         // 64x32 px over 8x16 px cells: 8x2 cells centered in the 80x24 pane
         let expected = app.layout.expanded_pane.center_content(8, 2);
-        let sixel = app.take_pending_image_output().expect("sixel");
+        let sixel = image_output(&mut app).expect("sixel");
         assert!(sixel.starts_with(&crate::ansi::move_cursor(expected.0, expected.1)));
     }
 
@@ -1098,7 +1115,7 @@ mod tests {
         assert!(pane_row(pane.top).contains("combined line one"), "{:?}", pane_row(pane.top));
         assert!(pane_row(pane.top + 1).contains("combined line two"));
         assert_eq!(app.preview.sixel_image_top, pane.top + 2, "the image starts below the text");
-        let sixel = app.take_pending_image_output().expect("image written");
+        let sixel = image_output(&mut app).expect("image written");
         assert_eq!(sixel, format!("{}\x1bPqcombined\x1b\\", crate::ansi::move_cursor(pane.top + 2, pane.left)));
 
         // Expanded: text then image, not centered like an image-only preview
@@ -1106,7 +1123,7 @@ mod tests {
         app.handle_combined_preview_ready(event(&path));
         app.render(&mut ScreenBuffer::new(80, 25));
         let expanded = app.layout.expanded_pane;
-        let sixel = app.take_pending_image_output().expect("expanded image written");
+        let sixel = image_output(&mut app).expect("expanded image written");
         assert!(sixel.starts_with(&crate::ansi::move_cursor(expanded.top + 2, expanded.left)), "{sixel:?}");
     }
 
@@ -1378,17 +1395,17 @@ mod tests {
         frame.serialize(&mut out);
         assert!(out.contains(&format!("\x1b[38;2;{};{};{}m\u{10EEEE}", color.r, color.g, color.b)), "id color");
 
-        let output = app.take_pending_image_output().expect("transmit");
+        let output = image_output(&mut app).expect("transmit");
         assert!(output.starts_with(&format!("\x1b_Ga=T,U=1,f=32,o=z,s=64,v=32,i={id},c=8,r=2,")), "{}", &output[..80]);
         render(&mut app);
-        assert!(app.take_pending_image_output().is_none(), "transmitted once");
+        assert!(image_output(&mut app).is_none(), "transmitted once");
     }
 
     #[test]
     fn kitty_image_stays_visible_under_an_overlay() {
         let (mut app, _root) = kitty_app("app-kitty-overlay", &[]);
         load_image(&mut app);
-        let _ = app.take_pending_image_output();
+        let _ = image_output(&mut app);
 
         // Wide enough that the palette covers only part of the image
         app.set_screen_size(300, 40);
@@ -1411,21 +1428,21 @@ mod tests {
     fn replaced_kitty_images_are_deleted() {
         let (mut app, _root) = kitty_app("app-kitty-delete", &[("z.txt", "text")]);
         let id = load_image(&mut app);
-        let _ = app.take_pending_image_output();
+        let _ = image_output(&mut app);
 
         app.dispatch(AppAction::NavigateDown);
         render(&mut app);
-        let output = app.take_pending_image_output().expect("delete");
+        let output = image_output(&mut app).expect("delete");
         assert_eq!(output, crate::imaging::kitty::encode_delete(id));
-        assert!(app.take_pending_image_output().is_none());
+        assert!(image_output(&mut app).is_none());
         pump(&mut app, |app| loaded(app) && app.preview.cached_path.as_deref().is_some_and(|p| p.ends_with("z.txt")));
 
         // Clearing the cache (refresh, tab switch, ...) also frees the image
         app.dispatch(AppAction::NavigateUp);
         let id = load_image(&mut app);
-        let _ = app.take_pending_image_output();
+        let _ = image_output(&mut app);
         app.clear_preview_cache();
-        assert_eq!(app.take_pending_image_output().as_deref(), Some(crate::imaging::kitty::encode_delete(id).as_str()));
+        assert_eq!(image_output(&mut app).as_deref(), Some(crate::imaging::kitty::encode_delete(id).as_str()));
     }
 
     #[test]
@@ -1540,17 +1557,17 @@ mod tests {
         assert!(matches!(app.preview.cached_image, Some(ImageData::Iterm(_))));
 
         render(&mut app);
-        let output = app.take_pending_image_output().expect("image written");
+        let output = image_output(&mut app).expect("image written");
         let cursor = crate::ansi::move_cursor(app.preview.sixel_image_top, app.layout.right_pane.left);
         // 64x32 px over 8x16 px cells: 8x2 cells
         assert!(output.starts_with(&format!("{cursor}\x1b]1337;File=inline=1;size=")), "{}", &output[..60]);
         assert!(output.contains(";width=8;height=2;"));
-        assert!(app.take_pending_image_output().is_none(), "written once per render");
+        assert!(image_output(&mut app).is_none(), "written once per render");
 
         // Hidden under modals, like Sixel
         render(&mut app);
         app.input_mode = InputMode::Help;
-        assert!(app.take_pending_image_output().is_none());
+        assert!(image_output(&mut app).is_none());
     }
 
     #[test]
@@ -1564,7 +1581,7 @@ mod tests {
         render(&mut app);
 
         let expected = app.layout.expanded_pane.center_content(8, 2);
-        let output = app.take_pending_image_output().expect("image");
+        let output = image_output(&mut app).expect("image");
         assert!(output.starts_with(&format!("{}\x1b]1337;", crate::ansi::move_cursor(expected.0, expected.1))));
     }
 }
