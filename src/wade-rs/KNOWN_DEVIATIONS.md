@@ -583,8 +583,10 @@ None. Phase 9 closed the last temporary entries.
   back to the category glyph for extensions missing from the C# table. The
   file finder honors the set (C# always drew Nerd Fonts icons there).
 - **Frames are bracketed as synchronized updates (Rust-only).** The cell
-  diff, a requested full clear and the image payload are written between
-  `CSI ?2026h` and `CSI ?2026l`, and both restore paths emit `CSI ?2026l`
+  diff and a requested full clear are written between `CSI ?2026h` and
+  `CSI ?2026l` (an image the terminal places at the cursor adds writes of
+  its own after the bracket; see the next entry), and both restore paths
+  emit `CSI ?2026l`
   unconditionally. C# wrote the clear, the diff and the image as separate
   writes and had no bracket. No capability query is sent: an unknown
   private mode is ignored, and DECRQM inside tmux would answer from tmux's
@@ -592,3 +594,14 @@ None. Phase 9 closed the last temporary entries.
   are unchanged, since the bracket lives in the write path. A clear also
   forces a full repaint, so the clear and the repaint it needs reach the
   screen as one presentation.
+- **A cursor-placed image is written with the cursor shown (Rust-only).** A
+  Sixel or iTerm2 payload is split from its leading `CSI <row>;<col>H`, and
+  the move and the payload go out in writes of their own with `CSI ?25h`
+  before them and `CSI ?25l` after, instead of inside the frame's write.
+  ConPTY holds a cursor move back until it believes a visible cursor wants
+  it, so while the cursor is hidden (as a full-screen TUI keeps it) the move
+  never reaches the terminal and the image lands wherever the last paint
+  ended: the same screen places the image correctly with the cursor shown,
+  and only the payload needs that treatment. C# had no such split. Kitty
+  images and the exit-time deletes are unaffected, since their own
+  placeholder cells carry the position.

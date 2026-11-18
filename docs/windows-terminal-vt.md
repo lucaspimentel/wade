@@ -63,3 +63,11 @@ was off by the same factor.
   each frame with it and sends no query, since an unknown private mode is
   ignored; the restore paths write the closing sequence unconditionally.
   Older consoles ignore the pair.
+- ConPTY holds a cursor move back until it believes a visible cursor wants
+  it, so a sequence passed straight through that depends on the cursor (an
+  iTerm2 image, for example) arrives without the move while the cursor is
+  hidden, and is drawn wherever the last paint ended. wade shows the cursor
+  around a cursor-placed image payload for that reason (TODO.md, "WezTerm
+  shows no image preview (Windows build, WSL pane)"). Seen with WezTerm on
+  Windows running wade in WSL; Windows Terminal presents the image
+  correctly either way.

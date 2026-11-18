@@ -432,12 +432,17 @@ impl App {
             buffer.clear();
             self.render(&mut buffer);
 
-            // One write per frame, between the synchronized-update brackets.
-            // The lock is released at the end of the statement, not held across
-            // the blocking wait below
+            // One synchronized update per frame. An image the terminal places
+            // at the cursor adds its own writes after the frame's, with the
+            // cursor shown. The lock is released at the end of the statement,
+            // not held across the blocking wait below
             let pending_clear = std::mem::take(&mut self.request_clear_screen);
             let image = self.take_pending_image_output();
-            write_frame(&mut std::io::stdout().lock(), &mut buffer, pending_clear, image.as_deref());
+            let image_write = match self.image_protocol {
+                Some(crate::imaging::ImageProtocol::Kitty) => ImageWrite::Freestanding,
+                _ => ImageWrite::AtCursor,
+            };
+            write_frame(&mut std::io::stdout().lock(), &mut buffer, pending_clear, image.as_deref(), image_write);
 
             // Wait for next input event (pump thread feeds the queue; loader
             // threads send into the same queue)
@@ -476,7 +481,7 @@ impl App {
         // Free the kitty image still shown
         self.preview.set_image(None);
         let image = self.take_pending_image_output();
-        write_frame(&mut std::io::stdout().lock(), &mut buffer, false, image.as_deref());
+        write_frame(&mut std::io::stdout().lock(), &mut buffer, false, image.as_deref(), ImageWrite::Freestanding);
 
         terminal.restore();
 
@@ -2398,10 +2403,47 @@ fn spawn_input_pump(
     })
 }
 
+/// How the terminal places a frame's image payload.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ImageWrite {
+    /// Sixel and iTerm2 images: the terminal draws them where the cursor is, so
+    /// the payload goes out in writes of its own, with the cursor shown.
+    AtCursor,
+    /// Kitty images (their own placeholder cells carry the position) and the
+    /// deletes written at exit: written with the frame.
+    Freestanding,
+}
+
+/// Splits a payload's leading cursor move (`ESC[<row>;<col>H`) from the rest, for
+/// payloads that have one: Sixel and iTerm2 come prefixed with it, while a
+/// tmux-wrapped payload carries its move inside the wrapper.
+fn split_cursor_move(payload: &str) -> Option<(&str, &str)> {
+    let rest = payload.strip_prefix("\x1b[")?;
+    if !rest.starts_with(|ch: char| ch.is_ascii_digit()) {
+        return None;
+    }
+
+    Some(payload.split_at(payload.find('H')? + 1))
+}
+
 /// Writes one frame as a synchronized update: the requested clear, the cell
 /// diff, then the image payload the cell grid cannot carry. Writes nothing,
 /// not even the brackets, when there is nothing to show.
-fn write_frame(out: &mut impl std::io::Write, buffer: &mut ScreenBuffer, pending_clear: bool, image: Option<&str>) {
+///
+/// A payload the terminal places at the cursor is written separately from the
+/// frame, with the cursor shown: ConPTY holds a cursor move back and only emits it
+/// when it believes a visible cursor wants it, so with the cursor hidden the move
+/// never reaches the terminal and the image lands wherever the last paint ended. A
+/// screen with the cursor hidden misplaces the image and the same screen with the
+/// cursor shown places it correctly, while showing the cursor around the payload
+/// fixes the first (TODO.md, "WezTerm shows no image preview").
+fn write_frame(
+    out: &mut impl std::io::Write,
+    buffer: &mut ScreenBuffer,
+    pending_clear: bool,
+    image: Option<&str>,
+    image_write: ImageWrite,
+) {
     if pending_clear {
         // The clear owns its repaint: every cell goes out again
         buffer.force_full_redraw();
@@ -2410,24 +2452,42 @@ fn write_frame(out: &mut impl std::io::Write, buffer: &mut ScreenBuffer, pending
     let mut diff = String::new();
     buffer.serialize(&mut diff);
 
-    if !pending_clear && diff.is_empty() && image.is_none() {
+    // The move and the payload go out on their own, the frame carries neither
+    let split = if matches!(image_write, ImageWrite::AtCursor) {
+        image.and_then(split_cursor_move)
+    } else {
+        None
+    };
+    let inline = if split.is_some() { None } else { image };
+    let cells = pending_clear || !diff.is_empty() || inline.is_some();
+
+    if !cells && split.is_none() {
         return;
     }
 
-    let _ = out.write_all(crate::ansi::BEGIN_SYNCHRONIZED_UPDATE.as_bytes());
+    if cells {
+        let _ = out.write_all(crate::ansi::BEGIN_SYNCHRONIZED_UPDATE.as_bytes());
 
-    if pending_clear {
-        let _ = out.write_all(crate::ansi::CLEAR_SCREEN.as_bytes());
+        if pending_clear {
+            let _ = out.write_all(crate::ansi::CLEAR_SCREEN.as_bytes());
+        }
+
+        let _ = out.write_all(diff.as_bytes());
+
+        if let Some(image) = inline {
+            let _ = out.write_all(image.as_bytes());
+        }
+
+        let _ = out.write_all(crate::ansi::END_SYNCHRONIZED_UPDATE.as_bytes());
+        let _ = out.flush();
     }
 
-    let _ = out.write_all(diff.as_bytes());
-
-    if let Some(image) = image {
-        let _ = out.write_all(image.as_bytes());
+    if let Some((cursor_move, payload)) = split {
+        for chunk in [crate::ansi::SHOW_CURSOR, cursor_move, payload, crate::ansi::HIDE_CURSOR] {
+            let _ = out.write_all(chunk.as_bytes());
+            let _ = out.flush();
+        }
     }
-
-    let _ = out.write_all(crate::ansi::END_SYNCHRONIZED_UPDATE.as_bytes());
-    let _ = out.flush();
 }
 
 /// The note a completion notification adds for items the Recycle Bin or Trash
@@ -2456,20 +2516,24 @@ fn recycle_warning(targets: &[String]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{App, AppAction, AppConfig, InputMode, permanently_deleted_note, recycle_warning, write_frame};
+    use super::{
+        App, AppAction, AppConfig, ImageWrite, InputMode, permanently_deleted_note, recycle_warning, write_frame,
+    };
     use crate::fs::DriveMediaType;
     use crate::input::FileSystemChangedEvent;
 
-    /// Records what a frame wrote and how often it flushed.
+    /// Records what a frame wrote, in how many writes, and how often it flushed.
     #[derive(Default)]
     struct FrameSink {
         bytes: Vec<u8>,
+        chunks: Vec<usize>,
         flushes: usize,
     }
 
     impl std::io::Write for FrameSink {
         fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
             self.bytes.extend_from_slice(buf);
+            self.chunks.push(buf.len());
             Ok(buf.len())
         }
 
@@ -2496,7 +2560,7 @@ mod tests {
     fn an_empty_frame_writes_nothing_at_all() {
         let mut buffer = crate::screen::ScreenBuffer::new(4, 2);
         let mut sink = FrameSink::default();
-        write_frame(&mut sink, &mut buffer, false, None);
+        write_frame(&mut sink, &mut buffer, false, None, ImageWrite::Freestanding);
         assert!(sink.bytes.is_empty(), "{:?}", String::from_utf8_lossy(&sink.bytes));
         assert_eq!(sink.flushes, 0, "an empty frame does not even flush");
     }
@@ -2507,11 +2571,11 @@ mod tests {
         let mut sink = FrameSink::default();
 
         // The first frame consumes the diff, so no cell is dirty any more
-        write_frame(&mut sink, &mut buffer, false, None);
+        write_frame(&mut sink, &mut buffer, false, None, ImageWrite::Freestanding);
         assert!(!sink.bytes.is_empty());
 
         let mut sink = FrameSink::default();
-        write_frame(&mut sink, &mut buffer, true, None);
+        write_frame(&mut sink, &mut buffer, true, None, ImageWrite::Freestanding);
 
         let text = String::from_utf8(sink.bytes).unwrap();
         let rest = text.strip_prefix(crate::ansi::BEGIN_SYNCHRONIZED_UPDATE).expect("begin bracket");
@@ -2525,7 +2589,7 @@ mod tests {
     fn a_diff_without_a_clear_is_bracketed_once() {
         let mut buffer = filled_buffer(2, 1, 'x');
         let mut sink = FrameSink::default();
-        write_frame(&mut sink, &mut buffer, false, None);
+        write_frame(&mut sink, &mut buffer, false, None, ImageWrite::Freestanding);
 
         let text = String::from_utf8(sink.bytes).unwrap();
         assert_eq!(text.matches(crate::ansi::BEGIN_SYNCHRONIZED_UPDATE).count(), 1);
@@ -2535,7 +2599,7 @@ mod tests {
 
         // The diff is consumed: the next frame has nothing to write
         let mut sink = FrameSink::default();
-        write_frame(&mut sink, &mut buffer, false, None);
+        write_frame(&mut sink, &mut buffer, false, None, ImageWrite::Freestanding);
         assert_eq!(sink.flushes, 0);
     }
 
@@ -2543,7 +2607,7 @@ mod tests {
     fn the_image_lands_after_the_diff_and_before_the_end_bracket() {
         let mut buffer = filled_buffer(2, 1, 'x');
         let mut sink = FrameSink::default();
-        write_frame(&mut sink, &mut buffer, false, Some("<image>"));
+        write_frame(&mut sink, &mut buffer, false, Some("<image>"), ImageWrite::AtCursor);
 
         let text = String::from_utf8(sink.bytes).unwrap();
         let diff_at = text.find('x').expect("the diff");
@@ -2557,12 +2621,37 @@ mod tests {
     fn an_image_alone_is_bracketed() {
         let mut buffer = crate::screen::ScreenBuffer::new(2, 1);
         let mut sink = FrameSink::default();
-        write_frame(&mut sink, &mut buffer, false, Some("<image>"));
+        write_frame(&mut sink, &mut buffer, false, Some("<image>"), ImageWrite::Freestanding);
 
         let expected =
             format!("{}<image>{}", crate::ansi::BEGIN_SYNCHRONIZED_UPDATE, crate::ansi::END_SYNCHRONIZED_UPDATE);
         assert_eq!(String::from_utf8(sink.bytes).unwrap(), expected);
         assert_eq!(sink.flushes, 1);
+    }
+
+    #[test]
+    fn a_cursor_placed_image_is_written_with_the_cursor_shown() {
+        let mut buffer = filled_buffer(2, 1, 'x');
+        let mut sink = FrameSink::default();
+        write_frame(&mut sink, &mut buffer, false, Some("\x1b[7;9H<image>"), ImageWrite::AtCursor);
+
+        let text = String::from_utf8(sink.bytes).unwrap();
+        let frame_end = text.find(crate::ansi::END_SYNCHRONIZED_UPDATE).expect("the frame's bracket");
+        assert!(!text[..frame_end].contains("<image>"), "the frame carries no image: {text:?}");
+        assert_eq!(
+            &text[frame_end + crate::ansi::END_SYNCHRONIZED_UPDATE.len()..],
+            format!("{}\x1b[7;9H<image>{}", crate::ansi::SHOW_CURSOR, crate::ansi::HIDE_CURSOR),
+            "the frame, the move, the payload, and the cursor back on"
+        );
+        assert_eq!(sink.chunks.len(), 7, "{:?}", sink.chunks);
+        assert_eq!(&sink.chunks[3..], [6, 6, 7, 6], "show, move, payload, hide: {:?}", sink.chunks);
+        assert_eq!(sink.flushes, 5);
+
+        // A payload with no move of its own stays in the frame's write
+        let mut sink = FrameSink::default();
+        write_frame(&mut sink, &mut buffer, false, Some("<image>"), ImageWrite::AtCursor);
+        assert_eq!(sink.chunks.len(), 3, "{:?}", sink.chunks);
+        assert!(String::from_utf8(sink.bytes).unwrap().contains("<image>"));
     }
 
     #[test]
