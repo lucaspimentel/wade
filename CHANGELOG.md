@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Added
+- `WADE_DEBUG_PROTOCOL=1` (`true` and `yes` also work) prints two `wade-debug:` lines on stderr, to diagnose a missing image preview: what terminal detection found (the capability flags, the environment variables behind them, and on Unix the terminal's raw query replies) before the UI starts, and the image protocol wade settled on when it exits normally. See Troubleshooting in the README
+
 ## [2.3.0] - 2026-11-18
 
 ### Fixed

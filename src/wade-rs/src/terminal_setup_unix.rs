@@ -117,6 +117,12 @@ impl Drop for TerminalSetup {
 /// the tty until 200ms pass without data.
 fn detect_capabilities(tty_fd: libc::c_int) -> TerminalCapabilities {
     if tty_fd < 0 {
+        crate::debug_protocol::log_detection(&crate::debug_protocol::DetectionInputs {
+            capabilities: TerminalCapabilities::DEFAULT,
+            tmux_client: None,
+            raw: crate::debug_protocol::RawReplies::Absent("no tty"),
+        });
+
         return TerminalCapabilities::DEFAULT;
     }
 
@@ -145,10 +151,19 @@ fn detect_capabilities(tty_fd: libc::c_int) -> TerminalCapabilities {
 
     // Inside tmux the replies came from tmux; ask it about the
     // outer terminal and whether image data may pass through
+    let mut tmux_client_info = None;
+
     if std::env::var_os("TMUX").is_some_and(|value| !value.is_empty()) {
         let client = tmux_client().unwrap_or_default();
         caps = caps.inside_tmux(&client);
+        tmux_client_info = Some(client);
     }
+
+    crate::debug_protocol::log_detection(&crate::debug_protocol::DetectionInputs {
+        capabilities: caps,
+        tmux_client: tmux_client_info.as_ref(),
+        raw: crate::debug_protocol::RawReplies::Bytes(&buf[..total]),
+    });
 
     caps
 }

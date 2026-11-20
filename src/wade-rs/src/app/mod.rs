@@ -601,6 +601,17 @@ impl App {
         self.image_previews_effective = self.config.image_previews_enabled && self.image_protocol.is_some();
     }
 
+    /// The image-preview decision, for the `WADE_DEBUG_PROTOCOL` second line.
+    #[must_use]
+    pub fn image_decision(&self) -> crate::debug_protocol::ImageDecision {
+        crate::debug_protocol::ImageDecision {
+            setting: self.config.image_protocol,
+            protocol: self.image_protocol,
+            effective: self.image_previews_effective,
+            previews_enabled: self.config.image_previews_enabled,
+        }
+    }
+
     fn default_start_path() -> String {
         std::env::current_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_else(|_| ".".to_string())
     }

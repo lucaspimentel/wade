@@ -23,7 +23,7 @@ fn main() -> ExitCode {
     };
 
     if cli.show_version {
-        println!("wade {}", version_string());
+        println!("wade {}", wade::version_string());
         return ExitCode::SUCCESS;
     }
 
@@ -61,7 +61,9 @@ fn main() -> ExitCode {
     let cancel = CancelToken::new();
     #[cfg(unix)]
     wade::signals::install(&cancel);
-    let final_path = App::new(config, start).run(&cancel);
+    let mut app = App::new(config, start);
+    let final_path = app.run(&cancel);
+    wade::debug_protocol::log_image_decision(app.image_decision());
 
     // Ended by SIGTERM/SIGHUP (the terminal is restored): the
     // shell's exit status for that signal, and no cwd file
@@ -76,14 +78,6 @@ fn main() -> ExitCode {
     }
 
     ExitCode::SUCCESS
-}
-
-/// The informational version, `2.0.0+<commit sha>`.
-fn version_string() -> String {
-    match option_env!("WADE_COMMIT") {
-        Some(sha) => format!("{}+{sha}", env!("CARGO_PKG_VERSION")),
-        None => env!("CARGO_PKG_VERSION").to_string(),
-    }
 }
 
 fn print_help() {

@@ -16,6 +16,18 @@ pub enum ImageProtocol {
     Iterm,
 }
 
+impl ImageProtocol {
+    /// The lowercase name, as the config key spells it.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Sixel => "sixel",
+            Self::Kitty => "kitty",
+            Self::Iterm => "iterm",
+        }
+    }
+}
+
 /// The `image_protocol` config key.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ImageProtocolSetting {

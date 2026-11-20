@@ -7,6 +7,7 @@
 pub mod ansi;
 pub mod app;
 pub mod console_key;
+pub mod debug_protocol;
 pub mod frame;
 pub mod fs;
 pub mod highlight;
@@ -26,3 +27,13 @@ pub mod terminal_setup;
 pub mod terminal_setup;
 pub mod text;
 pub mod ui;
+
+/// The informational version, `<version>`, plus the commit sha when the build
+/// was given one.
+#[must_use]
+pub fn version_string() -> String {
+    match option_env!("WADE_COMMIT") {
+        Some(sha) => format!("{}+{sha}", env!("CARGO_PKG_VERSION")),
+        None => env!("CARGO_PKG_VERSION").to_string(),
+    }
+}

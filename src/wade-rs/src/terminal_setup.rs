@@ -108,6 +108,12 @@ impl TerminalSetup {
             std::env::var("TERM_PROGRAM").ok().as_deref(),
         );
 
+        crate::debug_protocol::log_detection(&crate::debug_protocol::DetectionInputs {
+            capabilities,
+            tmux_client: None,
+            raw: crate::debug_protocol::RawReplies::Absent("no queries on Windows"),
+        });
+
         save_console_title();
         write_out(&[
             crate::ansi::SAVE_TITLE,
