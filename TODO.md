@@ -86,8 +86,7 @@ though they appeared in the console's own echo rather than in the probe's read, 
 still on. `docs/windows-terminal-vt.md` records the query-only VT input spike that read replies through ConPTY this
 way, and why a full switch to VT input is not planned.
 
-- [ ] Switch VT input on around the startup queries (line input and echo off, or the read waits for a newline) and feed the replies to the same parser the Unix path uses, keeping `TERM_PROGRAM` as the fallback for terminals that answer nothing (Windows Terminal answers DA1 but not XTVERSION or the kitty query)
-- [ ] Then the trust problem goes away: the name is only believed alongside an `OK` reply, as on Unix
+- [ ] Switch VT input on around the startup queries (line input and echo off, or the read waits for a newline) and feed the replies to the same parser the Unix path uses, keeping `TERM_PROGRAM` as the fallback for terminals that answer nothing (Windows Terminal answers DA1 but not XTVERSION or the kitty query). The name would then only be believed alongside an `OK` reply, as on Unix, instead of on trust.
 
 ### Consolidate settings sources
 
