@@ -10,7 +10,9 @@ pub struct TerminalCapabilities {
     pub cell_pixel_width: i32,
     pub cell_pixel_height: i32,
     /// The terminal supports kitty graphics with Unicode
-    /// placeholders (answered the `a=q` query and is kitty or Ghostty).
+    /// placeholders (answered the `a=q` query and is kitty or Ghostty; on
+    /// Windows, where replies cannot be read, a `TERM_PROGRAM` naming one of
+    /// them).
     pub kitty_graphics: bool,
     /// The terminal shows iTerm2 inline images (`OSC 1337`):
     /// iTerm2 or WezTerm, by XTVERSION or `TERM_PROGRAM`.
@@ -214,11 +216,15 @@ impl TerminalCapabilities {
 /// Windows Terminal (`WT_SESSION`) shows Sixel since v1.22 and lays images
 /// out on a fixed virtual 10x20 cell (`SixelParser::CellSizeForLevel`, its
 /// `CSI 16t` reply), whatever the font. WezTerm on Windows
-/// (`TERM_PROGRAM`) shows iTerm2 inline images.
+/// (`TERM_PROGRAM`) shows iTerm2 inline images, and a `TERM_PROGRAM` naming a
+/// placeholder terminal (`ghostty`, as the herdr app reports itself) stands in
+/// for the graphics query reply Windows cannot read: on Unix that name is
+/// cross-checked against the reply, here it is taken on trust.
 #[must_use]
 pub fn windows_capabilities(wt_session: bool, term_program: Option<&str>) -> TerminalCapabilities {
     let mut caps = TerminalCapabilities {
         iterm_images: iterm_from_term_program(term_program),
+        kitty_graphics: term_program.is_some_and(is_placeholder_terminal),
         ..TerminalCapabilities::DEFAULT
     };
     if wt_session {
@@ -356,6 +362,29 @@ mod tests {
         assert_eq!(super::windows_capabilities(false, None), Caps::DEFAULT);
         let wezterm = super::windows_capabilities(false, Some("WezTerm"));
         assert_eq!(wezterm, Caps { iterm_images: true, ..Caps::DEFAULT });
+    }
+
+    /// The name a terminal reports is all Windows has, so it has to stand in
+    /// for the query reply: `ghostty` (herdr) takes the placeholder path,
+    /// WezTerm and iTerm2 do not.
+    #[test]
+    fn windows_term_program_names_the_protocols_it_stands_for() {
+        let caps = |term_program| super::windows_capabilities(false, term_program);
+
+        assert!(caps(Some("ghostty")).kitty_graphics, "herdr reports itself as ghostty");
+        assert!(caps(Some("Ghostty")).kitty_graphics, "the name is matched case-insensitively");
+        assert!(!caps(Some("ghostty")).iterm_images);
+        assert!(caps(Some("kitty")).kitty_graphics);
+
+        assert!(caps(Some("WezTerm")).iterm_images, "WezTerm answers the query but has no placeholders");
+        assert!(!caps(Some("WezTerm")).kitty_graphics);
+        assert!(caps(Some("iTerm.app")).iterm_images);
+        assert!(!caps(Some("iTerm.app")).kitty_graphics);
+        assert_eq!(caps(None), Caps::DEFAULT);
+
+        // Both signals can be there; `auto` prefers kitty either way
+        let both = super::windows_capabilities(true, Some("ghostty"));
+        assert!(both.sixel_supported && both.kitty_graphics);
     }
 
     const KITTY_OK: &[u8] = b"\x1b_Gi=31;OK\x1b\\";

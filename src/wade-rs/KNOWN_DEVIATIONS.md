@@ -250,7 +250,10 @@ None. Phase 9 closed the last temporary entries.
 - **Kitty graphics and iTerm2 inline images for image previews (Rust-only addition).**
   - **Detection.** On Unix, startup also sends a kitty graphics query (`a=q`) and XTVERSION (`CSI > q`). Kitty is
     used only when the terminal answers `OK` and calls itself kitty or Ghostty. WezTerm and Konsole answer the query
-    but have no Unicode placeholders.
+    but have no Unicode placeholders. On Windows, where replies cannot be read, a `TERM_PROGRAM` naming one of those
+    terminals (`ghostty`, as the herdr app reports itself) stands in for the reply, keyed on the same name the query
+    path trusts; the herdr terminal draws both kitty forms and answers no Sixel, so kitty is the only protocol it
+    can use.
   - **iTerm2 detection.** iTerm2 inline images (`OSC 1337 ; File=`) are used when the XTVERSION name starts with
     `iTerm2` or `WezTerm`. If there is no reply, `TERM_PROGRAM` = `iTerm.app` or `WezTerm` is used. On Windows,
     where replies can't be read, `TERM_PROGRAM=WezTerm` turns them on.

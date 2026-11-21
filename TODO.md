@@ -76,6 +76,19 @@ Research and implement image previews for Office Open XML formats (`.docx`, `.xl
 - Performance concern: LibreOffice startup is slow (~1-2s); consider debouncing or async user feedback
 - Start with DOCX (most common); extend to XLSX/PPTX after proving the concept
 
+### Windows: read the capability replies instead of trusting the environment
+
+`windows_capabilities` has only `TERM_PROGRAM` to go on, so a terminal that implements the kitty graphics protocol is
+detected only when it names one of the terminals wade trusts (`ghostty`, `kitty`). The replies themselves do reach
+the child: a probe in a herdr pane that switched `ENABLE_VIRTUAL_TERMINAL_INPUT` on for the queries saw all three
+answers (the kitty `a=q` query answered `OK`, XTVERSION reporting `ghostty`, and DA1 without the Sixel param 4),
+though they appeared in the console's own echo rather than in the probe's read, which blocked because line input was
+still on. `docs/windows-terminal-vt.md` records the query-only VT input spike that read replies through ConPTY this
+way, and why a full switch to VT input is not planned.
+
+- [ ] Switch VT input on around the startup queries (line input and echo off, or the read waits for a newline) and feed the replies to the same parser the Unix path uses, keeping `TERM_PROGRAM` as the fallback for terminals that answer nothing (Windows Terminal answers DA1 but not XTVERSION or the kitty query)
+- [ ] Then the trust problem goes away: the name is only believed alongside an `OK` reply, as on Unix
+
 ### Consolidate settings sources
 
 - [ ] Settings come from `config.toml` and the config dialog only (plus `--config-file`). Add one layer that also reads environment variables and CLI flags (e.g. `WADE_ICONS`, `--icons=`), with a fixed precedence (CLI > env > file > default), instead of adding each override by hand. Useful per terminal: a Nerd Font in one terminal, none in another.

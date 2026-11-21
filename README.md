@@ -245,7 +245,7 @@ Tabs keep their own directory, selection, marks and filter. The tab bar appears 
 
 ## Troubleshooting
 
-Image previews missing? What wade shows depends on what the terminal says it can do. On Windows it cannot ask: it reads `WT_SESSION` (Sixel, Windows Terminal 1.22+) and `TERM_PROGRAM` (`iTerm.app`, `WezTerm`), so a terminal that implements the kitty graphics protocol but identifies as something else gets no image drawn. On Unix and macOS the capability queries answer for the terminal.
+Image previews missing? What wade shows depends on what the terminal says it can do. On Windows it cannot ask: it reads `WT_SESSION` (Sixel, Windows Terminal 1.22+) and `TERM_PROGRAM` (`iTerm.app` and `WezTerm` for iTerm2 inline images, `ghostty` for kitty graphics), so a terminal that reports none of those gets no image drawn. On Unix and macOS the capability queries answer for the terminal.
 
 To see what wade found, run it with `WADE_DEBUG_PROTOCOL=1` (`true` and `yes` also work) and read the two `wade-debug:` lines on stderr: the first is written before the UI starts and reports the capability flags, the environment variables behind them, and on Unix the terminal's raw query replies; the second is written when wade exits normally (a kill or a crash loses it) and reports the image protocol it settled on and why it was on or off. Redirect stderr to keep the lines, for example `wade 2> wade.log`. Nothing is printed when the variable is unset.
 
