@@ -7,13 +7,13 @@ use crate::imaging::{ImageProtocol, ImageProtocolSetting};
 use crate::terminal_caps::{TerminalCapabilities, TmuxClient};
 
 /// The environment variable that turns the dump on.
-pub const VARIABLE: &str = "WADE_DEBUG_PROTOCOL";
+const VARIABLE: &str = "WADE_DEBUG_PROTOCOL";
 
 /// The prefix both lines start with.
-pub const PREFIX: &str = "wade-debug: ";
+const PREFIX: &str = "wade-debug: ";
 
 /// The platform name both lines report.
-pub const PLATFORM: &str = if cfg!(windows) { "windows" } else { "unix" };
+const PLATFORM: &str = if cfg!(windows) { "windows" } else { "unix" };
 
 /// The values that enable the dump, compared case-insensitively.
 const TRUTHY: [&str; 3] = ["1", "true", "yes"];
@@ -22,13 +22,13 @@ const TRUTHY: [&str; 3] = ["1", "true", "yes"];
 /// else (unset, empty, `on`, `0`) disables it, silently, and the value is not
 /// trimmed.
 #[must_use]
-pub fn enabled_in(value: Option<&str>) -> bool {
+fn enabled_in(value: Option<&str>) -> bool {
     value.is_some_and(|value| TRUTHY.iter().any(|truthy| value.eq_ignore_ascii_case(truthy)))
 }
 
 /// [`enabled_in`] on this process's environment.
 #[must_use]
-pub fn enabled() -> bool {
+fn enabled() -> bool {
     enabled_in(std::env::var(VARIABLE).ok().as_deref())
 }
 
@@ -58,26 +58,31 @@ pub struct ImageDecision {
 
 /// The environment the reported values come from, as name and value pairs, so
 /// a test can supply its own instead of mutating the process environment.
-pub struct Env(Vec<(String, String)>);
+struct Env(Vec<(String, String)>);
 
 impl Env {
-    /// This process's environment.
+    /// This process's environment, reduced to the variables the line reports.
+    /// The rest is never copied, so a large environment costs nothing.
     #[must_use]
-    pub fn from_process() -> Self {
+    fn from_process() -> Self {
+        let reported =
+            |name: &str| ALWAYS_REPORTED.contains(&name) || FAMILIES.iter().any(|prefix| name.starts_with(prefix));
         Self(
             std::env::vars_os()
-                .filter_map(|(name, value)| Some((name.into_string().ok()?, value.to_string_lossy().into_owned())))
+                .filter_map(|(name, value)| Some((name.into_string().ok()?, value)))
+                .filter(|(name, _)| reported(name))
+                .map(|(name, value)| (name, value.to_string_lossy().into_owned()))
                 .collect(),
         )
     }
 
     /// The reported value of `name`: `<unset>` when it is not there. A
     /// variable that is set but empty stays empty, so the two differ.
-    fn value(&self, name: &str) -> String {
+    fn value(&self, name: &str) -> &str {
         self.0
             .iter()
             .find(|(candidate, _)| candidate == name)
-            .map_or_else(|| "<unset>".to_string(), |(_, value)| value.clone())
+            .map_or("<unset>", |(_, value)| value.as_str())
     }
 
     /// The kitty-family variables that are set, sorted by name for a stable
@@ -136,7 +141,7 @@ pub fn log_image_decision(decision: ImageDecision) {
 
 /// The one line-1 formatter both platforms use.
 #[must_use]
-pub fn detection_line(inputs: &DetectionInputs<'_>, env: &Env, version: &str, platform: &str) -> String {
+fn detection_line(inputs: &DetectionInputs<'_>, env: &Env, version: &str, platform: &str) -> String {
     let mut line = format!("{PREFIX}wade={version} platform={platform} caps={:?}", inputs.capabilities);
 
     for name in ALWAYS_REPORTED {
@@ -160,7 +165,7 @@ pub fn detection_line(inputs: &DetectionInputs<'_>, env: &Env, version: &str, pl
 
 /// The one line-2 formatter.
 #[must_use]
-pub fn image_decision_line(decision: ImageDecision) -> String {
+fn image_decision_line(decision: ImageDecision) -> String {
     let protocol = decision.protocol.map_or("none", ImageProtocol::name);
     format!(
         "{PREFIX}setting={} protocol={protocol} effective={} image_previews_enabled={} protocol_resolved={}",
@@ -174,7 +179,7 @@ pub fn image_decision_line(decision: ImageDecision) -> String {
 /// The whole reply buffer, with control bytes visible and XTVERSION text
 /// readable.
 #[must_use]
-pub fn escape_replies(bytes: &[u8]) -> String {
+fn escape_replies(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes).escape_debug().to_string()
 }
 
@@ -202,12 +207,15 @@ mod tests {
     }
 
     #[test]
-    fn the_reported_platform_is_the_compiled_one() {
-        assert_eq!(PLATFORM, if cfg!(windows) { "windows" } else { "unix" });
+    fn the_reported_platform_names_the_target() {
+        #[cfg(windows)]
+        assert_eq!(PLATFORM, "windows");
+        #[cfg(not(windows))]
+        assert_eq!(PLATFORM, "unix");
     }
 
     #[test]
-    fn line_one_reports_the_caps_the_env_and_the_truncated_nothing() {
+    fn line_one_reports_caps_env_tmux_and_the_reply_bytes() {
         let caps = TerminalCapabilities {
             sixel_supported: true,
             cell_pixel_width: 10,

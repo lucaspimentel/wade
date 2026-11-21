@@ -17,7 +17,7 @@ pub enum ImageProtocol {
 }
 
 impl ImageProtocol {
-    /// The lowercase name, as the config key spells it.
+    /// The lowercase name, matching the `image_protocol` values.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
