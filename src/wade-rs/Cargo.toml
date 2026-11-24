@@ -20,7 +20,7 @@ portable-pty = "0.9"
 vt100 = "0.18"
 
 [target.'cfg(not(windows))'.dependencies]
-notify = "8"
+notify = "9"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
